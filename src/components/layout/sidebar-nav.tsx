@@ -2,12 +2,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import {
-  BarChart3,
-  LayoutGrid,
-  PlusCircle,
-  Users,
-} from 'lucide-react';
+import { BarChart3, LayoutGrid, PlusCircle, Users } from 'lucide-react';
 import {
   SidebarHeader,
   SidebarContent,
@@ -32,8 +27,10 @@ export function SidebarNav() {
   return (
     <>
       <SidebarHeader>
-        <Link href="/" className="flex items-center gap-2">
-          <Logo className="h-10 w-auto text-primary" />
+        <Link href="/" className="flex items-center gap-2" legacyBehavior>
+          <a className="flex items-center gap-2">
+            <Logo className="h-10 w-auto text-primary" />
+          </a>
         </Link>
       </SidebarHeader>
 
@@ -46,17 +43,19 @@ export function SidebarNav() {
                 isActive={pathname === item.href}
                 className="justify-start"
               >
-                <Link href={item.href}>
-                  <item.icon className="h-5 w-5" />
-                  <span className="text-base">{item.label}</span>
+                <Link href={item.href} legacyBehavior>
+                  <a>
+                    <item.icon className="h-5 w-5" />
+                    <span className="text-base">{item.label}</span>
+                  </a>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
           ))}
         </SidebarMenu>
-        
+
         <div className="mt-auto p-4 space-y-2">
-           <SidebarMenuButton
+          <SidebarMenuButton
             onClick={() => setProjectModalOpen(true)}
             variant="outline"
             className="w-full justify-start border-dashed"
@@ -64,7 +63,7 @@ export function SidebarNav() {
             <PlusCircle className="h-5 w-5" />
             <span className="text-base">Cadastrar Projeto</span>
           </SidebarMenuButton>
-           <SidebarMenuButton
+          <SidebarMenuButton
             onClick={() => setTeamModalOpen(true)}
             variant="outline"
             className="w-full justify-start border-dashed"
