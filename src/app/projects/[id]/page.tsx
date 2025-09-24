@@ -1,7 +1,7 @@
 'use client';
 import { useContext, useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
+import { notFound, useRouter } from 'next/navigation';
 import { ChevronLeft, MessageSquare, Save } from 'lucide-react';
 import {
   Accordion,
@@ -24,6 +24,7 @@ import { STAGE_STATUSES } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { FurnitureChatModal } from '@/components/modals/furniture-chat-modal';
 import { cn } from '@/lib/utils';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 type StageKey = 'measurement' | 'cutting' | 'purchase' | 'assembly';
 const stages: { key: StageKey; label: string }[] = [
@@ -34,9 +35,9 @@ const stages: { key: StageKey; label: string }[] = [
 ];
 
 const statusColors: Record<StageStatus, string> = {
-  todo: 'bg-yellow-200/50 border-yellow-300/80 text-yellow-800',
-  in_progress: 'bg-blue-200/50 border-blue-300/80 text-blue-800',
-  done: 'bg-green-200/50 border-green-300/80 text-green-800',
+  todo: 'bg-amber-100 border-amber-200 text-amber-800',
+  in_progress: 'bg-blue-100 border-blue-200 text-blue-800',
+  done: 'bg-green-100 border-green-200 text-green-800',
 };
 
 export default function ProjectDetailsPage({
@@ -46,17 +47,26 @@ export default function ProjectDetailsPage({
 }) {
   const { projects, teamMembers, updateProject } = useContext(AppContext);
   const { toast } = useToast();
-  const [project, setProject] = useState<Project | null>(null);
+  const router = useRouter();
+
+  const initialProject = useMemo(() => 
+    projects.find((p) => p.id === params.id),
+    [params.id, projects]
+  );
+  
+  const [project, setProject] = useState<Project | null>(
+    initialProject ? JSON.parse(JSON.stringify(initialProject)) : null
+  );
+  
   const [isChatModalOpen, setChatModalOpen] = useState(false);
   const [selectedFurniture, setSelectedFurniture] = useState<Furniture | null>(null);
   const [selectedEnvironmentId, setSelectedEnvironmentId] = useState<string | null>(null);
 
   useEffect(() => {
-    const foundProject = projects.find((p) => p.id === params.id);
-    if (foundProject) {
-      setProject(JSON.parse(JSON.stringify(foundProject)));
+    if (!initialProject) {
+        notFound();
     }
-  }, [params.id, projects]);
+  }, [initialProject]);
 
   const handleStatusChange = (
     envId: string,
@@ -101,6 +111,7 @@ export default function ProjectDetailsPage({
         title: 'Projeto salvo!',
         description: 'As alterações foram salvas com sucesso.',
       });
+      router.push('/');
     }
   };
 
@@ -116,11 +127,11 @@ export default function ProjectDetailsPage({
 
 
   if (!project) {
-    const projectExists = projects.some((p) => p.id === params.id);
-    if (!projectExists) {
-      notFound();
-    }
-    return <div>Carregando...</div>;
+    return (
+      <div className="flex h-full w-full items-center justify-center">
+        <p>Carregando projeto...</p>
+      </div>
+    );
   }
 
   return (
@@ -148,13 +159,13 @@ export default function ProjectDetailsPage({
         <Accordion type="multiple" defaultValue={project.environments.map(e => e.id)} className="w-full">
           {project.environments.map((env) => (
             <AccordionItem value={env.id} key={env.id}>
-              <AccordionTrigger className="font-headline text-xl">
+              <AccordionTrigger className="font-headline text-xl hover:no-underline">
                 {env.name}
               </AccordionTrigger>
               <AccordionContent>
                 <div className="space-y-4">
                   {env.furniture.map((fur) => (
-                    <div key={fur.id} className="p-4 rounded-lg border bg-card">
+                    <div key={fur.id} className="p-4 rounded-lg border bg-card/80">
                       <div className="flex justify-between items-center mb-4">
                         <h4 className="font-semibold text-lg">{fur.name}</h4>
                         <Button variant="outline" size="sm" onClick={() => openChatModal(fur, env.id)}>
@@ -194,7 +205,10 @@ export default function ProjectDetailsPage({
                                   <div className="flex items-center gap-2">
                                     {fur[stage.key].responsibleId && memberMap.get(fur[stage.key].responsibleId) ? (
                                       <>
-                                        <span className="h-3 w-3 rounded-full" style={{ backgroundColor: memberMap.get(fur[stage.key].responsibleId)?.color }}></span>
+                                        <Avatar className="h-6 w-6">
+                                          <AvatarImage src={memberMap.get(fur[stage.key].responsibleId)?.avatarUrl} />
+                                          <AvatarFallback>{memberMap.get(fur[stage.key].responsibleId)?.name.charAt(0)}</AvatarFallback>
+                                        </Avatar>
                                         <span>{memberMap.get(fur[stage.key].responsibleId)?.name}</span>
                                       </>
                                     ) : (
@@ -203,10 +217,15 @@ export default function ProjectDetailsPage({
                                   </div>
                               </SelectTrigger>
                               <SelectContent>
+                                <SelectItem value="unassigned">Não atribuído</SelectItem>
+                                <Separator />
                                 {teamMembers.map((member) => (
                                   <SelectItem key={member.id} value={member.id}>
                                     <div className="flex items-center gap-2">
-                                      <span className="h-3 w-3 rounded-full" style={{ backgroundColor: member.color }}></span>
+                                      <Avatar className="h-6 w-6">
+                                        <AvatarImage src={member.avatarUrl} />
+                                        <AvatarFallback>{member.name.charAt(0)}</AvatarFallback>
+                                      </Avatar>
                                       <span>{member.name}</span>
                                     </div>
                                   </SelectItem>
