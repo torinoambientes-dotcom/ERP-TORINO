@@ -6,31 +6,50 @@ export function Logo(props: SVGProps<SVGSVGElement>) {
     <svg
       xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 150 40"
-      className={cn("h-8 w-auto", props.className)}
+      className={cn("h-10 w-auto", props.className)}
       {...props}
       fill="currentColor"
     >
-      <g transform="translate(0, 5)">
-        <path d="M0 2 L24 2" stroke="currentColor" strokeWidth="1.5" />
-        <path d="M12 2 L12 18" stroke="currentColor" strokeWidth="1.5" />
-        <path d="M4 30 L12 18 L20 30" stroke="currentColor" strokeWidth="1.5" />
+      <g transform="translate(5, 5)">
+        <path
+          d="M0 2 L24 2"
+          stroke="currentColor"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+        />
+        <path
+          d="M12 2 L12 18"
+          stroke="currentColor"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+        />
+        <path
+          d="M4 30 L12 18 L20 30"
+          stroke="currentColor"
+          strokeWidth="2.5"
+          fill="none"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
       </g>
       <text
-        x="35"
-        y="20"
+        x="40"
+        y="21"
         fontFamily="Poppins, sans-serif"
         fontSize="18"
-        letterSpacing="2"
+        fontWeight="600"
+        letterSpacing="1"
         fill="currentColor"
       >
         TORINO
       </text>
       <text
-        x="35"
-        y="32"
+        x="40"
+        y="33"
         fontFamily="Poppins, sans-serif"
         fontSize="7"
-        letterSpacing="4"
+        fontWeight="500"
+        letterSpacing="3.5"
         fill="currentColor"
       >
         AMBIENTES
