@@ -27,7 +27,7 @@ export default function ProjectsPage() {
               key={project.id}
               className="block h-full transform transition-all hover:-translate-y-1 hover:shadow-lg"
             >
-              <Card className="h-full">
+              <Card className="h-full cursor-pointer">
                 <CardHeader>
                   <CardTitle className="font-headline text-lg tracking-tight">
                     {project.clientName}
