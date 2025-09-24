@@ -23,6 +23,7 @@ import type { Project, Furniture, StageStatus, TeamMember } from '@/lib/types';
 import { STAGE_STATUSES } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { FurnitureChatModal } from '@/components/modals/furniture-chat-modal';
+import { cn } from '@/lib/utils';
 
 type StageKey = 'measurement' | 'cutting' | 'purchase' | 'assembly';
 const stages: { key: StageKey; label: string }[] = [
@@ -31,6 +32,12 @@ const stages: { key: StageKey; label: string }[] = [
   { key: 'purchase', label: 'Compra Material' },
   { key: 'assembly', label: 'Pré Montagem' },
 ];
+
+const statusColors: Record<StageStatus, string> = {
+  todo: 'bg-yellow-200/50 border-yellow-300/80 text-yellow-800',
+  in_progress: 'bg-blue-200/50 border-blue-300/80 text-blue-800',
+  done: 'bg-green-200/50 border-green-300/80 text-green-800',
+};
 
 export default function ProjectDetailsPage({
   params,
@@ -165,7 +172,7 @@ export default function ProjectDetailsPage({
                                 handleStatusChange(env.id, fur.id, stage.key, value)
                               }
                             >
-                              <SelectTrigger>
+                              <SelectTrigger className={cn("font-semibold", statusColors[fur[stage.key].status])}>
                                 <SelectValue placeholder="Status" />
                               </SelectTrigger>
                               <SelectContent>
