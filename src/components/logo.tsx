@@ -4,7 +4,7 @@ import type { SVGProps } from "react";
 export function Logo(props: SVGProps<SVGSVGElement>) {
   return (
     <div
-      className={cn("flex flex-col items-center leading-none text-foreground", props.className)}
+      className={cn("flex flex-col items-center leading-none", props.className)}
     >
       <span
         style={{
@@ -13,7 +13,7 @@ export function Logo(props: SVGProps<SVGSVGElement>) {
           fontWeight: "bold",
           letterSpacing: "0.1em",
         }}
-        className="text-primary"
+        className="text-sidebar-primary"
       >
         TORINO
       </span>
@@ -24,7 +24,7 @@ export function Logo(props: SVGProps<SVGSVGElement>) {
           fontWeight: "500",
           letterSpacing: "0.4em",
         }}
-        className="text-muted-foreground"
+        className="text-sidebar-foreground/80"
       >
         AMBIENTES
       </span>
