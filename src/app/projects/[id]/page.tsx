@@ -25,6 +25,7 @@ import { useToast } from '@/hooks/use-toast';
 import { FurnitureChatModal } from '@/components/modals/furniture-chat-modal';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Separator } from '@/components/ui/separator';
 
 type StageKey = 'measurement' | 'cutting' | 'purchase' | 'assembly';
 const stages: { key: StageKey; label: string }[] = [
@@ -66,6 +67,8 @@ export default function ProjectDetailsPage({
     if (!initialProject) {
         notFound();
     }
+    // Ensure local project state is updated if the global context changes
+    setProject(initialProject ? JSON.parse(JSON.stringify(initialProject)) : null);
   }, [initialProject]);
 
   const handleStatusChange = (
@@ -98,7 +101,7 @@ export default function ProjectDetailsPage({
     if (env) {
       const fur = env.furniture.find((f) => f.id === furId);
       if (fur) {
-        fur[stage].responsibleId = value;
+        fur[stage].responsibleId = value === 'unassigned' ? undefined : value;
         setProject(newProject);
       }
     }
@@ -174,7 +177,9 @@ export default function ProjectDetailsPage({
                         </Button>
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                        {stages.map((stage) => (
+                        {stages.map((stage) => {
+                          const responsibleMember = fur[stage.key].responsibleId ? memberMap.get(fur[stage.key].responsibleId) : undefined;
+                          return (
                           <div key={stage.key} className="space-y-2">
                             <label className="text-sm font-medium">{stage.label}</label>
                             <Select
@@ -196,20 +201,20 @@ export default function ProjectDetailsPage({
                             </Select>
                             
                             <Select
-                              value={fur[stage.key].responsibleId}
+                              value={fur[stage.key].responsibleId || "unassigned"}
                               onValueChange={(value) =>
                                 handleMemberChange(env.id, fur.id, stage.key, value)
                               }
                             >
                               <SelectTrigger>
                                   <div className="flex items-center gap-2">
-                                    {fur[stage.key].responsibleId && memberMap.get(fur[stage.key].responsibleId) ? (
+                                    {responsibleMember ? (
                                       <>
                                         <Avatar className="h-6 w-6">
-                                          <AvatarImage src={memberMap.get(fur[stage.key].responsibleId)?.avatarUrl} />
-                                          <AvatarFallback>{memberMap.get(fur[stage.key].responsibleId)?.name.charAt(0)}</AvatarFallback>
+                                          <AvatarImage src={responsibleMember.avatarUrl} />
+                                          <AvatarFallback>{responsibleMember.name.charAt(0)}</AvatarFallback>
                                         </Avatar>
-                                        <span>{memberMap.get(fur[stage.key].responsibleId)?.name}</span>
+                                        <span>{responsibleMember.name}</span>
                                       </>
                                     ) : (
                                       <SelectValue placeholder="Responsável" />
@@ -234,7 +239,7 @@ export default function ProjectDetailsPage({
                             </Select>
 
                           </div>
-                        ))}
+                        )})}
                       </div>
                     </div>
                   ))}
