@@ -9,7 +9,7 @@ export function Logo(props: SVGProps<SVGSVGElement>) {
       className={cn("text-sidebar-foreground", props.className)}
       {...props}
     >
-      <g fill="none" stroke="currentColor" strokeWidth="1">
+      <g fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
         {/* Symbol */}
         <polyline points="5,5 25,5" />
         <polyline points="5,5 15,15" />
