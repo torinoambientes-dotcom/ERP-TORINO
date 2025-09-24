@@ -22,19 +22,21 @@ export default function ProjectsPage() {
       {projects.length > 0 ? (
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {projects.map((project) => (
-            <Link href={`/projects/${project.id}`} key={project.id}>
-              <Card className="h-full transform transition-all hover:-translate-y-1 hover:shadow-lg">
-                <CardHeader>
-                  <CardTitle className="font-headline text-lg tracking-tight">
-                    {project.clientName}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground">
-                    {project.environments.length} ambiente(s)
-                  </p>
-                </CardContent>
-              </Card>
+            <Link href={`/projects/${project.id}`} key={project.id} legacyBehavior>
+              <a className="block h-full transform transition-all hover:-translate-y-1 hover:shadow-lg">
+                <Card className="h-full">
+                  <CardHeader>
+                    <CardTitle className="font-headline text-lg tracking-tight">
+                      {project.clientName}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground">
+                      {project.environments.length} ambiente(s)
+                    </p>
+                  </CardContent>
+                </Card>
+              </a>
             </Link>
           ))}
         </div>
