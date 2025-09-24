@@ -13,6 +13,20 @@ export const STAGE_STATUSES = {
 
 export type StageStatus = keyof typeof STAGE_STATUSES;
 
+export interface Comment {
+  id: string;
+  memberId: string;
+  text: string;
+  timestamp: string;
+}
+
+export interface Pendency {
+  id: string;
+  text: string;
+  isResolved: boolean;
+  authorId: string;
+}
+
 export interface Furniture {
   id: string;
   name: string;
@@ -20,6 +34,8 @@ export interface Furniture {
   cutting: { status: StageStatus; responsibleId?: string };
   purchase: { status: StageStatus; responsibleId?: string };
   assembly: { status: StageStatus; responsibleId?: string };
+  comments?: Comment[];
+  pendencies?: Pendency[];
 }
 
 export interface Environment {
