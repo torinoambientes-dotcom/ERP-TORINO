@@ -13,10 +13,10 @@ export function Logo(props: SVGProps<SVGSVGElement>) {
         x="80"
         y="27"
         fontFamily="Poppins, sans-serif"
-        fontSize="28"
+        fontSize="34"
         fill="currentColor"
         textAnchor="middle"
-        fontWeight="600"
+        fontWeight="500"
         letterSpacing="1"
       >
         TORINO
@@ -25,7 +25,7 @@ export function Logo(props: SVGProps<SVGSVGElement>) {
         x="80"
         y="39"
         fontFamily="Poppins, sans-serif"
-        fontSize="10"
+        fontSize="12"
         fill="currentColor"
         textAnchor="middle"
         letterSpacing="3"
