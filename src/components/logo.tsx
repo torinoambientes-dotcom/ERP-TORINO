@@ -9,18 +9,9 @@ export function Logo(props: SVGProps<SVGSVGElement>) {
       className={cn("text-sidebar-foreground", props.className)}
       {...props}
     >
-      <g fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        {/* Symbol */}
-        <polyline points="5,5 25,5" />
-        <polyline points="5,5 15,15" />
-        <polyline points="8,8 15,15" />
-        <polyline points="15,15 22,8" />
-        <polyline points="15,15 15,35" />
-      </g>
-      
       {/* TORINO */}
       <text
-        x="95"
+        x="80"
         y="18"
         fontFamily="Poppins, sans-serif"
         fontSize="17"
@@ -34,7 +25,7 @@ export function Logo(props: SVGProps<SVGSVGElement>) {
 
       {/* AMBIENTES */}
       <text
-        x="95"
+        x="80"
         y="32"
         fontFamily="Poppins, sans-serif"
         fontSize="7"
