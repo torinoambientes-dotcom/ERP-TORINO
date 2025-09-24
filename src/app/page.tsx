@@ -35,9 +35,9 @@ export default function ProjectsPage() {
     let status: { text: string; variant: 'default' | 'secondary' | 'outline', className?: string };
 
     if (progress === 100) {
-      status = { text: 'Concluído', variant: 'default', className: 'bg-green-600/10 text-green-700 border-green-600/30' };
+      status = { text: 'Concluído', variant: 'default', className: 'bg-green-600/20 text-green-700 border-green-600/30' };
     } else if (progress > 0) {
-      status = { text: 'Em Andamento', variant: 'outline' };
+      status = { text: 'Em Andamento', variant: 'outline', className: 'text-blue-700 border-blue-600/30 bg-blue-600/10' };
     } else {
       status = { text: 'Novo', variant: 'secondary' };
     }
@@ -59,12 +59,12 @@ export default function ProjectsPage() {
               <Link
                 href={`/projects/${project.id}`}
                 key={project.id}
-                className="block h-full transition-all duration-300 ease-in-out hover:scale-[1.03] hover:shadow-xl rounded-lg"
+                className="block h-full transition-all duration-300 ease-in-out hover:scale-[1.02] hover:shadow-lg rounded-lg"
               >
-                <Card className="h-full cursor-pointer flex flex-col bg-card/80 backdrop-blur-sm border-border/80">
+                <Card className="h-full cursor-pointer flex flex-col bg-card/80 backdrop-blur-sm border-border/80 shadow-sm">
                   <CardHeader>
                     <div className='flex justify-between items-start gap-2'>
-                      <CardTitle className="font-headline text-lg tracking-tight">
+                      <CardTitle className="font-headline text-xl tracking-tight text-foreground/90">
                         {project.clientName}
                       </CardTitle>
                        <Badge variant={status.variant} className={status.className}>{status.text}</Badge>
@@ -75,12 +75,12 @@ export default function ProjectsPage() {
                       {project.environments.length} ambiente(s)
                     </p>
                     <div className="space-y-2">
-                        <Progress value={progress} className="h-2" />
+                        <Progress value={progress} className="h-2 bg-muted" />
                         <p className="text-xs text-muted-foreground">{doneTasks} de {totalTasks} tarefas concluídas</p>
                     </div>
                   </CardContent>
                    <CardFooter>
-                     <p className="text-xs text-muted-foreground/80">ID: {project.id}</p>
+                     <p className="text-xs text-muted-foreground/70">ID: {project.id}</p>
                    </CardFooter>
                 </Card>
               </Link>
@@ -88,9 +88,9 @@ export default function ProjectsPage() {
           })}
         </div>
       ) : (
-        <div className="flex h-64 items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/30 bg-muted/50">
+        <div className="flex h-64 items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/20 bg-muted/30">
           <div className="text-center">
-            <h3 className="font-headline text-xl font-semibold text-muted-foreground">
+            <h3 className="font-headline text-xl font-semibold text-muted-foreground/80">
               Nenhum projeto cadastrado
             </h3>
             <p className="mt-2 text-sm text-muted-foreground">
