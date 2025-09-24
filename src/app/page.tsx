@@ -11,6 +11,7 @@ import {
 import { AppContext } from '@/context/app-context';
 import { PageHeader } from '@/components/layout/page-header';
 import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
 
 export default function ProjectsPage() {
   const { projects } = useContext(AppContext);
@@ -29,10 +30,19 @@ export default function ProjectsPage() {
         });
       });
     });
-    if (totalTasks === 0) return { text: 'Novo', variant: 'secondary' as const };
-    if (doneTasks === totalTasks) return { text: 'Concluído', variant: 'default' as const, className: 'bg-green-600' };
-    if (doneTasks > 0) return { text: 'Em Andamento', variant: 'default' as const };
-    return { text: 'Pendente', variant: 'secondary' as const };
+
+    const progress = totalTasks > 0 ? (doneTasks / totalTasks) * 100 : 0;
+    let status: { text: string; variant: 'default' | 'secondary' | 'outline', className?: string };
+
+    if (progress === 100) {
+      status = { text: 'Concluído', variant: 'default', className: 'bg-green-600/10 text-green-700 border-green-600/30' };
+    } else if (progress > 0) {
+      status = { text: 'Em Andamento', variant: 'outline' };
+    } else {
+      status = { text: 'Novo', variant: 'secondary' };
+    }
+    
+    return { status, progress, totalTasks, doneTasks };
   }
 
   return (
@@ -44,29 +54,33 @@ export default function ProjectsPage() {
       {projects.length > 0 ? (
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {projects.map((project) => {
-             const status = getProjectStatus(project);
+             const { status, progress, totalTasks, doneTasks } = getProjectStatus(project);
              return (
               <Link
                 href={`/projects/${project.id}`}
                 key={project.id}
-                className="block h-full transition-all hover:scale-[1.02] hover:shadow-lg rounded-lg"
+                className="block h-full transition-all duration-300 ease-in-out hover:scale-[1.03] hover:shadow-xl rounded-lg"
               >
-                <Card className="h-full cursor-pointer flex flex-col">
+                <Card className="h-full cursor-pointer flex flex-col bg-card/80 backdrop-blur-sm border-border/80">
                   <CardHeader>
-                    <div className='flex justify-between items-start'>
+                    <div className='flex justify-between items-start gap-2'>
                       <CardTitle className="font-headline text-lg tracking-tight">
                         {project.clientName}
                       </CardTitle>
                        <Badge variant={status.variant} className={status.className}>{status.text}</Badge>
                     </div>
                   </CardHeader>
-                  <CardContent className="flex-grow">
+                  <CardContent className="flex-grow space-y-4">
                     <p className="text-sm text-muted-foreground">
                       {project.environments.length} ambiente(s)
                     </p>
+                    <div className="space-y-2">
+                        <Progress value={progress} className="h-2" />
+                        <p className="text-xs text-muted-foreground">{doneTasks} de {totalTasks} tarefas concluídas</p>
+                    </div>
                   </CardContent>
                    <CardFooter>
-                     <p className="text-xs text-muted-foreground">ID: {project.id}</p>
+                     <p className="text-xs text-muted-foreground/80">ID: {project.id}</p>
                    </CardFooter>
                 </Card>
               </Link>

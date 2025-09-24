@@ -1,13 +1,12 @@
 'use client';
 
-import { SidebarProvider, Sidebar, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
+import { SidebarProvider, Sidebar, SidebarInset } from '@/components/ui/sidebar';
 import { SidebarNav } from './sidebar-nav';
-import { PageHeader } from './page-header';
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <SidebarProvider>
-      <div className="flex min-h-screen bg-background">
+      <div className="flex min-h-screen">
         <Sidebar className="h-full border-r bg-sidebar text-sidebar-foreground" side="left" collapsible="icon">
           <SidebarNav />
         </Sidebar>

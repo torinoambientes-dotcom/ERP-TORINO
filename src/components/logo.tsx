@@ -11,25 +11,24 @@ export function Logo(props: SVGProps<SVGSVGElement>) {
     >
       <text
         x="80"
-        y="27"
+        y="20"
         fontFamily="Poppins, sans-serif"
-        fontSize="34"
+        fontSize="20"
         fill="currentColor"
         textAnchor="middle"
-        fontWeight="500"
-        letterSpacing="1"
+        fontWeight="400"
       >
         TORINO
       </text>
       <text
         x="80"
-        y="39"
+        y="34"
         fontFamily="Poppins, sans-serif"
-        fontSize="12"
+        fontSize="8"
         fill="currentColor"
         textAnchor="middle"
         letterSpacing="3"
-        opacity="0.8"
+        opacity="0.7"
       >
         AMBIENTES
       </text>
