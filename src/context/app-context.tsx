@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, type ReactNode, useCallback, useMemo } from 'react';
-import { collection, doc } from 'firebase/firestore';
+import { collection, doc, serverTimestamp, deleteField } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import type { Project, TeamMember, StageStatus, StockItem, StockMovement, StockCategory } from '@/lib/types';
 import { generateId } from '@/lib/utils';
@@ -27,6 +27,7 @@ interface AppContextType {
   addStockMovement: (itemId: string, movementData: Omit<StockMovement, 'id' | 'timestamp'>) => void;
   addStockCategory: (categoryData: Omit<StockCategory, 'id'>) => void;
   deleteStockCategory: (categoryId: string) => void;
+  handleStockAlert: (itemId: string, markAsHandled: boolean) => void;
 }
 
 export const AppContext = createContext<AppContextType>({
@@ -48,6 +49,7 @@ export const AppContext = createContext<AppContextType>({
   addStockMovement: () => {},
   addStockCategory: () => {},
   deleteStockCategory: () => {},
+  handleStockAlert: () => {},
 });
 
 const isProjectComplete = (project: Project): boolean => {
@@ -198,9 +200,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const movementQuantity = movementData.quantity;
     const newQuantity = movementData.type === 'entry' ? currentQuantity + movementQuantity : currentQuantity - movementQuantity;
 
+    const updateData: { quantity: number; alertHandledAt?: any } = { quantity: newQuantity };
+
+    // Se o estoque for reabastecido acima do mínimo, limpa o status do alerta
+    if (typeof itemToUpdate.minStock === 'number' && newQuantity >= itemToUpdate.minStock) {
+        updateData.alertHandledAt = deleteField();
+    }
+
     // 1. Update the stock item's quantity
     const itemRef = doc(firestore, 'stock_items', itemId);
-    setDocumentNonBlocking(itemRef, { quantity: newQuantity }, { merge: true });
+    setDocumentNonBlocking(itemRef, updateData, { merge: true });
 
     // 2. Add a record to the movement history
     const movementId = generateId('move');
@@ -228,6 +237,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
     deleteDocumentNonBlocking(categoryRef);
   }, [firestore]);
 
+  const handleStockAlert = useCallback((itemId: string, markAsHandled: boolean) => {
+      if (!firestore) return;
+      const itemRef = doc(firestore, 'stock_items', itemId);
+      const update = markAsHandled
+        ? { alertHandledAt: new Date().toISOString() }
+        : { alertHandledAt: deleteField() };
+      
+      setDocumentNonBlocking(itemRef, update, { merge: true });
+  }, [firestore]);
+
 
   const value = useMemo(() => ({
     projects: projects || [],
@@ -248,6 +267,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addStockMovement,
     addStockCategory,
     deleteStockCategory,
+    handleStockAlert,
   }), [
     projects, 
     teamMembers, 
@@ -270,6 +290,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addStockMovement,
     addStockCategory,
     deleteStockCategory,
+    handleStockAlert,
   ]);
 
 

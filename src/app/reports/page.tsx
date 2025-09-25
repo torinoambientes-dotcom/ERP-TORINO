@@ -24,9 +24,10 @@ import { PageHeader } from '@/components/layout/page-header';
 import { AppContext } from '@/context/app-context';
 import type { Pendency, StageStatus, StockItem } from '@/lib/types';
 import { Separator } from '@/components/ui/separator';
-import { AlertTriangle, ChevronsUpDown } from 'lucide-react';
+import { AlertTriangle, ChevronsUpDown, CheckCircle } from 'lucide-react';
 import { isThisWeek, isThisMonth, isThisYear, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
 
 interface GeneralPendency extends Pendency {
   projectName: string;
@@ -39,7 +40,8 @@ export default function ReportsPage() {
   if (!context) {
     throw new Error('ReportsPage must be used within an AppProvider');
   }
-  const { projects, teamMembers, stockItems } = context;
+  const { projects, teamMembers, stockItems, handleStockAlert } = context;
+  const { toast } = useToast();
 
   const [selectedMemberId, setSelectedMemberId] = useState('all');
   const [isPendenciesOpen, setIsPendenciesOpen] = useState(true);
@@ -173,9 +175,19 @@ export default function ReportsPage() {
   
   const lowStockItems = useMemo((): StockItem[] => {
     return stockItems.filter(item => 
-        typeof item.minStock === 'number' && item.quantity < item.minStock
+        typeof item.minStock === 'number' && 
+        item.quantity < item.minStock &&
+        !item.alertHandledAt
     );
   }, [stockItems]);
+
+  const handleMarkAlertAsHandled = (itemId: string, itemName: string) => {
+    handleStockAlert(itemId, true);
+    toast({
+        title: "Alerta Resolvido",
+        description: `O alerta para o item "${itemName}" foi marcado como resolvido.`,
+    });
+  };
 
 
   return (
@@ -261,7 +273,7 @@ export default function ReportsPage() {
              <div className="flex items-center justify-between">
               <div className='space-y-1.5'>
                 <CardTitle className="font-headline">Alerta de Estoque Mínimo ({lowStockItems.length})</CardTitle>
-                <CardDescription>Lista de materiais que atingiram o nível mínimo de estoque.</CardDescription>
+                <CardDescription>Lista de materiais que atingiram o nível mínimo de estoque e precisam de atenção.</CardDescription>
               </div>
               <CollapsibleTrigger asChild>
                 <Button variant="ghost" size="icon">
@@ -275,19 +287,27 @@ export default function ReportsPage() {
             <CardContent>
               <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
                 {lowStockItems.length > 0 ? lowStockItems.map((item) => (
-                  <div key={item.id} className="p-3 rounded-md bg-destructive/10 border-l-4 border-destructive flex items-center justify-between">
-                    <div>
-                      <p className="font-semibold">{item.name}</p>
-                      <p className="text-sm text-destructive/80 font-medium">
-                        Categoria: {item.category}
-                      </p>
+                  <div key={item.id} className="p-3 rounded-md bg-destructive/10 border-l-4 border-destructive flex items-start sm:items-center justify-between flex-col sm:flex-row gap-4">
+                    <div className="flex items-start gap-3">
+                        <AlertTriangle className="h-5 w-5 text-destructive mt-0.5 flex-shrink-0" />
+                        <div>
+                            <p className="font-semibold">{item.name}</p>
+                            <p className="text-sm text-destructive/80 font-medium">
+                                Atual: {item.quantity} | Mínimo: {item.minStock} ({item.unit})
+                            </p>
+                        </div>
                     </div>
-                    <div className='text-right'>
-                      <p className="font-bold text-lg text-destructive">{item.quantity}</p>
-                      <p className='text-sm text-destructive/80'>{item.unit}(s) restantes</p>
-                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="bg-background hover:bg-muted w-full sm:w-auto"
+                      onClick={() => handleMarkAlertAsHandled(item.id, item.name)}
+                    >
+                      <CheckCircle className="mr-2 h-4 w-4 text-green-600" />
+                      Marcar como Resolvido
+                    </Button>
                   </div>
-                )) : <p className="text-sm text-muted-foreground">Nenhum item com estoque baixo.</p>}
+                )) : <p className="text-sm text-muted-foreground text-center py-4">Nenhum item com estoque baixo.</p>}
               </div>
             </CardContent>
           </CollapsibleContent>

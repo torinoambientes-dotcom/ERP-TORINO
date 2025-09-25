@@ -63,6 +63,7 @@ export interface StockItem {
   unit: string;
   category: string;
   minStock?: number;
+  alertHandledAt?: string; // ISO date string for when the low stock alert was handled
 }
 
 export interface StockMovement {
