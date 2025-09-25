@@ -1,5 +1,5 @@
 'use client';
-import { useContext, useState, useEffect, useMemo } from 'react';
+import { useContext, useState, useEffect, useMemo, use } from 'react';
 import Link from 'next/link';
 import { notFound, useRouter } from 'next/navigation';
 import { ChevronLeft, MessageSquare, Save } from 'lucide-react';
@@ -45,10 +45,11 @@ export default function ProjectDetailsPage({
 }: {
   params: { id: string };
 }) {
+  const resolvedParams = use(params);
   const { projects, teamMembers, updateProject } = useContext(AppContext);
   const { toast } = useToast();
   const router = useRouter();
-  const { id } = params;
+  const { id } = resolvedParams;
 
   const initialProject = useMemo(() => 
     projects.find((p) => p.id === id),
