@@ -184,7 +184,7 @@ export default function ProjectsPage() {
                       {project.environments.length} ambiente(s)
                     </p>
                     <div className="space-y-2">
-                      <Progress value={progress} className="h-2 bg-muted" />
+                      <Progress value={progress} className="h-2" />
                       <p className="text-xs text-muted-foreground">
                         {doneTasks} de {totalTasks} tarefas concluídas
                       </p>

@@ -1,7 +1,7 @@
 'use client';
 import { useContext, useState, useEffect, useMemo, use } from 'react';
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
+import { notFound, useRouter } from 'next/navigation';
 import { ChevronLeft, MessageSquare } from 'lucide-react';
 import {
   Accordion,
@@ -24,6 +24,7 @@ import { STAGE_STATUSES } from '@/lib/types';
 import { FurnitureChatModal } from '@/components/modals/furniture-chat-modal';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
+import { useToast } from '@/hooks/use-toast';
 
 type StageKey = 'measurement' | 'cutting' | 'purchase' | 'assembly';
 const stages: { key: StageKey; label: string }[] = [
@@ -62,15 +63,16 @@ export default function ProjectDetailsPage({
   const [selectedEnvironmentId, setSelectedEnvironmentId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (initialProject) {
+    const currentProject = projects.find((p) => p.id === id);
+    if (currentProject) {
       // Deep copy to prevent direct mutation of context state
-      setProject(JSON.parse(JSON.stringify(initialProject)));
+      setProject(JSON.parse(JSON.stringify(currentProject)));
     } else {
        // Delay notFound to prevent static export errors.
       // In a real app, you might fetch data here and handle loading/error states.
       setTimeout(() => notFound(), 0);
     }
-  }, [initialProject]);
+  }, [id, projects]);
   
   // Auto-save with debounce
   useEffect(() => {
