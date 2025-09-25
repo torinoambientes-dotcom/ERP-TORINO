@@ -129,6 +129,20 @@
         }
       },
       "required": ["id", "name", "quantity", "unit", "category"]
+    },
+    "StockMovement": {
+      "title": "StockMovement",
+      "type": "object",
+      "description": "Represents a single movement (entry or exit) of a stock item.",
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "type": "string", "enum": ["entry", "exit"] },
+        "quantity": { "type": "number" },
+        "reason": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "memberId": { "type": "string" }
+      },
+      "required": ["id", "type", "quantity", "timestamp", "memberId"]
     }
   },
   "auth": {
@@ -148,6 +162,10 @@
     "/stock_items/{stockItemId}": {
       "schema": { "$ref": "#/entities/StockItem" },
       "description": "Stores inventory items."
+    },
+    "/stock_items/{stockItemId}/movements/{movementId}": {
+      "schema": { "$ref": "#/entities/StockMovement" },
+      "description": "Stores the movement history for a specific stock item."
     }
   }
 }

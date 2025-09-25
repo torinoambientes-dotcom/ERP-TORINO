@@ -10,7 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { AppContext } from '@/context/app-context';
 import { PageHeader } from '@/components/layout/page-header';
-import { PlusCircle, Edit, Trash2 } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, ArrowRightLeft } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,6 +25,7 @@ import type { StockItem } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { RegisterStockItemModal } from '@/components/modals/register-stock-item-modal';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { StockMovementModal } from '@/components/modals/stock-movement-modal';
 
 const categories = [
   'Corrediças',
@@ -39,20 +40,33 @@ export default function StockPage() {
   const { stockItems, deleteStockItem, isLoading } = useContext(AppContext);
   const { toast } = useToast();
 
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isRegisterModalOpen, setRegisterModalOpen] = useState(false);
   const [itemToEdit, setItemToEdit] = useState<StockItem | null>(null);
+  
+  const [isMovementModalOpen, setMovementModalOpen] = useState(false);
+  const [itemToMove, setItemToMove] = useState<StockItem | null>(null);
 
   const [isAlertOpen, setIsAlertOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<StockItem | null>(null);
 
-  const handleOpenModal = (item: StockItem | null = null) => {
+  const handleOpenRegisterModal = (item: StockItem | null = null) => {
     setItemToEdit(item);
-    setIsModalOpen(true);
+    setRegisterModalOpen(true);
   };
 
-  const handleCloseModal = () => {
+  const handleCloseRegisterModal = () => {
     setItemToEdit(null);
-    setIsModalOpen(false);
+    setRegisterModalOpen(false);
+  };
+
+  const handleOpenMovementModal = (item: StockItem) => {
+    setItemToMove(item);
+    setMovementModalOpen(true);
+  };
+
+  const handleCloseMovementModal = () => {
+    setItemToMove(null);
+    setMovementModalOpen(false);
   };
 
   const handleOpenAlert = (item: StockItem) => {
@@ -106,11 +120,19 @@ export default function StockPage() {
                 </p>
               </div>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-1">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleOpenMovementModal(item)}
+              >
+                <ArrowRightLeft className="h-4 w-4 mr-2" />
+                Movimentar
+              </Button>
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => handleOpenModal(item)}
+                onClick={() => handleOpenRegisterModal(item)}
               >
                 <Edit className="h-4 w-4" />
                 <span className="sr-only">Editar</span>
@@ -148,7 +170,7 @@ export default function StockPage() {
             description="Gerencie os materiais da sua marcenaria."
           />
           <Button
-            onClick={() => handleOpenModal()}
+            onClick={() => handleOpenRegisterModal()}
             className="w-full sm:w-auto"
           >
             <PlusCircle className="mr-2 h-4 w-4" />
@@ -182,10 +204,18 @@ export default function StockPage() {
       </div>
 
       <RegisterStockItemModal
-        isOpen={isModalOpen}
-        onClose={handleCloseModal}
+        isOpen={isRegisterModalOpen}
+        onClose={handleCloseRegisterModal}
         itemToEdit={itemToEdit}
       />
+      
+      {itemToMove && (
+        <StockMovementModal
+          isOpen={isMovementModalOpen}
+          onClose={handleCloseMovementModal}
+          item={itemToMove}
+        />
+      )}
 
       <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
         <AlertDialogContent>

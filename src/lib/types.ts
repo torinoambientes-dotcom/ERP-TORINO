@@ -68,3 +68,12 @@ export interface StockItem {
   unit: string;
   category: StockCategory;
 }
+
+export interface StockMovement {
+  id: string;
+  type: 'entry' | 'exit';
+  quantity: number;
+  reason: string;
+  timestamp: string; // ISO date string
+  memberId: string;
+}

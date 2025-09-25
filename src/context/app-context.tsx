@@ -3,9 +3,9 @@
 import { createContext, type ReactNode, useCallback, useMemo } from 'react';
 import { collection, doc } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import type { Project, TeamMember, StageStatus, StockItem } from '@/lib/types';
+import type { Project, TeamMember, StageStatus, StockItem, StockMovement } from '@/lib/types';
 import { generateId } from '@/lib/utils';
-import { setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { setDocumentNonBlocking, deleteDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 
 interface AppContextType {
@@ -23,6 +23,7 @@ interface AppContextType {
   addStockItem: (itemData: Omit<StockItem, 'id'>) => void;
   updateStockItem: (updatedItem: StockItem) => void;
   deleteStockItem: (itemId: string) => void;
+  addStockMovement: (itemId: string, movementData: Omit<StockMovement, 'id' | 'timestamp'>) => void;
 }
 
 export const AppContext = createContext<AppContextType>({
@@ -40,6 +41,7 @@ export const AppContext = createContext<AppContextType>({
   addStockItem: () => {},
   updateStockItem: () => {},
   deleteStockItem: () => {},
+  addStockMovement: () => {},
 });
 
 const isProjectComplete = (project: Project): boolean => {
@@ -175,6 +177,33 @@ export function AppProvider({ children }: { children: ReactNode }) {
     deleteDocumentNonBlocking(itemRef);
   }, [firestore]);
 
+  const addStockMovement = useCallback((itemId: string, movementData: Omit<StockMovement, 'id' | 'timestamp'>) => {
+    if (!firestore || !stockItems) return;
+    
+    const itemToUpdate = stockItems.find(item => item.id === itemId);
+    if (!itemToUpdate) return;
+    
+    // Calculate new quantity
+    const currentQuantity = itemToUpdate.quantity;
+    const movementQuantity = movementData.quantity;
+    const newQuantity = movementData.type === 'entry' ? currentQuantity + movementQuantity : currentQuantity - movementQuantity;
+
+    // 1. Update the stock item's quantity
+    const itemRef = doc(firestore, 'stock_items', itemId);
+    setDocumentNonBlocking(itemRef, { quantity: newQuantity }, { merge: true });
+
+    // 2. Add a record to the movement history
+    const movementId = generateId('move');
+    const newMovement: StockMovement = {
+      ...movementData,
+      id: movementId,
+      timestamp: new Date().toISOString(),
+    };
+    const movementRef = collection(firestore, 'stock_items', itemId, 'movements');
+    addDocumentNonBlocking(movementRef, newMovement);
+
+  }, [firestore, stockItems]);
+
   const value = useMemo(() => ({
     projects: projects || [],
     teamMembers: teamMembers || [],
@@ -190,6 +219,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addStockItem,
     updateStockItem,
     deleteStockItem,
+    addStockMovement,
   }), [
     projects, 
     teamMembers, 
@@ -207,6 +237,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addStockItem,
     updateStockItem,
     deleteStockItem,
+    addStockMovement,
   ]);
 
 
