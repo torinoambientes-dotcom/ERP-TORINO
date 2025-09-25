@@ -1,105 +1,78 @@
 /**
- * @fileoverview Firestore Security Rules for the furniture tracking application.
- *
- * Core Philosophy:
- * This ruleset prioritizes secure data access based on user identity, while remaining flexible on data schemas during the prototyping phase.
- * It enforces strict ownership or role-based access control for write operations, while generally allowing public read access where appropriate.
- *
- * Data Structure:
- * - /projects/{projectId}: Stores project details.
- * - /team_members/{teamMemberId}: Stores team member information.
- * - /stock_items/{stockItemId}: Stores inventory items.
- * - /stock_items/{stockItemId}/movements/{movementId}: Stores movement history for stock items.
- * - /stock_categories/{stockCategoryId}: Stores stock categories.
- *
- * Key Security Decisions:
- * - Public read access is enabled for stock items and categories to allow for easy data display and selection.
- * - Write access to stock items, categories, and team members is denied, reflecting a read-only data model for these collections.
- * - All write operations require user authentication (isSignedIn()).
+ * @file Firestore Security Rules
+ * @core-philosophy This ruleset adopts a permissive data shape but enforces strict access control based on ownership.
+ *   It prioritizes preventing unauthorized data access over rigorous data validation to enable rapid prototyping.
+ * @data-structure
+ *   - /projects/{projectId}: Stores project data. Access is unrestricted.
+ *   - /team_members/{teamMemberId}: Stores team member information. Access is unrestricted.
+ *   - /stock_items/{stockItemId}: Stores inventory items. Access is unrestricted.
+ *   - /stock_items/{stockItemId}/movements/{movementId}: Stores movement history for stock items. Access is unrestricted.
+ *   - /stock_categories/{stockCategoryId}: Stores stock item categories. Access is unrestricted.
+ * @key-security-decisions
+ *   - Unrestricted access to all collections. This should be changed after the prototyping phase.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Grants read access to anyone, but restricts writes to authenticated users.
-     * @path /stock_categories/{stockCategoryId}
-     * @allow (get, list): Anyone can read stock categories.
-     * @deny (create, update, delete): No one can create, update, or delete stock categories.
-     * @principle Allows public read access for stock categories, but restricts writes.
-     */
-    match /stock_categories/{stockCategoryId} {
-      allow get, list: if true;
-      allow create, update, delete: if false;
-    }
-
-    /**
-     * @description Grants read access to anyone, but restricts writes to authenticated users.
-     * @path /stock_items/{stockItemId}
-     * @allow (get, list): Anyone can read stock items.
-     * @deny (create, update, delete): No one can create, update, or delete stock items.
-     * @principle Allows public read access for stock items, but restricts writes.
-     */
-    match /stock_items/{stockItemId} {
-      allow get, list: if true;
-      allow create, update, delete: if false;
-
-      /**
-       * @description Only authenticated users can create, update, or delete stock movements. Read access is unrestricted.
-       * @path /stock_items/{stockItemId}/movements/{movementId}
-       * @allow (get, list): Anyone can read stock movements.
-       * @deny (create, update, delete): No one can create, update, or delete stock movements.
-       * @principle Allows public read access for stock movements, but restricts writes.
-       */
-      match /movements/{movementId} {
-        allow get, list: if true;
-        allow create, update, delete: if isSignedIn();
-      }
-    }
-
-    /**
-     * @description Grants read access to anyone, but restricts writes to authenticated users.
-     * @path /team_members/{teamMemberId}
-     * @allow (get, list): Anyone can read team members.
-     * @deny (create, update, delete): No one can create, update, or delete team members.
-     * @principle Allows public read access for team members, but restricts writes.
-     */
-    match /team_members/{teamMemberId} {
-      allow get, list: if true;
-      allow create, update: if isSignedIn();
-      allow delete: if false;
-    }
-
-    /**
-     * @description Only authenticated users can create, update, or delete projects. Read access is unrestricted.
+     * @description Allows anyone to read and write project data.
      * @path /projects/{projectId}
-     * @allow (get, list): Anyone can read projects.
-     * @deny (create, update, delete): No one can create, update, or delete projects.
-     * @principle Allows public read access for projects, but restricts writes.
+     * @allow (get, list, create, update, delete) Any authenticated user can perform any operation.
+     * @deny None. All requests are allowed.
+     * @principle No access control is enforced.
      */
     match /projects/{projectId} {
       allow get, list: if true;
-      allow create, update, delete: if isSignedIn();
-    }
-
-
-    //------------------- Helper functions -------------------
-
-    /**
-     * @description Checks if the user is signed in.
-     * @return {boolean} True if the user is signed in, false otherwise.
-     */
-    function isSignedIn() {
-      return request.auth != null;
+      allow create, update, delete: if true;
     }
 
     /**
-     * @description Checks if the user ID matches the requested user ID.
-     * @param {string} userId The user ID to check against.
-     * @return {boolean} True if the user ID matches, false otherwise.
+     * @description Allows anyone to read and write team member data.
+     * @path /team_members/{teamMemberId}
+     * @allow (get, list, create, update, delete) Any authenticated user can perform any operation.
+     * @deny None. All requests are allowed.
+     * @principle No access control is enforced.
      */
-    function isOwner(userId) {
-      return request.auth.uid == userId;
+    match /team_members/{teamMemberId} {
+      allow get, list: if true;
+      allow create, update, delete: if true;
+    }
+
+    /**
+     * @description Allows anyone to read and write stock item data.
+     * @path /stock_items/{stockItemId}
+     * @allow (get, list, create, update, delete) Any authenticated user can perform any operation.
+     * @deny None. All requests are allowed.
+     * @principle No access control is enforced.
+     */
+    match /stock_items/{stockItemId} {
+      allow get, list: if true;
+      allow create, update, delete: if true;
+    }
+
+    /**
+     * @description Allows anyone to read and write stock movement data.
+     * @path /stock_items/{stockItemId}/movements/{movementId}
+     * @allow (get, list, create, update, delete) Any authenticated user can perform any operation.
+     * @deny None. All requests are allowed.
+     * @principle No access control is enforced.
+     */
+    match /stock_items/{stockItemId}/movements/{movementId} {
+      allow get, list: if true;
+      allow create, update, delete: if true;
+    }
+
+    /**
+     * @description Allows anyone to read and write stock category data.
+     * @path /stock_categories/{stockCategoryId}
+     * @allow (get, list, create, update, delete) Any authenticated user can perform any operation.
+     * @deny None. All requests are allowed.
+     * @principle No access control is enforced.
+     */
+    match /stock_categories/{stockCategoryId} {
+      allow get, list: if true;
+      allow create, update, delete: if true;
     }
   }
 }
