@@ -1,5 +1,5 @@
 'use client';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -43,6 +43,7 @@ interface FurnitureMaterialsModalProps {
 }
 
 const materialSchema = z.object({
+  id: z.string().optional(),
   name: z.string().min(1, 'Nome do material é obrigatório.'),
   quantity: z.coerce.number().min(0.01, 'Quantidade deve ser positiva.'),
   unit: z.string().min(1, 'Unidade é obrigatória.'),
@@ -67,7 +68,7 @@ export function FurnitureMaterialsModal({
   const form = useForm<MaterialFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      materials: furniture.materials || [],
+      materials: [],
     },
   });
 
@@ -75,6 +76,14 @@ export function FurnitureMaterialsModal({
     control: form.control,
     name: 'materials',
   });
+  
+  useEffect(() => {
+    if (isOpen) {
+      form.reset({
+        materials: furniture.materials || [],
+      });
+    }
+  }, [isOpen, furniture, form]);
 
   const onSubmit = (data: MaterialFormValues) => {
     const updatedFurniture = {
