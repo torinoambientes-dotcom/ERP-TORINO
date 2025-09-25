@@ -57,12 +57,6 @@ export default function ProjectDetailsPage() {
     }
   }, [id, projects, isLoading]);
   
-  const handleSaveChanges = () => {
-    if (project) {
-      updateProject(project);
-    }
-  };
-
   const handleStageChange = useCallback((
     envId: string,
     furId: string,
@@ -70,26 +64,35 @@ export default function ProjectDetailsPage() {
     key: 'status' | 'responsibleId',
     value: string
   ) => {
-    setProject(prevProject => {
-      if (!prevProject) return prevProject;
-      const newProject = JSON.parse(JSON.stringify(prevProject)); // Deep copy
-      const env = newProject.environments.find((e: any) => e.id === envId);
-      if (env) {
-        const fur = env.furniture.find((f: any) => f.id === furId);
-        if (fur) {
-          if (!fur[stage]) { // Ensure stage object exists
-            fur[stage] = {};
-          }
-          if (key === 'responsibleId') {
-            fur[stage].responsibleId = value === 'unassigned' ? undefined : value;
-          } else {
-            fur[stage].status = value;
-          }
+    if (!project) return;
+    
+    // Create a deep copy to avoid direct mutation
+    const newProject = JSON.parse(JSON.stringify(project));
+    const env = newProject.environments.find((e: any) => e.id === envId);
+    if (env) {
+      const fur = env.furniture.find((f: any) => f.id === furId);
+      if (fur) {
+        if (!fur[stage]) { // Ensure stage object exists
+          fur[stage] = {};
         }
+        if (key === 'responsibleId') {
+          fur[stage].responsibleId = value === 'unassigned' ? undefined : value;
+        } else {
+          fur[stage].status = value;
+        }
+        
+        // Update local state immediately for responsiveness
+        setProject(newProject);
+        // Trigger update to Firestore
+        updateProject(newProject);
       }
-      return newProject;
-    });
-  }, []);
+    }
+  }, [project, updateProject]);
+
+  const handleFurnitureUpdateInModal = useCallback((updatedProject: Project) => {
+    setProject(updatedProject);
+    updateProject(updatedProject);
+  }, [updateProject]);
 
   const openChatModal = useCallback((furniture: Furniture, envId: string) => {
     setSelectedFurniture(furniture);
@@ -130,7 +133,6 @@ export default function ProjectDetailsPage() {
               description="Detalhes do projeto, ambientes e status das etapas."
             />
           </div>
-           <Button onClick={handleSaveChanges}>Salvar Alterações</Button>
         </div>
 
         <Accordion type="multiple" defaultValue={project.environments?.map(e => e.id) || []} className="w-full">
@@ -225,7 +227,7 @@ export default function ProjectDetailsPage() {
           furniture={selectedFurniture}
           environmentId={selectedEnvironmentId}
           project={project}
-          setProject={setProject}
+          onProjectUpdate={handleFurnitureUpdateInModal}
         />
       )}
     </>

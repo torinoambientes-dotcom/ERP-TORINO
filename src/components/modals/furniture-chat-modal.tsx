@@ -27,7 +27,7 @@ interface FurnitureChatModalProps {
   furniture: Furniture;
   environmentId: string;
   project: Project;
-  setProject: (project: Project) => void;
+  onProjectUpdate: (project: Project) => void;
 }
 
 export function FurnitureChatModal({
@@ -36,7 +36,7 @@ export function FurnitureChatModal({
   furniture,
   environmentId,
   project,
-  setProject,
+  onProjectUpdate,
 }: FurnitureChatModalProps) {
   const context = useContext(AppContext);
   if (!context) {
@@ -57,17 +57,17 @@ export function FurnitureChatModal({
 
   const selectedMember = selectedMemberId ? memberMap.get(selectedMemberId) : null;
 
-  const updateFurniture = useCallback((updatedFurniture: Furniture) => {
+  const updateProjectData = useCallback((updatedFurniture: Furniture) => {
     const newProject = JSON.parse(JSON.stringify(project));
     const env = newProject.environments.find((e: any) => e.id === environmentId);
     if (env) {
       const furIndex = env.furniture.findIndex((f: any) => f.id === furniture.id);
       if (furIndex !== -1) {
         env.furniture[furIndex] = updatedFurniture;
-        setProject(newProject);
+        onProjectUpdate(newProject);
       }
     }
-  }, [project, environmentId, furniture.id, setProject]);
+  }, [project, environmentId, furniture.id, onProjectUpdate]);
 
   const handleAddComment = () => {
     if (!newComment.trim() || !selectedMemberId) return;
@@ -80,7 +80,7 @@ export function FurnitureChatModal({
     };
     
     const updatedFurniture = { ...furniture, comments: [...(furniture.comments || []), comment] };
-    updateFurniture(updatedFurniture);
+    updateProjectData(updatedFurniture);
     setNewComment('');
   };
 
@@ -95,7 +95,7 @@ export function FurnitureChatModal({
     };
 
     const updatedFurniture = { ...furniture, pendencies: [...(furniture.pendencies || []), pendency] };
-    updateFurniture(updatedFurniture);
+    updateProjectData(updatedFurniture);
     setNewPendency('');
   };
 
@@ -104,7 +104,7 @@ export function FurnitureChatModal({
       p.id === pendencyId ? { ...p, isResolved: !p.isResolved } : p
     );
     if (updatedPendencies) {
-      updateFurniture({ ...furniture, pendencies: updatedPendencies });
+      updateProjectData({ ...furniture, pendencies: updatedPendencies });
     }
   };
 
