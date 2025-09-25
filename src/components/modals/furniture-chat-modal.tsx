@@ -111,7 +111,7 @@ export function FurnitureChatModal({
   const UserSelector = () => (
     <div className='mb-2'>
         <Select value={selectedMemberId} onValueChange={setSelectedMemberId}>
-          <SelectTrigger className="w-full sm:w-[220px]">
+          <SelectTrigger className="w-full">
              {selectedMember ? (
                   <div className="flex items-center gap-2">
                     <span className="h-4 w-4 rounded-full" style={{ backgroundColor: selectedMember.color }}></span>
@@ -141,7 +141,7 @@ export function FurnitureChatModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[600px] h-[70vh] flex flex-col">
+      <DialogContent className="w-[95vw] max-w-xl h-[80vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="font-headline">{furniture.name}</DialogTitle>
           <DialogDescription>

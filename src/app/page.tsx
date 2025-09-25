@@ -142,12 +142,12 @@ export default function ProjectsPage() {
   return (
     <>
       <div className="flex flex-col gap-8">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <PageHeader
             title="Projetos Ativos"
             description="Visualize e gerencie os projetos em andamento."
           />
-          <Button asChild variant="outline">
+          <Button asChild variant="outline" className="w-full sm:w-auto">
             <Link href="/projects/completed">
               <Archive className="mr-2 h-4 w-4" />
               Ver Concluídos
@@ -196,9 +196,9 @@ export default function ProjectsPage() {
                 }
 
               return (
-                <div key={project.id} className="relative">
+                <div key={project.id} className="relative group">
                   <Link href={`/projects/${project.id}`} className="block h-full">
-                    <Card className="h-full flex flex-col bg-card/80 backdrop-blur-sm border-border/80 shadow-sm transition-all duration-300 ease-in-out hover:shadow-lg">
+                    <Card className="h-full flex flex-col bg-card/80 backdrop-blur-sm border-border/80 shadow-sm transition-all duration-300 ease-in-out group-hover:shadow-lg">
                       <CardHeader>
                       <div className="flex justify-between items-start gap-2">
                           <CardTitle className="font-headline text-xl tracking-tight text-foreground/90">
@@ -227,7 +227,7 @@ export default function ProjectsPage() {
                       </CardFooter>
                     </Card>
                   </Link>
-                  <div className="absolute bottom-2 right-2 flex justify-end gap-2 bg-card/50 backdrop-blur-sm rounded-full p-1">
+                  <div className="absolute bottom-2 right-2 flex justify-end gap-1 bg-card/50 backdrop-blur-sm rounded-full p-1 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-300">
                       <Button
                           variant="ghost"
                           size="icon"
@@ -262,7 +262,7 @@ export default function ProjectsPage() {
           </div>
         ) : (
           <div className="flex h-64 items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/20 bg-muted/30">
-            <div className="text-center">
+            <div className="text-center p-4">
               <h3 className="font-headline text-xl font-semibold text-muted-foreground/80">
                 Nenhum projeto ativo encontrado
               </h3>

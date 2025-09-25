@@ -64,30 +64,30 @@ export default function ProjectDetailsPage() {
     key: 'status' | 'responsibleId',
     value: string
   ) => {
-    if (!project) return;
-    
-    // Create a deep copy to avoid direct mutation
-    const newProject = JSON.parse(JSON.stringify(project));
-    const env = newProject.environments.find((e: any) => e.id === envId);
-    if (env) {
-      const fur = env.furniture.find((f: any) => f.id === furId);
-      if (fur) {
-        if (!fur[stage]) { // Ensure stage object exists
-          fur[stage] = {};
+    setProject(currentProject => {
+      if (!currentProject) return null;
+
+      const newProject = JSON.parse(JSON.stringify(currentProject));
+      const env = newProject.environments.find((e: any) => e.id === envId);
+      if (env) {
+        const fur = env.furniture.find((f: any) => f.id === furId);
+        if (fur) {
+          if (!fur[stage]) {
+            fur[stage] = {};
+          }
+          if (key === 'responsibleId') {
+            fur[stage].responsibleId = value === 'unassigned' ? undefined : value;
+          } else {
+            fur[stage].status = value;
+          }
+          // Trigger update to Firestore non-blockingly
+          updateProject(newProject);
         }
-        if (key === 'responsibleId') {
-          fur[stage].responsibleId = value === 'unassigned' ? undefined : value;
-        } else {
-          fur[stage].status = value;
-        }
-        
-        // Update local state immediately for responsiveness
-        setProject(newProject);
-        // Trigger update to Firestore
-        updateProject(newProject);
       }
-    }
-  }, [project, updateProject]);
+      // Return the new state for immediate UI update
+      return newProject;
+    });
+  }, [updateProject]);
 
   const handleFurnitureUpdateInModal = useCallback((updatedProject: Project) => {
     setProject(updatedProject);
@@ -145,9 +145,9 @@ export default function ProjectDetailsPage() {
                 <div className="space-y-4">
                   {env.furniture?.map((fur) => (
                     <div key={fur.id} className="p-4 rounded-lg border bg-card/80">
-                      <div className="flex justify-between items-center mb-4">
+                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
                         <h4 className="font-semibold text-lg">{fur.name}</h4>
-                        <Button variant="outline" size="sm" onClick={() => openChatModal(fur, env.id)}>
+                        <Button variant="outline" size="sm" onClick={() => openChatModal(fur, env.id)} className="w-full sm:w-auto">
                           <MessageSquare className="mr-2 h-4 w-4" />
                           Pendências
                         </Button>

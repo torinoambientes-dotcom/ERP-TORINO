@@ -61,18 +61,18 @@ export function SidebarNav() {
            <Button
             onClick={() => setProjectModalOpen(true)}
             variant="default"
-            className="w-full justify-start"
+            className="w-full justify-start [&>span]:flex-1"
           >
             <PlusCircle className="h-5 w-5" />
-            <span className="text-base">Novo Projeto</span>
+            <span className="text-base text-center">Novo Projeto</span>
           </Button>
            <Button
             onClick={() => setTeamModalOpen(true)}
             variant="secondary"
-            className="w-full justify-start"
+            className="w-full justify-start [&>span]:flex-1"
           >
             <Users className="h-5 w-5" />
-            <span className="text-base">Nova Equipe</span>
+            <span className="text-base text-center">Nova Equipe</span>
           </Button>
          </div>
       </SidebarFooter>
