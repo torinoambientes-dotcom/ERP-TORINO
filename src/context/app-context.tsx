@@ -1,11 +1,11 @@
 'use client';
 
-import { createContext, useState, useEffect, type ReactNode, useCallback, useMemo } from 'react';
-import { collection, doc, setDoc, deleteDoc } from 'firebase/firestore';
+import { createContext, type ReactNode, useCallback, useMemo } from 'react';
+import { collection, doc } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import type { Project, TeamMember, StageStatus } from '@/lib/types';
 import { generateId } from '@/lib/utils';
-import { setDocumentNonBlocking, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 
 interface AppContextType {
@@ -40,6 +40,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const { data: teamMembers, isLoading: isLoadingTeamMembers } = useCollection<TeamMember>(teamMembersQuery);
   
   const addProject = useCallback((projectData: Omit<Project, 'id' | 'environments'> & { environments: Array<Omit<Project['environments'][0], 'id' | 'furniture'> & { furniture: Array<Omit<Project['environments'][0]['furniture'][0], 'id' | 'measurement' | 'cutting' | 'purchase' | 'assembly'>>}>}) => {
+    if (!firestore) return;
     const projectId = generateId('proj');
     const newProject: Project = {
       ...projectData,
@@ -64,16 +65,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [firestore]);
 
   const updateProject = useCallback((updatedProject: Project) => {
+    if (!firestore) return;
     const projectRef = doc(firestore, 'projects', updatedProject.id);
     setDocumentNonBlocking(projectRef, updatedProject, { merge: true });
   }, [firestore]);
 
   const deleteProject = useCallback((projectId: string) => {
+    if (!firestore) return;
     const projectRef = doc(firestore, 'projects', projectId);
     deleteDocumentNonBlocking(projectRef);
   }, [firestore]);
 
   const addTeamMember = useCallback((memberData: Omit<TeamMember, 'id'>) => {
+    if (!firestore) return;
     const memberId = generateId('member');
     const newMember = { ...memberData, id: memberId };
     const memberRef = doc(firestore, 'team_members', memberId);

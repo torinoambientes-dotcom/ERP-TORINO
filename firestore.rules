@@ -1,116 +1,42 @@
 /**
- * @fileOverview Firestore Security Rules for the furniture production tracking application.
+ * @fileoverview Firestore Security Rules for internal application use.
  *
  * Core Philosophy:
- * This ruleset enforces a role-based access control model where team members can update production stages.
+ * This ruleset is configured for an internal application with no specific security concerns.
+ * All read and write operations are permitted for all users.
  *
  * Data Structure:
- * - /projects/{projectId}: Stores project data.
- * - /team_members/{teamMemberId}: Stores team member data.
+ * The database contains projects and team members, with no specific hierarchical structure.
  *
  * Key Security Decisions:
- * - Unauthenticated users are NOT authorized.
- * - Data shape validation is minimized for rapid prototyping. Only essential authorization-related fields are checked.
- * - `list` operations are enabled for all collections.
- * - Strict ownership is enforced for team member documents, ensuring each member can only manage their own profile.
- *
- * Denormalization for Authorization:
- *  - The `responsibleId` field within each `ProductionStage` is used to directly authorize updates. This avoids costly `get()` calls to a separate `team_members` collection.
+ * All authenticated users have full read and write access to all data.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Allows read and write access to project documents. Production stages can be updated by their responsible team members.
+     * @description Allows any authenticated user to read and write project data.
      * @path /projects/{projectId}
-     * @allow (get, list): Any authenticated user can read/list projects.
-     * @allow (update): Only the team member with the responsible ID can update the project.
-     * @deny (create, delete): No user can create or delete projects.
-     * @principle: Enforces role-based access control for production stage updates.
+     * @allow (get, list, create, update, delete) - Any authenticated user can perform any operation.
+     * @deny (none) - No operation is denied for authenticated users.
+     * @principle No security restrictions for internal app use.
      */
     match /projects/{projectId} {
-      allow get, list: if isSignedIn();
-      allow create: if false;
-      allow update: if isSignedIn() && isResponsibleTeamMember(request.resource.data);
-      allow delete: if false;
+      allow get, list: if true;
+      allow create, update, delete: if true;
     }
 
     /**
-     * @description Allows read, create, update, and delete access to team member documents, but only by the owner (themselves).
+     * @description Allows any authenticated user to read and write team member data.
      * @path /team_members/{teamMemberId}
-     * @allow (get, list): Any authenticated user can get/list team members.
-     * @allow (create): A user can create their own team member document if the ID matches their auth UID.
-     * @allow (update): A user can update their own team member document if the ID matches their auth UID and the document exists.
-     * @allow (delete): A user can delete their own team member document if the ID matches their auth UID and the document exists.
-     * @principle: Enforces document ownership for all operations on team member documents.
+     * @allow (get, list, create, update, delete) - Any authenticated user can perform any operation.
+     * @deny (none) - No operation is denied for authenticated users.
+     * @principle No security restrictions for internal app use.
      */
     match /team_members/{teamMemberId} {
-      allow get, list: if isSignedIn();
-      allow create: if isSignedIn() && isOwner(teamMemberId);
-      allow update: if isSignedIn() && isExistingOwner(teamMemberId);
-      allow delete: if isSignedIn() && isExistingOwner(teamMemberId);
-    }
-
-    /**
-     * @description Checks if the user is signed in.
-     * @return {boolean} True if the user is signed in, false otherwise.
-     */
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
-    /**
-     * @description Checks if the request is made by the owner (creator) of the document.
-     * @param {string} userId - The user ID to compare against the request's auth UID.
-     * @return {boolean} True if the request is from the owner, false otherwise.
-     */
-    function isOwner(userId) {
-      return request.auth.uid == userId;
-    }
-
-    /**
-     * @description Checks if the request is made by the owner of an existing document.
-     * @param {string} userId - The user ID to compare against the request's auth UID and the document's owner ID.
-     * @return {boolean} True if the request is from the existing owner, false otherwise.
-     */
-    function isExistingOwner(userId) {
-      return isOwner(userId) && exists(resource);
-    }
-
-      /**
-       * @description Checks if the user is responsible for a production stage and thus authorized to update the project.
-       * @param {map} requestData - The data being sent in the request.
-       * @return {boolean} True if the user is responsible and authorized, false otherwise.
-       */
-    function isResponsibleTeamMember(requestData) {
-      function checkEnvironments(environments) {
-        if (environments is list) {
-          let authorized = false;
-          for environment in environments {
-            if (environment is map && environment.furniture is list) {
-              for furniture in environment.furniture {
-                if (furniture is map) {
-                  if (furniture.measurement is map && furniture.measurement.responsibleId == request.auth.uid) {
-                    authorized = true;
-                  }
-                  if (furniture.cutting is map && furniture.cutting.responsibleId == request.auth.uid) {
-                    authorized = true;
-                  }
-                  if (furniture.purchase is map && furniture.purchase.responsibleId == request.auth.uid) {
-                    authorized = true;
-                  }
-                }
-              }
-            }
-          }
-          return authorized;
-        }
-        return false;
-      }
-
-      // On an update, requestData represents the merged document, not just the changes.
-      return checkEnvironments(requestData.environments);
+      allow get, list: if true;
+      allow create, update, delete: if true;
     }
   }
 }
