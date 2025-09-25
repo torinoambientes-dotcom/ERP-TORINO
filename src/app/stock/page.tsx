@@ -24,6 +24,16 @@ import {
 import type { StockItem } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { RegisterStockItemModal } from '@/components/modals/register-stock-item-modal';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
+const categories = [
+  'Corrediças',
+  'Dobradiças',
+  'Articuladores',
+  'Cola HotMelt',
+  'Sapata Niveladora',
+  'Outros',
+];
 
 export default function StockPage() {
   const { stockItems, deleteStockItem, isLoading } = useContext(AppContext);
@@ -66,6 +76,61 @@ export default function StockPage() {
     handleCloseAlert();
   };
 
+  const renderStockList = (category: string) => {
+    const items = stockItems.filter(
+      (item) => (item.category || 'Outros') === category
+    );
+
+    if (items.length === 0) {
+      return (
+        <div className="flex h-24 items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/20 bg-muted/30">
+          <p className="text-sm text-muted-foreground">
+            Nenhum item nesta categoria.
+          </p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-4">
+        {items.map((item) => (
+          <div
+            key={item.id}
+            className="flex items-center justify-between rounded-lg border p-4"
+          >
+            <div className="flex items-center gap-4">
+              <div>
+                <p className="font-medium">{item.name}</p>
+                <p className="text-sm text-muted-foreground">
+                  {item.quantity} {item.unit}
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => handleOpenModal(item)}
+              >
+                <Edit className="h-4 w-4" />
+                <span className="sr-only">Editar</span>
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-destructive/80 hover:text-destructive"
+                onClick={() => handleOpenAlert(item)}
+              >
+                <Trash2 className="h-4 w-4" />
+                <span className="sr-only">Remover</span>
+              </Button>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
   if (isLoading) {
     return (
       <div className="flex h-full w-full items-center justify-center">
@@ -82,66 +147,38 @@ export default function StockPage() {
             title="Controle de Estoque"
             description="Gerencie os materiais da sua marcenaria."
           />
-          <Button onClick={() => handleOpenModal()} className="w-full sm:w-auto">
+          <Button
+            onClick={() => handleOpenModal()}
+            className="w-full sm:w-auto"
+          >
             <PlusCircle className="mr-2 h-4 w-4" />
             Adicionar Item
           </Button>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Itens em Estoque</CardTitle>
-            <CardDescription>
-              Visualize, edite ou remova os itens do seu inventário.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {stockItems.length > 0 ? (
-                stockItems.map((item) => (
-                  <div
-                    key={item.id}
-                    className="flex items-center justify-between rounded-lg border p-4"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div>
-                        <p className="font-medium">{item.name}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {item.quantity} {item.unit}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleOpenModal(item)}
-                      >
-                        <Edit className="h-4 w-4" />
-                        <span className="sr-only">Editar</span>
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="text-destructive/80 hover:text-destructive"
-                        onClick={() => handleOpenAlert(item)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                        <span className="sr-only">Remover</span>
-                      </Button>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="flex h-24 items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/20 bg-muted/30">
-                  <p className="text-sm text-muted-foreground">
-                    Nenhum item em estoque.
-                  </p>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+        <Tabs defaultValue={categories[0]} className="w-full">
+          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 h-auto">
+            {categories.map((category) => (
+              <TabsTrigger key={category} value={category}>
+                {category}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+
+          {categories.map((category) => (
+            <TabsContent key={category} value={category}>
+              <Card>
+                <CardHeader>
+                  <CardTitle>{category}</CardTitle>
+                  <CardDescription>
+                    Itens da categoria {category.toLowerCase()}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>{renderStockList(category)}</CardContent>
+              </Card>
+            </TabsContent>
+          ))}
+        </Tabs>
       </div>
 
       <RegisterStockItemModal
@@ -156,11 +193,14 @@ export default function StockPage() {
             <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
             <AlertDialogDescription>
               Esta ação não pode ser desfeita. Isso removerá permanentemente{' '}
-              <span className="font-bold">{itemToDelete?.name}</span> do estoque.
+              <span className="font-bold">{itemToDelete?.name}</span> do
+              estoque.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={handleCloseAlert}>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel onClick={handleCloseAlert}>
+              Cancelar
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleConfirmDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"

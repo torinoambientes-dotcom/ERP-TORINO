@@ -114,9 +114,21 @@
         "id": { "type": "string" },
         "name": { "type": "string" },
         "quantity": { "type": "number" },
-        "unit": { "type": "string" }
+        "unit": { "type": "string" },
+        "category": {
+          "type": "string",
+          "description": "The category of the stock item.",
+          "enum": [
+            "Corrediças",
+            "Dobradiças",
+            "Articuladores",
+            "Cola HotMelt",
+            "Sapata Niveladora",
+            "Outros"
+          ]
+        }
       },
-      "required": ["id", "name", "quantity", "unit"]
+      "required": ["id", "name", "quantity", "unit", "category"]
     }
   },
   "auth": {

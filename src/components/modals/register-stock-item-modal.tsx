@@ -26,12 +26,20 @@ import { Input } from '@/components/ui/input';
 import { AppContext } from '@/context/app-context';
 import { useToast } from '@/hooks/use-toast';
 import type { StockItem } from '@/lib/types';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { STOCK_CATEGORIES } from '@/lib/types';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../ui/select';
 
 const stockItemSchema = z.object({
   name: z.string().min(2, 'O nome deve ter pelo menos 2 caracteres.'),
   quantity: z.coerce.number().min(0, 'A quantidade não pode ser negativa.'),
   unit: z.string().min(1, 'A unidade é obrigatória.'),
+  category: z.enum(STOCK_CATEGORIES),
 });
 
 type StockItemFormValues = z.infer<typeof stockItemSchema>;
@@ -44,10 +52,16 @@ interface RegisterStockItemModalProps {
 
 const units = ['m²', 'm linear', 'unidade', 'chapa', 'litro', 'kg'];
 
-export function RegisterStockItemModal({ isOpen, onClose, itemToEdit }: RegisterStockItemModalProps) {
+export function RegisterStockItemModal({
+  isOpen,
+  onClose,
+  itemToEdit,
+}: RegisterStockItemModalProps) {
   const context = useContext(AppContext);
   if (!context) {
-    throw new Error('RegisterStockItemModal must be used within an AppProvider');
+    throw new Error(
+      'RegisterStockItemModal must be used within an AppProvider'
+    );
   }
   const { addStockItem, updateStockItem } = context;
   const { toast } = useToast();
@@ -60,15 +74,21 @@ export function RegisterStockItemModal({ isOpen, onClose, itemToEdit }: Register
       name: '',
       quantity: 0,
       unit: 'unidade',
+      category: 'Outros',
     },
   });
-  
+
   useEffect(() => {
-    if(isOpen) {
+    if (isOpen) {
       if (isEditMode && itemToEdit) {
         form.reset(itemToEdit);
       } else {
-        form.reset({ name: '', quantity: 0, unit: 'unidade' });
+        form.reset({
+          name: '',
+          quantity: 0,
+          unit: 'unidade',
+          category: 'Outros',
+        });
       }
     }
   }, [isOpen, isEditMode, itemToEdit, form]);
@@ -76,7 +96,7 @@ export function RegisterStockItemModal({ isOpen, onClose, itemToEdit }: Register
   const onSubmit = (data: StockItemFormValues) => {
     if (isEditMode && itemToEdit) {
       updateStockItem({ ...itemToEdit, ...data });
-       toast({
+      toast({
         title: 'Item de estoque atualizado!',
         description: `Os dados de ${data.name} foram atualizados.`,
       });
@@ -87,22 +107,26 @@ export function RegisterStockItemModal({ isOpen, onClose, itemToEdit }: Register
         description: `${data.name} foi adicionado(a) ao estoque.`,
       });
     }
-    
+
     form.reset();
     onClose();
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="font-headline">{isEditMode ? 'Editar Item' : 'Cadastrar Item no Estoque'}</DialogTitle>
+          <DialogTitle className="font-headline">
+            {isEditMode ? 'Editar Item' : 'Cadastrar Item no Estoque'}
+          </DialogTitle>
           <DialogDescription>
-            {isEditMode ? `Altere os dados de ${itemToEdit?.name}.` : 'Adicione um novo item ao seu inventário.'}
+            {isEditMode
+              ? `Altere os dados de ${itemToEdit?.name}.`
+              : 'Adicione um novo item ao seu inventário.'}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             <FormField
               control={form.control}
               name="name"
@@ -116,43 +140,72 @@ export function RegisterStockItemModal({ isOpen, onClose, itemToEdit }: Register
                 </FormItem>
               )}
             />
-             <div className="flex gap-4">
-                <FormField
+            <div className="flex gap-4">
+              <FormField
                 control={form.control}
                 name="quantity"
                 render={({ field }) => (
-                    <FormItem className="flex-grow">
+                  <FormItem className="flex-grow">
                     <FormLabel>Quantidade</FormLabel>
                     <FormControl>
-                        <Input type="number" {...field} />
+                      <Input type="number" {...field} />
                     </FormControl>
                     <FormMessage />
-                    </FormItem>
+                  </FormItem>
                 )}
-                />
-                <FormField
+              />
+              <FormField
                 control={form.control}
                 name="unit"
                 render={({ field }) => (
-                    <FormItem className="w-[150px]">
+                  <FormItem className="w-[150px]">
                     <FormLabel>Unidade</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
+                    <Select
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}
+                    >
+                      <FormControl>
                         <SelectTrigger>
-                            <SelectValue placeholder="Unidade" />
+                          <SelectValue placeholder="Unidade" />
                         </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                        {units.map(unit => (
-                            <SelectItem key={unit} value={unit}>{unit}</SelectItem>
+                      </FormControl>
+                      <SelectContent>
+                        {units.map((unit) => (
+                          <SelectItem key={unit} value={unit}>
+                            {unit}
+                          </SelectItem>
                         ))}
-                        </SelectContent>
+                      </SelectContent>
                     </Select>
                     <FormMessage />
-                    </FormItem>
+                  </FormItem>
                 )}
-                />
+              />
             </div>
+             <FormField
+                control={form.control}
+                name="category"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Categoria</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione uma categoria" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {STOCK_CATEGORIES.map((category) => (
+                          <SelectItem key={category} value={category}>
+                            {category}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             <DialogFooter>
               <Button type="button" variant="ghost" onClick={onClose}>
                 Cancelar
