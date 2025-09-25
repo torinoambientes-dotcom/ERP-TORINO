@@ -41,6 +41,7 @@ export default function ReportsPage() {
 
   const [selectedMemberId, setSelectedMemberId] = useState('all');
   const [isPendenciesOpen, setIsPendenciesOpen] = useState(true);
+  const [isActivitiesOpen, setIsActivitiesOpen] = useState(true);
 
   const projectStats = useMemo(() => {
     let completedProjects = 0;
@@ -243,69 +244,87 @@ export default function ReportsPage() {
       </Collapsible>
 
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="font-headline">Atividades por Membro</CardTitle>
-          <CardDescription>Filtre as tarefas por membro da equipe para ver o que está pendente, em andamento ou concluído.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="max-w-xs">
-            <Select value={selectedMemberId} onValueChange={setSelectedMemberId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione um membro" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos os membros</SelectItem>
-                <Separator />
-                {teamMembers.map(member => (
-                  <SelectItem key={member.id} value={member.id}>
-                    <div className="flex items-center gap-2">
-                      <span className="h-4 w-4 rounded-full" style={{ backgroundColor: member.color }}></span>
-                      <span>{member.name}</span>
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+      <Collapsible
+        open={isActivitiesOpen}
+        onOpenChange={setIsActivitiesOpen}
+        className="w-full"
+      >
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+                <div className='space-y-1.5'>
+                    <CardTitle className="font-headline">Atividades por Membro</CardTitle>
+                    <CardDescription>Filtre as tarefas por membro da equipe para ver o que está pendente, em andamento ou concluído.</CardDescription>
+                </div>
+                <CollapsibleTrigger asChild>
+                    <Button variant="ghost" size="icon">
+                    <ChevronsUpDown className="h-4 w-4" />
+                    <span className="sr-only">Toggle</span>
+                    </Button>
+                </CollapsibleTrigger>
+            </div>
+          </CardHeader>
+          <CollapsibleContent>
+            <CardContent>
+              <div className="max-w-xs">
+                <Select value={selectedMemberId} onValueChange={setSelectedMemberId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione um membro" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos os membros</SelectItem>
+                    <Separator />
+                    {teamMembers.map(member => (
+                      <SelectItem key={member.id} value={member.id}>
+                        <div className="flex items-center gap-2">
+                          <span className="h-4 w-4 rounded-full" style={{ backgroundColor: member.color }}></span>
+                          <span>{member.name}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-          <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="space-y-4">
-              <h3 className="font-headline text-lg font-semibold text-amber-600">A Fazer ({filteredTasks.todo.length})</h3>
-              <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
-                {filteredTasks.todo.length > 0 ? filteredTasks.todo.map((task) => (
-                  <div key={task.id} className="p-3 rounded-md bg-muted/50 border-l-4 border-amber-500">
-                    <p className="font-semibold">{task.stage}: {task.fur}</p>
-                    <p className="text-sm text-muted-foreground">{task.project} / {task.env}</p>
+              <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="space-y-4">
+                  <h3 className="font-headline text-lg font-semibold text-amber-600">A Fazer ({filteredTasks.todo.length})</h3>
+                  <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
+                    {filteredTasks.todo.length > 0 ? filteredTasks.todo.map((task) => (
+                      <div key={task.id} className="p-3 rounded-md bg-muted/50 border-l-4 border-amber-500">
+                        <p className="font-semibold">{task.stage}: {task.fur}</p>
+                        <p className="text-sm text-muted-foreground">{task.project} / {task.env}</p>
+                      </div>
+                    )) : <p className="text-sm text-muted-foreground">Nenhuma tarefa.</p>}
                   </div>
-                )) : <p className="text-sm text-muted-foreground">Nenhuma tarefa.</p>}
-              </div>
-            </div>
-            <div className="space-y-4">
-              <h3 className="font-headline text-lg font-semibold text-blue-600">Em Andamento ({filteredTasks.in_progress.length})</h3>
-              <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
-                {filteredTasks.in_progress.length > 0 ? filteredTasks.in_progress.map((task) => (
-                  <div key={task.id} className="p-3 rounded-md bg-muted/50 border-l-4 border-blue-500">
-                    <p className="font-semibold">{task.stage}: {task.fur}</p>
-                    <p className="text-sm text-muted-foreground">{task.project} / {task.env}</p>
+                </div>
+                <div className="space-y-4">
+                  <h3 className="font-headline text-lg font-semibold text-blue-600">Em Andamento ({filteredTasks.in_progress.length})</h3>
+                  <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
+                    {filteredTasks.in_progress.length > 0 ? filteredTasks.in_progress.map((task) => (
+                      <div key={task.id} className="p-3 rounded-md bg-muted/50 border-l-4 border-blue-500">
+                        <p className="font-semibold">{task.stage}: {task.fur}</p>
+                        <p className="text-sm text-muted-foreground">{task.project} / {task.env}</p>
+                      </div>
+                    )) : <p className="text-sm text-muted-foreground">Nenhuma tarefa.</p>}
                   </div>
-                )) : <p className="text-sm text-muted-foreground">Nenhuma tarefa.</p>}
-              </div>
-            </div>
-            <div className="space-y-4">
-              <h3 className="font-headline text-lg font-semibold text-green-600">Concluído ({filteredTasks.done.length})</h3>
-              <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
-                {filteredTasks.done.length > 0 ? filteredTasks.done.map((task) => (
-                  <div key={task.id} className="p-3 rounded-md bg-muted/50 border-l-4 border-green-500">
-                    <p className="font-semibold">{task.stage}: {task.fur}</p>
-                    <p className="text-sm text-muted-foreground">{task.project} / {task.env}</p>
+                </div>
+                <div className="space-y-4">
+                  <h3 className="font-headline text-lg font-semibold text-green-600">Concluído ({filteredTasks.done.length})</h3>
+                  <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
+                    {filteredTasks.done.length > 0 ? filteredTasks.done.map((task) => (
+                      <div key={task.id} className="p-3 rounded-md bg-muted/50 border-l-4 border-green-500">
+                        <p className="font-semibold">{task.stage}: {task.fur}</p>
+                        <p className="text-sm text-muted-foreground">{task.project} / {task.env}</p>
+                      </div>
+                    )) : <p className="text-sm text-muted-foreground">Nenhuma tarefa.</p>}
                   </div>
-                )) : <p className="text-sm text-muted-foreground">Nenhuma tarefa.</p>}
+                </div>
               </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
     </div>
   );
 }
