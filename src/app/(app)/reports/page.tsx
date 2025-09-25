@@ -22,9 +22,9 @@ import {
 } from '@/components/ui/select';
 import { PageHeader } from '@/components/layout/page-header';
 import { AppContext } from '@/context/app-context';
-import type { Pendency, StageStatus, StockItem } from '@/lib/types';
+import type { Pendency, StageStatus, StockItem, MaterialItem } from '@/lib/types';
 import { Separator } from '@/components/ui/separator';
-import { AlertTriangle, ChevronsUpDown, CheckCircle } from 'lucide-react';
+import { AlertTriangle, ChevronsUpDown, CheckCircle, Copy } from 'lucide-react';
 import { isThisWeek, isThisMonth, isThisYear, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
@@ -34,6 +34,11 @@ interface GeneralPendency extends Pendency {
   environmentName: string;
   furnitureName: string;
 }
+
+interface AggregatedMaterial extends Omit<MaterialItem, 'id'> {
+    projects: string[];
+}
+
 
 export default function ReportsPage() {
   const context = useContext(AppContext);
@@ -47,6 +52,8 @@ export default function ReportsPage() {
   const [isPendenciesOpen, setIsPendenciesOpen] = useState(true);
   const [isActivitiesOpen, setIsActivitiesOpen] = useState(true);
   const [isStockAlertOpen, setIsStockAlertOpen] = useState(true);
+  const [isShoppingListOpen, setIsShoppingListOpen] = useState(true);
+
 
   const projectStats = useMemo(() => {
     let completedProjects = 0;
@@ -181,6 +188,54 @@ export default function ReportsPage() {
     );
   }, [stockItems]);
 
+    const shoppingList = useMemo((): AggregatedMaterial[] => {
+        const materialMap = new Map<string, AggregatedMaterial>();
+        const activeProjects = projects.filter(p => !p.completedAt);
+
+        activeProjects.forEach(project => {
+            project.environments.forEach(environment => {
+                environment.furniture.forEach(furniture => {
+                    if (furniture.materials) {
+                        furniture.materials.forEach(material => {
+                            const key = `${material.name.trim().toLowerCase()}|${material.unit}`;
+                            
+                            if (materialMap.has(key)) {
+                                const existing = materialMap.get(key)!;
+                                existing.quantity += material.quantity;
+                                if (!existing.projects.includes(project.clientName)) {
+                                    existing.projects.push(project.clientName);
+                                }
+                            } else {
+                                materialMap.set(key, {
+                                    ...material,
+                                    projects: [project.clientName],
+                                });
+                            }
+                        });
+                    }
+                });
+            });
+        });
+        return Array.from(materialMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+    }, [projects]);
+
+    const copyShoppingListToClipboard = () => {
+        const listText = shoppingList.map(item => `${item.name}: ${item.quantity} ${item.unit}`).join('\n');
+        navigator.clipboard.writeText(listText).then(() => {
+            toast({
+                title: "Lista de compras copiada!",
+                description: "A lista de materiais foi copiada para a área de transferência.",
+            });
+        }).catch(err => {
+            toast({
+                variant: 'destructive',
+                title: "Erro ao copiar",
+                description: "Não foi possível copiar a lista.",
+            });
+        });
+    };
+
+
   const handleMarkAlertAsHandled = (itemId: string, itemName: string) => {
     handleStockAlert(itemId, true);
     toast({
@@ -308,6 +363,49 @@ export default function ReportsPage() {
                     </Button>
                   </div>
                 )) : <p className="text-sm text-muted-foreground text-center py-4">Nenhum item com estoque baixo.</p>}
+              </div>
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
+      
+      <Collapsible
+        open={isShoppingListOpen}
+        onOpenChange={setIsShoppingListOpen}
+        className="w-full"
+      >
+        <Card>
+          <CardHeader>
+             <div className="flex items-center justify-between">
+              <div className='space-y-1.5'>
+                <CardTitle className="font-headline">Lista de Compras Centralizada ({shoppingList.length})</CardTitle>
+                <CardDescription>Materiais agregados de todos os projetos ativos, prontos para a compra.</CardDescription>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button onClick={copyShoppingListToClipboard} size="sm" disabled={shoppingList.length === 0}>
+                    <Copy className="mr-2 h-4 w-4" />
+                    Copiar Lista
+                </Button>
+                <CollapsibleTrigger asChild>
+                  <Button variant="ghost" size="icon">
+                    <ChevronsUpDown className="h-4 w-4" />
+                    <span className="sr-only">Toggle</span>
+                  </Button>
+                </CollapsibleTrigger>
+              </div>
+            </div>
+          </CardHeader>
+          <CollapsibleContent>
+            <CardContent>
+              <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
+                {shoppingList.length > 0 ? shoppingList.map((item) => (
+                  <div key={`${item.name}-${item.unit}`} className="p-3 rounded-md bg-muted/50 border-l-4 border-primary">
+                    <p className="font-semibold">{item.name}</p>
+                    <p className="text-sm text-muted-foreground">
+                      <span className='font-medium text-foreground'>{item.quantity} {item.unit}</span> - (Projetos: {item.projects.join(', ')})
+                    </p>
+                  </div>
+                )) : <p className="text-sm text-muted-foreground text-center py-4">Nenhum material necessário para os projetos ativos.</p>}
               </div>
             </CardContent>
           </CollapsibleContent>
