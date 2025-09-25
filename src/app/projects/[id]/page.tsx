@@ -40,11 +40,12 @@ const statusColors: Record<StageStatus, string> = {
 };
 
 export default function ProjectDetailsPage({
-  params: { id },
+  params,
 }: {
   params: { id: string };
 }) {
   const { projects, teamMembers, updateProject, isLoading } = useContext(AppContext);
+  const id = params.id;
 
   const [project, setProject] = useState<Project | null | undefined>(undefined);
 
