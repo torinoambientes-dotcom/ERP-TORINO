@@ -29,6 +29,13 @@ export interface Pendency {
   authorId: string;
 }
 
+export interface MaterialItem {
+  id: string;
+  name: string;
+  quantity: number;
+  unit: string;
+}
+
 export interface Furniture {
   id: string;
   name: string;
@@ -38,6 +45,7 @@ export interface Furniture {
   assembly: { status: StageStatus; responsibleId?: string };
   comments?: Comment[];
   pendencies?: Pendency[];
+  materials?: MaterialItem[];
 }
 
 export interface Environment {

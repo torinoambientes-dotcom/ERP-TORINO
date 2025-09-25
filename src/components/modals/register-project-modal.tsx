@@ -26,7 +26,7 @@ import { Input } from '@/components/ui/input';
 import { AppContext } from '@/context/app-context';
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from '../ui/separator';
-import type { Project } from '@/lib/types';
+import type { Project, Furniture } from '@/lib/types';
 import { generateId } from '@/lib/utils';
 
 const furnitureSchema = z.object({
@@ -117,7 +117,8 @@ export function RegisterProjectModal({
           assembly: { status: 'todo' as const },
           comments: [],
           pendencies: [],
-        }))
+          materials: [],
+        } as Omit<Furniture, 'name'> & { name: string }))
       }));
 
       if (validEnvironments.length === 0) {

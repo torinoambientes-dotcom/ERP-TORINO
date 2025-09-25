@@ -3,7 +3,7 @@
 import { createContext, type ReactNode, useCallback, useMemo } from 'react';
 import { collection, doc, serverTimestamp, deleteField } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import type { Project, TeamMember, StageStatus, StockItem, StockMovement, StockCategory } from '@/lib/types';
+import type { Project, TeamMember, StageStatus, StockItem, StockMovement, StockCategory, Furniture } from '@/lib/types';
 import { generateId } from '@/lib/utils';
 import { setDocumentNonBlocking, deleteDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
@@ -86,7 +86,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const stockCategories = useMemo(() => stockCategoriesData || [], [stockCategoriesData]);
   
-  const addProject = useCallback((projectData: Omit<Project, 'id' | 'environments'> & { environments: Array<Omit<Project['environments'][0], 'id' | 'furniture'> & { furniture: Array<Omit<Project['environments'][0]['furniture'][0], 'id' | 'measurement' | 'cutting' | 'purchase' | 'assembly'>>}>}) => {
+  const addProject = useCallback((projectData: Omit<Project, 'id' | 'environments'> & { environments: Array<Omit<Project['environments'][0], 'id' | 'furniture'> & { furniture: Array<Omit<Furniture, 'id' | 'measurement' | 'cutting' | 'purchase' | 'assembly' | 'comments' | 'pendencies' | 'materials'>>}>}) => {
     if (!firestore) return;
     const projectId = generateId('proj');
     const newProject: Project = {
@@ -104,6 +104,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           assembly: { status: 'todo' },
           comments: [],
           pendencies: [],
+          materials: [],
         })),
       })),
     };

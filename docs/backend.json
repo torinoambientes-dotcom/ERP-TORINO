@@ -51,6 +51,10 @@
         "pendencies": {
           "type": "array",
           "items": { "$ref": "#/entities/Pendency" }
+        },
+        "materials": {
+          "type": "array",
+          "items": { "$ref": "#/entities/MaterialItem" }
         }
       },
       "required": ["id", "name", "measurement", "cutting", "purchase", "assembly"]
@@ -94,6 +98,18 @@
         "authorId": { "type": "string", "description": "ID of the team member who created the pendency." }
       },
       "required": ["id", "text", "isResolved", "authorId"]
+    },
+    "MaterialItem": {
+      "title": "MaterialItem",
+      "type": "object",
+      "description": "Represents a single material item required for a piece of furniture.",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "quantity": { "type": "number" },
+        "unit": { "type": "string" }
+      },
+      "required": ["id", "name", "quantity", "unit"]
     },
     "TeamMember": {
       "title": "TeamMember",

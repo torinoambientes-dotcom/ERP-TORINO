@@ -2,7 +2,7 @@
 import { useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import { notFound, useParams } from 'next/navigation';
-import { ChevronLeft, MessageSquare } from 'lucide-react';
+import { ChevronLeft, MessageSquare, Package } from 'lucide-react';
 import {
   Accordion,
   AccordionContent,
@@ -22,6 +22,7 @@ import { AppContext } from '@/context/app-context';
 import type { Project, Furniture, StageStatus } from '@/lib/types';
 import { STAGE_STATUSES } from '@/lib/types';
 import { FurnitureChatModal } from '@/components/modals/furniture-chat-modal';
+import { FurnitureMaterialsModal } from '@/components/modals/furniture-materials-modal';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
 
@@ -47,6 +48,7 @@ export default function ProjectDetailsPage() {
   const [project, setProject] = useState<Project | null | undefined>(undefined);
 
   const [isChatModalOpen, setChatModalOpen] = useState(false);
+  const [isMaterialsModalOpen, setMaterialsModalOpen] = useState(false);
   const [selectedFurniture, setSelectedFurniture] = useState<Furniture | null>(null);
   const [selectedEnvironmentId, setSelectedEnvironmentId] = useState<string | null>(null);
 
@@ -114,6 +116,12 @@ export default function ProjectDetailsPage() {
     setChatModalOpen(true);
   }, []);
   
+  const openMaterialsModal = useCallback((furniture: Furniture, envId: string) => {
+    setSelectedFurniture(furniture);
+    setSelectedEnvironmentId(envId);
+    setMaterialsModalOpen(true);
+  }, []);
+
   const memberMap = useMemo(() => {
     if (!teamMembers) return new Map();
     return new Map(teamMembers.map(m => [m.id, m]));
@@ -170,15 +178,21 @@ export default function ProjectDetailsPage() {
                     <div key={fur.id} className="p-4 rounded-lg border bg-card/80">
                       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
                         <h4 className="font-semibold text-lg">{fur.name}</h4>
-                        <Button variant="outline" size="sm" onClick={() => openChatModal(fur, env.id)} className="w-full sm:w-auto relative">
-                          <MessageSquare className="mr-2 h-4 w-4" />
-                          Pendências
-                          {unresolvedPendencies > 0 && (
-                            <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-xs font-bold text-destructive-foreground">
-                              {unresolvedPendencies}
-                            </span>
-                          )}
-                        </Button>
+                        <div className="flex gap-2 w-full sm:w-auto">
+                            <Button variant="outline" size="sm" onClick={() => openMaterialsModal(fur, env.id)} className="w-full sm:w-auto flex-1">
+                                <Package className="mr-2 h-4 w-4" />
+                                Materiais
+                            </Button>
+                            <Button variant="outline" size="sm" onClick={() => openChatModal(fur, env.id)} className="w-full sm:w-auto relative flex-1">
+                                <MessageSquare className="mr-2 h-4 w-4" />
+                                Pendências
+                                {unresolvedPendencies > 0 && (
+                                    <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-xs font-bold text-destructive-foreground">
+                                    {unresolvedPendencies}
+                                    </span>
+                                )}
+                            </Button>
+                        </div>
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                         {stages.map((stage) => {
@@ -254,6 +268,15 @@ export default function ProjectDetailsPage() {
           onClose={() => setChatModalOpen(false)}
           furniture={getFurnitureForModal()!}
           onUpdate={handleFurnitureUpdateInModal}
+        />
+      )}
+
+      {getFurnitureForModal() && (
+        <FurnitureMaterialsModal
+            isOpen={isMaterialsModalOpen}
+            onClose={() => setMaterialsModalOpen(false)}
+            furniture={getFurnitureForModal()!}
+            onUpdate={handleFurnitureUpdateInModal}
         />
       )}
     </>
