@@ -61,7 +61,7 @@ const defaultColors = [
   '#14b8a6',
 ];
 
-const roles = ['PCP', 'Marceneiro', 'Projetista'];
+const roles = ['PCP', 'Marceneiro', 'Projetista', 'Administrativo'];
 
 export function RegisterTeamModal({
   isOpen,
