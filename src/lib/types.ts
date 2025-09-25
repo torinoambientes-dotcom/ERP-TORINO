@@ -4,6 +4,7 @@ export interface TeamMember {
   email: string;
   color: string;
   role: string;
+  avatarUrl?: string;
 }
 
 export const STAGE_STATUSES = {

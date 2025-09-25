@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import type { TeamMember } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 export default function TeamPage() {
   const { teamMembers, deleteTeamMember, isLoading } = useContext(AppContext);
@@ -80,6 +81,14 @@ export default function TeamPage() {
     handleCloseAlert();
   };
   
+    const getInitials = (name: string) => {
+      const names = name.split(' ');
+      if (names.length > 1) {
+        return `${names[0][0]}${names[names.length - 1][0]}`.toUpperCase();
+      }
+      return name.substring(0, 2).toUpperCase();
+    };
+
   const renderMemberList = (members: TeamMember[]) => {
     if (members.length === 0) {
       return (
@@ -99,10 +108,12 @@ export default function TeamPage() {
             className="flex items-center justify-between rounded-lg border p-4"
           >
             <div className="flex items-center gap-4">
-              <div
-                className="h-8 w-8 rounded-full"
-                style={{ backgroundColor: member.color }}
-              />
+              <Avatar>
+                {member.avatarUrl && <AvatarImage src={member.avatarUrl} alt={member.name} />}
+                <AvatarFallback style={{ backgroundColor: member.color }}>
+                  {getInitials(member.name)}
+                </AvatarFallback>
+              </Avatar>
               <div>
                 <p className="font-medium">{member.name}</p>
                 <p className="text-sm text-muted-foreground">{member.role}</p>

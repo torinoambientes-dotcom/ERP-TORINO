@@ -43,6 +43,7 @@ const teamMemberSchema = z.object({
     .regex(/^#[0-9a-fA-F]{6}$/, 'Cor inválida. Use o formato #RRGGBB.'),
   email: z.string().email('Formato de e-mail inválido.'),
   password: z.string().min(6, 'A senha deve ter pelo menos 6 caracteres.'),
+  avatarUrl: z.string().url('URL do avatar inválida.').optional().or(z.literal('')),
 });
 
 const teamMemberEditSchema = teamMemberSchema.omit({ email: true, password: true });
@@ -90,6 +91,7 @@ export function RegisterTeamModal({
       color: defaultColors[0],
       email: '',
       password: '',
+      avatarUrl: '',
     },
   });
 
@@ -101,6 +103,7 @@ export function RegisterTeamModal({
           role: memberToEdit.role,
           color: memberToEdit.color,
           email: memberToEdit.email,
+          avatarUrl: memberToEdit.avatarUrl || '',
         });
       } else {
         form.reset({
@@ -109,6 +112,7 @@ export function RegisterTeamModal({
           color: defaultColors[0],
           email: '',
           password: '',
+          avatarUrl: '',
         });
       }
     }
@@ -147,7 +151,7 @@ export function RegisterTeamModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle className="font-headline">
             {isEditMode ? 'Editar Membro' : 'Cadastrar Membro da Equipe'}
@@ -231,6 +235,19 @@ export function RegisterTeamModal({
                         ))}
                       </div>
                     </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="avatarUrl"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>URL do Avatar</FormLabel>
+                  <FormControl>
+                    <Input placeholder="https://exemplo.com/avatar.jpg" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

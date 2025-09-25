@@ -19,7 +19,7 @@ import { useAuth, useUser } from '@/firebase';
 import { signOut } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { AppContext } from '@/context/app-context';
-import { Avatar, AvatarFallback } from '../ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { cn } from '@/lib/utils';
 
 const menuItems = [
@@ -101,6 +101,7 @@ export function SidebarNav() {
             {loggedInMember && (
                 <div className={cn("flex items-center gap-3 p-2 transition-all", "group-data-[collapsible=icon]:-left-full group-data-[collapsible=icon]:absolute group-data-[collapsible=icon]:opacity-0 group-data-[collapsible=icon]:invisible")}>
                     <Avatar className="h-9 w-9">
+                        {loggedInMember.avatarUrl && <AvatarImage src={loggedInMember.avatarUrl} alt={loggedInMember.name} />}
                          <AvatarFallback style={{backgroundColor: loggedInMember.color}}>
                             {getInitials(loggedInMember.name)}
                         </AvatarFallback>
