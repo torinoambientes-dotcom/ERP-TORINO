@@ -22,8 +22,9 @@ import {
 } from '@/components/ui/select';
 import type { Project } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { Archive, CheckCircle, Trash2 } from 'lucide-react';
+import { Archive, CheckCircle, Pencil, Trash2 } from 'lucide-react';
 import { DeleteProjectAlert } from '@/components/modals/delete-project-alert';
+import { RegisterProjectModal } from '@/components/modals/register-project-modal';
 
 type ProjectStatus = 'Novo' | 'Em Andamento' | 'Concluído';
 
@@ -52,30 +53,32 @@ const getProjectStatus = (project: Project): { status: ProjectStatus; progress: 
 
 export default function ProjectsPage() {
   const context = useContext(AppContext);
-  
+
   if (!context) {
     throw new Error('ProjectsPage must be used within an AppProvider');
   }
-
   const { projects, deleteProject, completeProjectStages } = context;
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<ProjectStatus | 'Todos'>('Todos');
+  
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
+  const [projectToEdit, setProjectToEdit] = useState<Project | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   const handleStatusFilterChange = useCallback((value: string) => {
     setStatusFilter(value as ProjectStatus | 'Todos');
   }, []);
 
-  const handleDeleteClick = useCallback((project: Project) => {
+  const openDeleteModal = useCallback((project: Project) => {
     setProjectToDelete(project);
   }, []);
-
+  
   const closeDeleteModal = useCallback(() => {
     setProjectToDelete(null);
   }, []);
 
-  const handleDeleteConfirm = useCallback(() => {
+  const confirmDelete = useCallback(() => {
     if (projectToDelete) {
       deleteProject(projectToDelete.id);
       setProjectToDelete(null);
@@ -85,6 +88,16 @@ export default function ProjectsPage() {
   const handleCompleteClick = useCallback((projectId: string) => {
     completeProjectStages(projectId);
   }, [completeProjectStages]);
+
+  const openEditModal = useCallback((project: Project) => {
+    setProjectToEdit(project);
+    setIsEditModalOpen(true);
+  }, []);
+
+  const closeEditModal = useCallback(() => {
+    setProjectToEdit(null);
+    setIsEditModalOpen(false);
+  }, []);
 
   const filteredProjects = useMemo(() => {
      return projects
@@ -191,18 +204,27 @@ export default function ProjectsPage() {
                   <CardFooter className="flex justify-end gap-2">
                     <Button
                       variant="ghost"
+                      size="icon"
+                      onClick={() => openEditModal(project)}
+                      className="text-muted-foreground hover:text-primary"
+                    >
+                      <Pencil className="h-4 w-4" />
+                       <span className="sr-only">Editar Projeto</span>
+                    </Button>
+                    <Button
+                      variant="ghost"
                       size="sm"
                       onClick={() => handleCompleteClick(project.id)}
                       className="text-xs"
                     >
                       <CheckCircle className="mr-1.5 h-3.5 w-3.5" />
-                      Concluir Etapas
+                      Concluir
                     </Button>
                     <Button
                       variant="ghost"
                       size="icon"
                       className="text-destructive/80 hover:text-destructive"
-                      onClick={() => handleDeleteClick(project)}
+                      onClick={() => openDeleteModal(project)}
                     >
                       <Trash2 className="h-4 w-4" />
                       <span className="sr-only">Remover Projeto</span>
@@ -225,12 +247,21 @@ export default function ProjectsPage() {
           </div>
         )}
       </div>
+
       <DeleteProjectAlert
         isOpen={!!projectToDelete}
         onClose={closeDeleteModal}
-        onConfirm={handleDeleteConfirm}
+        onConfirm={confirmDelete}
         projectName={projectToDelete?.clientName || ''}
       />
+      
+      {isEditModalOpen && (
+        <RegisterProjectModal
+          isOpen={isEditModalOpen}
+          onClose={closeEditModal}
+          projectToEdit={projectToEdit}
+        />
+      )}
     </>
   );
 }

@@ -26,6 +26,8 @@ import { Input } from '@/components/ui/input';
 import { AppContext } from '@/context/app-context';
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from '../ui/separator';
+import type { Project } from '@/lib/types';
+import { generateId } from '@/lib/utils';
 
 const furnitureSchema = z.object({
   name: z.string().min(1, 'Nome do móvel é obrigatório.'),
@@ -48,27 +50,34 @@ type ProjectFormValues = z.infer<typeof projectSchema>;
 interface RegisterProjectModalProps {
   isOpen: boolean;
   onClose: () => void;
+  projectToEdit?: Project | null;
 }
-
-const defaultValues: ProjectFormValues = {
-  clientName: '',
-  environments: [{ name: '', furniture: [{ name: '' }] }],
-};
 
 export function RegisterProjectModal({
   isOpen,
   onClose,
+  projectToEdit,
 }: RegisterProjectModalProps) {
   const context = useContext(AppContext);
   if (!context) {
     throw new Error('RegisterProjectModal must be used within an AppProvider');
   }
-  const { addProject } = context;
+  const { addProject, updateProject } = context;
   const { toast } = useToast();
+  
+  const isEditMode = !!projectToEdit;
+
+  const defaultValues: ProjectFormValues = {
+    clientName: '',
+    environments: [{ name: '', furniture: [{ name: '' }] }],
+  };
 
   const form = useForm<ProjectFormValues>({
     resolver: zodResolver(projectSchema),
-    defaultValues,
+    defaultValues: isEditMode ? {
+      clientName: projectToEdit.clientName,
+      environments: [{ name: '', furniture: [{ name: '' }] }] // Start with a new empty environment for editing
+    } : defaultValues,
   });
 
   const {
@@ -83,16 +92,53 @@ export function RegisterProjectModal({
   useEffect(() => {
     if (!isOpen) {
       form.reset(defaultValues);
+    } else if (isEditMode) {
+        form.reset({
+            clientName: projectToEdit.clientName,
+            // When editing, start with one empty environment to add new ones.
+            // The existing ones are not shown to keep the UI simple.
+            environments: [{ name: '', furniture: [{ name: '' }] }]
+        });
+    } else {
+        form.reset(defaultValues);
     }
-  }, [isOpen, form]);
+  }, [isOpen, isEditMode, projectToEdit, form]);
 
 
   const onSubmit = (data: ProjectFormValues) => {
-    addProject(data);
-    toast({
-        title: 'Projeto cadastrado!',
-        description: `O projeto para "${data.clientName}" foi criado com sucesso.`,
-    });
+    if (isEditMode && projectToEdit) {
+      const newEnvironments = data.environments.map(env => ({
+        ...env,
+        id: generateId('env'),
+        furniture: env.furniture.map(fur => ({
+          ...fur,
+          id: generateId('fur'),
+          measurement: { status: 'todo' as const },
+          cutting: { status: 'todo' as const },
+          purchase: { status: 'todo' as const },
+          assembly: { status: 'todo' as const },
+          comments: [],
+          pendencies: [],
+        }))
+      }));
+
+      const updatedProject: Project = {
+        ...projectToEdit,
+        environments: [...projectToEdit.environments, ...newEnvironments],
+      };
+      
+      updateProject(updatedProject);
+      toast({
+        title: 'Projeto atualizado!',
+        description: `Novos ambientes foram adicionados ao projeto de "${data.clientName}".`,
+      });
+    } else {
+      addProject(data);
+      toast({
+          title: 'Projeto cadastrado!',
+          description: `O projeto para "${data.clientName}" foi criado com sucesso.`,
+      });
+    }
     onClose();
   };
 
@@ -100,9 +146,9 @@ export function RegisterProjectModal({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="font-headline">Cadastrar Novo Projeto</DialogTitle>
+          <DialogTitle className="font-headline">{isEditMode ? "Editar Projeto" : "Cadastrar Novo Projeto"}</DialogTitle>
           <DialogDescription>
-            Preencha os dados para registrar um novo projeto.
+            {isEditMode ? `Adicione novos ambientes e móveis ao projeto de ${projectToEdit.clientName}.` : "Preencha os dados para registrar um novo projeto."}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -114,7 +160,7 @@ export function RegisterProjectModal({
                 <FormItem>
                   <FormLabel>Nome do Cliente</FormLabel>
                   <FormControl>
-                    <Input placeholder="Ex: João da Silva" {...field} />
+                    <Input placeholder="Ex: João da Silva" {...field} disabled={isEditMode} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -124,7 +170,7 @@ export function RegisterProjectModal({
             <Separator />
 
             <div>
-              <h3 className="text-lg font-medium mb-2 font-headline">Ambientes</h3>
+              <h3 className="text-lg font-medium mb-2 font-headline">{isEditMode ? "Novos Ambientes" : "Ambientes"}</h3>
               {envFields.map((envField, envIndex) => (
                 <div key={envField.id} className="p-4 border rounded-lg mb-4 space-y-4 bg-muted/50 relative">
                    <Button
@@ -169,7 +215,7 @@ export function RegisterProjectModal({
               <Button type="button" variant="ghost" onClick={onClose}>
                 Cancelar
               </Button>
-              <Button type="submit">Salvar Projeto</Button>
+              <Button type="submit">Salvar</Button>
             </DialogFooter>
           </form>
         </Form>
