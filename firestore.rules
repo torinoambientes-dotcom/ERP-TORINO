@@ -1,85 +1,70 @@
 /**
- * @file Firestore Security Rules
- * @core_philosophy This ruleset enforces a user-ownership model for team members,
- *  and allows public read access to projects and stock items. Write access to
- *  projects and stock items is restricted. Stock movements are limited to authenticated users.
- * @data_structure
- *  - /projects/{projectId}: Stores project data.
- *  - /team_members/{teamMemberId}: Stores team member data.
- *  - /stock_items/{stockItemId}: Stores inventory items.
- *  - /stock_items/{stockItemId}/movements/{movementId}: Stores stock movement history.
- * @key_security_decisions
- *  - Team members can only manage their own profiles.
- *  - Public read access for projects and stock items.
- *  - Authenticated users can create stock movements.
+ * @fileoverview Firestore Security Rules for the application.
+ *
+ * Core Philosophy:
+ * This ruleset is configured to remove all security restrictions, as requested by the user.
+ * This configuration is strongly discouraged for production environments due to the risk of
+ * unauthorized data access and modification.
+ *
+ * Data Structure:
+ * The Firestore database is structured with top-level collections for projects, team members,
+ * and stock items. Stock items have a subcollection for tracking movements.
+ *
+ * Key Security Decisions:
+ * ALL restrictions are removed, providing open read and write access to all data.
+ * This is NOT a recommended configuration for production use.
+ *
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Allows anyone to read project data, but restricts writes.
+     * @description Allows anyone to read or write project data.
      * @path /projects/{projectId}
-     * @allow (get, list): Any user can read project data.
-     * @deny (create, update, delete): No one can create, update, or delete project data without authentication.
-     * @principle Public read, restricted write access.
+     * @allow (create, update, delete, get, list) - Any user can perform any operation.
+     * @deny None.
+     * @principle All security is disabled.
      */
     match /projects/{projectId} {
       allow get, list: if true;
-      allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+      allow create, update, delete: if true;
     }
 
     /**
-     * @description Allows team members to manage their own profiles.
+     * @description Allows anyone to read or write team member data.
      * @path /team_members/{teamMemberId}
-     * @allow (get, list): Team members can read their own profile data.
-     * @allow (create, update, delete): Team members can create, update, and delete their own profile data.
-     * @deny (get, list): Other users cannot access team member profiles.
-     * @deny (create, update, delete): Other users cannot modify team member profiles.
-     * @principle Enforces document ownership for writes.
+     * @allow (create, update, delete, get, list) - Any user can perform any operation.
+     * @deny None.
+     * @principle All security is disabled.
      */
     match /team_members/{teamMemberId} {
-      allow get: if isOwner(teamMemberId);
-      allow list: if false;
-      allow create: if isOwner(teamMemberId);
-      allow update: if isExistingOwner(teamMemberId);
-      allow delete: if isExistingOwner(teamMemberId);
+      allow get, list: if true;
+      allow create, update, delete: if true;
     }
 
     /**
-     * @description Allows anyone to read stock items, but restricts writes.
+     * @description Allows anyone to read or write stock item data.
      * @path /stock_items/{stockItemId}
-     * @allow (get, list): Any user can read stock item data.
-     * @deny (create, update, delete): No one can create, update, or delete stock item data without authentication.
-     * @principle Public read, restricted write access.
+     * @allow (create, update, delete, get, list) - Any user can perform any operation.
+     * @deny None.
+     * @principle All security is disabled.
      */
     match /stock_items/{stockItemId} {
       allow get, list: if true;
-      allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
-
-      /**
-       * @description Allows authenticated users to create stock movements.
-       * @path /stock_items/{stockItemId}/movements/{movementId}
-       * @allow (create): Authenticated users can create stock movements.
-       * @deny (get, list, update, delete): Read, list, update, and delete operations are not allowed.
-       * @principle Authenticated users can create stock movements.
-       */
-      match /movements/{movementId} {
-        allow get, list, update, delete: if false;
-        allow create: if isSignedIn();
-      }
+      allow create, update, delete: if true;
     }
 
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
-    function isOwner(userId) {
-      return request.auth.uid == userId;
-    }
-
-    function isExistingOwner(userId) {
-        return isOwner(userId) && resource != null;
+    /**
+     * @description Allows anyone to read or write stock movement data.
+     * @path /stock_items/{stockItemId}/movements/{movementId}
+     * @allow (create, update, delete, get, list) - Any user can perform any operation.
+     * @deny None.
+     * @principle All security is disabled.
+     */
+    match /stock_items/{stockItemId}/movements/{movementId} {
+      allow get, list: if true;
+      allow create, update, delete: if true;
     }
   }
 }
