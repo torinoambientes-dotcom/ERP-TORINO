@@ -1,63 +1,45 @@
 /**
- * @fileoverview Firestore Security Rules for the furniture production tracking application.
+ * @file Firestore Security Rules
+ * @description This ruleset allows completely open access to all data.
  *
  * Core Philosophy:
- * This ruleset enforces a user-ownership model for team members, allowing each member to manage their own profile.
- * Projects are publicly readable but only modifiable by authenticated users.
+ * This ruleset is generated in prototyping mode, allowing any operation from any user, including unauthenticated users.
+ * This is NOT recommended for production use.
  *
  * Data Structure:
- * - /projects/{projectId}: Stores project details, publicly readable.
- * - /team_members/{teamMemberId}: Stores team member profiles, accessible only to the owning team member.
+ * The database contains projects and team members stored in top-level collections.
+ * /projects/{projectId} : Stores all project data.
+ * /team_members/{teamMemberId} : Stores information about team members.
  *
  * Key Security Decisions:
- * - Public read access is granted to projects for easy data consumption.
- * - Team member profiles are strictly private, accessible only to the respective user.
+ * All read and write operations are allowed. This should only be used for initial development and testing.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Allows public read access to project documents, but restricts write access to authenticated users.
+     * @description Allows completely open access to project data.
      * @path /projects/{projectId}
-     * @allow (get, list) - Any user can read project data.
-     * @allow (create) - Any authenticated user can create a project.  The 'id' field in the document data must match the 'projectId' path.
-     * @allow (update, delete) - Only the user who created the project can modify or delete it. Requires the project document to have a 'creatorId' field.
-     * @deny (create) - An unauthenticated user attempts to create a project.
-     * @deny (update, delete) - An unauthenticated user attempts to modify or delete a project.
-     * @principle Allows public data consumption while enforcing ownership for modifications.
+     * @allow (read, write) Any user can read or write any project.
+     * @deny (none) No requests are denied.
+     * @principle Open access for prototyping.
      */
     match /projects/{projectId} {
       allow get, list: if true;
-      allow create: if isSignedIn();
-      allow update, delete: if false;
+      allow create, update, delete: if true;
     }
 
     /**
-     * @description Restricts access to team member documents to the owning user.
+     * @description Allows completely open access to team member data.
      * @path /team_members/{teamMemberId}
-     * @allow (get, create, update, delete, list) - Only the team member with a matching ID can perform any operation.
-     * @deny (get, create, update, delete, list) - Any other user attempts to access or modify the document.
-     * @principle Enforces strict user ownership.
+     * @allow (read, write) Any user can read or write any team member.
+     * @deny (none) No requests are denied.
+     * @principle Open access for prototyping.
      */
     match /team_members/{teamMemberId} {
-      allow get: if isOwner(teamMemberId);
-      allow list: if false;
-      allow create: if isOwner(teamMemberId);
-      allow update: if isOwner(teamMemberId);
-      allow delete: if isExistingOwner(teamMemberId);
-    }
-
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
-    function isOwner(userId) {
-      return request.auth.uid == userId;
-    }
-
-    function isExistingOwner(userId) {
-        return isOwner(userId) && resource != null;
+      allow get, list: if true;
+      allow create, update, delete: if true;
     }
   }
 }
