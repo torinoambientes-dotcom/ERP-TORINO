@@ -149,7 +149,17 @@ export function RegisterProjectModal({
       });
 
     } else { // Modo de Criação
-      addProject(data);
+      const projectWithHandleType = {
+        ...data,
+        environments: data.environments.map(env => ({
+          ...env,
+          furniture: env.furniture.map(fur => ({
+            ...fur,
+            profileDoors: fur.profileDoors ? fur.profileDoors.map(pd => ({...pd, handleType: 'Linear inteiro'})) : []
+          }))
+        }))
+      };
+      addProject(projectWithHandleType);
       toast({
           title: 'Projeto cadastrado!',
           description: `O projeto para "${data.clientName}" foi criado com sucesso.`,

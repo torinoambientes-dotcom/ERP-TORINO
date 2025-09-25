@@ -61,6 +61,7 @@ const profileDoorSchema = z.object({
     id: z.string().optional(),
     profileColor: z.string().min(1, "Cor do perfil é obrigatória."),
     glassType: z.string().min(1, "Tipo de vidro é obrigatório."),
+    handleType: z.string().min(1, "Tipo de puxador é obrigatório."),
     quantity: z.coerce.number().min(1, "Quantidade deve ser pelo menos 1."),
     width: z.coerce.number().min(1, "Largura é obrigatória."),
     height: z.coerce.number().min(1, "Altura é obrigatória."),
@@ -78,6 +79,7 @@ const units = ['m²', 'm linear', 'unidade', 'chapa', 'litro', 'kg'];
 const glassTypes = ['Vidro Incolor', 'Espelho', 'Vidro Reflecta Incolor', 'Vidro Reflecta Bronze', 'Vidro Reflecta Fume'];
 const profileColors = ['Preto', 'Aluminio', 'Inox'];
 const profileGlassTypes = ['Incolor', 'Fume', 'Bronze', 'Espelho Fume', 'Espelho Bronze', 'Espelho Prata', 'Reflecta Incolor', 'Reflecta Fume', 'Reflecta Prata'];
+const handleTypes = ['Linear inteiro', 'Aba Usinada', 'Sem Puxador'];
 
 
 export function FurnitureMaterialsModal({
@@ -146,7 +148,7 @@ export function FurnitureMaterialsModal({
   };
   
   const handleAddNewProfileDoor = () => {
-    appendProfileDoor({ profileColor: profileColors[0], glassType: profileGlassTypes[0], quantity: 1, width: 0, height: 0 });
+    appendProfileDoor({ profileColor: profileColors[0], glassType: profileGlassTypes[0], handleType: handleTypes[0], quantity: 1, width: 0, height: 0 });
   };
 
 
@@ -173,7 +175,7 @@ export function FurnitureMaterialsModal({
                     {profileDoorFields.map((field, index) => (
                        <div
                         key={field.id}
-                        className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto_auto_auto_auto] items-end gap-2 p-3 rounded-lg bg-muted/50 border"
+                        className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_1fr_auto_auto_auto_auto] items-end gap-2 p-3 rounded-lg bg-muted/50 border"
                       >
                          <FormField
                           control={form.control}
@@ -209,6 +211,26 @@ export function FurnitureMaterialsModal({
                                 </FormControl>
                                 <SelectContent>
                                   {profileGlassTypes.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name={`profileDoors.${index}.handleType`}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Puxador</FormLabel>
+                              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Selecione..." />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {handleTypes.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
                                 </SelectContent>
                               </Select>
                               <FormMessage />

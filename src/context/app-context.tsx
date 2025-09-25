@@ -19,7 +19,7 @@ interface AppContextType {
   addProject: (projectData: any) => void;
   updateProject: (updatedProject: Project) => void;
   deleteProject: (projectId: string) => void;
-  addTeamMember: (memberData: Omit<TeamMember, 'id'>) => Promise<void>;
+  addTeamMember: (memberData: Omit<TeamMember, 'id' | 'userId'> & { password?: string, email: string }) => Promise<void>;
   updateTeamMember: (updatedMember: TeamMember) => void;
   deleteTeamMember: (memberId: string) => void;
   completeProjectStages: (projectId: string) => void;

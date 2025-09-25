@@ -140,11 +140,12 @@
         "id": { "type": "string" },
         "profileColor": { "type": "string", "enum": ["Preto", "Aluminio", "Inox"]},
         "glassType": { "type": "string", "enum": ["Incolor", "Fume", "Bronze", "Espelho Fume", "Espelho Bronze", "Espelho Prata", "Reflecta Incolor", "Reflecta Fume", "Reflecta Prata"]},
+        "handleType": { "type": "string", "enum": ["Linear inteiro", "Aba Usinada", "Sem Puxador"]},
         "height": { "type": "number" },
         "width": { "type": "number" },
         "quantity": { "type": "number" }
       },
-      "required": ["id", "profileColor", "glassType", "height", "width", "quantity"]
+      "required": ["id", "profileColor", "glassType", "handleType", "height", "width", "quantity"]
     },
     "TeamMember": {
       "title": "TeamMember",

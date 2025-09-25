@@ -332,7 +332,7 @@ export default function PurchasesPage() {
         Object.entries(environmentData.furnitures).forEach(([furnitureName, furnitureData]) => {
           listText += `    Móvel: ${furnitureName}\n`;
           furnitureData.profileDoors.forEach(item => {
-            listText += `      - Perfil ${item.profileColor} com Vidro ${item.glassType}: ${item.quantity} pç(s) - ${item.width}mm x ${item.height}mm\n`;
+            listText += `      - Perfil ${item.profileColor} com Vidro ${item.glassType} (${item.handleType}): ${item.quantity} pç(s) - ${item.width}mm x ${item.height}mm\n`;
           });
         });
       });
@@ -583,7 +583,7 @@ export default function PurchasesPage() {
                                         <ul className='space-y-1 text-sm list-disc pl-5 text-muted-foreground'>
                                             {furnitureData.profileDoors.map((item, index) => (
                                             <li key={index}>
-                                                <span className="font-medium text-foreground/90">Perfil {item.profileColor} com Vidro {item.glassType}:</span> {item.quantity} pç(s) - {item.width}mm x {item.height}mm
+                                                <span className="font-medium text-foreground/90">Perfil {item.profileColor} com Vidro {item.glassType} ({item.handleType}):</span> {item.quantity} pç(s) - {item.width}mm x {item.height}mm
                                             </li>
                                             ))}
                                         </ul>
