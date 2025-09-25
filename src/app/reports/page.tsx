@@ -8,6 +8,12 @@ import {
   CardDescription,
 } from '@/components/ui/card';
 import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
+import { Button } from '@/components/ui/button';
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -18,6 +24,7 @@ import { PageHeader } from '@/components/layout/page-header';
 import { AppContext } from '@/context/app-context';
 import type { Pendency, StageStatus } from '@/lib/types';
 import { Separator } from '@/components/ui/separator';
+import { ChevronsUpDown } from 'lucide-react';
 
 interface GeneralPendency extends Pendency {
   projectName: string;
@@ -33,6 +40,7 @@ export default function ReportsPage() {
   const { projects, teamMembers } = context;
 
   const [selectedMemberId, setSelectedMemberId] = useState('all');
+  const [isPendenciesOpen, setIsPendenciesOpen] = useState(true);
 
   const projectStats = useMemo(() => {
     let completedProjects = 0;
@@ -197,24 +205,43 @@ export default function ReportsPage() {
         </Card>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="font-headline">Pendências Gerais ({unresolvedPendencies.length})</CardTitle>
-          <CardDescription>Lista de todas as pendências que ainda não foram resolvidas em todos os projetos.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
-            {unresolvedPendencies.length > 0 ? unresolvedPendencies.map((pendency) => (
-              <div key={pendency.id} className="p-3 rounded-md bg-muted/50 border-l-4 border-destructive">
-                <p className="font-semibold">{pendency.text}</p>
-                <p className="text-sm text-muted-foreground">
-                  {pendency.projectName} / {pendency.environmentName} / {pendency.furnitureName}
-                </p>
+      <Collapsible
+        open={isPendenciesOpen}
+        onOpenChange={setIsPendenciesOpen}
+        className="w-full"
+      >
+        <Card>
+          <CardHeader>
+             <div className="flex items-center justify-between">
+              <div className='space-y-1.5'>
+                <CardTitle className="font-headline">Pendências Gerais ({unresolvedPendencies.length})</CardTitle>
+                <CardDescription>Lista de todas as pendências que ainda não foram resolvidas em todos os projetos.</CardDescription>
               </div>
-            )) : <p className="text-sm text-muted-foreground">Nenhuma pendência em aberto.</p>}
-          </div>
-        </CardContent>
-      </Card>
+              <CollapsibleTrigger asChild>
+                <Button variant="ghost" size="icon">
+                  <ChevronsUpDown className="h-4 w-4" />
+                  <span className="sr-only">Toggle</span>
+                </Button>
+              </CollapsibleTrigger>
+            </div>
+          </CardHeader>
+          <CollapsibleContent>
+            <CardContent>
+              <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
+                {unresolvedPendencies.length > 0 ? unresolvedPendencies.map((pendency) => (
+                  <div key={pendency.id} className="p-3 rounded-md bg-muted/50 border-l-4 border-destructive">
+                    <p className="font-semibold">{pendency.text}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {pendency.projectName} / {pendency.environmentName} / {pendency.furnitureName}
+                    </p>
+                  </div>
+                )) : <p className="text-sm text-muted-foreground">Nenhuma pendência em aberto.</p>}
+              </div>
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
+
 
       <Card>
         <CardHeader>
