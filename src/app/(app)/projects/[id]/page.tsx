@@ -19,7 +19,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/layout/page-header';
 import { AppContext } from '@/context/app-context';
-import type { Project, Furniture, StageStatus } from '@/lib/types';
+import type { Project, Furniture, StageStatus, TeamMember } from '@/lib/types';
 import { STAGE_STATUSES } from '@/lib/types';
 import { FurnitureChatModal } from '@/components/modals/furniture-chat-modal';
 import { FurnitureMaterialsModal } from '@/components/modals/furniture-materials-modal';
@@ -131,6 +131,10 @@ export default function ProjectDetailsPage() {
     if (!teamMembers) return new Map();
     return new Map(teamMembers.map(m => [m.id, m]));
   }, [teamMembers]);
+  
+  const marceneiros = useMemo(() => {
+    return teamMembers.filter(m => m.role === 'Marceneiro');
+  }, [teamMembers]);
 
   if (project === undefined || isLoading) {
     return (
@@ -203,6 +207,8 @@ export default function ProjectDetailsPage() {
                         {stages.map((stage) => {
                           const stageData = fur[stage.key] || { status: 'todo' };
                           const responsibleMember = stageData.responsibleId ? memberMap.get(stageData.responsibleId) : undefined;
+                          const responsibleList = stage.key === 'assembly' ? marceneiros : teamMembers;
+                          
                           return (
                           <div key={stage.key} className="space-y-2">
                             <label className="text-sm font-medium">{stage.label}</label>
@@ -245,7 +251,7 @@ export default function ProjectDetailsPage() {
                               <SelectContent>
                                 <SelectItem value="unassigned">Não atribuído</SelectItem>
                                 <Separator />
-                                {teamMembers?.map((member) => (
+                                {responsibleList?.map((member) => (
                                   <SelectItem key={member.id} value={member.id}>
                                     <div className="flex items-center gap-2">
                                       <span className="h-4 w-4 rounded-full" style={{ backgroundColor: member.color }}></span>

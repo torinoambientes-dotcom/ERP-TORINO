@@ -1,5 +1,5 @@
 'use client';
-import { useContext, useState } from 'react';
+import { useContext, useState, useMemo } from 'react';
 import {
   Card,
   CardContent,
@@ -24,7 +24,6 @@ import {
 } from '@/components/ui/alert-dialog';
 import type { TeamMember } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { Badge } from '@/components/ui/badge';
 
 export default function TeamPage() {
   const { teamMembers, deleteTeamMember, isLoading } = useContext(AppContext);
@@ -35,6 +34,20 @@ export default function TeamPage() {
 
   const [isAlertOpen, setIsAlertOpen] = useState(false);
   const [memberToDelete, setMemberToDelete] = useState<TeamMember | null>(null);
+  
+  const { marceneiros, outrosMembros } = useMemo(() => {
+    const marceneiros: TeamMember[] = [];
+    const outrosMembros: TeamMember[] = [];
+    teamMembers.forEach(member => {
+      if (member.role === 'Marceneiro') {
+        marceneiros.push(member);
+      } else {
+        outrosMembros.push(member);
+      }
+    });
+    return { marceneiros, outrosMembros };
+  }, [teamMembers]);
+
 
   const handleOpenModal = (member: TeamMember | null = null) => {
     setMemberToEdit(member);
@@ -66,6 +79,61 @@ export default function TeamPage() {
     }
     handleCloseAlert();
   };
+  
+  const renderMemberList = (members: TeamMember[]) => {
+    if (members.length === 0) {
+      return (
+        <div className="flex h-24 items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/20 bg-muted/30">
+          <p className="text-sm text-muted-foreground">
+            Nenhum membro nesta categoria.
+          </p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-4">
+        {members.map((member) => (
+          <div
+            key={member.id}
+            className="flex items-center justify-between rounded-lg border p-4"
+          >
+            <div className="flex items-center gap-4">
+              <div
+                className="h-8 w-8 rounded-full"
+                style={{ backgroundColor: member.color }}
+              />
+              <div>
+                <p className="font-medium">{member.name}</p>
+                <p className="text-sm text-muted-foreground">{member.role}</p>
+                <p className="text-xs text-muted-foreground">{member.email}</p>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => handleOpenModal(member)}
+              >
+                <Edit className="h-4 w-4" />
+                <span className="sr-only">Editar</span>
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-destructive/80 hover:text-destructive"
+                onClick={() => handleOpenAlert(member)}
+              >
+                <Trash2 className="h-4 w-4" />
+                <span className="sr-only">Remover</span>
+              </Button>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
 
   if (isLoading) {
     return (
@@ -89,63 +157,32 @@ export default function TeamPage() {
           </Button>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Membros da Equipe</CardTitle>
-            <CardDescription>
-              Visualize, edite ou remova membros da sua equipe.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {teamMembers.length > 0 ? (
-                teamMembers.map((member) => (
-                  <div
-                    key={member.id}
-                    className="flex items-center justify-between rounded-lg border p-4"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div
-                        className="h-8 w-8 rounded-full"
-                        style={{ backgroundColor: member.color }}
-                      />
-                      <div>
-                        <p className="font-medium">{member.name}</p>
-                        <p className="text-sm text-muted-foreground">{member.role}</p>
-                        <p className="text-xs text-muted-foreground">{member.email}</p>
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleOpenModal(member)}
-                      >
-                        <Edit className="h-4 w-4" />
-                        <span className="sr-only">Editar</span>
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="text-destructive/80 hover:text-destructive"
-                        onClick={() => handleOpenAlert(member)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                        <span className="sr-only">Remover</span>
-                      </Button>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="flex h-24 items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/20 bg-muted/30">
-                  <p className="text-sm text-muted-foreground">
-                    Nenhum membro na equipe.
-                  </p>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+        <div className='space-y-8'>
+          <Card>
+            <CardHeader>
+              <CardTitle>Marceneiros</CardTitle>
+              <CardDescription>
+                Membros responsáveis pela pré-montagem.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {renderMemberList(marceneiros)}
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader>
+              <CardTitle>Outros Membros</CardTitle>
+              <CardDescription>
+                Demais membros da equipe.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {renderMemberList(outrosMembros)}
+            </CardContent>
+          </Card>
+        </div>
+
       </div>
 
       <RegisterTeamModal
