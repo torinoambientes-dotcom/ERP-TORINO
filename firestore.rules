@@ -1,68 +1,116 @@
 /**
- * @fileoverview Firestore Security Rules for Prototyping.
+ * @fileOverview Firestore Security Rules for the furniture production tracking application.
  *
  * Core Philosophy:
- * This ruleset prioritizes secure authorization while being flexible with data shapes to enable rapid prototyping. It enforces a strict user-ownership model for user-specific data and allows public read access where appropriate, coupled with owner-only writes.
+ * This ruleset enforces a role-based access control model where team members can update production stages.
  *
  * Data Structure:
- * The data is organized into projects and team members, where projects contain environments and furniture with production stages.
+ * - /projects/{projectId}: Stores project data.
+ * - /team_members/{teamMemberId}: Stores team member data.
  *
  * Key Security Decisions:
- * - Listing team members is only allowed for signed-in users.
- * - Data validation is minimal during this prototyping phase, focusing on ownership and relational integrity.
- * - Public read access is granted to the top-level 'projects' collection, but write access is restricted to owners.
+ * - Unauthenticated users are NOT authorized.
+ * - Data shape validation is minimized for rapid prototyping. Only essential authorization-related fields are checked.
+ * - `list` operations are enabled for all collections.
+ * - Strict ownership is enforced for team member documents, ensuring each member can only manage their own profile.
  *
  * Denormalization for Authorization:
- * To avoid costly `get()` calls, we rely on the presence of `authorId` or `ownerId` fields within documents to determine ownership.
+ *  - The `responsibleId` field within each `ProductionStage` is used to directly authorize updates. This avoids costly `get()` calls to a separate `team_members` collection.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Allows read and write access to projects.
-     * @path /databases/{database}/documents/projects/{projectId}
-     * @allow (get, list): Any signed-in user can read project data.
-     * @allow (create): A signed-in user can create a project if the 'authorId' field in the request matches their UID.
-     * @allow (update, delete): Only the owner (identified by 'authorId') can update or delete a project.
-     * @deny (create): Creation is denied if the 'authorId' field doesn't match the user's UID.
-     * @deny (update, delete): Updates or deletions are denied if the user isn't the owner.
-     * @principle Public Read with Owner-Only Writes.
+     * @description Allows read and write access to project documents. Production stages can be updated by their responsible team members.
+     * @path /projects/{projectId}
+     * @allow (get, list): Any authenticated user can read/list projects.
+     * @allow (update): Only the team member with the responsible ID can update the project.
+     * @deny (create, delete): No user can create or delete projects.
+     * @principle: Enforces role-based access control for production stage updates.
      */
     match /projects/{projectId} {
-      allow get, list: if true;
-      allow create: if isSignedIn() && request.resource.data.id == projectId;
-      allow update, delete: if isExistingOwner(projectId);
+      allow get, list: if isSignedIn();
+      allow create: if false;
+      allow update: if isSignedIn() && isResponsibleTeamMember(request.resource.data);
+      allow delete: if false;
     }
 
     /**
-     * @description Allows read and write access to team members.
-     * @path /databases/{database}/documents/team_members/{teamMemberId}
-     * @allow (get): Any signed-in user can read team member data.
-     * @allow (list): Only signed-in users can list team members.
-     * @allow (create): A user can create their own team member document if the 'id' field matches their UID.
-     * @allow (update, delete): Only the owner (identified by 'id') can update or delete the team member document.
-     * @deny (create): Creation is denied if the 'id' field doesn't match the user's UID.
-     * @deny (update, delete): Updates or deletions are denied if the user isn't the owner.
-     * @principle Ownership.
+     * @description Allows read, create, update, and delete access to team member documents, but only by the owner (themselves).
+     * @path /team_members/{teamMemberId}
+     * @allow (get, list): Any authenticated user can get/list team members.
+     * @allow (create): A user can create their own team member document if the ID matches their auth UID.
+     * @allow (update): A user can update their own team member document if the ID matches their auth UID and the document exists.
+     * @allow (delete): A user can delete their own team member document if the ID matches their auth UID and the document exists.
+     * @principle: Enforces document ownership for all operations on team member documents.
      */
     match /team_members/{teamMemberId} {
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
-      allow create: if isSignedIn() && request.resource.data.id == teamMemberId;
-      allow update, delete: if isExistingOwner(teamMemberId);
+      allow get, list: if isSignedIn();
+      allow create: if isSignedIn() && isOwner(teamMemberId);
+      allow update: if isSignedIn() && isExistingOwner(teamMemberId);
+      allow delete: if isSignedIn() && isExistingOwner(teamMemberId);
     }
 
+    /**
+     * @description Checks if the user is signed in.
+     * @return {boolean} True if the user is signed in, false otherwise.
+     */
     function isSignedIn() {
       return request.auth != null;
     }
 
+    /**
+     * @description Checks if the request is made by the owner (creator) of the document.
+     * @param {string} userId - The user ID to compare against the request's auth UID.
+     * @return {boolean} True if the request is from the owner, false otherwise.
+     */
     function isOwner(userId) {
       return request.auth.uid == userId;
     }
 
+    /**
+     * @description Checks if the request is made by the owner of an existing document.
+     * @param {string} userId - The user ID to compare against the request's auth UID and the document's owner ID.
+     * @return {boolean} True if the request is from the existing owner, false otherwise.
+     */
     function isExistingOwner(userId) {
-      return isOwner(userId) && resource != null;
+      return isOwner(userId) && exists(resource);
+    }
+
+      /**
+       * @description Checks if the user is responsible for a production stage and thus authorized to update the project.
+       * @param {map} requestData - The data being sent in the request.
+       * @return {boolean} True if the user is responsible and authorized, false otherwise.
+       */
+    function isResponsibleTeamMember(requestData) {
+      function checkEnvironments(environments) {
+        if (environments is list) {
+          let authorized = false;
+          for environment in environments {
+            if (environment is map && environment.furniture is list) {
+              for furniture in environment.furniture {
+                if (furniture is map) {
+                  if (furniture.measurement is map && furniture.measurement.responsibleId == request.auth.uid) {
+                    authorized = true;
+                  }
+                  if (furniture.cutting is map && furniture.cutting.responsibleId == request.auth.uid) {
+                    authorized = true;
+                  }
+                  if (furniture.purchase is map && furniture.purchase.responsibleId == request.auth.uid) {
+                    authorized = true;
+                  }
+                }
+              }
+            }
+          }
+          return authorized;
+        }
+        return false;
+      }
+
+      // On an update, requestData represents the merged document, not just the changes.
+      return checkEnvironments(requestData.environments);
     }
   }
 }
