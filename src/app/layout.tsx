@@ -4,8 +4,8 @@ import { Toaster } from '@/components/ui/toaster';
 import { FirebaseClientProvider } from '@/firebase';
 
 export const metadata: Metadata = {
-  title: 'ProjectFlow',
-  description: 'Gerenciamento de projetos de marcenaria',
+  title: 'Torino ERP',
+  description: 'Torino ERP - Gerenciamento de projetos para marcenarias de alto padrão',
   icons: {
     icon: '/icon.svg',
   },
