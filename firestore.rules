@@ -1,42 +1,52 @@
 /**
- * @fileoverview Firestore Security Rules for internal application use.
- *
- * Core Philosophy:
- * This ruleset is configured for an internal application with no specific security concerns.
- * All read and write operations are permitted for all users.
- *
- * Data Structure:
- * The database contains projects and team members, with no specific hierarchical structure.
- *
- * Key Security Decisions:
- * All authenticated users have full read and write access to all data.
+ * @file Firestore Security Rules
+ * @core_philosophy This ruleset implements a permissive security posture for prototyping, focusing on preventing unauthorized data modification.  It assumes most data is publicly readable but write access is restricted. The rules are designed to be flexible to allow rapid schema changes, but strict on authorization.
+ * @data_structure The Firestore database is structured with top-level collections for 'projects', 'team_members', and 'stock_items'.
+ * @key_security_decisions All write operations require authentication. Public listing is enabled for 'stock_items' and 'team_members'. Create, Update, and Delete operations are disallowed on 'stock_items'.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Allows any authenticated user to read and write project data.
+     * @description Manages access to project documents.
      * @path /projects/{projectId}
-     * @allow (get, list, create, update, delete) - Any authenticated user can perform any operation.
-     * @deny (none) - No operation is denied for authenticated users.
-     * @principle No security restrictions for internal app use.
+     * @allow (read): Any authenticated user can read project data.
+     * @allow (create, update, delete): Only authenticated users can modify project data.
+     * @deny (create, update, delete): Unauthenticated users cannot modify project data.
+     * @principle Requires user authentication for data creation, updates, and deletions.
      */
     match /projects/{projectId} {
-      allow get, list: if true;
-      allow create, update, delete: if true;
+      allow get, list: if isSignedIn();
+      allow create, update, delete: if isSignedIn();
     }
 
     /**
-     * @description Allows any authenticated user to read and write team member data.
+     * @description Manages access to team member documents.
      * @path /team_members/{teamMemberId}
-     * @allow (get, list, create, update, delete) - Any authenticated user can perform any operation.
-     * @deny (none) - No operation is denied for authenticated users.
-     * @principle No security restrictions for internal app use.
+     * @allow (read): Any user can read team member data.
+     * @principle Allows public read access to team member information.
      */
     match /team_members/{teamMemberId} {
       allow get, list: if true;
-      allow create, update, delete: if true;
+      allow create, update, delete: if isSignedIn();
+    }
+
+    /**
+     * @description Manages access to stock items.
+     * @path /stock_items/{stockItemId}
+     * @allow (read): Any user can read stock item data.
+     * @deny (create, update, delete): No one can create, update, or delete stock items.
+     * @principle Allows public read access to stock item information.
+     */
+    match /stock_items/{stockItemId} {
+      allow get, list: if true;
+      allow create, update, delete: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
     }
   }
 }
