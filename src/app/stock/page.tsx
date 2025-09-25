@@ -21,7 +21,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import type { StockItem } from '@/lib/types';
+import type { StockCategory, StockItem } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { RegisterStockItemModal } from '@/components/modals/register-stock-item-modal';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -31,7 +31,7 @@ import { cn } from '@/lib/utils';
 import { RegisterCategoryModal } from '@/components/modals/register-category-modal';
 
 export default function StockPage() {
-  const { stockItems, stockCategories, deleteStockItem, isLoading } = useContext(AppContext);
+  const { stockItems, stockCategories, deleteStockItem, deleteStockCategory, isLoading } = useContext(AppContext);
   const { toast } = useToast();
 
   const [isRegisterModalOpen, setRegisterModalOpen] = useState(false);
@@ -47,10 +47,24 @@ export default function StockPage() {
   const [itemToDelete, setItemToDelete] = useState<StockItem | null>(null);
   
   const [isCategoryModalOpen, setCategoryModalOpen] = useState(false);
+  const [categoryToDelete, setCategoryToDelete] = useState<StockCategory | null>(null);
+  const [isCategoryAlertOpen, setCategoryAlertOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<string | undefined>(undefined);
 
   const sortedCategories = useMemo(() => {
-    return [...stockCategories].sort((a, b) => a.name.localeCompare(b.name));
-  }, [stockCategories]);
+    const sorted = [...stockCategories].sort((a, b) => a.name.localeCompare(b.name));
+     if (!activeTab && sorted.length > 0) {
+      setActiveTab(sorted[0].name);
+    } else if (sorted.length === 0) {
+      setActiveTab(undefined);
+    }
+    return sorted;
+  }, [stockCategories, activeTab]);
+
+  const itemsInCategory = useMemo(() => {
+    if (!categoryToDelete) return 0;
+    return stockItems.filter(item => item.category === categoryToDelete.name).length;
+  }, [stockItems, categoryToDelete]);
 
   const handleOpenRegisterModal = (item: StockItem | null = null) => {
     setItemToEdit(item);
@@ -101,6 +115,42 @@ export default function StockPage() {
       });
     }
     handleCloseAlert();
+  };
+  
+  const handleOpenCategoryAlert = (category: StockCategory) => {
+    setCategoryToDelete(category);
+    setCategoryAlertOpen(true);
+  };
+  
+  const handleCloseCategoryAlert = () => {
+    setCategoryToDelete(null);
+    setCategoryAlertOpen(false);
+  };
+
+  const handleConfirmCategoryDelete = () => {
+    if (!categoryToDelete) return;
+
+    if (itemsInCategory > 0) {
+      toast({
+        variant: 'destructive',
+        title: 'Não é possível remover a categoria',
+        description: `A categoria "${categoryToDelete.name}" contém itens. Remova ou mova os itens antes de excluir a categoria.`,
+      });
+    } else {
+      deleteStockCategory(categoryToDelete.id);
+      toast({
+        title: 'Categoria removida',
+        description: `A categoria "${categoryToDelete.name}" foi removida.`,
+      });
+      // Mude para a primeira aba disponível se a aba ativa foi deletada
+      const remainingCategories = sortedCategories.filter(c => c.id !== categoryToDelete.id);
+      if (remainingCategories.length > 0) {
+        setActiveTab(remainingCategories[0].name);
+      } else {
+        setActiveTab(undefined);
+      }
+    }
+    handleCloseCategoryAlert();
   };
 
   const renderStockList = (categoryName: string) => {
@@ -215,8 +265,8 @@ export default function StockPage() {
           </div>
         </div>
 
-        {sortedCategories.length > 0 ? (
-          <Tabs defaultValue={sortedCategories[0].name} className="w-full">
+        {sortedCategories.length > 0 && activeTab ? (
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 h-auto">
               {sortedCategories.map((category) => (
                 <TabsTrigger key={category.id} value={category.name} className='flex-1'>
@@ -229,10 +279,18 @@ export default function StockPage() {
               <TabsContent key={category.id} value={category.name}>
                 <Card>
                   <CardHeader>
-                    <CardTitle>{category.name}</CardTitle>
-                    <CardDescription>
-                      Itens da categoria {category.name.toLowerCase()}
-                    </CardDescription>
+                    <div className='flex justify-between items-start'>
+                      <div>
+                        <CardTitle>{category.name}</CardTitle>
+                        <CardDescription>
+                          Itens da categoria {category.name.toLowerCase()}
+                        </CardDescription>
+                      </div>
+                      <Button variant="ghost" size="icon" className="text-destructive/80 hover:text-destructive h-8 w-8" onClick={() => handleOpenCategoryAlert(category)}>
+                        <Trash2 className="h-4 w-4" />
+                        <span className="sr-only">Remover Categoria</span>
+                      </Button>
+                    </div>
                   </CardHeader>
                   <CardContent>{renderStockList(category.name)}</CardContent>
                 </Card>
@@ -299,6 +357,39 @@ export default function StockPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AlertDialog open={isCategoryAlertOpen} onOpenChange={setCategoryAlertOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remover Categoria</AlertDialogTitle>
+            <AlertDialogDescription>
+              {itemsInCategory > 0 ? (
+                <>
+                  Não é possível remover a categoria <span className="font-bold">{categoryToDelete?.name}</span> porque ela contém {itemsInCategory} item(ns). Por favor, mova ou remova os itens antes de excluir a categoria.
+                </>
+              ) : (
+                <>
+                  Você tem certeza que deseja remover a categoria <span className="font-bold">{categoryToDelete?.name}</span>? Esta ação não pode ser desfeita.
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleCloseCategoryAlert}>
+              {itemsInCategory > 0 ? 'Entendi' : 'Cancelar'}
+            </AlertDialogCancel>
+            {itemsInCategory === 0 && (
+              <AlertDialogAction
+                onClick={handleConfirmCategoryDelete}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Sim, remover
+              </AlertDialogAction>
+            )}
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
 
       <RegisterCategoryModal
         isOpen={isCategoryModalOpen}

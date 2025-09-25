@@ -26,6 +26,7 @@ interface AppContextType {
   deleteStockItem: (itemId: string) => void;
   addStockMovement: (itemId: string, movementData: Omit<StockMovement, 'id' | 'timestamp'>) => void;
   addStockCategory: (categoryData: Omit<StockCategory, 'id'>) => void;
+  deleteStockCategory: (categoryId: string) => void;
 }
 
 export const AppContext = createContext<AppContextType>({
@@ -46,6 +47,7 @@ export const AppContext = createContext<AppContextType>({
   deleteStockItem: () => {},
   addStockMovement: () => {},
   addStockCategory: () => {},
+  deleteStockCategory: () => {},
 });
 
 const isProjectComplete = (project: Project): boolean => {
@@ -220,6 +222,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setDocumentNonBlocking(categoryRef, newCategory, { merge: false });
   }, [firestore]);
 
+  const deleteStockCategory = useCallback((categoryId: string) => {
+    if (!firestore) return;
+    const categoryRef = doc(firestore, 'stock_categories', categoryId);
+    deleteDocumentNonBlocking(categoryRef);
+  }, [firestore]);
+
+
   const value = useMemo(() => ({
     projects: projects || [],
     teamMembers: teamMembers || [],
@@ -238,6 +247,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     deleteStockItem,
     addStockMovement,
     addStockCategory,
+    deleteStockCategory,
   }), [
     projects, 
     teamMembers, 
@@ -258,7 +268,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     updateStockItem,
     deleteStockItem,
     addStockMovement,
-    addStockCategory
+    addStockCategory,
+    deleteStockCategory,
   ]);
 
 
