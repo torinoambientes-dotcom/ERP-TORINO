@@ -164,13 +164,20 @@ export default function ProjectDetailsPage() {
               </AccordionTrigger>
               <AccordionContent>
                 <div className="space-y-4">
-                  {env.furniture?.map((fur) => (
+                  {env.furniture?.map((fur) => {
+                    const unresolvedPendencies = fur.pendencies?.filter(p => !p.isResolved).length || 0;
+                    return (
                     <div key={fur.id} className="p-4 rounded-lg border bg-card/80">
                       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
                         <h4 className="font-semibold text-lg">{fur.name}</h4>
-                        <Button variant="outline" size="sm" onClick={() => openChatModal(fur, env.id)} className="w-full sm:w-auto">
+                        <Button variant="outline" size="sm" onClick={() => openChatModal(fur, env.id)} className="w-full sm:w-auto relative">
                           <MessageSquare className="mr-2 h-4 w-4" />
                           Pendências
+                          {unresolvedPendencies > 0 && (
+                            <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-xs font-bold text-destructive-foreground">
+                              {unresolvedPendencies}
+                            </span>
+                          )}
                         </Button>
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -233,7 +240,7 @@ export default function ProjectDetailsPage() {
                         )})}
                       </div>
                     </div>
-                  ))}
+                  )})}
                 </div>
               </AccordionContent>
             </AccordionItem>
