@@ -102,6 +102,21 @@ export default function ProjectsPage() {
     }
   };
 
+  const handleEditClick = (project: Project) => (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setProjectToEdit(project);
+  };
+  
+  const handleCompleteClick = (projectId: string) => (e: React.MouseEvent) => {
+    e.stopPropagation();
+    completeProjectStages(projectId);
+  };
+  
+  const handleDeleteClick = (project: Project) => (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setProjectToDelete(project);
+  };
+
   return (
     <>
     <div className="flex flex-col gap-8">
@@ -176,10 +191,7 @@ export default function ProjectsPage() {
                         variant="ghost"
                         size="icon"
                         className="text-muted-foreground/80 hover:text-foreground"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setProjectToEdit(project)
-                        }}
+                        onClick={handleEditClick(project)}
                       >
                         <Pencil className="h-4 w-4" />
                         <span className="sr-only">Editar Projeto</span>
@@ -187,10 +199,7 @@ export default function ProjectsPage() {
                     <Button 
                       variant="ghost" 
                       size="sm" 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        completeProjectStages(project.id)
-                      }}
+                      onClick={handleCompleteClick(project.id)}
                       className="text-xs"
                       >
                       <CheckCircle className="mr-1.5 h-3.5 w-3.5" />
@@ -200,10 +209,7 @@ export default function ProjectsPage() {
                       variant="ghost" 
                       size="icon" 
                       className="text-destructive/80 hover:text-destructive"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setProjectToDelete(project)
-                      }}
+                      onClick={handleDeleteClick(project)}
                       >
                       <Trash2 className="h-4 w-4" />
                       <span className="sr-only">Remover Projeto</span>
