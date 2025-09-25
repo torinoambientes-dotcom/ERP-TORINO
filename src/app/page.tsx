@@ -118,6 +118,9 @@ export default function ProjectsPage() {
     completeProjectStages(projectId);
   }, [completeProjectStages]);
   
+  const handleStatusFilterChange = useCallback((value: string) => {
+    setStatusFilter(value as ProjectStatus | 'Todos');
+  }, []);
 
   return (
     <>
@@ -145,7 +148,7 @@ export default function ProjectsPage() {
             />
             <Select
               value={statusFilter}
-              onValueChange={(value) => setStatusFilter(value as ProjectStatus | 'Todos')}
+              onValueChange={handleStatusFilterChange}
             >
               <SelectTrigger className="w-full sm:w-[180px]">
                 <SelectValue placeholder="Filtrar por status" />
@@ -240,11 +243,12 @@ export default function ProjectsPage() {
         onConfirm={handleDeleteConfirm}
         projectName={projectToDelete?.clientName || ''}
       />
-      <RegisterProjectModal
-        isOpen={!!projectToEdit}
-        onClose={closeEditModal}
-        projectToEdit={projectToEdit}
-      />
+      {projectToEdit && (
+        <RegisterProjectModal
+          isOpen={!!projectToEdit}
+          onClose={closeEditModal}
+          projectToEdit={projectToEdit}
+        />
+      )}
     </>
   );
-}
