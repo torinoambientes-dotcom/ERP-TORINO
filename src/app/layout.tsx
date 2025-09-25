@@ -3,6 +3,7 @@ import './globals.css';
 import { AppShell } from '@/components/layout/app-shell';
 import { Toaster } from '@/components/ui/toaster';
 import { ClientAppProvider } from '@/context/client-app-provider';
+import { FirebaseClientProvider } from '@/firebase';
 
 export const metadata: Metadata = {
   title: 'ProjectFlow',
@@ -32,10 +33,12 @@ export default function RootLayout({
         />
       </head>
       <body className="font-body antialiased">
-        <ClientAppProvider>
-          <AppShell>{children}</AppShell>
-          <Toaster />
-        </ClientAppProvider>
+        <FirebaseClientProvider>
+          <ClientAppProvider>
+            <AppShell>{children}</AppShell>
+            <Toaster />
+          </ClientAppProvider>
+        </FirebaseClientProvider>
       </body>
     </html>
   );

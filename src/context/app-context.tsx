@@ -1,69 +1,49 @@
 'use client';
 
-import { createContext, useState, useEffect, type ReactNode, useCallback } from 'react';
-import type { Project, TeamMember } from '@/lib/types';
+import { createContext, useState, useEffect, type ReactNode, useCallback, useMemo } from 'react';
+import { collection, doc, setDoc, deleteDoc } from 'firebase/firestore';
+import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import type { Project, TeamMember, StageStatus } from '@/lib/types';
 import { generateId } from '@/lib/utils';
-
-// Helper for localStorage
-const useStickyState = <T,>(defaultValue: T, key: string): [T, (value: T) => void] => {
-  const [isMounted, setIsMounted] = useState(false);
-  const [value, setValue] = useState<T>(defaultValue);
-
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
-
-  useEffect(() => {
-    if (isMounted) {
-      try {
-        const stickyValue = window.localStorage.getItem(key);
-        if (stickyValue !== null) {
-          setValue(JSON.parse(stickyValue));
-        }
-      } catch (e) {
-        console.error(`Could not load state from localStorage for key "${key}"`, e);
-      }
-    }
-  }, [isMounted, key]);
-
-  useEffect(() => {
-    if (isMounted) {
-      try {
-        window.localStorage.setItem(key, JSON.stringify(value));
-      } catch (e) {
-        console.error(`Could not save state to localStorage for key "${key}"`, e);
-      }
-    }
-  }, [key, value, isMounted]);
-
-  const setStickyValue = useCallback((newValue: T) => {
-    setValue(newValue);
-  }, []);
-
-  return [value, setStickyValue];
-};
+import { setDocumentNonBlocking, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 
 interface AppContextType {
   projects: Project[];
   teamMembers: TeamMember[];
-  addProject: (projectData: Omit<Project, 'id' | 'environments'> & { environments: Array<Omit<Project['environments'][0], 'id' | 'furniture'> & { furniture: Array<Omit<Project['environments'][0]['furniture'][0], 'id' | 'measurement' | 'cutting' | 'purchase' | 'assembly'>>}>}) => void;
+  isLoading: boolean;
+  addProject: (projectData: any) => void;
   updateProject: (updatedProject: Project) => void;
   deleteProject: (projectId: string) => void;
   addTeamMember: (memberData: Omit<TeamMember, 'id'>) => void;
   completeProjectStages: (projectId: string) => void;
 }
 
-export const AppContext = createContext<AppContextType | undefined>(undefined);
+export const AppContext = createContext<AppContextType>({
+  projects: [],
+  teamMembers: [],
+  isLoading: true,
+  addProject: () => {},
+  updateProject: () => {},
+  deleteProject: () => {},
+  addTeamMember: () => {},
+  completeProjectStages: () => {},
+});
 
 export function AppProvider({ children }: { children: ReactNode }) {
-  const [projects, setProjects] = useStickyState<Project[]>([], 'app-projects');
-  const [teamMembers, setTeamMembers] = useStickyState<TeamMember[]>([], 'app-team-members');
+  const firestore = useFirestore();
 
+  const projectsQuery = useMemoFirebase(() => collection(firestore, 'projects'), [firestore]);
+  const teamMembersQuery = useMemoFirebase(() => collection(firestore, 'team_members'), [firestore]);
+
+  const { data: projects, isLoading: isLoadingProjects } = useCollection<Project>(projectsQuery);
+  const { data: teamMembers, isLoading: isLoadingTeamMembers } = useCollection<TeamMember>(teamMembersQuery);
+  
   const addProject = useCallback((projectData: Omit<Project, 'id' | 'environments'> & { environments: Array<Omit<Project['environments'][0], 'id' | 'furniture'> & { furniture: Array<Omit<Project['environments'][0]['furniture'][0], 'id' | 'measurement' | 'cutting' | 'purchase' | 'assembly'>>}>}) => {
+    const projectId = generateId('proj');
     const newProject: Project = {
       ...projectData,
-      id: generateId('proj'),
+      id: projectId,
       environments: projectData.environments.map((env) => ({
         ...env,
         id: generateId('env'),
@@ -79,45 +59,61 @@ export function AppProvider({ children }: { children: ReactNode }) {
         })),
       })),
     };
-    setProjects(prev => [...prev, newProject]);
-  }, [setProjects]);
+    const projectRef = doc(firestore, 'projects', projectId);
+    setDocumentNonBlocking(projectRef, newProject, { merge: false });
+  }, [firestore]);
 
   const updateProject = useCallback((updatedProject: Project) => {
-    setProjects(prev => prev.map((p) => (p.id === updatedProject.id ? updatedProject : p)));
-  }, [setProjects]);
+    const projectRef = doc(firestore, 'projects', updatedProject.id);
+    setDocumentNonBlocking(projectRef, updatedProject, { merge: true });
+  }, [firestore]);
 
   const deleteProject = useCallback((projectId: string) => {
-    setProjects(prev => prev.filter((p) => p.id !== projectId));
-  }, [setProjects]);
+    const projectRef = doc(firestore, 'projects', projectId);
+    deleteDocumentNonBlocking(projectRef);
+  }, [firestore]);
 
   const addTeamMember = useCallback((memberData: Omit<TeamMember, 'id'>) => {
-    const newMember = { ...memberData, id: generateId('member') };
-    setTeamMembers(prev => [...prev, newMember]);
-  }, [setTeamMembers]);
+    const memberId = generateId('member');
+    const newMember = { ...memberData, id: memberId };
+    const memberRef = doc(firestore, 'team_members', memberId);
+    setDocumentNonBlocking(memberRef, newMember, { merge: false });
+  }, [firestore]);
   
   const completeProjectStages = useCallback((projectId: string) => {
-    setProjects(
-      prev => prev.map((p) => {
-        if (p.id === projectId) {
-          const newEnvironments = p.environments.map((env) => ({
+    if (!projects) return;
+
+    const projectToUpdate = projects.find(p => p.id === projectId);
+    if (projectToUpdate) {
+        const newEnvironments = projectToUpdate.environments.map((env) => ({
             ...env,
             furniture: env.furniture.map((fur) => ({
-              ...fur,
-              measurement: { ...fur.measurement, status: 'done' as const },
-              cutting: { ...fur.cutting, status: 'done' as const },
-              purchase: { ...fur.purchase, status: 'done' as const },
-              assembly: { ...fur.assembly, status: 'done' as const },
+                ...fur,
+                measurement: { ...fur.measurement, status: 'done' as StageStatus },
+                cutting: { ...fur.cutting, status: 'done' as StageStatus },
+                purchase: { ...fur.purchase, status: 'done' as StageStatus },
+                assembly: { ...fur.assembly, status: 'done' as StageStatus },
             })),
-          }));
-          return { ...p, environments: newEnvironments };
-        }
-        return p;
-      })
-    );
-  }, [setProjects]);
+        }));
+        const updatedProject = { ...projectToUpdate, environments: newEnvironments };
+        updateProject(updatedProject);
+    }
+  }, [projects, updateProject]);
+
+  const value = useMemo(() => ({
+    projects: projects || [],
+    teamMembers: teamMembers || [],
+    isLoading: isLoadingProjects || isLoadingTeamMembers,
+    addProject,
+    updateProject,
+    deleteProject,
+    addTeamMember,
+    completeProjectStages,
+  }), [projects, teamMembers, isLoadingProjects, isLoadingTeamMembers, addProject, updateProject, deleteProject, addTeamMember, completeProjectStages]);
+
 
   return (
-    <AppContext.Provider value={{ projects, teamMembers, addProject, updateProject, deleteProject, addTeamMember, completeProjectStages }}>
+    <AppContext.Provider value={value}>
       {children}
     </AppContext.Provider>
   );

@@ -31,17 +31,22 @@ type ProjectStatus = 'Novo' | 'Em Andamento' | 'Concluído';
 const getProjectStatus = (project: Project): { status: ProjectStatus; progress: number, totalTasks: number, doneTasks: number } => {
   let totalTasks = 0;
   let doneTasks = 0;
-  project.environments.forEach((env) => {
-    env.furniture.forEach((fur) => {
-      const stages = ['measurement', 'cutting', 'purchase', 'assembly'] as const;
-      stages.forEach((stage) => {
-        totalTasks++;
-        if (fur[stage].status === 'done') {
-          doneTasks++;
-        }
-      });
+  
+  if (project.environments) {
+    project.environments.forEach((env) => {
+      if (env.furniture) {
+        env.furniture.forEach((fur) => {
+          const stages = ['measurement', 'cutting', 'purchase', 'assembly'] as const;
+          stages.forEach((stage) => {
+            totalTasks++;
+            if (fur[stage] && fur[stage].status === 'done') {
+              doneTasks++;
+            }
+          });
+        });
+      }
     });
-  });
+  }
 
   const progress = totalTasks > 0 ? (doneTasks / totalTasks) * 100 : 0;
   
@@ -52,12 +57,7 @@ const getProjectStatus = (project: Project): { status: ProjectStatus; progress: 
 
 
 export default function ProjectsPage() {
-  const context = useContext(AppContext);
-
-  if (!context) {
-    throw new Error('ProjectsPage must be used within an AppProvider');
-  }
-  const { projects, deleteProject, completeProjectStages } = context;
+  const { projects, deleteProject, completeProjectStages, isLoading } = useContext(AppContext);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<ProjectStatus | 'Todos'>('Todos');
@@ -100,6 +100,7 @@ export default function ProjectsPage() {
   }, []);
 
   const filteredProjects = useMemo(() => {
+     if (!projects) return [];
      return projects
       .map((project) => ({
         project,
@@ -117,6 +118,14 @@ export default function ProjectsPage() {
         return matchesSearch && matchesStatus;
       });
   }, [projects, searchTerm, statusFilter]);
+
+  if (isLoading) {
+    return (
+      <div className="flex h-full w-full items-center justify-center">
+        <p>Carregando projetos...</p>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -189,7 +198,7 @@ export default function ProjectsPage() {
                         </CardHeader>
                         <CardContent className="flex-grow space-y-4">
                         <p className="text-sm text-muted-foreground">
-                            {project.environments.length} ambiente(s)
+                            {project.environments?.length || 0} ambiente(s)
                         </p>
                         {statusInfo.totalTasks > 0 && (
                             <div className="space-y-2">

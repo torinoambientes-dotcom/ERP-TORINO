@@ -44,49 +44,27 @@ export default function ProjectDetailsPage({
 }: {
   params: { id: string };
 }) {
-  const context = useContext(AppContext);
-  
-  if (!context) {
-    throw new Error('ProjectDetailsPage must be used within an AppProvider');
-  }
-  const { projects, teamMembers, updateProject } = context;
-
+  const { projects, teamMembers, updateProject, isLoading } = useContext(AppContext);
   const { id } = params;
 
-  const initialProject = useMemo(() => 
-    projects.find((p) => p.id === id),
-    [id, projects]
-  );
-
-  const [project, setProject] = useState<Project | undefined | null>(
-    initialProject ? JSON.parse(JSON.stringify(initialProject)) : undefined
-  );
+  const [project, setProject] = useState<Project | null | undefined>(undefined);
 
   const [isChatModalOpen, setChatModalOpen] = useState(false);
   const [selectedFurniture, setSelectedFurniture] = useState<Furniture | null>(null);
   const [selectedEnvironmentId, setSelectedEnvironmentId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (initialProject) {
-      setProject(JSON.parse(JSON.stringify(initialProject)));
-    } else {
-      // Set to null after checking to signify 'not found'
-      setProject(null);
+    if (!isLoading && projects) {
+      const foundProject = projects.find((p) => p.id === id);
+      setProject(foundProject ? JSON.parse(JSON.stringify(foundProject)) : null);
     }
-  }, [id, initialProject]);
+  }, [id, projects, isLoading]);
   
-  // Auto-save with debounce
-  useEffect(() => {
-    if (project && initialProject && JSON.stringify(project) !== JSON.stringify(initialProject)) {
-      const handler = setTimeout(() => {
-        updateProject(project as Project);
-      }, 1000);
-
-      return () => {
-        clearTimeout(handler);
-      };
+  const handleSaveChanges = () => {
+    if (project) {
+      updateProject(project);
     }
-  }, [project, initialProject, updateProject]);
+  };
 
   const handleStageChange = useCallback((
     envId: string,
@@ -102,6 +80,9 @@ export default function ProjectDetailsPage({
       if (env) {
         const fur = env.furniture.find((f: any) => f.id === furId);
         if (fur) {
+          if (!fur[stage]) { // Ensure stage object exists
+            fur[stage] = {};
+          }
           if (key === 'responsibleId') {
             fur[stage].responsibleId = value === 'unassigned' ? undefined : value;
           } else {
@@ -120,10 +101,11 @@ export default function ProjectDetailsPage({
   }, []);
   
   const memberMap = useMemo(() => {
+    if (!teamMembers) return new Map();
     return new Map(teamMembers.map(m => [m.id, m]));
   }, [teamMembers]);
 
-  if (project === undefined) {
+  if (project === undefined || isLoading) {
     return (
       <div className="flex h-full w-full items-center justify-center">
         <p>Carregando projeto...</p>
@@ -151,17 +133,18 @@ export default function ProjectDetailsPage({
               description="Detalhes do projeto, ambientes e status das etapas."
             />
           </div>
+           <Button onClick={handleSaveChanges}>Salvar Alterações</Button>
         </div>
 
-        <Accordion type="multiple" defaultValue={project.environments.map(e => e.id)} className="w-full">
-          {project.environments.map((env) => (
+        <Accordion type="multiple" defaultValue={project.environments?.map(e => e.id) || []} className="w-full">
+          {project.environments?.map((env) => (
             <AccordionItem value={env.id} key={env.id}>
               <AccordionTrigger className="font-headline text-xl hover:no-underline">
                 {env.name}
               </AccordionTrigger>
               <AccordionContent>
                 <div className="space-y-4">
-                  {env.furniture.map((fur) => (
+                  {env.furniture?.map((fur) => (
                     <div key={fur.id} className="p-4 rounded-lg border bg-card/80">
                       <div className="flex justify-between items-center mb-4">
                         <h4 className="font-semibold text-lg">{fur.name}</h4>
@@ -172,7 +155,7 @@ export default function ProjectDetailsPage({
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                         {stages.map((stage) => {
-                          const stageData = fur[stage.key];
+                          const stageData = fur[stage.key] || { status: 'todo' };
                           const responsibleMember = stageData.responsibleId ? memberMap.get(stageData.responsibleId) : undefined;
                           return (
                           <div key={stage.key} className="space-y-2">
@@ -216,7 +199,7 @@ export default function ProjectDetailsPage({
                               <SelectContent>
                                 <SelectItem value="unassigned">Não atribuído</SelectItem>
                                 <Separator />
-                                {teamMembers.map((member) => (
+                                {teamMembers?.map((member) => (
                                   <SelectItem key={member.id} value={member.id}>
                                     <div className="flex items-center gap-2">
                                       <span className="h-4 w-4 rounded-full" style={{ backgroundColor: member.color }}></span>

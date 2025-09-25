@@ -1,184 +1,120 @@
 {
   "entities": {
     "Project": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Project",
       "type": "object",
-      "description": "Represents a project with its details, environments, and associated team members.",
+      "description": "Represents a project with a client and multiple environments.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the Project entity."
-        },
-        "clientName": {
-          "type": "string",
-          "description": "The name of the client associated with the project."
-        },
-        "environmentIds": {
+        "id": { "type": "string", "description": "Unique identifier for the project." },
+        "clientName": { "type": "string", "description": "The name of the client." },
+        "environments": {
           "type": "array",
-          "description": "References to Environment entities. (Relationship: Project 1:N Environment)",
-          "items": {
-            "type": "string"
-          }
-        },
-        "teamMemberIds": {
-          "type": "array",
-          "description": "References to TeamMember entities assigned to the project. (Relationship: Project N:N TeamMember)",
-          "items": {
-            "type": "string"
-          }
-        },
-        "projectName": {
-          "type": "string",
-          "description": "The name of the project."
+          "items": { "$ref": "#/entities/Environment" }
         }
       },
-      "required": [
-        "id",
-        "clientName",
-        "environmentIds",
-        "projectName"
-      ]
+      "required": ["id", "clientName", "environments"]
     },
     "Environment": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Environment",
       "type": "object",
-      "description": "Represents an environment within a project, containing furniture and stage information.",
+      "description": "An environment within a project, containing multiple pieces of furniture.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the Environment entity."
-        },
-        "projectId": {
-          "type": "string",
-          "description": "Reference to Project. (Relationship: Project 1:N Environment)"
-        },
+        "id": { "type": "string", "description": "Unique identifier for the environment." },
+        "name": { "type": "string", "description": "The name of the environment (e.g., 'Kitchen')." },
         "furniture": {
-          "type": "string",
-          "description": "Details of the furniture in the environment."
-        },
-        "measurementStatus": {
-          "type": "string",
-          "description": "Status of the measurement stage."
-        },
-        "cuttingPlanStatus": {
-          "type": "string",
-          "description": "Status of the cutting plan stage."
-        },
-        "materialPurchaseStatus": {
-          "type": "string",
-          "description": "Status of the material purchase stage."
-        },
-        "preAssemblyStatus": {
-          "type": "string",
-          "description": "Status of the pre-assembly stage."
+          "type": "array",
+          "items": { "$ref": "#/entities/Furniture" }
         }
       },
-      "required": [
-        "id",
-        "projectId",
-        "furniture",
-        "measurementStatus",
-        "cuttingPlanStatus",
-        "materialPurchaseStatus",
-        "preAssemblyStatus"
-      ]
+      "required": ["id", "name", "furniture"]
+    },
+    "Furniture": {
+      "title": "Furniture",
+      "type": "object",
+      "description": "A single piece of furniture with its production stages.",
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier for the furniture." },
+        "name": { "type": "string", "description": "The name of the furniture (e.g., 'Top Cabinet')." },
+        "measurement": { "$ref": "#/entities/ProductionStage" },
+        "cutting": { "$ref": "#/entities/ProductionStage" },
+        "purchase": { "$ref": "#/entities/ProductionStage" },
+        "assembly": { "$ref": "#/entities/ProductionStage" },
+        "comments": {
+          "type": "array",
+          "items": { "$ref": "#/entities/Comment" }
+        },
+        "pendencies": {
+          "type": "array",
+          "items": { "$ref": "#/entities/Pendency" }
+        }
+      },
+      "required": ["id", "name", "measurement", "cutting", "purchase", "assembly"]
+    },
+    "ProductionStage": {
+      "title": "Production Stage",
+      "type": "object",
+      "description": "Represents a single stage of production for a piece of furniture.",
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["todo", "in_progress", "done"]
+        },
+        "responsibleId": {
+          "type": "string",
+          "description": "The ID of the team member responsible for this stage."
+        }
+      },
+      "required": ["status"]
+    },
+    "Comment": {
+      "title": "Comment",
+      "type": "object",
+      "description": "A comment made by a team member on a piece of furniture.",
+      "properties": {
+        "id": { "type": "string" },
+        "memberId": { "type": "string", "description": "ID of the team member who made the comment." },
+        "text": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "memberId", "text", "timestamp"]
+    },
+    "Pendency": {
+      "title": "Pendency",
+      "type": "object",
+      "description": "A task or issue that needs to be resolved for a piece of furniture.",
+      "properties": {
+        "id": { "type": "string" },
+        "text": { "type": "string" },
+        "isResolved": { "type": "boolean" },
+        "authorId": { "type": "string", "description": "ID of the team member who created the pendency." }
+      },
+      "required": ["id", "text", "isResolved", "authorId"]
     },
     "TeamMember": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "TeamMember",
       "type": "object",
-      "description": "Represents a team member with their name and color.",
+      "description": "Represents a team member.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the TeamMember entity."
-        },
-        "name": {
-          "type": "string",
-          "description": "The name of the team member."
-        },
-        "color": {
-          "type": "string",
-          "description": "The color associated with the team member for tags/labels."
-        },
-        "projectIds": {
-          "type": "array",
-          "description": "References to Project entities. (Relationship: TeamMember N:N Project)",
-          "items": {
-            "type": "string"
-          }
-        }
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "color": { "type": "string", "description": "A hex color code for the member's label." }
       },
-      "required": [
-        "id",
-        "name",
-        "color"
-      ]
+      "required": ["id", "name", "color"]
     }
   },
   "auth": {
     "providers": [
-      "password",
       "anonymous"
     ]
   },
   "firestore": {
-    "structure": [
-      {
-        "path": "/projects/{projectId}",
-        "definition": {
-          "entityName": "Project",
-          "schema": {
-            "$ref": "#/backend/entities/Project"
-          },
-          "description": "Stores project metadata. Includes denormalized 'members' map (userId: role) for authorization independence.",
-          "params": [
-            {
-              "name": "projectId",
-              "description": "Unique identifier for the project."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/projects/{projectId}/environments/{environmentId}",
-        "definition": {
-          "entityName": "Environment",
-          "schema": {
-            "$ref": "#/backend/entities/Environment"
-          },
-          "description": "Stores environment details for a project. Includes denormalized 'projectId' and 'members' (copied from parent Project) for authorization independence.",
-          "params": [
-            {
-              "name": "projectId",
-              "description": "Unique identifier for the project."
-            },
-            {
-              "name": "environmentId",
-              "description": "Unique identifier for the environment."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/team_members/{teamMemberId}",
-        "definition": {
-          "entityName": "TeamMember",
-          "schema": {
-            "$ref": "#/backend/entities/TeamMember"
-          },
-          "description": "Stores team member profiles.",
-          "params": [
-            {
-              "name": "teamMemberId",
-              "description": "Unique identifier for the team member."
-            }
-          ]
-        }
-      }
-    ],
-    "reasoning": "The Firestore structure is designed to support a collaborative project management system ('ProjectFlow') with a focus on real-time data sharing and user accessibility. The key principle is Authorization Independence, achieved through denormalization of project membership and roles. This allows for secure and efficient data access without relying on complex, hierarchical `get()` calls in security rules.  All collections are designed with a homogeneous security posture. Specifically:\n\n*   **Projects**: Stores project metadata. The `members` map stores user roles, denormalized for access control. This allows individual users to manage different sets of projects.\n*   **Environments**: Stores environment details related to particular projects. The `projectId` and `members` (copied from the Project) fields are included for easy querying and authorization.\n*   **TeamMembers**: Centralized storage of team member profiles, facilitating consistent access across the application.  The `projectIds` field provides a link to projects, enabling efficient reverse lookups (e.g., finding all team members for a project).  This is mainly metadata and is not critical for authorization.\n\nQAPs (Rules are not Filters) are supported as follows:\n\n*   List access to projects is governed by the `members` map. Users can only list projects to which they have access (either read or write).\n*   Environment listing is similarly controlled via `projectId` and inherited `members`.\n\nThis structure supports the core application features: project listing, project details, registration of projects and team members, and reporting. The denormalized `members` map in `Projects` and `Environments` ensures that security rules can be written efficiently without relying on expensive `get()` operations."
+    "/projects/{projectId}": {
+      "schema": { "$ref": "#/entities/Project" },
+      "description": "Stores all project data."
+    },
+    "/team_members/{teamMemberId}": {
+      "schema": { "$ref": "#/entities/TeamMember" },
+      "description": "Stores information about team members."
+    }
   }
 }
