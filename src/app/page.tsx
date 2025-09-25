@@ -85,11 +85,15 @@ export default function ProjectsPage() {
     }
   }, [projectToDelete, deleteProject]);
 
-  const handleCompleteClick = useCallback((projectId: string) => {
+  const handleCompleteClick = useCallback((e: React.MouseEvent, projectId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
     completeProjectStages(projectId);
   }, [completeProjectStages]);
 
-  const openEditModal = useCallback((project: Project) => {
+  const openEditModal = useCallback((e: React.MouseEvent, project: Project) => {
+    e.preventDefault();
+    e.stopPropagation();
     setProjectToEdit(project);
     setIsEditModalOpen(true);
   }, []);
@@ -98,6 +102,14 @@ export default function ProjectsPage() {
     setProjectToEdit(null);
     setIsEditModalOpen(false);
   }, []);
+
+  const openDeleteModalWithPropagation = useCallback((e: React.MouseEvent, project: Project) => {
+      e.preventDefault();
+      e.stopPropagation();
+      openDeleteModal(project);
+    },
+    [openDeleteModal]
+  );
 
   const filteredProjects = useMemo(() => {
      if (!projects) return [];
@@ -184,62 +196,67 @@ export default function ProjectsPage() {
                 }
 
               return (
-                <Card key={project.id} className="h-full flex flex-col bg-card/80 backdrop-blur-sm border-border/80 shadow-sm transition-all duration-300 ease-in-out hover:shadow-lg">
-                    <Link href={`/projects/${project.id}`} className="block flex-grow">
-                        <CardHeader>
-                        <div className="flex justify-between items-start gap-2">
-                            <CardTitle className="font-headline text-xl tracking-tight text-foreground/90">
-                            {project.clientName}
-                            </CardTitle>
-                            <Badge variant={statusBadge.variant} className={statusBadge.className}>
-                            {statusInfo.status}
-                            </Badge>
-                        </div>
-                        </CardHeader>
-                        <CardContent className="flex-grow space-y-4">
-                        <p className="text-sm text-muted-foreground">
-                            {project.environments?.length || 0} ambiente(s)
-                        </p>
-                        {statusInfo.totalTasks > 0 && (
-                            <div className="space-y-2">
-                                <Progress value={statusInfo.progress} className="h-2" />
-                                <p className="text-xs text-muted-foreground">
-                                {statusInfo.doneTasks} de {statusInfo.totalTasks} tarefas concluídas
-                                </p>
-                            </div>
-                        )}
-                        </CardContent>
-                    </Link>
-                  <CardFooter className="flex justify-end gap-2">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => openEditModal(project)}
-                      className="text-muted-foreground hover:text-primary"
-                    >
-                      <Pencil className="h-4 w-4" />
-                       <span className="sr-only">Editar Projeto</span>
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleCompleteClick(project.id)}
-                      className="text-xs"
-                    >
-                      <CheckCircle className="mr-1.5 h-3.5 w-3.5" />
-                      Concluir
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="text-destructive/80 hover:text-destructive"
-                      onClick={() => openDeleteModal(project)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                      <span className="sr-only">Remover Projeto</span>
-                    </Button>
-                  </CardFooter>
-                </Card>
+                <div key={project.id} className="relative">
+                  <Link href={`/projects/${project.id}`} className="block h-full">
+                    <Card className="h-full flex flex-col bg-card/80 backdrop-blur-sm border-border/80 shadow-sm transition-all duration-300 ease-in-out hover:shadow-lg">
+                      <CardHeader>
+                      <div className="flex justify-between items-start gap-2">
+                          <CardTitle className="font-headline text-xl tracking-tight text-foreground/90">
+                          {project.clientName}
+                          </CardTitle>
+                          <Badge variant={statusBadge.variant} className={statusBadge.className}>
+                          {statusInfo.status}
+                          </Badge>
+                      </div>
+                      </CardHeader>
+                      <CardContent className="flex-grow space-y-4">
+                      <p className="text-sm text-muted-foreground">
+                          {project.environments?.length || 0} ambiente(s)
+                      </p>
+                      {statusInfo.totalTasks > 0 && (
+                          <div className="space-y-2">
+                              <Progress value={statusInfo.progress} className="h-2" />
+                              <p className="text-xs text-muted-foreground">
+                              {statusInfo.doneTasks} de {statusInfo.totalTasks} tarefas concluídas
+                              </p>
+                          </div>
+                      )}
+                      </CardContent>
+                      <CardFooter>
+                        {/* Footer is inside the Card but outside the main link content area for separate actions */}
+                      </CardFooter>
+                    </Card>
+                  </Link>
+                  <div className="absolute bottom-2 right-2 flex justify-end gap-2 bg-card/50 backdrop-blur-sm rounded-full p-1">
+                      <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={(e) => openEditModal(e, project)}
+                          className="text-muted-foreground hover:text-primary h-8 w-8"
+                      >
+                          <Pencil className="h-4 w-4" />
+                          <span className="sr-only">Editar Projeto</span>
+                      </Button>
+                      <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={(e) => handleCompleteClick(e, project.id)}
+                          className="text-muted-foreground hover:text-green-600 h-8 w-8"
+                      >
+                          <CheckCircle className="h-4 w-4" />
+                          <span className="sr-only">Concluir</span>
+                      </Button>
+                      <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-destructive/80 hover:text-destructive h-8 w-8"
+                          onClick={(e) => openDeleteModalWithPropagation(e, project)}
+                      >
+                          <Trash2 className="h-4 w-4" />
+                          <span className="sr-only">Remover Projeto</span>
+                      </Button>
+                  </div>
+                </div>
               );
             })}
           </div>
