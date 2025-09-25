@@ -22,7 +22,8 @@ import {
 } from '@/components/ui/select';
 import type { Project } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { Archive } from 'lucide-react';
+import { Archive, CheckCircle, Trash2 } from 'lucide-react';
+import { DeleteProjectAlert } from '@/components/modals/delete-project-alert';
 
 type ProjectStatus = 'Novo' | 'Em Andamento' | 'Concluído';
 
@@ -68,9 +69,10 @@ const getProjectStatus = (project: Project) => {
 };
 
 export default function ProjectsPage() {
-  const { projects } = useContext(AppContext);
+  const { projects, deleteProject, completeProjectStages } = useContext(AppContext);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<ProjectStatus | 'Todos'>('Todos');
+  const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
 
   const filteredProjects = useMemo(() => {
     return projects
@@ -90,8 +92,16 @@ export default function ProjectsPage() {
         return matchesSearch && matchesStatus;
       });
   }, [projects, searchTerm, statusFilter]);
+  
+  const handleDeleteConfirm = () => {
+    if (projectToDelete) {
+      deleteProject(projectToDelete.id);
+      setProjectToDelete(null);
+    }
+  };
 
   return (
+    <>
     <div className="flex flex-col gap-8">
        <div className="flex items-center justify-between">
         <PageHeader
@@ -132,12 +142,11 @@ export default function ProjectsPage() {
           {filteredProjects.map((project) => {
             const { status, progress, totalTasks, doneTasks } = project.statusInfo;
             return (
-               <Link
-                href={`/projects/${project.id}`}
-                key={project.id}
-                className="block h-full transition-all duration-300 ease-in-out hover:scale-[1.02] hover:shadow-lg rounded-lg"
-              >
-                <Card className="h-full cursor-pointer flex flex-col bg-card/80 backdrop-blur-sm border-border/80 shadow-sm">
+              <Card key={project.id} className="h-full flex flex-col bg-card/80 backdrop-blur-sm border-border/80 shadow-sm transition-all duration-300 ease-in-out hover:shadow-lg">
+                <Link
+                  href={`/projects/${project.id}`}
+                  className="block h-full"
+                >
                   <CardHeader>
                     <div className="flex justify-between items-start gap-2">
                       <CardTitle className="font-headline text-xl tracking-tight text-foreground/90">
@@ -159,13 +168,34 @@ export default function ProjectsPage() {
                       </p>
                     </div>
                   </CardContent>
-                  <CardFooter>
-                    <p className="text-xs text-muted-foreground/70">
-                      ID: {project.id}
-                    </p>
+                </Link>
+                <CardFooter className="flex justify-end gap-2">
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        completeProjectStages(project.id)
+                      }}
+                      className="text-xs"
+                      >
+                      <CheckCircle className="mr-1.5 h-3.5 w-3.5" />
+                      Concluir Etapas
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="text-destructive/80 hover:text-destructive"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setProjectToDelete(project)
+                      }}
+                      >
+                      <Trash2 className="h-4 w-4" />
+                      <span className="sr-only">Remover Projeto</span>
+                    </Button>
                   </CardFooter>
-                </Card>
-              </Link>
+              </Card>
             );
           })}
         </div>
@@ -182,5 +212,12 @@ export default function ProjectsPage() {
         </div>
       )}
     </div>
+    <DeleteProjectAlert 
+        isOpen={!!projectToDelete}
+        onClose={() => setProjectToDelete(null)}
+        onConfirm={handleDeleteConfirm}
+        projectName={projectToDelete?.clientName || ''}
+    />
+    </>
   );
 }

@@ -2,7 +2,6 @@
 
 import { createContext, useState, useEffect, type ReactNode } from 'react';
 import type { Project, TeamMember } from '@/lib/types';
-import { initialProjects, initialTeamMembers } from '@/lib/data';
 
 interface AppContextType {
   projects: Project[];
@@ -10,6 +9,8 @@ interface AppContextType {
   addProject: (project: Project) => void;
   addTeamMember: (member: TeamMember) => void;
   updateProject: (updatedProject: Project) => void;
+  deleteProject: (projectId: string) => void;
+  completeProjectStages: (projectId: string) => void;
 }
 
 export const AppContext = createContext<AppContextType>({
@@ -18,6 +19,8 @@ export const AppContext = createContext<AppContextType>({
   addProject: () => {},
   addTeamMember: () => {},
   updateProject: () => {},
+  deleteProject: () => {},
+  completeProjectStages: () => {},
 });
 
 const useStickyState = <T>(defaultValue: T, key: string): [T, React.Dispatch<React.SetStateAction<T>>] => {
@@ -25,14 +28,23 @@ const useStickyState = <T>(defaultValue: T, key: string): [T, React.Dispatch<Rea
     if (typeof window === 'undefined') {
       return defaultValue;
     }
-    const stickyValue = window.localStorage.getItem(key);
-    return stickyValue !== null
-      ? JSON.parse(stickyValue)
-      : defaultValue;
+    try {
+      const stickyValue = window.localStorage.getItem(key);
+      return stickyValue !== null
+        ? JSON.parse(stickyValue)
+        : defaultValue;
+    } catch (error) {
+      console.warn(`Error reading localStorage key “${key}”:`, error);
+      return defaultValue;
+    }
   });
 
   useEffect(() => {
-    window.localStorage.setItem(key, JSON.stringify(value));
+    try {
+      window.localStorage.setItem(key, JSON.stringify(value));
+    } catch (error) {
+      console.warn(`Error setting localStorage key “${key}”:`, error);
+    }
   }, [key, value]);
 
   return [value, setValue];
@@ -40,8 +52,8 @@ const useStickyState = <T>(defaultValue: T, key: string): [T, React.Dispatch<Rea
 
 
 export function AppProvider({ children }: { children: ReactNode }) {
-  const [projects, setProjects] = useStickyState<Project[]>(initialProjects, 'app-projects');
-  const [teamMembers, setTeamMembers] = useStickyState<TeamMember[]>(initialTeamMembers, 'app-team-members');
+  const [projects, setProjects] = useStickyState<Project[]>([], 'app-projects');
+  const [teamMembers, setTeamMembers] = useStickyState<TeamMember[]>([], 'app-team-members');
 
   const addProject = (project: Project) => {
     setProjects((prev) => [...prev, project]);
@@ -56,6 +68,32 @@ export function AppProvider({ children }: { children: ReactNode }) {
       prev.map((p) => (p.id === updatedProject.id ? updatedProject : p))
     );
   };
+  
+  const deleteProject = (projectId: string) => {
+    setProjects((prev) => prev.filter((p) => p.id !== projectId));
+  };
+
+  const completeProjectStages = (projectId: string) => {
+    setProjects((prev) =>
+      prev.map((p) => {
+        if (p.id === projectId) {
+          const newEnvironments = p.environments.map((env) => ({
+            ...env,
+            furniture: env.furniture.map((fur) => ({
+              ...fur,
+              measurement: { ...fur.measurement, status: 'done' as const },
+              cutting: { ...fur.cutting, status: 'done' as const },
+              purchase: { ...fur.purchase, status: 'done' as const },
+              assembly: { ...fur.assembly, status: 'done' as const },
+            })),
+          }));
+          return { ...p, environments: newEnvironments };
+        }
+        return p;
+      })
+    );
+  };
+
 
   const value = {
     projects,
@@ -63,6 +101,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addProject,
     addTeamMember,
     updateProject,
+    deleteProject,
+    completeProjectStages,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
