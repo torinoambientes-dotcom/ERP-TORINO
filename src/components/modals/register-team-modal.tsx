@@ -25,7 +25,6 @@ import {
 import { Input } from '@/components/ui/input';
 import { AppContext } from '@/context/app-context';
 import { useToast } from '@/hooks/use-toast';
-import { generateId } from '@/lib/utils';
 
 const teamMemberSchema = z.object({
   name: z.string().min(2, 'O nome deve ter pelo menos 2 caracteres.'),
@@ -46,7 +45,11 @@ const defaultColors = [
 
 
 export function RegisterTeamModal({ isOpen, onClose }: RegisterTeamModalProps) {
-  const { addTeamMember } = useContext(AppContext);
+  const context = useContext(AppContext);
+  if (!context) {
+    throw new Error('RegisterTeamModal must be used within an AppProvider');
+  }
+  const { addTeamMember } = context;
   const { toast } = useToast();
 
   const form = useForm<TeamMemberFormValues>({
@@ -58,10 +61,7 @@ export function RegisterTeamModal({ isOpen, onClose }: RegisterTeamModalProps) {
   });
 
   const onSubmit = (data: TeamMemberFormValues) => {
-    addTeamMember({
-        ...data,
-        id: generateId('member'),
-    });
+    addTeamMember(data);
     toast({
       title: 'Membro da equipe cadastrado!',
       description: `${data.name} foi adicionado(a) à equipe.`,

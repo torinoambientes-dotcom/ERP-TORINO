@@ -27,7 +27,7 @@ import { DeleteProjectAlert } from '@/components/modals/delete-project-alert';
 
 type ProjectStatus = 'Novo' | 'Em Andamento' | 'Concluído';
 
-const getProjectStatus = (project: Project) => {
+const getProjectStatus = (project: Project): { status: ProjectStatus; progress: number, totalTasks: number, doneTasks: number } => {
   let totalTasks = 0;
   let doneTasks = 0;
   project.environments.forEach((env) => {
@@ -43,33 +43,22 @@ const getProjectStatus = (project: Project) => {
   });
 
   const progress = totalTasks > 0 ? (doneTasks / totalTasks) * 100 : 0;
-  let status: {
-    text: ProjectStatus;
-    variant: 'default' | 'secondary' | 'outline';
-    className?: string;
-  };
-
-  if (progress === 100) {
-    status = {
-      text: 'Concluído',
-      variant: 'default',
-      className: 'bg-green-600/20 text-green-700 border-green-600/30',
-    };
-  } else if (progress > 0) {
-    status = {
-      text: 'Em Andamento',
-      variant: 'outline',
-      className: 'text-blue-700 border-blue-600/30 bg-blue-600/10',
-    };
-  } else {
-    status = { text: 'Novo', variant: 'secondary' };
-  }
-
-  return { status, progress, totalTasks, doneTasks };
+  
+  if (progress === 100) return { status: 'Concluído', progress, totalTasks, doneTasks };
+  if (progress > 0) return { status: 'Em Andamento', progress, totalTasks, doneTasks };
+  return { status: 'Novo', progress, totalTasks, doneTasks };
 };
 
+
 export default function ProjectsPage() {
-  const { projects, deleteProject, completeProjectStages } = useContext(AppContext);
+  const context = useContext(AppContext);
+  
+  if (!context) {
+    throw new Error('ProjectsPage must be used within an AppProvider');
+  }
+
+  const { projects, deleteProject, completeProjectStages } = context;
+
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<ProjectStatus | 'Todos'>('Todos');
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
@@ -80,6 +69,10 @@ export default function ProjectsPage() {
 
   const handleDeleteClick = useCallback((project: Project) => {
     setProjectToDelete(project);
+  }, []);
+
+  const closeDeleteModal = useCallback(() => {
+    setProjectToDelete(null);
   }, []);
 
   const handleDeleteConfirm = useCallback(() => {
@@ -93,22 +86,24 @@ export default function ProjectsPage() {
     completeProjectStages(projectId);
   }, [completeProjectStages]);
 
-  const filteredProjects = projects
-    .map((project) => ({
-      ...project,
-      statusInfo: getProjectStatus(project),
-    }))
-    .filter((project) => {
-      const isCompleted = project.statusInfo.status.text === 'Concluído';
-      if (isCompleted) return false;
+  const filteredProjects = useMemo(() => {
+     return projects
+      .map((project) => ({
+        project,
+        statusInfo: getProjectStatus(project),
+      }))
+      .filter(({ project, statusInfo }) => {
+        const isCompleted = statusInfo.status === 'Concluído';
+        if (isCompleted) return false;
 
-      const matchesSearch = project.clientName
-        .toLowerCase()
-        .includes(searchTerm.toLowerCase());
-      const matchesStatus =
-        statusFilter === 'Todos' || project.statusInfo.status.text === statusFilter;
-      return matchesSearch && matchesStatus;
-    });
+        const matchesSearch = project.clientName
+          .toLowerCase()
+          .includes(searchTerm.toLowerCase());
+        const matchesStatus =
+          statusFilter === 'Todos' || statusInfo.status === statusFilter;
+        return matchesSearch && matchesStatus;
+      });
+  }, [projects, searchTerm, statusFilter]);
 
   return (
     <>
@@ -152,35 +147,47 @@ export default function ProjectsPage() {
 
         {filteredProjects.length > 0 ? (
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {filteredProjects.map((project) => {
-              const { status, progress, totalTasks, doneTasks } = project.statusInfo;
+            {filteredProjects.map(({ project, statusInfo }) => {
+                let statusBadge: { variant: 'default' | 'secondary' | 'outline', className?: string };
+                switch (statusInfo.status) {
+                    case 'Concluído':
+                        statusBadge = { variant: 'default', className: 'bg-green-600/20 text-green-700 border-green-600/30' };
+                        break;
+                    case 'Em Andamento':
+                        statusBadge = { variant: 'outline', className: 'text-blue-700 border-blue-600/30 bg-blue-600/10' };
+                        break;
+                    default:
+                        statusBadge = { variant: 'secondary' };
+                        break;
+                }
+
               return (
                 <Card key={project.id} className="h-full flex flex-col bg-card/80 backdrop-blur-sm border-border/80 shadow-sm transition-all duration-300 ease-in-out hover:shadow-lg">
-                  <Link href={`/projects/${project.id}`} className="block flex-grow">
-                    <CardHeader>
-                      <div className="flex justify-between items-start gap-2">
-                        <CardTitle className="font-headline text-xl tracking-tight text-foreground/90">
-                          {project.clientName}
-                        </CardTitle>
-                        <Badge variant={status.variant} className={status.className}>
-                          {status.text}
-                        </Badge>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="flex-grow space-y-4">
-                      <p className="text-sm text-muted-foreground">
-                        {project.environments.length} ambiente(s)
-                      </p>
-                       {totalTasks > 0 && (
-                        <div className="space-y-2">
-                            <Progress value={progress} className="h-2" />
-                            <p className="text-xs text-muted-foreground">
-                            {doneTasks} de {totalTasks} tarefas concluídas
-                            </p>
+                    <Link href={`/projects/${project.id}`} className="block flex-grow">
+                        <CardHeader>
+                        <div className="flex justify-between items-start gap-2">
+                            <CardTitle className="font-headline text-xl tracking-tight text-foreground/90">
+                            {project.clientName}
+                            </CardTitle>
+                            <Badge variant={statusBadge.variant} className={statusBadge.className}>
+                            {statusInfo.status}
+                            </Badge>
                         </div>
+                        </CardHeader>
+                        <CardContent className="flex-grow space-y-4">
+                        <p className="text-sm text-muted-foreground">
+                            {project.environments.length} ambiente(s)
+                        </p>
+                        {statusInfo.totalTasks > 0 && (
+                            <div className="space-y-2">
+                                <Progress value={statusInfo.progress} className="h-2" />
+                                <p className="text-xs text-muted-foreground">
+                                {statusInfo.doneTasks} de {statusInfo.totalTasks} tarefas concluídas
+                                </p>
+                            </div>
                         )}
-                    </CardContent>
-                  </Link>
+                        </CardContent>
+                    </Link>
                   <CardFooter className="flex justify-end gap-2">
                     <Button
                       variant="ghost"
@@ -220,7 +227,7 @@ export default function ProjectsPage() {
       </div>
       <DeleteProjectAlert
         isOpen={!!projectToDelete}
-        onClose={() => setProjectToDelete(null)}
+        onClose={closeDeleteModal}
         onConfirm={handleDeleteConfirm}
         projectName={projectToDelete?.clientName || ''}
       />

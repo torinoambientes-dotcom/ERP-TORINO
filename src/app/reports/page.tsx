@@ -20,29 +20,36 @@ import type { StageStatus } from '@/lib/types';
 import { Separator } from '@/components/ui/separator';
 
 export default function ReportsPage() {
-  const { projects, teamMembers } = useContext(AppContext);
+  const context = useContext(AppContext);
+  if (!context) {
+    throw new Error('ReportsPage must be used within an AppProvider');
+  }
+  const { projects, teamMembers } = context;
+
   const [selectedMemberId, setSelectedMemberId] = useState('all');
 
-  const stats = useMemo(() => {
+  const projectStats = useMemo(() => {
     let completedProjects = 0;
     let ongoingProjects = 0;
 
     projects.forEach((project) => {
-      let isCompleted = true;
+      let totalTasks = 0;
+      let doneTasks = 0;
       let hasStarted = false;
 
-      for (const env of project.environments) {
-        for (const fur of env.furniture) {
+      project.environments.forEach((env) => {
+        env.furniture.forEach((fur) => {
           const stages = ['measurement', 'cutting', 'purchase', 'assembly'] as const;
-          for (const key of stages) {
+          stages.forEach((key) => {
+            totalTasks++;
             const stage = fur[key];
-            if (stage.status !== 'done') isCompleted = false;
+            if (stage.status === 'done') doneTasks++;
             if (stage.status !== 'todo') hasStarted = true;
-          }
-        }
-      }
+          });
+        });
+      });
 
-      if (isCompleted) {
+      if (totalTasks > 0 && totalTasks === doneTasks) {
         completedProjects++;
       } else if (hasStarted) {
         ongoingProjects++;
@@ -71,45 +78,29 @@ export default function ReportsPage() {
       memberId?: string;
       status: StageStatus;
     }[] = [];
+
     projects.forEach((p) => {
       p.environments.forEach((e) => {
         e.furniture.forEach((f) => {
-          allTasks.push({
-            id: `${p.id}-${e.id}-${f.id}-measurement`,
-            stage: 'Medição',
-            fur: f.name,
-            env: e.name,
-            project: p.clientName,
-            memberId: f.measurement.responsibleId,
-            status: f.measurement.status,
-          });
-          allTasks.push({
-            id: `${p.id}-${e.id}-${f.id}-cutting`,
-            stage: 'Plano de Corte',
-            fur: f.name,
-            env: e.name,
-            project: p.clientName,
-            memberId: f.cutting.responsibleId,
-            status: f.cutting.status,
-          });
-          allTasks.push({
-            id: `${p.id}-${e.id}-${f.id}-purchase`,
-            stage: 'Compra Material',
-            fur: f.name,
-            env: e.name,
-            project: p.clientName,
-            memberId: f.purchase.responsibleId,
-            status: f.purchase.status,
-          });
-          allTasks.push({
-            id: `${p.id}-${e.id}-${f.id}-assembly`,
-            stage: 'Pré Montagem',
-            fur: f.name,
-            env: e.name,
-            project: p.clientName,
-            memberId: f.assembly.responsibleId,
-            status: f.assembly.status,
-          });
+            const stages = {
+                measurement: 'Medição',
+                cutting: 'Plano de Corte',
+                purchase: 'Compra Material',
+                assembly: 'Pré Montagem',
+            } as const;
+
+            Object.entries(stages).forEach(([key, label]) => {
+                const stageKey = key as keyof typeof stages;
+                allTasks.push({
+                    id: `${p.id}-${e.id}-${f.id}-${stageKey}`,
+                    stage: label,
+                    fur: f.name,
+                    env: e.name,
+                    project: p.clientName,
+                    memberId: f[stageKey].responsibleId,
+                    status: f[stageKey].status,
+                });
+            });
         });
       });
     });
@@ -142,7 +133,7 @@ export default function ReportsPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.totalProjects}</div>
+            <div className="text-2xl font-bold">{projectStats.totalProjects}</div>
           </CardContent>
         </Card>
         <Card>
@@ -152,7 +143,7 @@ export default function ReportsPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.ongoingProjects}</div>
+            <div className="text-2xl font-bold">{projectStats.ongoingProjects}</div>
           </CardContent>
         </Card>
         <Card>
@@ -162,7 +153,7 @@ export default function ReportsPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.completedProjects}</div>
+            <div className="text-2xl font-bold">{projectStats.completedProjects}</div>
           </CardContent>
         </Card>
         <Card>
@@ -172,7 +163,7 @@ export default function ReportsPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.pendingProjects}</div>
+            <div className="text-2xl font-bold">{projectStats.pendingProjects}</div>
           </CardContent>
         </Card>
       </div>
@@ -204,7 +195,6 @@ export default function ReportsPage() {
           </div>
 
           <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* A Fazer */}
             <div className="space-y-4">
               <h3 className="font-headline text-lg font-semibold text-amber-600">A Fazer ({filteredTasks.todo.length})</h3>
               <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
@@ -216,7 +206,6 @@ export default function ReportsPage() {
                 )) : <p className="text-sm text-muted-foreground">Nenhuma tarefa.</p>}
               </div>
             </div>
-            {/* Em Andamento */}
             <div className="space-y-4">
               <h3 className="font-headline text-lg font-semibold text-blue-600">Em Andamento ({filteredTasks.in_progress.length})</h3>
               <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
@@ -228,7 +217,6 @@ export default function ReportsPage() {
                 )) : <p className="text-sm text-muted-foreground">Nenhuma tarefa.</p>}
               </div>
             </div>
-            {/* Concluído */}
             <div className="space-y-4">
               <h3 className="font-headline text-lg font-semibold text-green-600">Concluído ({filteredTasks.done.length})</h3>
               <div className="space-y-3 max-h-96 overflow-y-auto pr-2">

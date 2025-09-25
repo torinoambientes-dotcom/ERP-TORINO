@@ -26,8 +26,6 @@ import { Input } from '@/components/ui/input';
 import { AppContext } from '@/context/app-context';
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from '../ui/separator';
-import { generateId } from '@/lib/utils';
-import type { Project } from '@/lib/types';
 
 const furnitureSchema = z.object({
   name: z.string().min(1, 'Nome do móvel é obrigatório.'),
@@ -61,12 +59,16 @@ export function RegisterProjectModal({
   isOpen,
   onClose,
 }: RegisterProjectModalProps) {
-  const { addProject } = useContext(AppContext);
+  const context = useContext(AppContext);
+  if (!context) {
+    throw new Error('RegisterProjectModal must be used within an AppProvider');
+  }
+  const { addProject } = context;
   const { toast } = useToast();
 
   const form = useForm<ProjectFormValues>({
     resolver: zodResolver(projectSchema),
-    defaultValues: defaultValues,
+    defaultValues,
   });
 
   const {
@@ -77,40 +79,25 @@ export function RegisterProjectModal({
     control: form.control,
     name: 'environments',
   });
+  
+  useEffect(() => {
+    if (!isOpen) {
+      form.reset(defaultValues);
+    }
+  }, [isOpen, form]);
+
 
   const onSubmit = (data: ProjectFormValues) => {
-    addProject({
-        ...data,
-        id: generateId('proj'),
-        environments: data.environments.map((env) => ({
-            ...env,
-            id: generateId('env'),
-            furniture: env.furniture.map((fur) => ({
-            ...fur,
-            id: generateId('fur'),
-            measurement: { status: 'todo' },
-            cutting: { status: 'todo' },
-            purchase: { status: 'todo' },
-            assembly: { status: 'todo' },
-            })),
-        })),
-    });
+    addProject(data);
     toast({
         title: 'Projeto cadastrado!',
         description: `O projeto para "${data.clientName}" foi criado com sucesso.`,
     });
-    
-    form.reset(defaultValues);
     onClose();
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => {
-      if (!open) {
-        form.reset(defaultValues);
-        onClose();
-      }
-    }}>
+    <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="font-headline">Cadastrar Novo Projeto</DialogTitle>

@@ -44,7 +44,13 @@ export default function ProjectDetailsPage({
 }: {
   params: { id: string };
 }) {
-  const { projects, teamMembers, updateProject } = useContext(AppContext);
+  const context = useContext(AppContext);
+  
+  if (!context) {
+    throw new Error('ProjectDetailsPage must be used within an AppProvider');
+  }
+  const { projects, teamMembers, updateProject } = context;
+
   const { id } = params;
 
   const initialProject = useMemo(() => 
@@ -52,7 +58,7 @@ export default function ProjectDetailsPage({
     [id, projects]
   );
 
-  const [project, setProject] = useState<Project | undefined>(
+  const [project, setProject] = useState<Project | undefined | null>(
     initialProject ? JSON.parse(JSON.stringify(initialProject)) : undefined
   );
 
@@ -64,9 +70,8 @@ export default function ProjectDetailsPage({
     if (initialProject) {
       setProject(JSON.parse(JSON.stringify(initialProject)));
     } else {
-      // Delay notFound to prevent static export errors.
-      const timer = setTimeout(() => notFound(), 0);
-      return () => clearTimeout(timer);
+      // Set to null after checking to signify 'not found'
+      setProject(null);
     }
   }, [id, initialProject]);
   
@@ -74,8 +79,8 @@ export default function ProjectDetailsPage({
   useEffect(() => {
     if (project && initialProject && JSON.stringify(project) !== JSON.stringify(initialProject)) {
       const handler = setTimeout(() => {
-        updateProject(project);
-      }, 1000); // 1-second debounce
+        updateProject(project as Project);
+      }, 1000);
 
       return () => {
         clearTimeout(handler);
@@ -83,47 +88,30 @@ export default function ProjectDetailsPage({
     }
   }, [project, initialProject, updateProject]);
 
-  const handleStatusChange = useCallback((
+  const handleStageChange = useCallback((
     envId: string,
     furId: string,
     stage: StageKey,
-    value: StageStatus
-  ) => {
-    if (!project) return;
-    setProject(prevProject => {
-      if (!prevProject) return prevProject;
-      const newProject = { ...prevProject };
-      const env = newProject.environments.find((e) => e.id === envId);
-      if (env) {
-        const fur = env.furniture.find((f) => f.id === furId);
-        if (fur) {
-          fur[stage].status = value;
-        }
-      }
-      return newProject;
-    });
-  }, [project]);
-
-  const handleMemberChange = useCallback((
-    envId: string,
-    furId: string,
-    stage: StageKey,
+    key: 'status' | 'responsibleId',
     value: string
   ) => {
-    if (!project) return;
-     setProject(prevProject => {
+    setProject(prevProject => {
       if (!prevProject) return prevProject;
-      const newProject = { ...prevProject };
-      const env = newProject.environments.find((e) => e.id === envId);
+      const newProject = JSON.parse(JSON.stringify(prevProject)); // Deep copy
+      const env = newProject.environments.find((e: any) => e.id === envId);
       if (env) {
-        const fur = env.furniture.find((f) => f.id === furId);
+        const fur = env.furniture.find((f: any) => f.id === furId);
         if (fur) {
-          fur[stage].responsibleId = value === 'unassigned' ? undefined : value;
+          if (key === 'responsibleId') {
+            fur[stage].responsibleId = value === 'unassigned' ? undefined : value;
+          } else {
+            fur[stage].status = value;
+          }
         }
       }
       return newProject;
     });
-  }, [project]);
+  }, []);
 
   const openChatModal = useCallback((furniture: Furniture, envId: string) => {
     setSelectedFurniture(furniture);
@@ -135,12 +123,16 @@ export default function ProjectDetailsPage({
     return new Map(teamMembers.map(m => [m.id, m]));
   }, [teamMembers]);
 
-  if (!project) {
+  if (project === undefined) {
     return (
       <div className="flex h-full w-full items-center justify-center">
         <p>Carregando projeto...</p>
       </div>
     );
+  }
+
+  if (project === null) {
+      notFound();
   }
 
   return (
@@ -180,17 +172,18 @@ export default function ProjectDetailsPage({
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                         {stages.map((stage) => {
-                          const responsibleMember = fur[stage.key].responsibleId ? memberMap.get(fur[stage.key].responsibleId) : undefined;
+                          const stageData = fur[stage.key];
+                          const responsibleMember = stageData.responsibleId ? memberMap.get(stageData.responsibleId) : undefined;
                           return (
                           <div key={stage.key} className="space-y-2">
                             <label className="text-sm font-medium">{stage.label}</label>
                             <Select
-                              value={fur[stage.key].status}
+                              value={stageData.status}
                               onValueChange={(value: StageStatus) =>
-                                handleStatusChange(env.id, fur.id, stage.key, value)
+                                handleStageChange(env.id, fur.id, stage.key, 'status', value)
                               }
                             >
-                              <SelectTrigger className={cn("font-semibold", statusColors[fur[stage.key].status])}>
+                              <SelectTrigger className={cn("font-semibold", statusColors[stageData.status])}>
                                 <SelectValue placeholder="Status" />
                               </SelectTrigger>
                               <SelectContent>
@@ -203,17 +196,17 @@ export default function ProjectDetailsPage({
                             </Select>
                             
                             <Select
-                              value={fur[stage.key].responsibleId || "unassigned"}
+                              value={stageData.responsibleId || "unassigned"}
                               onValueChange={(value) =>
-                                handleMemberChange(env.id, fur.id, stage.key, value)
+                                handleStageChange(env.id, fur.id, stage.key, 'responsibleId', value)
                               }
                             >
                               <SelectTrigger>
-                                  <div className="flex items-center gap-2">
+                                  <div className="flex items-center gap-2 truncate">
                                     {responsibleMember ? (
                                       <>
-                                        <span className="h-4 w-4 rounded-full" style={{ backgroundColor: responsibleMember.color }}></span>
-                                        <span>{responsibleMember.name}</span>
+                                        <span className="h-4 w-4 rounded-full flex-shrink-0" style={{ backgroundColor: responsibleMember.color }}></span>
+                                        <span className='truncate'>{responsibleMember.name}</span>
                                       </>
                                     ) : (
                                       <span className='text-muted-foreground'>Não atribuído</span>
@@ -233,7 +226,6 @@ export default function ProjectDetailsPage({
                                 ))}
                               </SelectContent>
                             </Select>
-
                           </div>
                         )})}
                       </div>
@@ -246,7 +238,7 @@ export default function ProjectDetailsPage({
         </Accordion>
       </div>
 
-       {selectedFurniture && selectedEnvironmentId && (
+       {selectedFurniture && selectedEnvironmentId && project &&(
         <FurnitureChatModal
           isOpen={isChatModalOpen}
           onClose={() => setChatModalOpen(false)}

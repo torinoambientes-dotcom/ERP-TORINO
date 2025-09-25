@@ -17,7 +17,7 @@ import type { Project } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft } from 'lucide-react';
 
-const getProjectStatus = (project: Project) => {
+const getProjectProgress = (project: Project) => {
   let totalTasks = 0;
   let doneTasks = 0;
   project.environments.forEach((env) => {
@@ -33,31 +33,28 @@ const getProjectStatus = (project: Project) => {
   });
 
   const progress = totalTasks > 0 ? (doneTasks / totalTasks) * 100 : 0;
-  const isCompleted = progress === 100;
-
-  return {
-    isCompleted,
-    progress,
-    totalTasks,
-    doneTasks,
-  };
+  return { progress, totalTasks, doneTasks };
 };
 
 export default function CompletedProjectsPage() {
-  const { projects } = useContext(AppContext);
+  const context = useContext(AppContext);
+  if (!context) {
+    throw new Error('CompletedProjectsPage must be used within an AppProvider');
+  }
+  const { projects } = context;
+
   const [searchTerm, setSearchTerm] = useState('');
 
   const completedProjects = useMemo(() => {
     return projects
       .map((project) => ({
-        ...project,
-        statusInfo: getProjectStatus(project),
+        project,
+        progressInfo: getProjectProgress(project),
       }))
-      .filter((project) => {
-        const { isCompleted } = project.statusInfo;
-        if (!isCompleted) return false;
+      .filter(({ progressInfo }) => {
+        if (progressInfo.progress < 100) return false;
 
-        const matchesSearch = project.clientName
+        const matchesSearch = projects.find(p => p.id === p.id)!.clientName
           .toLowerCase()
           .includes(searchTerm.toLowerCase());
         return matchesSearch;
@@ -91,8 +88,8 @@ export default function CompletedProjectsPage() {
 
       {completedProjects.length > 0 ? (
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {completedProjects.map((project) => {
-            const { progress, totalTasks, doneTasks } = project.statusInfo;
+          {completedProjects.map(({ project, progressInfo }) => {
+            const { progress, totalTasks, doneTasks } = progressInfo;
             return (
               <Link
                 href={`/projects/${project.id}`}

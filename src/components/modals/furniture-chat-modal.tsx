@@ -1,5 +1,5 @@
 'use client';
-import { useContext, useState, useMemo } from 'react';
+import { useContext, useState, useMemo, useCallback } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -38,21 +38,36 @@ export function FurnitureChatModal({
   project,
   setProject,
 }: FurnitureChatModalProps) {
-  const { teamMembers } = useContext(AppContext);
+  const context = useContext(AppContext);
+  if (!context) {
+    throw new Error('FurnitureChatModal must be used within an AppProvider');
+  }
+  const { teamMembers } = context;
+
   const [newComment, setNewComment] = useState('');
   const [newPendency, setNewPendency] = useState('');
   
-  // Use the first member as default, but allow changing
   const [selectedMemberId, setSelectedMemberId] = useState<string | undefined>(
     teamMembers.length > 0 ? teamMembers[0].id : undefined
   );
-
 
   const memberMap = useMemo(() => {
     return new Map(teamMembers.map((m) => [m.id, m]));
   }, [teamMembers]);
 
   const selectedMember = selectedMemberId ? memberMap.get(selectedMemberId) : null;
+
+  const updateFurniture = useCallback((updatedFurniture: Furniture) => {
+    const newProject = JSON.parse(JSON.stringify(project));
+    const env = newProject.environments.find((e: any) => e.id === environmentId);
+    if (env) {
+      const furIndex = env.furniture.findIndex((f: any) => f.id === furniture.id);
+      if (furIndex !== -1) {
+        env.furniture[furIndex] = updatedFurniture;
+        setProject(newProject);
+      }
+    }
+  }, [project, environmentId, furniture.id, setProject]);
 
   const handleAddComment = () => {
     if (!newComment.trim() || !selectedMemberId) return;
@@ -63,18 +78,10 @@ export function FurnitureChatModal({
       text: newComment,
       timestamp: new Date().toISOString(),
     };
-
-    const newProject = { ...project };
-    const env = newProject.environments.find((e) => e.id === environmentId);
-    if (env) {
-      const fur = env.furniture.find((f) => f.id === furniture.id);
-      if (fur) {
-        if (!fur.comments) fur.comments = [];
-        fur.comments.push(comment);
-        setProject(newProject);
-        setNewComment('');
-      }
-    }
+    
+    const updatedFurniture = { ...furniture, comments: [...(furniture.comments || []), comment] };
+    updateFurniture(updatedFurniture);
+    setNewComment('');
   };
 
   const handleAddPendency = () => {
@@ -87,31 +94,17 @@ export function FurnitureChatModal({
       authorId: selectedMemberId,
     };
 
-    const newProject = { ...project };
-    const env = newProject.environments.find((e) => e.id === environmentId);
-    if (env) {
-      const fur = env.furniture.find((f) => f.id === furniture.id);
-      if (fur) {
-        if (!fur.pendencies) fur.pendencies = [];
-        fur.pendencies.push(pendency);
-        setProject(newProject);
-        setNewPendency('');
-      }
-    }
+    const updatedFurniture = { ...furniture, pendencies: [...(furniture.pendencies || []), pendency] };
+    updateFurniture(updatedFurniture);
+    setNewPendency('');
   };
 
   const handleTogglePendency = (pendencyId: string) => {
-    const newProject = { ...project };
-    const env = newProject.environments.find((e) => e.id === environmentId);
-    if (env) {
-      const fur = env.furniture.find((f) => f.id === furniture.id);
-      if (fur && fur.pendencies) {
-        const pendency = fur.pendencies.find((p) => p.id === pendencyId);
-        if (pendency) {
-          pendency.isResolved = !pendency.isResolved;
-          setProject(newProject);
-        }
-      }
+    const updatedPendencies = furniture.pendencies?.map(p => 
+      p.id === pendencyId ? { ...p, isResolved: !p.isResolved } : p
+    );
+    if (updatedPendencies) {
+      updateFurniture({ ...furniture, pendencies: updatedPendencies });
     }
   };
 
@@ -162,45 +155,40 @@ export function FurnitureChatModal({
             <TabsTrigger value="chat">Conversa</TabsTrigger>
           </TabsList>
           
-          {/* Pendencies Tab */}
           <TabsContent value="pendencies" className="flex-grow flex flex-col mt-4 overflow-hidden">
-            <div className="flex-grow overflow-y-auto">
-              <ScrollArea className="h-full pr-4">
-                <div className="space-y-3">
-                  {furniture.pendencies && furniture.pendencies.length > 0 ? (
-                    furniture.pendencies.map((p) => (
-                      <div
-                        key={p.id}
-                        className="flex items-center space-x-3"
+            <ScrollArea className="h-full pr-4 flex-grow">
+              <div className="space-y-3">
+                {furniture.pendencies && furniture.pendencies.length > 0 ? (
+                  furniture.pendencies.map((p) => (
+                    <div
+                      key={p.id}
+                      className="flex items-center space-x-3"
+                    >
+                      <Checkbox
+                        id={p.id}
+                        checked={p.isResolved}
+                        onCheckedChange={() => handleTogglePendency(p.id)}
+                      />
+                      <label
+                        htmlFor={p.id}
+                        className={`text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 ${
+                          p.isResolved ? 'line-through text-muted-foreground' : ''
+                        }`}
                       >
-                        <Checkbox
-                          id={p.id}
-                          checked={p.isResolved}
-                          onCheckedChange={() => handleTogglePendency(p.id)}
-                        />
-                        <label
-                          htmlFor={p.id}
-                          className={`text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 ${
-                            p.isResolved
-                              ? 'line-through text-muted-foreground'
-                              : ''
-                          }`}
-                        >
-                          {p.text}
-                        </label>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-sm text-muted-foreground text-center py-8">
-                      Nenhuma pendência para este item.
-                    </p>
-                  )}
-                </div>
-              </ScrollArea>
-            </div>
+                        {p.text}
+                      </label>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-muted-foreground text-center py-8">
+                    Nenhuma pendência para este item.
+                  </p>
+                )}
+              </div>
+            </ScrollArea>
              <Separator className="my-4" />
              <UserSelector />
-            <div className="flex gap-2 mt-auto">
+            <div className="flex gap-2 mt-2">
               <Input
                 value={newPendency}
                 onChange={(e) => setNewPendency(e.target.value)}
@@ -214,47 +202,44 @@ export function FurnitureChatModal({
             </div>
           </TabsContent>
 
-          {/* Chat Tab */}
           <TabsContent value="chat" className="flex-grow flex flex-col mt-4 overflow-hidden">
-            <div className="flex-grow overflow-y-auto">
-               <ScrollArea className="h-full pr-4">
-                <div className="space-y-4">
-                  {furniture.comments && furniture.comments.length > 0 ? (
-                    furniture.comments.map((c) => {
-                      const member = memberMap.get(c.memberId);
-                      return (
-                        <div key={c.id} className="flex gap-3 text-sm">
-                          {member && (
-                            <span
-                              className="h-8 w-8 rounded-full flex-shrink-0"
-                              style={{ backgroundColor: member.color }}
-                            ></span>
-                          )}
-                          <div className="flex-grow">
-                            <div className="flex items-center gap-2">
-                                <span className="font-semibold text-foreground">
-                                {member?.name || 'Desconhecido'}
-                                </span>
-                                <span className="text-xs text-muted-foreground">
-                                {formatDistanceToNow(new Date(c.timestamp), { addSuffix: true, locale: ptBR })}
-                                </span>
-                            </div>
-                            <p className="text-muted-foreground">{c.text}</p>
+             <ScrollArea className="h-full pr-4 flex-grow">
+              <div className="space-y-4">
+                {furniture.comments && furniture.comments.length > 0 ? (
+                  furniture.comments.map((c) => {
+                    const member = memberMap.get(c.memberId);
+                    return (
+                      <div key={c.id} className="flex gap-3 text-sm">
+                        {member && (
+                          <span
+                            className="h-8 w-8 rounded-full flex-shrink-0"
+                            style={{ backgroundColor: member.color }}
+                          ></span>
+                        )}
+                        <div className="flex-grow">
+                          <div className="flex items-center gap-2">
+                              <span className="font-semibold text-foreground">
+                              {member?.name || 'Desconhecido'}
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                              {formatDistanceToNow(new Date(c.timestamp), { addSuffix: true, locale: ptBR })}
+                              </span>
                           </div>
+                          <p className="text-muted-foreground break-words">{c.text}</p>
                         </div>
-                      );
-                    })
-                  ) : (
-                    <p className="text-sm text-muted-foreground text-center py-8">
-                      Nenhum comentário ainda. Inicie a conversa!
-                    </p>
-                  )}
-                </div>
-              </ScrollArea>
-            </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <p className="text-sm text-muted-foreground text-center py-8">
+                    Nenhum comentário ainda. Inicie a conversa!
+                  </p>
+                )}
+              </div>
+            </ScrollArea>
              <Separator className="my-4" />
              <UserSelector />
-            <div className="flex gap-2 mt-auto">
+            <div className="flex gap-2 mt-2">
               <Input
                 value={newComment}
                 onChange={(e) => setNewComment(e.target.value)}
@@ -269,7 +254,7 @@ export function FurnitureChatModal({
           </TabsContent>
         </Tabs>
 
-        <DialogFooter className="mt-4">
+        <DialogFooter className="mt-4 pt-4 border-t">
           <Button type="button" variant="outline" onClick={onClose}>
             Fechar
           </Button>
