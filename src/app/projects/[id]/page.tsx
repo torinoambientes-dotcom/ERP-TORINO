@@ -62,11 +62,16 @@ export default function ProjectDetailsPage({
   const [selectedEnvironmentId, setSelectedEnvironmentId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!initialProject) {
-        notFound();
+    const currentProject = projects.find((p) => p.id === id);
+    if (!currentProject) {
+      // Delay notFound to prevent static export errors.
+      // In a real app, you might fetch data here and handle loading/error states.
+      setTimeout(() => notFound(), 0);
+      return;
     }
-    setProject(initialProject ? JSON.parse(JSON.stringify(initialProject)) : undefined);
-  }, [initialProject]);
+    // Deep copy to prevent direct mutation of context state
+    setProject(JSON.parse(JSON.stringify(currentProject)));
+  }, [id, projects]);
   
   // Auto-save with debounce
   useEffect(() => {
