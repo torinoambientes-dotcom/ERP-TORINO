@@ -12,9 +12,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { AppContext } from '@/context/app-context';
-import type { Furniture, Project, Pendency, Comment, TeamMember } from '@/lib/types';
+import type { Furniture, Project, Pendency, Comment } from '@/lib/types';
 import { ScrollArea } from '../ui/scroll-area';
 import { generateId } from '@/lib/utils';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Separator } from '../ui/separator';
+import { formatDistanceToNow } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 interface FurnitureChatModalProps {
   isOpen: boolean;
@@ -36,13 +40,16 @@ export function FurnitureChatModal({
   const { teamMembers } = useContext(AppContext);
   const [newComment, setNewComment] = useState('');
   const [newPendency, setNewPendency] = useState('');
-  
+
   const memberMap = useMemo(() => {
-    return new Map(teamMembers.map(m => [m.id, m]));
+    return new Map(teamMembers.map((m) => [m.id, m]));
   }, [teamMembers]);
 
   // For demo, let's assume a "logged in" user. In a real app, this would come from auth.
-  const currentMember = useMemo(() => teamMembers.length > 0 ? teamMembers[0] : null, [teamMembers]);
+  const currentMember = useMemo(
+    () => (teamMembers.length > 0 ? teamMembers[0] : null),
+    [teamMembers]
+  );
 
   const handleAddComment = () => {
     if (!newComment.trim() || !currentMember) return;
@@ -55,9 +62,9 @@ export function FurnitureChatModal({
     };
 
     const newProject = { ...project };
-    const env = newProject.environments.find(e => e.id === environmentId);
+    const env = newProject.environments.find((e) => e.id === environmentId);
     if (env) {
-      const fur = env.furniture.find(f => f.id === furniture.id);
+      const fur = env.furniture.find((f) => f.id === furniture.id);
       if (fur) {
         if (!fur.comments) fur.comments = [];
         fur.comments.push(comment);
@@ -66,7 +73,7 @@ export function FurnitureChatModal({
       }
     }
   };
-  
+
   const handleAddPendency = () => {
     if (!newPendency.trim() || !currentMember) return;
 
@@ -74,13 +81,13 @@ export function FurnitureChatModal({
       id: generateId('pend'),
       text: newPendency,
       isResolved: false,
-      authorId: currentMember.id
+      authorId: currentMember.id,
     };
 
     const newProject = { ...project };
-    const env = newProject.environments.find(e => e.id === environmentId);
+    const env = newProject.environments.find((e) => e.id === environmentId);
     if (env) {
-      const fur = env.furniture.find(f => f.id === furniture.id);
+      const fur = env.furniture.find((f) => f.id === furniture.id);
       if (fur) {
         if (!fur.pendencies) fur.pendencies = [];
         fur.pendencies.push(pendency);
@@ -91,101 +98,142 @@ export function FurnitureChatModal({
   };
 
   const handleTogglePendency = (pendencyId: string) => {
-     const newProject = { ...project };
-    const env = newProject.environments.find(e => e.id === environmentId);
+    const newProject = { ...project };
+    const env = newProject.environments.find((e) => e.id === environmentId);
     if (env) {
-      const fur = env.furniture.find(f => f.id === furniture.id);
+      const fur = env.furniture.find((f) => f.id === furniture.id);
       if (fur && fur.pendencies) {
-        const pendency = fur.pendencies.find(p => p.id === pendencyId);
-        if(pendency) {
-            pendency.isResolved = !pendency.isResolved;
-            setProject(newProject);
+        const pendency = fur.pendencies.find((p) => p.id === pendencyId);
+        if (pendency) {
+          pendency.isResolved = !pendency.isResolved;
+          setProject(newProject);
         }
       }
     }
-  }
-
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] flex flex-col">
+      <DialogContent className="sm:max-w-[600px] h-[70vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="font-headline">{furniture.name}</DialogTitle>
           <DialogDescription>
             Use este espaço para conversas e para registrar pendências.
           </DialogDescription>
         </DialogHeader>
-        
-        <div className="flex-1 grid grid-cols-2 gap-4 overflow-y-hidden">
-            {/* Pendencies */}
-            <div className="flex flex-col gap-4">
-                <h3 className="font-semibold text-lg">Pendências</h3>
-                <div className="space-y-2 flex-1">
-                    <ScrollArea className="h-full pr-4">
-                    {furniture.pendencies && furniture.pendencies.length > 0 ? (
-                        furniture.pendencies.map(p => (
-                            <div key={p.id} className="flex items-center space-x-2 py-1">
-                                <Checkbox id={p.id} checked={p.isResolved} onCheckedChange={() => handleTogglePendency(p.id)} />
-                                <label htmlFor={p.id} className={`text-sm ${p.isResolved ? 'line-through text-muted-foreground' : ''}`}>
-                                    {p.text}
-                                </label>
-                            </div>
-                        ))
-                    ) : (
-                        <p className="text-sm text-muted-foreground text-center py-4">Nenhuma pendência.</p>
-                    )}
-                    </ScrollArea>
-                </div>
-                <div className="flex gap-2">
-                    <Input 
-                        value={newPendency}
-                        onChange={(e) => setNewPendency(e.target.value)}
-                        placeholder="Nova pendência..."
-                        onKeyDown={(e) => e.key === 'Enter' && handleAddPendency()}
-                        disabled={!currentMember}
-                    />
-                    <Button onClick={handleAddPendency} disabled={!currentMember}>Adicionar</Button>
-                </div>
-            </div>
-            {/* Chat */}
-            <div className="flex flex-col gap-4 border-l pl-4">
-                 <h3 className="font-semibold text-lg">Conversa</h3>
-                 <div className="flex-1">
-                    <ScrollArea className="h-full pr-4">
-                        <div className="space-y-4">
-                            {furniture.comments && furniture.comments.length > 0 ? (
-                                furniture.comments.map(c => {
-                                    const member = memberMap.get(c.memberId);
-                                    return (
-                                        <div key={c.id} className="flex gap-2 text-sm">
-                                            {member && <span className="h-5 w-5 rounded-full flex-shrink-0" style={{backgroundColor: member.color}}></span>}
-                                            <div>
-                                                <span className="font-semibold">{member?.name || 'Desconhecido'}</span>
-                                                <p className="text-muted-foreground">{c.text}</p>
-                                            </div>
-                                        </div>
-                                    )
-                                })
-                            ) : (
-                                <p className="text-sm text-muted-foreground text-center py-4">Nenhum comentário.</p>
-                            )}
-                        </div>
-                    </ScrollArea>
-                 </div>
-                 <div className="flex gap-2">
-                    <Input
-                        value={newComment}
-                        onChange={(e) => setNewComment(e.target.value)}
-                        placeholder="Escreva um comentário..."
-                        onKeyDown={(e) => e.key === 'Enter' && handleAddComment()}
-                        disabled={!currentMember}
-                    />
-                    <Button onClick={handleAddComment} disabled={!currentMember}>Enviar</Button>
-                </div>
-            </div>
-        </div>
 
-        <DialogFooter>
+        <Tabs defaultValue="pendencies" className="flex-grow flex flex-col overflow-hidden">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="pendencies">Pendências</TabsTrigger>
+            <TabsTrigger value="chat">Conversa</TabsTrigger>
+          </TabsList>
+          
+          {/* Pendencies Tab */}
+          <TabsContent value="pendencies" className="flex-grow flex flex-col mt-4 overflow-hidden">
+            <div className="flex-grow overflow-y-auto">
+              <ScrollArea className="h-full pr-4">
+                <div className="space-y-3">
+                  {furniture.pendencies && furniture.pendencies.length > 0 ? (
+                    furniture.pendencies.map((p) => (
+                      <div
+                        key={p.id}
+                        className="flex items-center space-x-3"
+                      >
+                        <Checkbox
+                          id={p.id}
+                          checked={p.isResolved}
+                          onCheckedChange={() => handleTogglePendency(p.id)}
+                        />
+                        <label
+                          htmlFor={p.id}
+                          className={`text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 ${
+                            p.isResolved
+                              ? 'line-through text-muted-foreground'
+                              : ''
+                          }`}
+                        >
+                          {p.text}
+                        </label>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-sm text-muted-foreground text-center py-8">
+                      Nenhuma pendência para este item.
+                    </p>
+                  )}
+                </div>
+              </ScrollArea>
+            </div>
+             <Separator className="my-4" />
+            <div className="flex gap-2 mt-auto">
+              <Input
+                value={newPendency}
+                onChange={(e) => setNewPendency(e.target.value)}
+                placeholder="Nova pendência..."
+                onKeyDown={(e) => e.key === 'Enter' && handleAddPendency()}
+                disabled={!currentMember}
+              />
+              <Button onClick={handleAddPendency} disabled={!currentMember}>
+                Adicionar
+              </Button>
+            </div>
+          </TabsContent>
+
+          {/* Chat Tab */}
+          <TabsContent value="chat" className="flex-grow flex flex-col mt-4 overflow-hidden">
+            <div className="flex-grow overflow-y-auto">
+               <ScrollArea className="h-full pr-4">
+                <div className="space-y-4">
+                  {furniture.comments && furniture.comments.length > 0 ? (
+                    furniture.comments.map((c) => {
+                      const member = memberMap.get(c.memberId);
+                      return (
+                        <div key={c.id} className="flex gap-3 text-sm">
+                          {member && (
+                            <span
+                              className="h-8 w-8 rounded-full flex-shrink-0"
+                              style={{ backgroundColor: member.color }}
+                            ></span>
+                          )}
+                          <div className="flex-grow">
+                            <div className="flex items-center gap-2">
+                                <span className="font-semibold text-foreground">
+                                {member?.name || 'Desconhecido'}
+                                </span>
+                                <span className="text-xs text-muted-foreground">
+                                {formatDistanceToNow(new Date(c.timestamp), { addSuffix: true, locale: ptBR })}
+                                </span>
+                            </div>
+                            <p className="text-muted-foreground">{c.text}</p>
+                          </div>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <p className="text-sm text-muted-foreground text-center py-8">
+                      Nenhum comentário ainda. Inicie a conversa!
+                    </p>
+                  )}
+                </div>
+              </ScrollArea>
+            </div>
+             <Separator className="my-4" />
+            <div className="flex gap-2 mt-auto">
+              <Input
+                value={newComment}
+                onChange={(e) => setNewComment(e.target.value)}
+                placeholder="Escreva um comentário..."
+                onKeyDown={(e) => e.key === 'Enter' && handleAddComment()}
+                disabled={!currentMember}
+              />
+              <Button onClick={handleAddComment} disabled={!currentMember}>
+                Enviar
+              </Button>
+            </div>
+          </TabsContent>
+        </Tabs>
+
+        <DialogFooter className="mt-4">
           <Button type="button" variant="outline" onClick={onClose}>
             Fechar
           </Button>
