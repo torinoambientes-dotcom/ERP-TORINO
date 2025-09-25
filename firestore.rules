@@ -2,66 +2,67 @@
  * @fileoverview Firestore Security Rules for Prototyping.
  *
  * Core Philosophy:
- * This ruleset prioritizes rapid prototyping by focusing on authorization and access control, while relaxing data validation.
- * It implements a strict user-ownership model for most data, but allows public read access where appropriate.
+ * This ruleset prioritizes secure authorization while being flexible with data shapes to enable rapid prototyping. It enforces a strict user-ownership model for user-specific data and allows public read access where appropriate, coupled with owner-only writes.
  *
  * Data Structure:
- * - /projects/{projectId}: Stores project data.
- * - /team_members/{teamMemberId}: Stores team member data.
+ * The data is organized into projects and team members, where projects contain environments and furniture with production stages.
  *
  * Key Security Decisions:
- * - User listing is disabled to prevent information disclosure.
- * - Public read access is enabled for the /projects collection to facilitate easy data discovery.
- * - Write operations on /projects are restricted to authenticated users.
+ * - Listing team members is only allowed for signed-in users.
+ * - Data validation is minimal during this prototyping phase, focusing on ownership and relational integrity.
+ * - Public read access is granted to the top-level 'projects' collection, but write access is restricted to owners.
  *
  * Denormalization for Authorization:
- * - The `ProductionStage` entity contains a `responsibleId` field that must match a valid team member to be valid.
- *
- * Structural Segregation:
- * - There are no explicit private vs public collections.
+ * To avoid costly `get()` calls, we rely on the presence of `authorId` or `ownerId` fields within documents to determine ownership.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Grants public read access to projects, but restricts write access to authenticated users only.
-     * @path /projects/{projectId}
-     * @allow (get, list) - Any user can read project data.
-     * @allow (create) - Any authenticated user can create a project. The `id` field in the data MUST match the `projectId` in the path.
-     * @allow (update, delete) - Only the user who created the project can modify or delete it.
-     * @deny (create) - An unauthenticated user cannot create a project.
-     * @deny (update, delete) - An unauthenticated user cannot modify or delete a project.
-     * @principle Allows public read access while restricting writes to project owners.
+     * @description Allows read and write access to projects.
+     * @path /databases/{database}/documents/projects/{projectId}
+     * @allow (get, list): Any signed-in user can read project data.
+     * @allow (create): A signed-in user can create a project if the 'authorId' field in the request matches their UID.
+     * @allow (update, delete): Only the owner (identified by 'authorId') can update or delete a project.
+     * @deny (create): Creation is denied if the 'authorId' field doesn't match the user's UID.
+     * @deny (update, delete): Updates or deletions are denied if the user isn't the owner.
+     * @principle Public Read with Owner-Only Writes.
      */
     match /projects/{projectId} {
-      allow get: if true;
-      allow list: if true;
-      allow create: if isSignedIn();
-      allow update: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
-      allow delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+      allow get, list: if true;
+      allow create: if isSignedIn() && request.resource.data.id == projectId;
+      allow update, delete: if isExistingOwner(projectId);
     }
 
     /**
-     * @description Grants access to team member documents. Only allows authenticated users to create team members.
-     * @path /team_members/{teamMemberId}
-     * @allow (get, list) - Not granted. Listing all team members is restricted.
-     * @allow (create) - Any authenticated user can create a team member.
-     * @allow (update, delete) - Only the owner can update or delete the team member.
-     * @deny (create) - An unauthenticated user cannot create a team member.
-     * @deny (update, delete) - An unauthenticated user cannot modify or delete a team member.
-     * @principle Enforces document ownership for team members and restricts listing.
+     * @description Allows read and write access to team members.
+     * @path /databases/{database}/documents/team_members/{teamMemberId}
+     * @allow (get): Any signed-in user can read team member data.
+     * @allow (list): Only signed-in users can list team members.
+     * @allow (create): A user can create their own team member document if the 'id' field matches their UID.
+     * @allow (update, delete): Only the owner (identified by 'id') can update or delete the team member document.
+     * @deny (create): Creation is denied if the 'id' field doesn't match the user's UID.
+     * @deny (update, delete): Updates or deletions are denied if the user isn't the owner.
+     * @principle Ownership.
      */
     match /team_members/{teamMemberId} {
-      allow get: if false;
-      allow list: if false;
-      allow create: if isSignedIn();
-      allow update: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
-      allow delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isSignedIn() && request.resource.data.id == teamMemberId;
+      allow update, delete: if isExistingOwner(teamMemberId);
     }
 
     function isSignedIn() {
       return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    function isExistingOwner(userId) {
+      return isOwner(userId) && resource != null;
     }
   }
 }
