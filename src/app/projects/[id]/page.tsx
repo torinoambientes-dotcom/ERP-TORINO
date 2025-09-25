@@ -1,8 +1,8 @@
 'use client';
 import { useContext, useState, useEffect, useMemo, use } from 'react';
 import Link from 'next/link';
-import { notFound, useRouter } from 'next/navigation';
-import { ChevronLeft, MessageSquare, Save } from 'lucide-react';
+import { notFound } from 'next/navigation';
+import { ChevronLeft, MessageSquare } from 'lucide-react';
 import {
   Accordion,
   AccordionContent,
@@ -19,9 +19,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/layout/page-header';
 import { AppContext } from '@/context/app-context';
-import type { Project, Furniture, StageStatus, TeamMember } from '@/lib/types';
+import type { Project, Furniture, StageStatus } from '@/lib/types';
 import { STAGE_STATUSES } from '@/lib/types';
-import { useToast } from '@/hooks/use-toast';
 import { FurnitureChatModal } from '@/components/modals/furniture-chat-modal';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
@@ -47,8 +46,6 @@ export default function ProjectDetailsPage({
 }) {
   const resolvedParams = use(params);
   const { projects, teamMembers, updateProject } = useContext(AppContext);
-  const { toast } = useToast();
-  const router = useRouter();
   const { id } = resolvedParams;
 
   const initialProject = useMemo(() => 
@@ -68,9 +65,22 @@ export default function ProjectDetailsPage({
     if (!initialProject) {
         notFound();
     }
-    // Ensure local project state is updated if the global context changes
     setProject(initialProject ? JSON.parse(JSON.stringify(initialProject)) : null);
   }, [initialProject]);
+  
+  // Auto-save with debounce
+  useEffect(() => {
+    if (project && JSON.stringify(project) !== JSON.stringify(initialProject)) {
+      const handler = setTimeout(() => {
+        updateProject(project);
+      }, 1000); // 1-second debounce
+
+      return () => {
+        clearTimeout(handler);
+      };
+    }
+  }, [project, initialProject, updateProject]);
+
 
   const handleStatusChange = (
     envId: string,
@@ -105,17 +115,6 @@ export default function ProjectDetailsPage({
         fur[stage].responsibleId = value === 'unassigned' ? undefined : value;
         setProject(newProject);
       }
-    }
-  };
-
-  const handleSaveChanges = () => {
-    if (project) {
-      updateProject(project);
-      toast({
-        title: 'Projeto salvo!',
-        description: 'As alterações foram salvas com sucesso.',
-      });
-      router.push('/');
     }
   };
 
@@ -154,10 +153,6 @@ export default function ProjectDetailsPage({
               description="Detalhes do projeto, ambientes e status das etapas."
             />
           </div>
-          <Button onClick={handleSaveChanges}>
-            <Save className="mr-2 h-4 w-4" />
-            Salvar Alterações
-          </Button>
         </div>
 
         <Accordion type="multiple" defaultValue={project.environments.map(e => e.id)} className="w-full">
