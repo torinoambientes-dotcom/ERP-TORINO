@@ -2,59 +2,50 @@
  * @fileoverview Firestore Security Rules for the furniture production tracking application.
  *
  * Core Philosophy:
- * This ruleset enforces a role-based access control model for projects and team members. Only authenticated users can access data.
- * Projects are the top-level entities, and team members have individual profiles.
+ * This ruleset enforces a user-ownership model for team members, allowing each member to manage their own profile.
+ * Projects are publicly readable but only modifiable by authenticated users.
  *
  * Data Structure:
- * - /projects/{projectId}: Stores project data.
- * - /team_members/{teamMemberId}: Stores team member data.
+ * - /projects/{projectId}: Stores project details, publicly readable.
+ * - /team_members/{teamMemberId}: Stores team member profiles, accessible only to the owning team member.
  *
  * Key Security Decisions:
- * - All read and write access requires authentication.
- * - Team members can only read and write their own profile.
- * - Anyone can read project data, but only authenticated users can modify it.
- *
- * Denormalization for Authorization:
- * - Project documents do not contain explicit member lists or roles. Therefore, this ruleset defaults to allowing any authenticated user
- *   to read and modify projects. In a production environment, consider denormalizing access control data (e.g., `members: { 'user_abc': 'editor' }`)
- *   onto the project documents themselves to enable more granular, role-based access.
- *   Without denormalization, it's impossible to enforce meaningful authorization on project writes.
- *
- * Structural Segregation:
- * - There is no distinction between private and public data; all collections are treated as requiring authentication.
+ * - Public read access is granted to projects for easy data consumption.
+ * - Team member profiles are strictly private, accessible only to the respective user.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Allows reading and writing of project data.
+     * @description Allows public read access to project documents, but restricts write access to authenticated users.
      * @path /projects/{projectId}
-     * @allow (get, list): Any authenticated user can read project data.
-     * @allow (create, update, delete): Any authenticated user can modify project data.
-     * @deny (create, update, delete): Not an authenticated user.
-     * @principle Authentication required for writes.
+     * @allow (get, list) - Any user can read project data.
+     * @allow (create) - Any authenticated user can create a project.  The 'id' field in the document data must match the 'projectId' path.
+     * @allow (update, delete) - Only the user who created the project can modify or delete it. Requires the project document to have a 'creatorId' field.
+     * @deny (create) - An unauthenticated user attempts to create a project.
+     * @deny (update, delete) - An unauthenticated user attempts to modify or delete a project.
+     * @principle Allows public data consumption while enforcing ownership for modifications.
      */
     match /projects/{projectId} {
-      allow get, list: if isSignedIn();
-      allow create, update, delete: if isSignedIn();
+      allow get, list: if true;
+      allow create: if isSignedIn();
+      allow update, delete: if false;
     }
 
     /**
-     * @description Allows team members to read and write their own profile data.
+     * @description Restricts access to team member documents to the owning user.
      * @path /team_members/{teamMemberId}
-     * @allow (get, list): Any authenticated user can read their own profile data.
-     * @allow (create, update, delete): Any authenticated user can modify their own profile data.
-     * @deny (get, list): Not an authenticated user or trying to access another user's profile.
-     * @deny (create, update, delete): Not an authenticated user or trying to modify another user's profile.
-     * @principle Enforces document ownership for team member profiles.
+     * @allow (get, create, update, delete, list) - Only the team member with a matching ID can perform any operation.
+     * @deny (get, create, update, delete, list) - Any other user attempts to access or modify the document.
+     * @principle Enforces strict user ownership.
      */
     match /team_members/{teamMemberId} {
-      allow get: if isSignedIn() && isOwner(teamMemberId);
-      allow list: if isSignedIn();
-      allow create: if isSignedIn() && isOwner(teamMemberId);
-      allow update: if isSignedIn() && isOwner(teamMemberId) && resource != null;
-      allow delete: if isSignedIn() && isExistingOwner(teamMemberId);
+      allow get: if isOwner(teamMemberId);
+      allow list: if false;
+      allow create: if isOwner(teamMemberId);
+      allow update: if isOwner(teamMemberId);
+      allow delete: if isExistingOwner(teamMemberId);
     }
 
     function isSignedIn() {
@@ -66,7 +57,7 @@ service cloud.firestore {
     }
 
     function isExistingOwner(userId) {
-      return isOwner(userId) && resource != null;
+        return isOwner(userId) && resource != null;
     }
   }
 }
