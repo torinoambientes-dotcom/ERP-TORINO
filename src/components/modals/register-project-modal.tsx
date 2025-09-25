@@ -1,5 +1,5 @@
 'use client';
-import { useContext } from 'react';
+import { useContext, useEffect } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -27,6 +27,7 @@ import { AppContext } from '@/context/app-context';
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from '../ui/separator';
 import { generateId } from '@/lib/utils';
+import type { Project } from '@/lib/types';
 
 const furnitureSchema = z.object({
   name: z.string().min(1, 'Nome do móvel é obrigatório.'),
@@ -49,22 +50,36 @@ type ProjectFormValues = z.infer<typeof projectSchema>;
 interface RegisterProjectModalProps {
   isOpen: boolean;
   onClose: () => void;
+  projectToEdit?: Project | null;
 }
+
+const defaultValues: ProjectFormValues = {
+  clientName: '',
+  environments: [{ name: '', furniture: [{ name: '' }] }],
+};
 
 export function RegisterProjectModal({
   isOpen,
   onClose,
+  projectToEdit
 }: RegisterProjectModalProps) {
-  const { addProject } = useContext(AppContext);
+  const { addProject, updateProject } = useContext(AppContext);
   const { toast } = useToast();
+  const isEditMode = !!projectToEdit;
 
   const form = useForm<ProjectFormValues>({
     resolver: zodResolver(projectSchema),
-    defaultValues: {
-      clientName: '',
-      environments: [{ name: '', furniture: [{ name: '' }] }],
-    },
+    defaultValues: defaultValues,
   });
+  
+  useEffect(() => {
+    if (projectToEdit && isOpen) {
+      form.reset(projectToEdit);
+    } else if (!isOpen) {
+      form.reset(defaultValues);
+    }
+  }, [projectToEdit, isOpen, form]);
+
 
   const {
     fields: envFields,
@@ -76,37 +91,54 @@ export function RegisterProjectModal({
   });
 
   const onSubmit = (data: ProjectFormValues) => {
-    addProject({
-      ...data,
-      id: generateId('proj'),
-      environments: data.environments.map((env) => ({
-        ...env,
-        id: generateId('env'),
-        furniture: env.furniture.map((fur) => ({
-          ...fur,
-          id: generateId('fur'),
-          measurement: { status: 'todo' },
-          cutting: { status: 'todo' },
-          purchase: { status: 'todo' },
-          assembly: { status: 'todo' },
-        })),
-      })),
-    });
-    toast({
-      title: 'Projeto cadastrado!',
-      description: `O projeto para "${data.clientName}" foi criado com sucesso.`,
-    });
-    form.reset();
+    if (isEditMode && projectToEdit) {
+        updateProject({
+            ...projectToEdit,
+            ...data
+        });
+         toast({
+            title: 'Projeto atualizado!',
+            description: `O projeto para "${data.clientName}" foi atualizado.`,
+        });
+    } else {
+        addProject({
+            ...data,
+            id: generateId('proj'),
+            environments: data.environments.map((env) => ({
+                ...env,
+                id: generateId('env'),
+                furniture: env.furniture.map((fur) => ({
+                ...fur,
+                id: generateId('fur'),
+                measurement: { status: 'todo' },
+                cutting: { status: 'todo' },
+                purchase: { status: 'todo' },
+                assembly: { status: 'todo' },
+                })),
+            })),
+        });
+        toast({
+            title: 'Projeto cadastrado!',
+            description: `O projeto para "${data.clientName}" foi criado com sucesso.`,
+        });
+    }
+
+    form.reset(defaultValues);
     onClose();
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={(open) => {
+      if (!open) {
+        form.reset(defaultValues);
+        onClose();
+      }
+    }}>
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="font-headline">Cadastrar Novo Projeto</DialogTitle>
+          <DialogTitle className="font-headline">{isEditMode ? 'Editar Projeto' : 'Cadastrar Novo Projeto'}</DialogTitle>
           <DialogDescription>
-            Preencha os dados para registrar um novo projeto.
+            {isEditMode ? 'Altere os dados do projeto abaixo.' : 'Preencha os dados para registrar um novo projeto.'}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>

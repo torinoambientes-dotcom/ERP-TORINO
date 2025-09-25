@@ -22,8 +22,9 @@ import {
 } from '@/components/ui/select';
 import type { Project } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { Archive, CheckCircle, Trash2 } from 'lucide-react';
+import { Archive, CheckCircle, Pencil, Trash2 } from 'lucide-react';
 import { DeleteProjectAlert } from '@/components/modals/delete-project-alert';
+import { RegisterProjectModal } from '@/components/modals/register-project-modal';
 
 type ProjectStatus = 'Novo' | 'Em Andamento' | 'Concluído';
 
@@ -73,6 +74,7 @@ export default function ProjectsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<ProjectStatus | 'Todos'>('Todos');
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
+  const [projectToEdit, setProjectToEdit] = useState<Project | null>(null);
 
   const filteredProjects = useMemo(() => {
     return projects
@@ -170,6 +172,18 @@ export default function ProjectsPage() {
                   </CardContent>
                 </Link>
                 <CardFooter className="flex justify-end gap-2">
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-muted-foreground/80 hover:text-foreground"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setProjectToEdit(project)
+                        }}
+                      >
+                        <Pencil className="h-4 w-4" />
+                        <span className="sr-only">Editar Projeto</span>
+                    </Button>
                     <Button 
                       variant="ghost" 
                       size="sm" 
@@ -217,6 +231,11 @@ export default function ProjectsPage() {
         onClose={() => setProjectToDelete(null)}
         onConfirm={handleDeleteConfirm}
         projectName={projectToDelete?.clientName || ''}
+    />
+    <RegisterProjectModal
+      isOpen={!!projectToEdit}
+      onClose={() => setProjectToEdit(null)}
+      projectToEdit={projectToEdit}
     />
     </>
   );
