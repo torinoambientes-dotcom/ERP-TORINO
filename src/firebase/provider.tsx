@@ -81,11 +81,11 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
       auth,
       (firebaseUser) => { // Auth state determined
         if (firebaseUser) {
+          // If we get a user, we are done loading
           setUserAuthState({ user: firebaseUser, isUserLoading: false, userError: null });
         } else {
-           // If no user, sign in anonymously.
+           // If no user, sign in anonymously. The listener will be called again with the new anonymous user.
           initiateAnonymousSignIn(auth);
-          // The onAuthStateChanged listener will be called again with the new anonymous user.
           // We keep isUserLoading as true until we get a confirmed user.
         }
       },
@@ -110,6 +110,12 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
       userError: userAuthState.userError,
     };
   }, [firebaseApp, firestore, auth, userAuthState]);
+  
+  // Don't render children until we have a user (or an error)
+  if (userAuthState.isUserLoading) {
+    // You can return a global loading spinner here if you want
+    return null;
+  }
 
   return (
     <FirebaseContext.Provider value={contextValue}>
