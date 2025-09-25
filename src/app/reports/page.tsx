@@ -20,8 +20,6 @@ import {
 import { PageHeader } from '@/components/layout/page-header';
 import { AppContext } from '@/context/app-context';
 import type { StageStatus } from '@/lib/types';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-
 
 export default function ReportsPage() {
   const { projects, teamMembers } = useContext(AppContext);
@@ -173,15 +171,12 @@ export default function ReportsPage() {
                     <p className="font-semibold">{task.stage}: {task.fur}</p>
                     <p className="text-sm text-muted-foreground">{task.project} / {task.env}</p>
                   </div>
-                   {task.memberId && memberMap.has(task.memberId) && (
+                   {task.memberId && memberMap.get(task.memberId) && (
                     <div className="flex items-center gap-2">
                        <span className={`text-xs font-semibold px-2 py-1 rounded-full ${task.status === 'todo' ? 'bg-yellow-200 text-yellow-800' : 'bg-blue-200 text-blue-800'}`}>
                         {task.status === 'todo' ? 'A Fazer' : 'Em Andamento'}
                        </span>
-                      <Avatar className="h-8 w-8">
-                         <AvatarImage src={memberMap.get(task.memberId)?.avatarUrl} />
-                         <AvatarFallback>{memberMap.get(task.memberId)?.name.charAt(0)}</AvatarFallback>
-                      </Avatar>
+                      <span className="h-5 w-5 rounded-full" style={{ backgroundColor: memberMap.get(task.memberId)?.color }}></span>
                       <span className="text-sm font-medium">{memberMap.get(task.memberId)?.name}</span>
                     </div>
                   )}

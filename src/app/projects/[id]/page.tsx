@@ -24,7 +24,6 @@ import { STAGE_STATUSES } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { FurnitureChatModal } from '@/components/modals/furniture-chat-modal';
 import { cn } from '@/lib/utils';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 
 type StageKey = 'measurement' | 'cutting' | 'purchase' | 'assembly';
@@ -210,10 +209,7 @@ export default function ProjectDetailsPage({
                                   <div className="flex items-center gap-2">
                                     {responsibleMember ? (
                                       <>
-                                        <Avatar className="h-6 w-6">
-                                          <AvatarImage src={responsibleMember.avatarUrl} />
-                                          <AvatarFallback>{responsibleMember.name.charAt(0)}</AvatarFallback>
-                                        </Avatar>
+                                        <span className="h-4 w-4 rounded-full" style={{ backgroundColor: responsibleMember.color }}></span>
                                         <span>{responsibleMember.name}</span>
                                       </>
                                     ) : (
@@ -227,10 +223,7 @@ export default function ProjectDetailsPage({
                                 {teamMembers.map((member) => (
                                   <SelectItem key={member.id} value={member.id}>
                                     <div className="flex items-center gap-2">
-                                      <Avatar className="h-6 w-6">
-                                        <AvatarImage src={member.avatarUrl} />
-                                        <AvatarFallback>{member.name.charAt(0)}</AvatarFallback>
-                                      </Avatar>
+                                      <span className="h-4 w-4 rounded-full" style={{ backgroundColor: member.color }}></span>
                                       <span>{member.name}</span>
                                     </div>
                                   </SelectItem>

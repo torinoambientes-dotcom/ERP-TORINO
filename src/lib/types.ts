@@ -2,7 +2,6 @@ export interface TeamMember {
   id: string;
   name: string;
   color: string;
-  avatarUrl: string;
 }
 
 export const STAGE_STATUSES = {

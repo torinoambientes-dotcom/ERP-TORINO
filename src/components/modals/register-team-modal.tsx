@@ -60,7 +60,6 @@ export function RegisterTeamModal({ isOpen, onClose }: RegisterTeamModalProps) {
     addTeamMember({
         ...data,
         id: `member-${Date.now()}`,
-        avatarUrl: `https://picsum.photos/seed/${Date.now()}/100/100`
     });
     toast({
       title: 'Membro da equipe cadastrado!',

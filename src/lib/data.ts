@@ -5,25 +5,21 @@ export const initialTeamMembers: TeamMember[] = [
     id: '1',
     name: 'Alice',
     color: '#3b82f6',
-    avatarUrl: 'https://picsum.photos/seed/10/100/100',
   },
   {
     id: '2',
     name: 'Bruno',
     color: '#16a34a',
-    avatarUrl: 'https://picsum.photos/seed/11/100/100',
   },
   {
     id: '3',
     name: 'Carla',
     color: '#f97316',
-    avatarUrl: 'https://picsum.photos/seed/12/100/100',
   },
   {
     id: '4',
     name: 'Daniel',
     color: '#8b5cf6',
-    avatarUrl: 'https://picsum.photos/seed/13/100/100',
   },
 ];
 
