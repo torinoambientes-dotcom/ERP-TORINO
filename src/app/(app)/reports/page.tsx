@@ -271,6 +271,28 @@ export default function ReportsPage() {
             });
         });
     };
+    
+    const copyEnvironmentListToClipboard = (projectName: string, environmentName: string, materials: MaterialItem[]) => {
+        let listText = `Lista de Compras - Projeto: ${projectName}\n`;
+        listText += `Ambiente: ${environmentName}\n\n`;
+
+        materials.forEach(item => {
+            listText += `- ${item.name}: ${item.quantity} ${item.unit}\n`;
+        });
+        
+        navigator.clipboard.writeText(listText).then(() => {
+            toast({
+                title: `Lista do ambiente "${environmentName}" copiada!`,
+                description: "Os materiais foram copiados para a área de transferência.",
+            });
+        }).catch(err => {
+            toast({
+                variant: 'destructive',
+                title: "Erro ao copiar",
+                description: "Não foi possível copiar a lista do ambiente.",
+            });
+        });
+    };
 
 
   const handleMarkAlertAsHandled = (itemId: string, itemName: string) => {
@@ -421,7 +443,7 @@ export default function ReportsPage() {
               <div className="flex items-center gap-2">
                 <Button onClick={copyShoppingListToClipboard} size="sm" disabled={Object.keys(shoppingList).length === 0}>
                     <Copy className="mr-2 h-4 w-4" />
-                    Copiar Lista
+                    Copiar Lista Completa
                 </Button>
                 <CollapsibleTrigger asChild>
                   <Button variant="ghost" size="icon">
@@ -446,7 +468,13 @@ export default function ReportsPage() {
                                      <div className="space-y-2">
                                         {Object.entries(environments).map(([environmentName, envData]) => (
                                             <div key={environmentName} className="p-3 rounded-md bg-background border">
-                                                <h4 className='font-medium mb-2'>{environmentName}</h4>
+                                                <div className="flex justify-between items-center mb-2">
+                                                    <h4 className='font-medium'>{environmentName}</h4>
+                                                    <Button variant="ghost" size="sm" onClick={() => copyEnvironmentListToClipboard(projectName, environmentName, envData.materials)}>
+                                                        <Copy className="mr-2 h-3 w-3" />
+                                                        Copiar
+                                                    </Button>
+                                                </div>
                                                 <ul className='space-y-1 text-sm list-disc pl-5 text-muted-foreground'>
                                                 {envData.materials.map((item, index) => (
                                                     <li key={index}>
@@ -591,5 +619,3 @@ export default function ReportsPage() {
     </div>
   );
 }
-
-    
