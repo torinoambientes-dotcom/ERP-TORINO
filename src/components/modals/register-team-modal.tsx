@@ -33,6 +33,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../ui/select';
+import { Separator } from '../ui/separator';
 
 const teamMemberSchema = z.object({
   name: z.string().min(2, 'O nome deve ter pelo menos 2 caracteres.'),
@@ -40,7 +41,11 @@ const teamMemberSchema = z.object({
   color: z
     .string()
     .regex(/^#[0-9a-fA-F]{6}$/, 'Cor inválida. Use o formato #RRGGBB.'),
+  email: z.string().email('Formato de e-mail inválido.'),
+  password: z.string().min(6, 'A senha deve ter pelo menos 6 caracteres.'),
 });
+
+const teamMemberEditSchema = teamMemberSchema.omit({ email: true, password: true });
 
 type TeamMemberFormValues = z.infer<typeof teamMemberSchema>;
 
@@ -78,40 +83,65 @@ export function RegisterTeamModal({
   const isEditMode = !!memberToEdit;
 
   const form = useForm<TeamMemberFormValues>({
-    resolver: zodResolver(teamMemberSchema),
+    resolver: zodResolver(isEditMode ? teamMemberEditSchema : teamMemberSchema),
     defaultValues: {
       name: '',
-      role: '',
-      color: '#3b82f6',
+      role: roles[0],
+      color: defaultColors[0],
+      email: '',
+      password: '',
     },
   });
 
   useEffect(() => {
     if (isOpen) {
       if (isEditMode && memberToEdit) {
-        form.reset(memberToEdit);
+        form.reset({
+          name: memberToEdit.name,
+          role: memberToEdit.role,
+          color: memberToEdit.color,
+          email: memberToEdit.email,
+        });
       } else {
-        form.reset({ name: '', role: roles[0], color: defaultColors[0] });
+        form.reset({
+          name: '',
+          role: roles[0],
+          color: defaultColors[0],
+          email: '',
+          password: '',
+        });
       }
     }
   }, [isOpen, isEditMode, memberToEdit, form]);
 
-  const onSubmit = (data: TeamMemberFormValues) => {
+  const onSubmit = async (data: TeamMemberFormValues) => {
     if (isEditMode && memberToEdit) {
-      updateTeamMember({ ...memberToEdit, ...data });
+      // Logic for updating a team member (excluding email/password)
+      const { email, password, ...updateData } = data;
+      updateTeamMember({ ...memberToEdit, ...updateData });
       toast({
         title: 'Membro da equipe atualizado!',
         description: `Os dados de ${data.name} foram atualizados.`,
       });
     } else {
-      addTeamMember(data);
-      toast({
-        title: 'Membro da equipe cadastrado!',
-        description: `${data.name} foi adicionado(a) à equipe.`,
-      });
+      // Logic for adding a new team member
+      try {
+        await addTeamMember(data);
+        toast({
+          title: 'Membro da equipe cadastrado!',
+          description: `${data.name} foi adicionado(a) à equipe com sucesso.`,
+        });
+      } catch (error: any) {
+        toast({
+          variant: 'destructive',
+          title: 'Erro ao cadastrar membro',
+          description: error.message || 'Não foi possível criar o novo membro da equipe.',
+        });
+        // Do not close modal on error
+        return;
+      }
     }
-
-    form.reset();
+    
     onClose();
   };
 
@@ -124,12 +154,12 @@ export function RegisterTeamModal({
           </DialogTitle>
           <DialogDescription>
             {isEditMode
-              ? `Altere os dados de ${memberToEdit?.name}.`
-              : 'Adicione um novo membro e associe uma cor para fácil identificação.'}
+              ? `Altere os dados de ${memberToEdit?.name}. O e-mail e senha não podem ser alterados aqui.`
+              : 'Preencha os dados do membro e suas credenciais de acesso.'}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             <FormField
               control={form.control}
               name="name"
@@ -170,7 +200,7 @@ export function RegisterTeamModal({
                 </FormItem>
               )}
             />
-            <FormField
+             <FormField
               control={form.control}
               name="color"
               render={({ field }) => (
@@ -206,6 +236,40 @@ export function RegisterTeamModal({
                 </FormItem>
               )}
             />
+
+            {!isEditMode && (
+              <>
+                <Separator />
+                <h3 className="text-base font-medium">Credenciais de Acesso</h3>
+                <FormField
+                  control={form.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>E-mail de Acesso</FormLabel>
+                      <FormControl>
+                        <Input type="email" placeholder="email@dominio.com" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="password"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Senha</FormLabel>
+                      <FormControl>
+                        <Input type="password" placeholder="Mínimo de 6 caracteres" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </>
+            )}
+           
             <DialogFooter>
               <Button type="button" variant="ghost" onClick={onClose}>
                 Cancelar

@@ -6,6 +6,8 @@ import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import type { Project, TeamMember, StageStatus, StockItem, StockMovement, StockCategory } from '@/lib/types';
 import { generateId } from '@/lib/utils';
 import { setDocumentNonBlocking, deleteDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { useAuth } from '@/firebase';
 
 
 interface AppContextType {
@@ -17,7 +19,7 @@ interface AppContextType {
   addProject: (projectData: any) => void;
   updateProject: (updatedProject: Project) => void;
   deleteProject: (projectId: string) => void;
-  addTeamMember: (memberData: Omit<TeamMember, 'id'>) => void;
+  addTeamMember: (memberData: Omit<TeamMember, 'id'>) => Promise<void>;
   updateTeamMember: (updatedMember: TeamMember) => void;
   deleteTeamMember: (memberId: string) => void;
   completeProjectStages: (projectId: string) => void;
@@ -39,7 +41,7 @@ export const AppContext = createContext<AppContextType>({
   addProject: () => {},
   updateProject: () => {},
   deleteProject: () => {},
-  addTeamMember: () => {},
+  addTeamMember: async () => {},
   updateTeamMember: () => {},
   deleteTeamMember: () => {},
   completeProjectStages: () => {},
@@ -70,6 +72,7 @@ const isProjectComplete = (project: Project): boolean => {
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const firestore = useFirestore();
+  const auth = useAuth();
 
   const projectsQuery = useMemoFirebase(() => collection(firestore, 'projects'), [firestore]);
   const teamMembersQuery = useMemoFirebase(() => collection(firestore, 'team_members'), [firestore]);
@@ -129,13 +132,46 @@ export function AppProvider({ children }: { children: ReactNode }) {
     deleteDocumentNonBlocking(projectRef);
   }, [firestore]);
 
-  const addTeamMember = useCallback((memberData: Omit<TeamMember, 'id'>) => {
-    if (!firestore) return;
-    const memberId = generateId('member');
-    const newMember = { ...memberData, id: memberId };
-    const memberRef = doc(firestore, 'team_members', memberId);
-    setDocumentNonBlocking(memberRef, newMember, { merge: false });
-  }, [firestore]);
+  const addTeamMember = useCallback(async (memberData: Omit<TeamMember, 'id'> & { password?: string }) => {
+    if (!firestore || !auth) {
+      throw new Error('Serviços de autenticação ou banco de dados não estão disponíveis.');
+    }
+    
+    const { email, password, ...restOfData } = memberData;
+    
+    if (!email || !password) {
+      throw new Error('E-mail e senha são obrigatórios para criar um novo membro.');
+    }
+
+    try {
+      // Step 1: Create user in Firebase Authentication
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const newUserId = userCredential.user.uid;
+
+      // Step 2: Create team member document in Firestore with the same ID
+      const newMember: TeamMember = {
+        ...restOfData,
+        id: newUserId, // Use the UID from Auth as the document ID
+        userId: newUserId,
+        email: email,
+      };
+
+      const memberRef = doc(firestore, 'team_members', newUserId);
+      // This is intentionally a blocking call to ensure data consistency after auth creation.
+      await setDocumentNonBlocking(memberRef, newMember, { merge: false });
+    } catch (error: any) {
+      // Forward specific Firebase Auth errors
+      if (error.code === 'auth/email-already-in-use') {
+        throw new Error('Este e-mail já está em uso por outra conta.');
+      }
+      if (error.code === 'auth/weak-password') {
+        throw new Error('A senha é muito fraca. Use pelo menos 6 caracteres.');
+      }
+      console.error("Error adding team member:", error);
+      throw new Error('Ocorreu um erro ao criar o usuário.');
+    }
+  }, [firestore, auth]);
+
 
   const updateTeamMember = useCallback((updatedMember: TeamMember) => {
     if (!firestore) return;
@@ -145,6 +181,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const deleteTeamMember = useCallback((memberId: string) => {
     if (!firestore) return;
+    // TODO: Need to also delete the user from Firebase Auth. This requires Admin SDK.
+    // For now, we only delete from Firestore.
     const memberRef = doc(firestore, 'team_members', memberId);
     deleteDocumentNonBlocking(memberRef);
   }, [firestore]);

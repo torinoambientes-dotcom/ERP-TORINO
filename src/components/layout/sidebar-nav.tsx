@@ -15,15 +15,15 @@ import {
 import { Logo } from '@/components/logo';
 import { RegisterProjectModal } from '../modals/register-project-modal';
 import { Button } from '../ui/button';
-import { useAuth } from '@/firebase';
+import { useAuth, useUser } from '@/firebase';
 import { signOut } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 
 const menuItems = [
-  { href: '/', label: 'Projetos', icon: LayoutGrid },
-  { href: '/reports', label: 'Relatórios', icon: BarChart3 },
-  { href: '/team', label: 'Equipe', icon: Users },
-  { href: '/stock', label: 'Estoque', icon: Boxes },
+  { href: '/', label: 'Projetos', icon: LayoutGrid, adminOnly: false },
+  { href: '/reports', label: 'Relatórios', icon: BarChart3, adminOnly: false },
+  { href: '/team', label: 'Equipe', icon: Users, adminOnly: true },
+  { href: '/stock', label: 'Estoque', icon: Boxes, adminOnly: false },
 ];
 
 export function SidebarNav() {
@@ -31,6 +31,9 @@ export function SidebarNav() {
   const [isProjectModalOpen, setProjectModalOpen] = useState(false);
   const auth = useAuth();
   const router = useRouter();
+  const { user } = useUser();
+
+  const isAdmin = user?.email === 'carlos.campigotto@gmail.com';
 
   const handleLogout = async () => {
     try {
@@ -40,6 +43,8 @@ export function SidebarNav() {
       console.error("Error signing out: ", error);
     }
   };
+  
+  const visibleMenuItems = menuItems.filter(item => !item.adminOnly || isAdmin);
 
   return (
     <>
@@ -51,7 +56,7 @@ export function SidebarNav() {
 
       <SidebarContent className="p-2">
         <SidebarMenu>
-          {menuItems.map((item) => (
+          {visibleMenuItems.map((item) => (
             <SidebarMenuItem key={item.href}>
               <SidebarMenuButton
                 asChild

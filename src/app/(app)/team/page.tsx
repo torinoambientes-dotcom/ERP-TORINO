@@ -81,7 +81,7 @@ export default function TeamPage() {
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <PageHeader
             title="Equipe"
-            description="Gerencie os membros da sua equipe."
+            description="Gerencie os membros da sua equipe e suas credenciais de acesso."
           />
           <Button onClick={() => handleOpenModal()} className="w-full sm:w-auto">
             <PlusCircle className="mr-2 h-4 w-4" />
@@ -110,8 +110,9 @@ export default function TeamPage() {
                         style={{ backgroundColor: member.color }}
                       />
                       <div>
-                        <span className="font-medium">{member.name}</span>
+                        <p className="font-medium">{member.name}</p>
                         <p className="text-sm text-muted-foreground">{member.role}</p>
+                        <p className="text-xs text-muted-foreground">{member.email}</p>
                       </div>
                     </div>
                     <div className="flex gap-2">
@@ -159,7 +160,7 @@ export default function TeamPage() {
             <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
             <AlertDialogDescription>
               Esta ação não pode ser desfeita. Isso removerá permanentemente{' '}
-              <span className="font-bold">{memberToDelete?.name}</span> da equipe.
+              <span className="font-bold">{memberToDelete?.name}</span> da equipe e seu acesso ao sistema.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
