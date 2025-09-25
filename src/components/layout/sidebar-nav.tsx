@@ -30,10 +30,8 @@ export function SidebarNav() {
   return (
     <>
       <SidebarHeader>
-        <Link href="/" className="flex items-center gap-2" legacyBehavior>
-          <a className="flex items-center justify-center gap-2 w-full">
-            <Logo className="h-10 w-auto" />
-          </a>
+        <Link href="/" className="flex items-center justify-center gap-2 w-full">
+          <Logo className="h-10 w-auto" />
         </Link>
       </SidebarHeader>
 
