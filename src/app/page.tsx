@@ -74,25 +74,10 @@ export default function ProjectsPage() {
   const [statusFilter, setStatusFilter] = useState<ProjectStatus | 'Todos'>('Todos');
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
 
-  const filteredProjects = useMemo(() => {
-    return projects
-      .map((project) => ({
-        ...project,
-        statusInfo: getProjectStatus(project),
-      }))
-      .filter((project) => {
-        const isCompleted = project.statusInfo.status.text === 'Concluído';
-        if (isCompleted) return false;
+  const handleStatusFilterChange = useCallback((value: string) => {
+    setStatusFilter(value as ProjectStatus | 'Todos');
+  }, []);
 
-        const matchesSearch = project.clientName
-          .toLowerCase()
-          .includes(searchTerm.toLowerCase());
-        const matchesStatus =
-          statusFilter === 'Todos' || project.statusInfo.status.text === statusFilter;
-        return matchesSearch && matchesStatus;
-      });
-  }, [projects, searchTerm, statusFilter]);
-  
   const handleDeleteClick = useCallback((project: Project) => {
     setProjectToDelete(project);
   }, []);
@@ -108,9 +93,22 @@ export default function ProjectsPage() {
     completeProjectStages(projectId);
   }, [completeProjectStages]);
 
-  const handleStatusFilterChange = useCallback((value: string) => {
-    setStatusFilter(value as ProjectStatus | 'Todos');
-  }, []);
+  const filteredProjects = projects
+    .map((project) => ({
+      ...project,
+      statusInfo: getProjectStatus(project),
+    }))
+    .filter((project) => {
+      const isCompleted = project.statusInfo.status.text === 'Concluído';
+      if (isCompleted) return false;
+
+      const matchesSearch = project.clientName
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase());
+      const matchesStatus =
+        statusFilter === 'Todos' || project.statusInfo.status.text === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
 
   return (
     <>
