@@ -50,23 +50,17 @@ export interface Project {
   completedAt?: string; // ISO date string
 }
 
-export const STOCK_CATEGORIES = [
-  'Corrediças',
-  'Dobradiças',
-  'Articuladores',
-  'Cola HotMelt',
-  'Sapata Niveladora',
-  'Outros',
-] as const;
-
-export type StockCategory = (typeof STOCK_CATEGORIES)[number];
+export interface StockCategory {
+  id: string;
+  name: string;
+}
 
 export interface StockItem {
   id: string;
   name: string;
   quantity: number;
   unit: string;
-  category: StockCategory;
+  category: string;
   minStock?: number;
 }
 

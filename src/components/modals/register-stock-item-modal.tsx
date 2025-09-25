@@ -25,8 +25,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { AppContext } from '@/context/app-context';
 import { useToast } from '@/hooks/use-toast';
-import type { StockItem } from '@/lib/types';
-import { STOCK_CATEGORIES } from '@/lib/types';
+import type { StockItem, StockCategory } from '@/lib/types';
 import {
   Select,
   SelectContent,
@@ -39,7 +38,7 @@ const stockItemSchema = z.object({
   name: z.string().min(2, 'O nome deve ter pelo menos 2 caracteres.'),
   quantity: z.coerce.number().min(0, 'A quantidade não pode ser negativa.'),
   unit: z.string().min(1, 'A unidade é obrigatória.'),
-  category: z.enum(STOCK_CATEGORIES),
+  category: z.string().min(1, "Selecione uma categoria."),
   minStock: z.coerce.number().min(0, 'O estoque mínimo não pode ser negativo.').optional(),
 });
 
@@ -49,6 +48,7 @@ interface RegisterStockItemModalProps {
   isOpen: boolean;
   onClose: () => void;
   itemToEdit?: StockItem | null;
+  categories: StockCategory[];
 }
 
 const units = ['m²', 'm linear', 'unidade', 'chapa', 'litro', 'kg'];
@@ -57,6 +57,7 @@ export function RegisterStockItemModal({
   isOpen,
   onClose,
   itemToEdit,
+  categories = []
 }: RegisterStockItemModalProps) {
   const context = useContext(AppContext);
   if (!context) {
@@ -68,6 +69,7 @@ export function RegisterStockItemModal({
   const { toast } = useToast();
 
   const isEditMode = !!itemToEdit;
+  const defaultCategory = categories.length > 0 ? categories[0].name : '';
 
   const form = useForm<StockItemFormValues>({
     resolver: zodResolver(stockItemSchema),
@@ -75,12 +77,13 @@ export function RegisterStockItemModal({
       name: '',
       quantity: 0,
       unit: 'unidade',
-      category: 'Outros',
+      category: defaultCategory,
       minStock: 0,
     },
   });
 
   useEffect(() => {
+    const defaultCategory = categories.length > 0 ? categories[0].name : '';
     if (isOpen) {
       if (isEditMode && itemToEdit) {
         form.reset(itemToEdit);
@@ -89,12 +92,12 @@ export function RegisterStockItemModal({
           name: '',
           quantity: 0,
           unit: 'unidade',
-          category: 'Outros',
+          category: defaultCategory,
           minStock: 0,
         });
       }
     }
-  }, [isOpen, isEditMode, itemToEdit, form]);
+  }, [isOpen, isEditMode, itemToEdit, form, categories]);
 
   const onSubmit = (data: StockItemFormValues) => {
     if (isEditMode && itemToEdit) {
@@ -191,16 +194,16 @@ export function RegisterStockItemModal({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Categoria</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Selecione uma categoria" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {STOCK_CATEGORIES.map((category) => (
-                          <SelectItem key={category} value={category}>
-                            {category}
+                        {categories.map((category) => (
+                          <SelectItem key={category.id} value={category.name}>
+                            {category.name}
                           </SelectItem>
                         ))}
                       </SelectContent>

@@ -1,5 +1,5 @@
 'use client';
-import { useContext, useState } from 'react';
+import { useContext, useState, useMemo } from 'react';
 import {
   Card,
   CardContent,
@@ -28,18 +28,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { StockMovementModal } from '@/components/modals/stock-movement-modal';
 import { StockMovementHistoryModal } from '@/components/modals/stock-movement-history-modal';
 import { cn } from '@/lib/utils';
-
-const categories = [
-  'Corrediças',
-  'Dobradiças',
-  'Articuladores',
-  'Cola HotMelt',
-  'Sapata Niveladora',
-  'Outros',
-];
+import { RegisterCategoryModal } from '@/components/modals/register-category-modal';
 
 export default function StockPage() {
-  const { stockItems, deleteStockItem, isLoading } = useContext(AppContext);
+  const { stockItems, stockCategories, deleteStockItem, isLoading } = useContext(AppContext);
   const { toast } = useToast();
 
   const [isRegisterModalOpen, setRegisterModalOpen] = useState(false);
@@ -53,6 +45,12 @@ export default function StockPage() {
 
   const [isAlertOpen, setIsAlertOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<StockItem | null>(null);
+  
+  const [isCategoryModalOpen, setCategoryModalOpen] = useState(false);
+
+  const sortedCategories = useMemo(() => {
+    return [...stockCategories].sort((a, b) => a.name.localeCompare(b.name));
+  }, [stockCategories]);
 
   const handleOpenRegisterModal = (item: StockItem | null = null) => {
     setItemToEdit(item);
@@ -105,9 +103,9 @@ export default function StockPage() {
     handleCloseAlert();
   };
 
-  const renderStockList = (category: string) => {
+  const renderStockList = (categoryName: string) => {
     const items = stockItems.filter(
-      (item) => (item.category || 'Outros') === category
+      (item) => item.category === categoryName
     );
 
     if (items.length === 0) {
@@ -198,44 +196,68 @@ export default function StockPage() {
             title="Controle de Estoque"
             description="Gerencie os materiais da sua marcenaria."
           />
-          <Button
-            onClick={() => handleOpenRegisterModal()}
-            className="w-full sm:w-auto"
-          >
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Adicionar Item
-          </Button>
+          <div className="flex gap-2 w-full sm:w-auto">
+            <Button
+              onClick={() => handleOpenRegisterModal()}
+              className="flex-1 sm:flex-initial"
+            >
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Adicionar Item
+            </Button>
+            <Button
+              onClick={() => setCategoryModalOpen(true)}
+              variant="outline"
+              className="flex-1 sm:flex-initial"
+            >
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Nova Categoria
+            </Button>
+          </div>
         </div>
 
-        <Tabs defaultValue={categories[0]} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 h-auto">
-            {categories.map((category) => (
-              <TabsTrigger key={category} value={category} className='flex-1'>
-                {category}
-              </TabsTrigger>
-            ))}
-          </TabsList>
+        {sortedCategories.length > 0 ? (
+          <Tabs defaultValue={sortedCategories[0].name} className="w-full">
+            <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 h-auto">
+              {sortedCategories.map((category) => (
+                <TabsTrigger key={category.id} value={category.name} className='flex-1'>
+                  {category.name}
+                </TabsTrigger>
+              ))}
+            </TabsList>
 
-          {categories.map((category) => (
-            <TabsContent key={category} value={category}>
-              <Card>
-                <CardHeader>
-                  <CardTitle>{category}</CardTitle>
-                  <CardDescription>
-                    Itens da categoria {category.toLowerCase()}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>{renderStockList(category)}</CardContent>
-              </Card>
-            </TabsContent>
-          ))}
-        </Tabs>
+            {sortedCategories.map((category) => (
+              <TabsContent key={category.id} value={category.name}>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>{category.name}</CardTitle>
+                    <CardDescription>
+                      Itens da categoria {category.name.toLowerCase()}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>{renderStockList(category.name)}</CardContent>
+                </Card>
+              </TabsContent>
+            ))}
+          </Tabs>
+        ) : (
+          <div className="flex h-64 items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/20 bg-muted/30">
+            <div className="text-center p-4">
+              <h3 className="font-headline text-xl font-semibold text-muted-foreground/80">
+                Nenhuma categoria encontrada
+              </h3>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Cadastre uma nova categoria para começar a organizar seu estoque.
+              </p>
+            </div>
+          </div>
+        )}
       </div>
 
       <RegisterStockItemModal
         isOpen={isRegisterModalOpen}
         onClose={handleCloseRegisterModal}
         itemToEdit={itemToEdit}
+        categories={sortedCategories}
       />
       
       {itemToMove && (
@@ -277,6 +299,11 @@ export default function StockPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <RegisterCategoryModal
+        isOpen={isCategoryModalOpen}
+        onClose={() => setCategoryModalOpen(false)}
+      />
     </>
   );
 }

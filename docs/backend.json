@@ -116,18 +116,7 @@
         "quantity": { "type": "number" },
         "unit": { "type": "string" },
         "minStock": { "type": "number", "description": "The minimum stock quantity to trigger an alert." },
-        "category": {
-          "type": "string",
-          "description": "The category of the stock item.",
-          "enum": [
-            "Corrediças",
-            "Dobradiças",
-            "Articuladores",
-            "Cola HotMelt",
-            "Sapata Niveladora",
-            "Outros"
-          ]
-        }
+        "category": { "type": "string", "description": "The category of the stock item." }
       },
       "required": ["id", "name", "quantity", "unit", "category"]
     },
@@ -144,6 +133,16 @@
         "memberId": { "type": "string" }
       },
       "required": ["id", "type", "quantity", "timestamp", "memberId"]
+    },
+    "StockCategory": {
+      "title": "StockCategory",
+      "type": "object",
+      "description": "Represents a category for stock items.",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" }
+      },
+      "required": ["id", "name"]
     }
   },
   "auth": {
@@ -167,6 +166,10 @@
     "/stock_items/{stockItemId}/movements/{movementId}": {
       "schema": { "$ref": "#/entities/StockMovement" },
       "description": "Stores the movement history for a specific stock item."
+    },
+    "/stock_categories/{stockCategoryId}": {
+      "schema": { "$ref": "#/entities/StockCategory" },
+      "description": "Stores the available categories for stock items."
     }
   }
 }

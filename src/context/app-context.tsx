@@ -3,7 +3,7 @@
 import { createContext, type ReactNode, useCallback, useMemo } from 'react';
 import { collection, doc } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import type { Project, TeamMember, StageStatus, StockItem, StockMovement } from '@/lib/types';
+import type { Project, TeamMember, StageStatus, StockItem, StockMovement, StockCategory } from '@/lib/types';
 import { generateId } from '@/lib/utils';
 import { setDocumentNonBlocking, deleteDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
@@ -12,6 +12,7 @@ interface AppContextType {
   projects: Project[];
   teamMembers: TeamMember[];
   stockItems: StockItem[];
+  stockCategories: StockCategory[];
   isLoading: boolean;
   addProject: (projectData: any) => void;
   updateProject: (updatedProject: Project) => void;
@@ -24,12 +25,14 @@ interface AppContextType {
   updateStockItem: (updatedItem: StockItem) => void;
   deleteStockItem: (itemId: string) => void;
   addStockMovement: (itemId: string, movementData: Omit<StockMovement, 'id' | 'timestamp'>) => void;
+  addStockCategory: (categoryData: Omit<StockCategory, 'id'>) => void;
 }
 
 export const AppContext = createContext<AppContextType>({
   projects: [],
   teamMembers: [],
   stockItems: [],
+  stockCategories: [],
   isLoading: true,
   addProject: () => {},
   updateProject: () => {},
@@ -42,6 +45,7 @@ export const AppContext = createContext<AppContextType>({
   updateStockItem: () => {},
   deleteStockItem: () => {},
   addStockMovement: () => {},
+  addStockCategory: () => {},
 });
 
 const isProjectComplete = (project: Project): boolean => {
@@ -66,10 +70,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const projectsQuery = useMemoFirebase(() => collection(firestore, 'projects'), [firestore]);
   const teamMembersQuery = useMemoFirebase(() => collection(firestore, 'team_members'), [firestore]);
   const stockItemsQuery = useMemoFirebase(() => collection(firestore, 'stock_items'), [firestore]);
+  const stockCategoriesQuery = useMemoFirebase(() => collection(firestore, 'stock_categories'), [firestore]);
 
   const { data: projects, isLoading: isLoadingProjects } = useCollection<Project>(projectsQuery);
   const { data: teamMembers, isLoading: isLoadingTeamMembers } = useCollection<TeamMember>(teamMembersQuery);
   const { data: stockItems, isLoading: isLoadingStockItems } = useCollection<StockItem>(stockItemsQuery);
+  const { data: stockCategoriesData, isLoading: isLoadingStockCategories } = useCollection<StockCategory>(stockCategoriesQuery);
+
+  const stockCategories = useMemo(() => stockCategoriesData || [], [stockCategoriesData]);
   
   const addProject = useCallback((projectData: Omit<Project, 'id' | 'environments'> & { environments: Array<Omit<Project['environments'][0], 'id' | 'furniture'> & { furniture: Array<Omit<Project['environments'][0]['furniture'][0], 'id' | 'measurement' | 'cutting' | 'purchase' | 'assembly'>>}>}) => {
     if (!firestore) return;
@@ -203,12 +211,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addDocumentNonBlocking(movementRef, newMovement);
 
   }, [firestore, stockItems]);
+  
+  const addStockCategory = useCallback((categoryData: Omit<StockCategory, 'id'>) => {
+    if (!firestore) return;
+    const categoryId = generateId('cat');
+    const newCategory = { ...categoryData, id: categoryId };
+    const categoryRef = doc(firestore, 'stock_categories', categoryId);
+    setDocumentNonBlocking(categoryRef, newCategory, { merge: false });
+  }, [firestore]);
 
   const value = useMemo(() => ({
     projects: projects || [],
     teamMembers: teamMembers || [],
     stockItems: stockItems || [],
-    isLoading: isLoadingProjects || isLoadingTeamMembers || isLoadingStockItems,
+    stockCategories: stockCategories,
+    isLoading: isLoadingProjects || isLoadingTeamMembers || isLoadingStockItems || isLoadingStockCategories,
     addProject,
     updateProject,
     deleteProject,
@@ -220,13 +237,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
     updateStockItem,
     deleteStockItem,
     addStockMovement,
+    addStockCategory,
   }), [
     projects, 
     teamMembers, 
     stockItems,
+    stockCategories,
     isLoadingProjects, 
     isLoadingTeamMembers, 
     isLoadingStockItems,
+    isLoadingStockCategories,
     addProject, 
     updateProject, 
     deleteProject, 
@@ -238,6 +258,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     updateStockItem,
     deleteStockItem,
     addStockMovement,
+    addStockCategory
   ]);
 
 
