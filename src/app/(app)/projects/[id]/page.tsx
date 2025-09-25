@@ -25,7 +25,6 @@ import { FurnitureChatModal } from '@/components/modals/furniture-chat-modal';
 import { FurnitureMaterialsModal } from '@/components/modals/furniture-materials-modal';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
-import { deleteField } from 'firebase/firestore';
 
 type StageKey = 'measurement' | 'cutting' | 'purchase' | 'assembly';
 const stages: { key: StageKey; label: string }[] = [
@@ -288,5 +287,3 @@ export default function ProjectDetailsPage() {
     </>
   );
 }
-
-    
