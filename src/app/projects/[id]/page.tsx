@@ -53,8 +53,8 @@ export default function ProjectDetailsPage({
     [id, projects]
   );
   
-  const [project, setProject] = useState<Project | null>(
-    initialProject ? JSON.parse(JSON.stringify(initialProject)) : null
+  const [project, setProject] = useState<Project | undefined>(
+    initialProject ? JSON.parse(JSON.stringify(initialProject)) : undefined
   );
   
   const [isChatModalOpen, setChatModalOpen] = useState(false);
@@ -65,12 +65,12 @@ export default function ProjectDetailsPage({
     if (!initialProject) {
         notFound();
     }
-    setProject(initialProject ? JSON.parse(JSON.stringify(initialProject)) : null);
+    setProject(initialProject ? JSON.parse(JSON.stringify(initialProject)) : undefined);
   }, [initialProject]);
   
   // Auto-save with debounce
   useEffect(() => {
-    if (project && JSON.stringify(project) !== JSON.stringify(initialProject)) {
+    if (project && initialProject && JSON.stringify(project) !== JSON.stringify(initialProject)) {
       const handler = setTimeout(() => {
         updateProject(project);
       }, 1000); // 1-second debounce
