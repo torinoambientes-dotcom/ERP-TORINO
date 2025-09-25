@@ -45,7 +45,7 @@ export default function ProjectDetailsPage({
   params: { id: string };
 }) {
   const { projects, teamMembers, updateProject, isLoading } = useContext(AppContext);
-  const { id } = params;
+  const id = params.id;
 
   const [project, setProject] = useState<Project | null | undefined>(undefined);
 
