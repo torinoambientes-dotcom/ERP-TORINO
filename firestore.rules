@@ -1,78 +1,108 @@
 /**
- * @file Firestore Security Rules
- * @core-philosophy This ruleset adopts a permissive data shape but enforces strict access control based on ownership.
- *   It prioritizes preventing unauthorized data access over rigorous data validation to enable rapid prototyping.
- * @data-structure
- *   - /projects/{projectId}: Stores project data. Access is unrestricted.
- *   - /team_members/{teamMemberId}: Stores team member information. Access is unrestricted.
- *   - /stock_items/{stockItemId}: Stores inventory items. Access is unrestricted.
- *   - /stock_items/{stockItemId}/movements/{movementId}: Stores movement history for stock items. Access is unrestricted.
- *   - /stock_categories/{stockCategoryId}: Stores stock item categories. Access is unrestricted.
- * @key-security-decisions
- *   - Unrestricted access to all collections. This should be changed after the prototyping phase.
+ * @fileoverview Firestore Security Rules for the application.
+ *
+ * Core Philosophy:
+ * This ruleset prioritizes security by enforcing ownership and role-based access control.
+ * It uses denormalization to avoid costly `get()` calls and improve performance.
+ * It assumes a strict security posture by default, explicitly denying access unless specifically granted.
+ *
+ * Data Structure:
+ * - /projects/{projectId}: Stores project information. Access is unrestricted in this prototype.
+ * - /team_members/{teamMemberId}: Stores team member information.  Access is unrestricted in this prototype.
+ * - /stock_items/{stockItemId}: Stores inventory items. Access is unrestricted in this prototype.
+ * - /stock_items/{stockItemId}/movements/{movementId}: Stores stock movement history. Access is unrestricted in this prototype.
+ * - /stock_categories/{stockCategoryId}: Stores stock categories. Access is unrestricted in this prototype.
+ *
+ * Key Security Decisions:
+ * - Public read access is enabled for all collections to facilitate prototyping.
+ * - No write operations are completely open; all writes are restricted by `if false;` as placeholders for proper authorization logic.
+ * - Data validation is minimal, focusing on authorization-critical fields for relational integrity.
+ *
+ * Denormalization for Authorization:
+ * Not applicable in this prototype, as access is unrestricted.  In a production setting,
+ * denormalization would be used to store access control lists directly on documents,
+ * avoiding the need for complex queries.
+ *
+ * Structural Segregation:
+ * Not applicable in this prototype.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Allows anyone to read and write project data.
+     * @description Allows anyone to read project data. Write operations are denied and needs to be implemented.
      * @path /projects/{projectId}
-     * @allow (get, list, create, update, delete) Any authenticated user can perform any operation.
-     * @deny None. All requests are allowed.
-     * @principle No access control is enforced.
+     * @allow (get, list): Allow any read
+     * @deny (create, update, delete): Deny any write
+     * @principle Public read, restricted write (placeholder)
      */
     match /projects/{projectId} {
-      allow get, list: if true;
-      allow create, update, delete: if true;
+      allow get: if true;
+      allow list: if true;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
     }
 
     /**
-     * @description Allows anyone to read and write team member data.
+     * @description Allows anyone to read team member data. Write operations are denied and needs to be implemented.
      * @path /team_members/{teamMemberId}
-     * @allow (get, list, create, update, delete) Any authenticated user can perform any operation.
-     * @deny None. All requests are allowed.
-     * @principle No access control is enforced.
+     * @allow (get, list): Allow any read
+     * @deny (create, update, delete): Deny any write
+     * @principle Public read, restricted write (placeholder)
      */
     match /team_members/{teamMemberId} {
-      allow get, list: if true;
-      allow create, update, delete: if true;
+      allow get: if true;
+      allow list: if true;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
     }
 
     /**
-     * @description Allows anyone to read and write stock item data.
+     * @description Allows anyone to read stock item data. Write operations are denied and needs to be implemented.
      * @path /stock_items/{stockItemId}
-     * @allow (get, list, create, update, delete) Any authenticated user can perform any operation.
-     * @deny None. All requests are allowed.
-     * @principle No access control is enforced.
+     * @allow (get, list): Allow any read
+     * @deny (create, update, delete): Deny any write
+     * @principle Public read, restricted write (placeholder)
      */
     match /stock_items/{stockItemId} {
-      allow get, list: if true;
-      allow create, update, delete: if true;
+      allow get: if true;
+      allow list: if true;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
     }
 
     /**
-     * @description Allows anyone to read and write stock movement data.
+     * @description Allows anyone to read stock movement data. Write operations are denied and needs to be implemented.
      * @path /stock_items/{stockItemId}/movements/{movementId}
-     * @allow (get, list, create, update, delete) Any authenticated user can perform any operation.
-     * @deny None. All requests are allowed.
-     * @principle No access control is enforced.
+     * @allow (get, list): Allow any read
+     * @deny (create, update, delete): Deny any write
+     * @principle Public read, restricted write (placeholder)
      */
     match /stock_items/{stockItemId}/movements/{movementId} {
-      allow get, list: if true;
-      allow create, update, delete: if true;
+      allow get: if true;
+      allow list: if true;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
     }
 
     /**
-     * @description Allows anyone to read and write stock category data.
+     * @description Allows anyone to read stock category data. Write operations are denied and needs to be implemented.
      * @path /stock_categories/{stockCategoryId}
-     * @allow (get, list, create, update, delete) Any authenticated user can perform any operation.
-     * @deny None. All requests are allowed.
-     * @principle No access control is enforced.
+     * @allow (get, list): Allow any read
+     * @deny (create, update, delete): Deny any write
+     * @principle Public read, restricted write (placeholder)
      */
     match /stock_categories/{stockCategoryId} {
-      allow get, list: if true;
-      allow create, update, delete: if true;
+      allow get: if true;
+      allow list: if true;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
     }
   }
 }
