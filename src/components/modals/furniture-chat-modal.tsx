@@ -36,19 +36,20 @@ export function FurnitureChatModal({
   const { teamMembers } = useContext(AppContext);
   const [newComment, setNewComment] = useState('');
   const [newPendency, setNewPendency] = useState('');
-  // For demo, let's assume a "logged in" user. In a real app, this would come from auth.
-  const currentMemberId = teamMembers[0]?.id || '1';
-
+  
   const memberMap = useMemo(() => {
     return new Map(teamMembers.map(m => [m.id, m]));
   }, [teamMembers]);
 
+  // For demo, let's assume a "logged in" user. In a real app, this would come from auth.
+  const currentMember = useMemo(() => teamMembers.length > 0 ? teamMembers[0] : null, [teamMembers]);
+
   const handleAddComment = () => {
-    if (!newComment.trim()) return;
+    if (!newComment.trim() || !currentMember) return;
 
     const comment: Comment = {
       id: `comm-${Date.now()}`,
-      memberId: currentMemberId,
+      memberId: currentMember.id,
       text: newComment,
       timestamp: new Date().toISOString(),
     };
@@ -67,13 +68,13 @@ export function FurnitureChatModal({
   };
   
   const handleAddPendency = () => {
-    if (!newPendency.trim()) return;
+    if (!newPendency.trim() || !currentMember) return;
 
     const pendency: Pendency = {
       id: `pend-${Date.now()}`,
       text: newPendency,
       isResolved: false,
-      authorId: currentMemberId
+      authorId: currentMember.id
     };
 
     const newProject = { ...project };
@@ -141,8 +142,9 @@ export function FurnitureChatModal({
                         onChange={(e) => setNewPendency(e.target.value)}
                         placeholder="Nova pendência..."
                         onKeyDown={(e) => e.key === 'Enter' && handleAddPendency()}
+                        disabled={!currentMember}
                     />
-                    <Button onClick={handleAddPendency}>Adicionar</Button>
+                    <Button onClick={handleAddPendency} disabled={!currentMember}>Adicionar</Button>
                 </div>
             </div>
             {/* Chat */}
@@ -176,8 +178,9 @@ export function FurnitureChatModal({
                         onChange={(e) => setNewComment(e.target.value)}
                         placeholder="Escreva um comentário..."
                         onKeyDown={(e) => e.key === 'Enter' && handleAddComment()}
+                        disabled={!currentMember}
                     />
-                    <Button onClick={handleAddComment}>Enviar</Button>
+                    <Button onClick={handleAddComment} disabled={!currentMember}>Enviar</Button>
                 </div>
             </div>
         </div>

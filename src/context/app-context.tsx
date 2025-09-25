@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useState, type ReactNode } from 'react';
+import { createContext, useState, useEffect, type ReactNode } from 'react';
 import type { Project, TeamMember } from '@/lib/types';
 import { initialProjects, initialTeamMembers } from '@/lib/data';
 
@@ -20,9 +20,28 @@ export const AppContext = createContext<AppContextType>({
   updateProject: () => {},
 });
 
+const useStickyState = <T>(defaultValue: T, key: string): [T, React.Dispatch<React.SetStateAction<T>>] => {
+  const [value, setValue] = useState<T>(() => {
+    if (typeof window === 'undefined') {
+      return defaultValue;
+    }
+    const stickyValue = window.localStorage.getItem(key);
+    return stickyValue !== null
+      ? JSON.parse(stickyValue)
+      : defaultValue;
+  });
+
+  useEffect(() => {
+    window.localStorage.setItem(key, JSON.stringify(value));
+  }, [key, value]);
+
+  return [value, setValue];
+}
+
+
 export function AppProvider({ children }: { children: ReactNode }) {
-  const [projects, setProjects] = useState<Project[]>(initialProjects);
-  const [teamMembers, setTeamMembers] = useState<TeamMember[]>(initialTeamMembers);
+  const [projects, setProjects] = useStickyState<Project[]>(initialProjects, 'app-projects');
+  const [teamMembers, setTeamMembers] = useStickyState<TeamMember[]>(initialTeamMembers, 'app-team-members');
 
   const addProject = (project: Project) => {
     setProjects((prev) => [...prev, project]);
