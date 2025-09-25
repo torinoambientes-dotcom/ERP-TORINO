@@ -25,6 +25,7 @@ import { FurnitureChatModal } from '@/components/modals/furniture-chat-modal';
 import { FurnitureMaterialsModal } from '@/components/modals/furniture-materials-modal';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 type StageKey = 'measurement' | 'cutting' | 'purchase' | 'assembly';
 const stages: { key: StageKey; label: string }[] = [
@@ -39,6 +40,16 @@ const statusColors: Record<StageStatus, string> = {
   in_progress: 'bg-blue-100 border-blue-200 text-blue-800',
   done: 'bg-green-100 border-green-200 text-green-800',
 };
+
+const getInitials = (name: string) => {
+  if (!name) return '';
+  const names = name.split(' ');
+  if (names.length > 1) {
+    return `${names[0][0]}${names[names.length - 1][0]}`.toUpperCase();
+  }
+  return name.substring(0, 2).toUpperCase();
+};
+
 
 export default function ProjectDetailsPage() {
   const { projects, teamMembers, updateProject, isLoading } = useContext(AppContext);
@@ -240,7 +251,12 @@ export default function ProjectDetailsPage() {
                                   <div className="flex items-center gap-2 truncate">
                                     {responsibleMember ? (
                                       <>
-                                        <span className="h-4 w-4 rounded-full flex-shrink-0" style={{ backgroundColor: responsibleMember.color }}></span>
+                                        <Avatar className="h-6 w-6">
+                                            {responsibleMember.avatarUrl && <AvatarImage src={responsibleMember.avatarUrl} alt={responsibleMember.name} />}
+                                            <AvatarFallback style={{ backgroundColor: responsibleMember.color }} className='text-xs'>
+                                            {getInitials(responsibleMember.name)}
+                                            </AvatarFallback>
+                                        </Avatar>
                                         <span className='truncate'>{responsibleMember.name}</span>
                                       </>
                                     ) : (
@@ -254,7 +270,12 @@ export default function ProjectDetailsPage() {
                                 {responsibleList?.map((member) => (
                                   <SelectItem key={member.id} value={member.id}>
                                     <div className="flex items-center gap-2">
-                                      <span className="h-4 w-4 rounded-full" style={{ backgroundColor: member.color }}></span>
+                                       <Avatar className="h-6 w-6">
+                                            {member.avatarUrl && <AvatarImage src={member.avatarUrl} alt={member.name} />}
+                                            <AvatarFallback style={{ backgroundColor: member.color }} className='text-xs'>
+                                            {getInitials(member.name)}
+                                            </AvatarFallback>
+                                        </Avatar>
                                       <span>{member.name}</span>
                                     </div>
                                   </SelectItem>
