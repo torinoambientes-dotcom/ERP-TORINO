@@ -14,18 +14,17 @@ import {
 } from '@/components/ui/sidebar';
 import { Logo } from '@/components/logo';
 import { RegisterProjectModal } from '../modals/register-project-modal';
-import { RegisterTeamModal } from '../modals/register-team-modal';
 import { Button } from '../ui/button';
 
 const menuItems = [
   { href: '/', label: 'Projetos', icon: LayoutGrid },
   { href: '/reports', label: 'Relatórios', icon: BarChart3 },
+  { href: '/team', label: 'Equipe', icon: Users },
 ];
 
 export function SidebarNav() {
   const pathname = usePathname();
   const [isProjectModalOpen, setProjectModalOpen] = useState(false);
-  const [isTeamModalOpen, setTeamModalOpen] = useState(false);
 
   return (
     <>
@@ -66,24 +65,12 @@ export function SidebarNav() {
             <PlusCircle className="h-5 w-5" />
             <span className="text-base text-center">Novo Projeto</span>
           </Button>
-           <Button
-            onClick={() => setTeamModalOpen(true)}
-            variant="secondary"
-            className="w-full justify-start [&>span]:flex-1"
-          >
-            <Users className="h-5 w-5" />
-            <span className="text-base text-center">Nova Equipe</span>
-          </Button>
          </div>
       </SidebarFooter>
 
       <RegisterProjectModal
         isOpen={isProjectModalOpen}
         onClose={() => setProjectModalOpen(false)}
-      />
-      <RegisterTeamModal
-        isOpen={isTeamModalOpen}
-        onClose={() => setTeamModalOpen(false)}
       />
     </>
   );

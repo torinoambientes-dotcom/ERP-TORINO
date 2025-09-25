@@ -16,6 +16,8 @@ interface AppContextType {
   updateProject: (updatedProject: Project) => void;
   deleteProject: (projectId: string) => void;
   addTeamMember: (memberData: Omit<TeamMember, 'id'>) => void;
+  updateTeamMember: (updatedMember: TeamMember) => void;
+  deleteTeamMember: (memberId: string) => void;
   completeProjectStages: (projectId: string) => void;
 }
 
@@ -27,6 +29,8 @@ export const AppContext = createContext<AppContextType>({
   updateProject: () => {},
   deleteProject: () => {},
   addTeamMember: () => {},
+  updateTeamMember: () => {},
+  deleteTeamMember: () => {},
   completeProjectStages: () => {},
 });
 
@@ -83,6 +87,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const memberRef = doc(firestore, 'team_members', memberId);
     setDocumentNonBlocking(memberRef, newMember, { merge: false });
   }, [firestore]);
+
+  const updateTeamMember = useCallback((updatedMember: TeamMember) => {
+    if (!firestore) return;
+    const memberRef = doc(firestore, 'team_members', updatedMember.id);
+    setDocumentNonBlocking(memberRef, updatedMember, { merge: true });
+  }, [firestore]);
+
+  const deleteTeamMember = useCallback((memberId: string) => {
+    if (!firestore) return;
+    const memberRef = doc(firestore, 'team_members', memberId);
+    deleteDocumentNonBlocking(memberRef);
+  }, [firestore]);
   
   const completeProjectStages = useCallback((projectId: string) => {
     if (!projects) return;
@@ -112,8 +128,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     updateProject,
     deleteProject,
     addTeamMember,
+    updateTeamMember,
+    deleteTeamMember,
     completeProjectStages,
-  }), [projects, teamMembers, isLoadingProjects, isLoadingTeamMembers, addProject, updateProject, deleteProject, addTeamMember, completeProjectStages]);
+  }), [projects, teamMembers, isLoadingProjects, isLoadingTeamMembers, addProject, updateProject, deleteProject, addTeamMember, updateTeamMember, deleteTeamMember, completeProjectStages]);
 
 
   return (

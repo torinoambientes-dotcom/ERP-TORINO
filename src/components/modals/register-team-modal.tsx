@@ -1,6 +1,6 @@
 'use client';
 
-import { useContext } from 'react';
+import { useContext, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -25,6 +25,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { AppContext } from '@/context/app-context';
 import { useToast } from '@/hooks/use-toast';
+import type { TeamMember } from '@/lib/types';
 
 const teamMemberSchema = z.object({
   name: z.string().min(2, 'O nome deve ter pelo menos 2 caracteres.'),
@@ -36,6 +37,7 @@ type TeamMemberFormValues = z.infer<typeof teamMemberSchema>;
 interface RegisterTeamModalProps {
   isOpen: boolean;
   onClose: () => void;
+  memberToEdit?: TeamMember | null;
 }
 
 const defaultColors = [
@@ -44,13 +46,15 @@ const defaultColors = [
 ];
 
 
-export function RegisterTeamModal({ isOpen, onClose }: RegisterTeamModalProps) {
+export function RegisterTeamModal({ isOpen, onClose, memberToEdit }: RegisterTeamModalProps) {
   const context = useContext(AppContext);
   if (!context) {
     throw new Error('RegisterTeamModal must be used within an AppProvider');
   }
-  const { addTeamMember } = context;
+  const { addTeamMember, updateTeamMember } = context;
   const { toast } = useToast();
+
+  const isEditMode = !!memberToEdit;
 
   const form = useForm<TeamMemberFormValues>({
     resolver: zodResolver(teamMemberSchema),
@@ -59,13 +63,32 @@ export function RegisterTeamModal({ isOpen, onClose }: RegisterTeamModalProps) {
       color: '#3b82f6',
     },
   });
+  
+  useEffect(() => {
+    if(isOpen) {
+      if (isEditMode && memberToEdit) {
+        form.reset(memberToEdit);
+      } else {
+        form.reset({ name: '', color: defaultColors[0] });
+      }
+    }
+  }, [isOpen, isEditMode, memberToEdit, form]);
 
   const onSubmit = (data: TeamMemberFormValues) => {
-    addTeamMember(data);
-    toast({
-      title: 'Membro da equipe cadastrado!',
-      description: `${data.name} foi adicionado(a) à equipe.`,
-    });
+    if (isEditMode && memberToEdit) {
+      updateTeamMember({ ...memberToEdit, ...data });
+       toast({
+        title: 'Membro da equipe atualizado!',
+        description: `Os dados de ${data.name} foram atualizados.`,
+      });
+    } else {
+      addTeamMember(data);
+      toast({
+        title: 'Membro da equipe cadastrado!',
+        description: `${data.name} foi adicionado(a) à equipe.`,
+      });
+    }
+    
     form.reset();
     onClose();
   };
@@ -74,9 +97,9 @@ export function RegisterTeamModal({ isOpen, onClose }: RegisterTeamModalProps) {
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle className="font-headline">Cadastrar Membro da Equipe</DialogTitle>
+          <DialogTitle className="font-headline">{isEditMode ? 'Editar Membro' : 'Cadastrar Membro da Equipe'}</DialogTitle>
           <DialogDescription>
-            Adicione um novo membro e associe uma cor para fácil identificação.
+            {isEditMode ? `Altere os dados de ${memberToEdit?.name}.` : 'Adicione um novo membro e associe uma cor para fácil identificação.'}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
