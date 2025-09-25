@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import type { TeamMember } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
+import { Badge } from '@/components/ui/badge';
 
 export default function TeamPage() {
   const { teamMembers, deleteTeamMember, isLoading } = useContext(AppContext);
@@ -108,7 +109,10 @@ export default function TeamPage() {
                         className="h-8 w-8 rounded-full"
                         style={{ backgroundColor: member.color }}
                       />
-                      <span className="font-medium">{member.name}</span>
+                      <div>
+                        <span className="font-medium">{member.name}</span>
+                        <p className="text-sm text-muted-foreground">{member.role}</p>
+                      </div>
                     </div>
                     <div className="flex gap-2">
                       <Button

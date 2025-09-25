@@ -26,10 +26,20 @@ import { Input } from '@/components/ui/input';
 import { AppContext } from '@/context/app-context';
 import { useToast } from '@/hooks/use-toast';
 import type { TeamMember } from '@/lib/types';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../ui/select';
 
 const teamMemberSchema = z.object({
   name: z.string().min(2, 'O nome deve ter pelo menos 2 caracteres.'),
-  color: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Cor inválida. Use o formato #RRGGBB.'),
+  role: z.string().min(1, 'A função é obrigatória.'),
+  color: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/, 'Cor inválida. Use o formato #RRGGBB.'),
 });
 
 type TeamMemberFormValues = z.infer<typeof teamMemberSchema>;
@@ -41,12 +51,23 @@ interface RegisterTeamModalProps {
 }
 
 const defaultColors = [
-    '#3b82f6', '#16a34a', '#f97316', '#8b5cf6', 
-    '#ef4444', '#eab308', '#ec4899', '#14b8a6'
+  '#3b82f6',
+  '#16a34a',
+  '#f97316',
+  '#8b5cf6',
+  '#ef4444',
+  '#eab308',
+  '#ec4899',
+  '#14b8a6',
 ];
 
+const roles = ['PCP', 'Marceneiro', 'Projetista'];
 
-export function RegisterTeamModal({ isOpen, onClose, memberToEdit }: RegisterTeamModalProps) {
+export function RegisterTeamModal({
+  isOpen,
+  onClose,
+  memberToEdit,
+}: RegisterTeamModalProps) {
   const context = useContext(AppContext);
   if (!context) {
     throw new Error('RegisterTeamModal must be used within an AppProvider');
@@ -60,16 +81,17 @@ export function RegisterTeamModal({ isOpen, onClose, memberToEdit }: RegisterTea
     resolver: zodResolver(teamMemberSchema),
     defaultValues: {
       name: '',
+      role: '',
       color: '#3b82f6',
     },
   });
-  
+
   useEffect(() => {
-    if(isOpen) {
+    if (isOpen) {
       if (isEditMode && memberToEdit) {
         form.reset(memberToEdit);
       } else {
-        form.reset({ name: '', color: defaultColors[0] });
+        form.reset({ name: '', role: roles[0], color: defaultColors[0] });
       }
     }
   }, [isOpen, isEditMode, memberToEdit, form]);
@@ -77,7 +99,7 @@ export function RegisterTeamModal({ isOpen, onClose, memberToEdit }: RegisterTea
   const onSubmit = (data: TeamMemberFormValues) => {
     if (isEditMode && memberToEdit) {
       updateTeamMember({ ...memberToEdit, ...data });
-       toast({
+      toast({
         title: 'Membro da equipe atualizado!',
         description: `Os dados de ${data.name} foram atualizados.`,
       });
@@ -88,7 +110,7 @@ export function RegisterTeamModal({ isOpen, onClose, memberToEdit }: RegisterTea
         description: `${data.name} foi adicionado(a) à equipe.`,
       });
     }
-    
+
     form.reset();
     onClose();
   };
@@ -97,9 +119,13 @@ export function RegisterTeamModal({ isOpen, onClose, memberToEdit }: RegisterTea
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle className="font-headline">{isEditMode ? 'Editar Membro' : 'Cadastrar Membro da Equipe'}</DialogTitle>
+          <DialogTitle className="font-headline">
+            {isEditMode ? 'Editar Membro' : 'Cadastrar Membro da Equipe'}
+          </DialogTitle>
           <DialogDescription>
-            {isEditMode ? `Altere os dados de ${memberToEdit?.name}.` : 'Adicione um novo membro e associe uma cor para fácil identificação.'}
+            {isEditMode
+              ? `Altere os dados de ${memberToEdit?.name}.`
+              : 'Adicione um novo membro e associe uma cor para fácil identificação.'}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -119,18 +145,61 @@ export function RegisterTeamModal({ isOpen, onClose, memberToEdit }: RegisterTea
             />
             <FormField
               control={form.control}
+              name="role"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Função</FormLabel>
+                  <Select
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione uma função" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {roles.map((role) => (
+                        <SelectItem key={role} value={role}>
+                          {role}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
               name="color"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Cor da Etiqueta</FormLabel>
                   <FormControl>
                     <div className="flex items-center gap-2">
-                        <Input type="color" className="p-1 h-10 w-14" {...field} />
-                        <div className="flex flex-wrap gap-2">
-                            {defaultColors.map(color => (
-                                <button type="button" key={color} onClick={() => form.setValue('color', color)} className="h-8 w-8 rounded-full border-2" style={{ backgroundColor: color, borderColor: field.value === color ? 'hsl(var(--primary))' : 'transparent' }}></button>
-                            ))}
-                        </div>
+                      <Input
+                        type="color"
+                        className="p-1 h-10 w-14"
+                        {...field}
+                      />
+                      <div className="flex flex-wrap gap-2">
+                        {defaultColors.map((color) => (
+                          <button
+                            type="button"
+                            key={color}
+                            onClick={() => form.setValue('color', color)}
+                            className="h-8 w-8 rounded-full border-2"
+                            style={{
+                              backgroundColor: color,
+                              borderColor:
+                                field.value === color
+                                  ? 'hsl(var(--primary))'
+                                  : 'transparent',
+                            }}
+                          ></button>
+                        ))}
+                      </div>
                     </div>
                   </FormControl>
                   <FormMessage />
