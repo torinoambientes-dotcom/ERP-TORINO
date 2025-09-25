@@ -1,8 +1,8 @@
 'use client';
-import { useState } from 'react';
+import { useState, useContext, useMemo } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BarChart3, LayoutGrid, PlusCircle, Users, Boxes, LogOut, ShoppingCart } from 'lucide-react';
+import { BarChart3, LayoutGrid, PlusCircle, Users, Boxes, LogOut, ShoppingCart, User } from 'lucide-react';
 import {
   SidebarHeader,
   SidebarContent,
@@ -18,6 +18,9 @@ import { Button } from '../ui/button';
 import { useAuth, useUser } from '@/firebase';
 import { signOut } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
+import { AppContext } from '@/context/app-context';
+import { Avatar, AvatarFallback } from '../ui/avatar';
+import { cn } from '@/lib/utils';
 
 const menuItems = [
   { href: '/', label: 'Projetos', icon: LayoutGrid, adminOnly: false },
@@ -33,6 +36,12 @@ export function SidebarNav() {
   const auth = useAuth();
   const router = useRouter();
   const { user } = useUser();
+  const { teamMembers } = useContext(AppContext);
+  
+  const loggedInMember = useMemo(() => {
+    if (!user || !teamMembers) return null;
+    return teamMembers.find(member => member.id === user.uid);
+  }, [user, teamMembers]);
 
   const isAdmin = user?.email === 'carlos.campigotto@gmail.com';
 
@@ -49,6 +58,14 @@ export function SidebarNav() {
     const order = ['Projetos', 'Compras', 'Estoque', 'Relatórios', 'Equipe'];
     return order.indexOf(a.label) - order.indexOf(b.label);
   });
+  
+  const getInitials = (name: string) => {
+    const names = name.split(' ');
+    if (names.length > 1) {
+      return `${names[0][0]}${names[names.length - 1][0]}`.toUpperCase();
+    }
+    return name.substring(0, 2).toUpperCase();
+  };
 
   return (
     <>
@@ -81,6 +98,19 @@ export function SidebarNav() {
       <SidebarFooter className='mt-auto'>
          <SidebarSeparator />
          <div className="p-2 space-y-2">
+            {loggedInMember && (
+                <div className={cn("flex items-center gap-3 p-2 transition-all", "group-data-[collapsible=icon]:-left-full group-data-[collapsible=icon]:absolute group-data-[collapsible=icon]:opacity-0 group-data-[collapsible=icon]:invisible")}>
+                    <Avatar className="h-9 w-9">
+                         <AvatarFallback style={{backgroundColor: loggedInMember.color}}>
+                            {getInitials(loggedInMember.name)}
+                        </AvatarFallback>
+                    </Avatar>
+                    <div className="flex flex-col overflow-hidden">
+                        <p className="text-sm font-medium truncate text-sidebar-foreground">{loggedInMember.name}</p>
+                        <p className="text-xs text-sidebar-foreground/70 truncate">{loggedInMember.email}</p>
+                    </div>
+                </div>
+            )}
            <Button
             onClick={() => setProjectModalOpen(true)}
             variant="default"
