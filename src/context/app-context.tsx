@@ -69,6 +69,27 @@ const isProjectComplete = (project: Project): boolean => {
   );
 };
 
+const cleanupUndefinedFields = (obj: any) => {
+  if (obj === null || typeof obj !== 'object') {
+    return obj;
+  }
+
+  if (Array.isArray(obj)) {
+    return obj.map(cleanupUndefinedFields);
+  }
+
+  const newObj: { [key: string]: any } = {};
+  for (const key in obj) {
+    if (Object.prototype.hasOwnProperty.call(obj, key)) {
+      const value = obj[key];
+      if (value !== undefined) {
+        newObj[key] = cleanupUndefinedFields(value);
+      }
+    }
+  }
+  return newObj;
+};
+
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const firestore = useFirestore();
@@ -115,12 +136,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const updateProject = useCallback((updatedProject: Project) => {
     if (!firestore) return;
     
-    const projectWithCompletion = { ...updatedProject };
+    let projectWithCompletion = { ...updatedProject };
     
-    // Verifica se o projeto está sendo concluído e ainda não tem data de conclusão
     if (isProjectComplete(projectWithCompletion) && !projectWithCompletion.completedAt) {
       projectWithCompletion.completedAt = new Date().toISOString();
     }
+    
+    // Clean up undefined values before sending to Firestore
+    projectWithCompletion = cleanupUndefinedFields(projectWithCompletion);
     
     const projectRef = doc(firestore, 'projects', projectWithCompletion.id);
     setDocumentNonBlocking(projectRef, projectWithCompletion, { merge: true });
@@ -145,23 +168,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
 
     try {
-      // Step 1: Create user in Firebase Authentication
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const newUserId = userCredential.user.uid;
 
-      // Step 2: Create team member document in Firestore with the same ID
       const newMember: TeamMember = {
         ...restOfData,
-        id: newUserId, // Use the UID from Auth as the document ID
+        id: newUserId, 
         userId: newUserId,
         email: email,
       };
 
       const memberRef = doc(firestore, 'team_members', newUserId);
-      // This is intentionally a blocking call to ensure data consistency after auth creation.
       await setDocumentNonBlocking(memberRef, newMember, { merge: false });
     } catch (error: any) {
-      // Forward specific Firebase Auth errors
       if (error.code === 'auth/email-already-in-use') {
         throw new Error('Este e-mail já está em uso por outra conta.');
       }
@@ -182,8 +201,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const deleteTeamMember = useCallback((memberId: string) => {
     if (!firestore) return;
-    // TODO: Need to also delete the user from Firebase Auth. This requires Admin SDK.
-    // For now, we only delete from Firestore.
     const memberRef = doc(firestore, 'team_members', memberId);
     deleteDocumentNonBlocking(memberRef);
   }, [firestore]);
@@ -234,23 +251,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const itemToUpdate = stockItems.find(item => item.id === itemId);
     if (!itemToUpdate) return;
     
-    // Calculate new quantity
     const currentQuantity = itemToUpdate.quantity;
     const movementQuantity = movementData.quantity;
     const newQuantity = movementData.type === 'entry' ? currentQuantity + movementQuantity : currentQuantity - movementQuantity;
 
     const updateData: { quantity: number; alertHandledAt?: any } = { quantity: newQuantity };
 
-    // Se o estoque for reabastecido acima do mínimo, limpa o status do alerta
     if (typeof itemToUpdate.minStock === 'number' && newQuantity >= itemToUpdate.minStock) {
         updateData.alertHandledAt = deleteField();
     }
 
-    // 1. Update the stock item's quantity
     const itemRef = doc(firestore, 'stock_items', itemId);
     setDocumentNonBlocking(itemRef, updateData, { merge: true });
 
-    // 2. Add a record to the movement history
     const movementId = generateId('move');
     const newMovement: StockMovement = {
       ...movementData,
@@ -339,3 +352,5 @@ export function AppProvider({ children }: { children: ReactNode }) {
     </AppContext.Provider>
   );
 }
+
+    

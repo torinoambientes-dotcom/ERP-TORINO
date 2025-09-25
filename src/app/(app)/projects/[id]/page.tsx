@@ -25,6 +25,7 @@ import { FurnitureChatModal } from '@/components/modals/furniture-chat-modal';
 import { FurnitureMaterialsModal } from '@/components/modals/furniture-materials-modal';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
+import { deleteField } from 'firebase/firestore';
 
 type StageKey = 'measurement' | 'cutting' | 'purchase' | 'assembly';
 const stages: { key: StageKey; label: string }[] = [
@@ -78,7 +79,12 @@ export default function ProjectDetailsPage() {
             fur[stage] = {};
           }
           if (key === 'responsibleId') {
-            fur[stage].responsibleId = value === 'unassigned' ? undefined : value;
+            if (value === 'unassigned') {
+              // Use delete operator to remove the field
+              delete fur[stage].responsibleId;
+            } else {
+              fur[stage].responsibleId = value;
+            }
           } else {
             fur[stage].status = value;
           }
@@ -282,3 +288,5 @@ export default function ProjectDetailsPage() {
     </>
   );
 }
+
+    
