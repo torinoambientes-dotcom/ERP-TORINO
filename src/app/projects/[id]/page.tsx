@@ -48,10 +48,11 @@ export default function ProjectDetailsPage({
   const { projects, teamMembers, updateProject } = useContext(AppContext);
   const { toast } = useToast();
   const router = useRouter();
+  const { id } = params;
 
   const initialProject = useMemo(() => 
-    projects.find((p) => p.id === params.id),
-    [params.id, projects]
+    projects.find((p) => p.id === id),
+    [id, projects]
   );
   
   const [project, setProject] = useState<Project | null>(
