@@ -49,3 +49,10 @@ export interface Project {
   environments: Environment[];
   completedAt?: string; // ISO date string
 }
+
+export interface StockItem {
+  id: string;
+  name: string;
+  quantity: number;
+  unit: string;
+}

@@ -105,6 +105,18 @@
         "color": { "type": "string", "description": "A hex color code for the member's label." }
       },
       "required": ["id", "name", "color"]
+    },
+    "StockItem": {
+      "title": "StockItem",
+      "type": "object",
+      "description": "Represents an item in the inventory.",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "quantity": { "type": "number" },
+        "unit": { "type": "string" }
+      },
+      "required": ["id", "name", "quantity", "unit"]
     }
   },
   "auth": {
@@ -120,6 +132,10 @@
     "/team_members/{teamMemberId}": {
       "schema": { "$ref": "#/entities/TeamMember" },
       "description": "Stores information about team members."
+    },
+    "/stock_items/{stockItemId}": {
+      "schema": { "$ref": "#/entities/StockItem" },
+      "description": "Stores inventory items."
     }
   }
 }

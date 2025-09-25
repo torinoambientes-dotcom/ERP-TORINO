@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BarChart3, LayoutGrid, PlusCircle, Users } from 'lucide-react';
+import { BarChart3, LayoutGrid, PlusCircle, Users, Boxes } from 'lucide-react';
 import {
   SidebarHeader,
   SidebarContent,
@@ -20,6 +20,7 @@ const menuItems = [
   { href: '/', label: 'Projetos', icon: LayoutGrid },
   { href: '/reports', label: 'Relatórios', icon: BarChart3 },
   { href: '/team', label: 'Equipe', icon: Users },
+  { href: '/stock', label: 'Estoque', icon: Boxes },
 ];
 
 export function SidebarNav() {

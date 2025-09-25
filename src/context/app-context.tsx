@@ -3,7 +3,7 @@
 import { createContext, type ReactNode, useCallback, useMemo } from 'react';
 import { collection, doc } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import type { Project, TeamMember, StageStatus } from '@/lib/types';
+import type { Project, TeamMember, StageStatus, StockItem } from '@/lib/types';
 import { generateId } from '@/lib/utils';
 import { setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
@@ -11,6 +11,7 @@ import { setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase/no
 interface AppContextType {
   projects: Project[];
   teamMembers: TeamMember[];
+  stockItems: StockItem[];
   isLoading: boolean;
   addProject: (projectData: any) => void;
   updateProject: (updatedProject: Project) => void;
@@ -19,11 +20,15 @@ interface AppContextType {
   updateTeamMember: (updatedMember: TeamMember) => void;
   deleteTeamMember: (memberId: string) => void;
   completeProjectStages: (projectId: string) => void;
+  addStockItem: (itemData: Omit<StockItem, 'id'>) => void;
+  updateStockItem: (updatedItem: StockItem) => void;
+  deleteStockItem: (itemId: string) => void;
 }
 
 export const AppContext = createContext<AppContextType>({
   projects: [],
   teamMembers: [],
+  stockItems: [],
   isLoading: true,
   addProject: () => {},
   updateProject: () => {},
@@ -32,6 +37,9 @@ export const AppContext = createContext<AppContextType>({
   updateTeamMember: () => {},
   deleteTeamMember: () => {},
   completeProjectStages: () => {},
+  addStockItem: () => {},
+  updateStockItem: () => {},
+  deleteStockItem: () => {},
 });
 
 const isProjectComplete = (project: Project): boolean => {
@@ -55,9 +63,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const projectsQuery = useMemoFirebase(() => collection(firestore, 'projects'), [firestore]);
   const teamMembersQuery = useMemoFirebase(() => collection(firestore, 'team_members'), [firestore]);
+  const stockItemsQuery = useMemoFirebase(() => collection(firestore, 'stock_items'), [firestore]);
 
   const { data: projects, isLoading: isLoadingProjects } = useCollection<Project>(projectsQuery);
   const { data: teamMembers, isLoading: isLoadingTeamMembers } = useCollection<TeamMember>(teamMembersQuery);
+  const { data: stockItems, isLoading: isLoadingStockItems } = useCollection<StockItem>(stockItemsQuery);
   
   const addProject = useCallback((projectData: Omit<Project, 'id' | 'environments'> & { environments: Array<Omit<Project['environments'][0], 'id' | 'furniture'> & { furniture: Array<Omit<Project['environments'][0]['furniture'][0], 'id' | 'measurement' | 'cutting' | 'purchase' | 'assembly'>>}>}) => {
     if (!firestore) return;
@@ -145,10 +155,31 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [projects, updateProject]);
 
+  const addStockItem = useCallback((itemData: Omit<StockItem, 'id'>) => {
+    if (!firestore) return;
+    const itemId = generateId('stock');
+    const newItem = { ...itemData, id: itemId };
+    const itemRef = doc(firestore, 'stock_items', itemId);
+    setDocumentNonBlocking(itemRef, newItem, { merge: false });
+  }, [firestore]);
+
+  const updateStockItem = useCallback((updatedItem: StockItem) => {
+    if (!firestore) return;
+    const itemRef = doc(firestore, 'stock_items', updatedItem.id);
+    setDocumentNonBlocking(itemRef, updatedItem, { merge: true });
+  }, [firestore]);
+
+  const deleteStockItem = useCallback((itemId: string) => {
+    if (!firestore) return;
+    const itemRef = doc(firestore, 'stock_items', itemId);
+    deleteDocumentNonBlocking(itemRef);
+  }, [firestore]);
+
   const value = useMemo(() => ({
     projects: projects || [],
     teamMembers: teamMembers || [],
-    isLoading: isLoadingProjects || isLoadingTeamMembers,
+    stockItems: stockItems || [],
+    isLoading: isLoadingProjects || isLoadingTeamMembers || isLoadingStockItems,
     addProject,
     updateProject,
     deleteProject,
@@ -156,7 +187,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
     updateTeamMember,
     deleteTeamMember,
     completeProjectStages,
-  }), [projects, teamMembers, isLoadingProjects, isLoadingTeamMembers, addProject, updateProject, deleteProject, addTeamMember, updateTeamMember, deleteTeamMember, completeProjectStages]);
+    addStockItem,
+    updateStockItem,
+    deleteStockItem,
+  }), [
+    projects, 
+    teamMembers, 
+    stockItems,
+    isLoadingProjects, 
+    isLoadingTeamMembers, 
+    isLoadingStockItems,
+    addProject, 
+    updateProject, 
+    deleteProject, 
+    addTeamMember, 
+    updateTeamMember, 
+    deleteTeamMember, 
+    completeProjectStages,
+    addStockItem,
+    updateStockItem,
+    deleteStockItem,
+  ]);
 
 
   return (
