@@ -28,8 +28,7 @@ import { useToast } from '@/hooks/use-toast';
 import type { StockItem, StockMovement } from '@/lib/types';
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 import { Textarea } from '../ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { TeamMember } from '@/lib/types';
+import { useUser } from '@/firebase';
 
 const movementSchema = z.object({
   type: z.enum(['entry', 'exit'], {
@@ -39,10 +38,9 @@ const movementSchema = z.object({
     .number()
     .min(0.01, 'A quantidade deve ser maior que zero.'),
   reason: z.string().min(3, 'O motivo deve ter pelo menos 3 caracteres.'),
-  memberId: z.string().min(1, 'Selecione um membro da equipe.'),
 });
 
-type MovementFormValues = z.infer<typeof movementSchema>;
+type MovementFormValues = Omit<StockMovement, 'id' | 'timestamp' | 'memberId'>;
 
 interface StockMovementModalProps {
   isOpen: boolean;
@@ -59,8 +57,9 @@ export function StockMovementModal({
   if (!context) {
     throw new Error('StockMovementModal must be used within an AppProvider');
   }
-  const { addStockMovement, teamMembers } = context;
+  const { addStockMovement } = context;
   const { toast } = useToast();
+  const { user } = useUser();
 
   const form = useForm<MovementFormValues>({
     resolver: zodResolver(movementSchema),
@@ -68,7 +67,6 @@ export function StockMovementModal({
       type: 'exit',
       quantity: 1,
       reason: '',
-      memberId: teamMembers.length > 0 ? teamMembers[0].id : undefined
     },
   });
 
@@ -78,14 +76,9 @@ export function StockMovementModal({
         type: 'exit',
         quantity: 1,
         reason: '',
-        memberId: teamMembers.length > 0 ? teamMembers[0].id : undefined
       });
     }
-  }, [isOpen, form, teamMembers]);
-  
-  const memberMap = useMemo(() => {
-    return new Map(teamMembers.map((m) => [m.id, m]));
-  }, [teamMembers]);
+  }, [isOpen, form]);
 
   const onSubmit = (data: MovementFormValues) => {
     if (data.type === 'exit' && data.quantity > item.quantity) {
@@ -96,7 +89,21 @@ export function StockMovementModal({
       return;
     }
     
-    addStockMovement(item.id, data);
+    if (!user) {
+        toast({
+            variant: 'destructive',
+            title: 'Erro de autenticação',
+            description: 'Você precisa estar logado para movimentar o estoque.',
+        });
+        return;
+    }
+
+    const movementDataWithMember = {
+        ...data,
+        memberId: user.uid,
+    }
+    
+    addStockMovement(item.id, movementDataWithMember);
 
     toast({
       title: 'Movimentação registrada!',
@@ -178,37 +185,6 @@ export function StockMovementModal({
                       {...field}
                     />
                   </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <FormField
-              control={form.control}
-              name="memberId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Responsável</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione o responsável" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {teamMembers.map((member: TeamMember) => {
-                          const memberInfo = memberMap.get(member.id);
-                          return (
-                          <SelectItem key={member.id} value={member.id}>
-                              <div className="flex items-center gap-2">
-                                  {memberInfo && <span className="h-4 w-4 rounded-full" style={{ backgroundColor: memberInfo.color }}></span>}
-                                  <span>{memberInfo?.name || 'Desconhecido'}</span>
-                              </div>
-                          </SelectItem>
-                          )
-                      })}
-                    </SelectContent>
-                  </Select>
                   <FormMessage />
                 </FormItem>
               )}

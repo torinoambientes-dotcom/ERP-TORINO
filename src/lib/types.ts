@@ -1,6 +1,5 @@
 export interface TeamMember {
-  id: string;
-  userId: string;
+  id: string; // This is the Firebase Auth UID
   name: string;
   email: string;
   color: string;

@@ -176,7 +176,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const newMember: TeamMember = {
         ...restOfData,
         id: newUserId, 
-        userId: newUserId,
         email: email,
       };
 
