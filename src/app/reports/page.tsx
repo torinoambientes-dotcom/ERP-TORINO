@@ -16,8 +16,14 @@ import {
 } from '@/components/ui/select';
 import { PageHeader } from '@/components/layout/page-header';
 import { AppContext } from '@/context/app-context';
-import type { StageStatus } from '@/lib/types';
+import type { Pendency, StageStatus } from '@/lib/types';
 import { Separator } from '@/components/ui/separator';
+
+interface GeneralPendency extends Pendency {
+  projectName: string;
+  environmentName: string;
+  furnitureName: string;
+}
 
 export default function ReportsPage() {
   const context = useContext(AppContext);
@@ -117,6 +123,29 @@ export default function ReportsPage() {
     }
   }, [projects, selectedMemberId]);
 
+  const unresolvedPendencies = useMemo((): GeneralPendency[] => {
+    const pendencies: GeneralPendency[] = [];
+    projects.forEach(project => {
+      project.environments.forEach(environment => {
+        environment.furniture.forEach(furniture => {
+          if (furniture.pendencies) {
+            furniture.pendencies.forEach(pendency => {
+              if (!pendency.isResolved) {
+                pendencies.push({
+                  ...pendency,
+                  projectName: project.clientName,
+                  environmentName: environment.name,
+                  furnitureName: furniture.name,
+                });
+              }
+            });
+          }
+        });
+      });
+    });
+    return pendencies;
+  }, [projects]);
+
 
   return (
     <div className="space-y-8">
@@ -167,6 +196,25 @@ export default function ReportsPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="font-headline">Pendências Gerais ({unresolvedPendencies.length})</CardTitle>
+          <CardDescription>Lista de todas as pendências que ainda não foram resolvidas em todos os projetos.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
+            {unresolvedPendencies.length > 0 ? unresolvedPendencies.map((pendency) => (
+              <div key={pendency.id} className="p-3 rounded-md bg-muted/50 border-l-4 border-destructive">
+                <p className="font-semibold">{pendency.text}</p>
+                <p className="text-sm text-muted-foreground">
+                  {pendency.projectName} / {pendency.environmentName} / {pendency.furnitureName}
+                </p>
+              </div>
+            )) : <p className="text-sm text-muted-foreground">Nenhuma pendência em aberto.</p>}
+          </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
