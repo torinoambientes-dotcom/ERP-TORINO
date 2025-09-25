@@ -24,20 +24,19 @@ export const AppContext = createContext<AppContextType>({
 });
 
 const useStickyState = <T>(defaultValue: T, key: string): [T, React.Dispatch<React.SetStateAction<T>>] => {
-  const [value, setValue] = useState<T>(() => {
-    if (typeof window === 'undefined') {
-      return defaultValue;
+  const [value, setValue] = useState<T>(defaultValue);
+
+  useEffect(() => {
+    const stickyValue = window.localStorage.getItem(key);
+    if (stickyValue !== null) {
+      try {
+        setValue(JSON.parse(stickyValue));
+      } catch (error) {
+        console.warn(`Error parsing localStorage key “${key}”:`, error);
+        setValue(defaultValue);
+      }
     }
-    try {
-      const stickyValue = window.localStorage.getItem(key);
-      return stickyValue !== null
-        ? JSON.parse(stickyValue)
-        : defaultValue;
-    } catch (error) {
-      console.warn(`Error reading localStorage key “${key}”:`, error);
-      return defaultValue;
-    }
-  });
+  }, [key]);
 
   useEffect(() => {
     try {

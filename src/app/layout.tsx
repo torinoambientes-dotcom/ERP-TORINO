@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { AppShell } from '@/components/layout/app-shell';
 import { Toaster } from '@/components/ui/toaster';
-import { AppProvider } from '@/context/app-context';
+import { ClientAppProvider } from '@/context/client-app-provider';
 
 export const metadata: Metadata = {
   title: 'ProjectFlow',
@@ -32,10 +32,10 @@ export default function RootLayout({
         />
       </head>
       <body className="font-body antialiased">
-        <AppProvider>
+        <ClientAppProvider>
           <AppShell>{children}</AppShell>
           <Toaster />
-        </AppProvider>
+        </ClientAppProvider>
       </body>
     </html>
   );
