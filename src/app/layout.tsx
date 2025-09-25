@@ -7,7 +7,7 @@ export const metadata: Metadata = {
   title: 'Torino ERP',
   description: 'Torino ERP - Gerenciamento de projetos para marcenarias de alto padrão',
   icons: {
-    icon: '/icon.svg',
+    icon: '/icon.svg?v=2',
   },
 };
 
