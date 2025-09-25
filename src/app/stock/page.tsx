@@ -10,7 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { AppContext } from '@/context/app-context';
 import { PageHeader } from '@/components/layout/page-header';
-import { PlusCircle, Edit, Trash2, ArrowRightLeft } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, ArrowRightLeft, History } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -26,6 +26,7 @@ import { useToast } from '@/hooks/use-toast';
 import { RegisterStockItemModal } from '@/components/modals/register-stock-item-modal';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { StockMovementModal } from '@/components/modals/stock-movement-modal';
+import { StockMovementHistoryModal } from '@/components/modals/stock-movement-history-modal';
 
 const categories = [
   'Corrediças',
@@ -45,6 +46,9 @@ export default function StockPage() {
   
   const [isMovementModalOpen, setMovementModalOpen] = useState(false);
   const [itemToMove, setItemToMove] = useState<StockItem | null>(null);
+  
+  const [isHistoryModalOpen, setHistoryModalOpen] = useState(false);
+  const [itemForHistory, setItemForHistory] = useState<StockItem | null>(null);
 
   const [isAlertOpen, setIsAlertOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<StockItem | null>(null);
@@ -67,6 +71,16 @@ export default function StockPage() {
   const handleCloseMovementModal = () => {
     setItemToMove(null);
     setMovementModalOpen(false);
+  };
+  
+  const handleOpenHistoryModal = (item: StockItem) => {
+    setItemForHistory(item);
+    setHistoryModalOpen(true);
+  };
+
+  const handleCloseHistoryModal = () => {
+    setItemForHistory(null);
+    setHistoryModalOpen(false);
   };
 
   const handleOpenAlert = (item: StockItem) => {
@@ -110,7 +124,7 @@ export default function StockPage() {
         {items.map((item) => (
           <div
             key={item.id}
-            className="flex items-center justify-between rounded-lg border p-4"
+            className="flex items-center justify-between rounded-lg border p-4 gap-2 flex-wrap"
           >
             <div className="flex items-center gap-4">
               <div>
@@ -120,7 +134,15 @@ export default function StockPage() {
                 </p>
               </div>
             </div>
-            <div className="flex gap-1">
+            <div className="flex gap-1 flex-wrap">
+               <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleOpenHistoryModal(item)}
+              >
+                <History className="h-4 w-4 mr-2" />
+                Histórico
+              </Button>
               <Button
                 variant="outline"
                 size="sm"
@@ -133,6 +155,7 @@ export default function StockPage() {
                 variant="ghost"
                 size="icon"
                 onClick={() => handleOpenRegisterModal(item)}
+                className="h-9 w-9"
               >
                 <Edit className="h-4 w-4" />
                 <span className="sr-only">Editar</span>
@@ -140,7 +163,7 @@ export default function StockPage() {
               <Button
                 variant="ghost"
                 size="icon"
-                className="text-destructive/80 hover:text-destructive"
+                className="text-destructive/80 hover:text-destructive h-9 w-9"
                 onClick={() => handleOpenAlert(item)}
               >
                 <Trash2 className="h-4 w-4" />
@@ -181,7 +204,7 @@ export default function StockPage() {
         <Tabs defaultValue={categories[0]} className="w-full">
           <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 h-auto">
             {categories.map((category) => (
-              <TabsTrigger key={category} value={category}>
+              <TabsTrigger key={category} value={category} className='flex-1'>
                 {category}
               </TabsTrigger>
             ))}
@@ -214,6 +237,14 @@ export default function StockPage() {
           isOpen={isMovementModalOpen}
           onClose={handleCloseMovementModal}
           item={itemToMove}
+        />
+      )}
+
+      {itemForHistory && (
+        <StockMovementHistoryModal
+          isOpen={isHistoryModalOpen}
+          onClose={handleCloseHistoryModal}
+          item={itemForHistory}
         />
       )}
 
