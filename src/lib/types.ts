@@ -43,6 +43,15 @@ export interface GlassItem {
   quantity: number;
 }
 
+export interface ProfileDoorItem {
+  id: string;
+  profileColor: 'Preto' | 'Aluminio' | 'Inox';
+  glassType: 'Incolor' | 'Fume' | 'Bronze' | 'Espelho Fume' | 'Espelho Bronze' | 'Espelho Prata' | 'Reflecta Incolor' | 'Reflecta Fume' | 'Reflecta Prata';
+  height: number;
+  width: number;
+  quantity: number;
+}
+
 export interface Furniture {
   id: string;
   name: string;
@@ -54,10 +63,11 @@ export interface Furniture {
   pendencies?: Pendency[];
   materials?: MaterialItem[];
   glassItems?: GlassItem[];
+  profileDoors?: ProfileDoorItem[];
 }
 
 export interface Environment {
-  id: string;
+  id:string;
   name: string;
   furniture: Furniture[];
 }

@@ -123,6 +123,7 @@ export function RegisterProjectModal({
               pendencies: [],
               materials: [],
               glassItems: [],
+              profileDoors: [],
             }))
         }));
 

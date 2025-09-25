@@ -109,7 +109,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const stockCategories = useMemo(() => stockCategoriesData || [], [stockCategoriesData]);
   
-  const addProject = useCallback((projectData: Omit<Project, 'id' | 'environments'> & { environments: Array<Omit<Project['environments'][0], 'id' | 'furniture'> & { furniture: Array<Omit<Furniture, 'id' | 'measurement' | 'cutting' | 'purchase' | 'assembly' | 'comments' | 'pendencies' | 'materials' | 'glassItems'>>}>}) => {
+  const addProject = useCallback((projectData: Omit<Project, 'id' | 'environments'> & { environments: Array<Omit<Project['environments'][0], 'id' | 'furniture'> & { furniture: Array<Omit<Furniture, 'id' | 'measurement' | 'cutting' | 'purchase' | 'assembly' | 'comments' | 'pendencies' | 'materials' | 'glassItems' | 'profileDoors'>>}>}) => {
     if (!firestore) return;
     const projectId = generateId('proj');
     const newProject: Project = {
@@ -129,6 +129,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           pendencies: [],
           materials: [],
           glassItems: [],
+          profileDoors: [],
         })),
       })),
     };

@@ -59,6 +59,10 @@
         "glassItems": {
           "type": "array",
           "items": { "$ref": "#/entities/GlassItem" }
+        },
+        "profileDoors": {
+          "type": "array",
+          "items": { "$ref": "#/entities/ProfileDoorItem" }
         }
       },
       "required": ["id", "name", "measurement", "cutting", "purchase", "assembly"]
@@ -127,6 +131,20 @@
         "quantity": { "type": "number" }
       },
       "required": ["id", "type", "height", "width", "quantity"]
+    },
+    "ProfileDoorItem": {
+      "title": "ProfileDoorItem",
+      "type": "object",
+      "description": "Represents a single profile door required for a piece of furniture.",
+      "properties": {
+        "id": { "type": "string" },
+        "profileColor": { "type": "string", "enum": ["Preto", "Aluminio", "Inox"]},
+        "glassType": { "type": "string", "enum": ["Incolor", "Fume", "Bronze", "Espelho Fume", "Espelho Bronze", "Espelho Prata", "Reflecta Incolor", "Reflecta Fume", "Reflecta Prata"]},
+        "height": { "type": "number" },
+        "width": { "type": "number" },
+        "quantity": { "type": "number" }
+      },
+      "required": ["id", "profileColor", "glassType", "height", "width", "quantity"]
     },
     "TeamMember": {
       "title": "TeamMember",
