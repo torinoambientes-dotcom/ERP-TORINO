@@ -123,7 +123,7 @@ export default function StockPage() {
     return (
       <div className="space-y-4">
         {items.map((item) => {
-          const isLowStock = category === 'Corrediças' && item.quantity < 10;
+          const isLowStock = typeof item.minStock === 'number' && item.quantity < item.minStock;
           return (
           <div
             key={item.id}

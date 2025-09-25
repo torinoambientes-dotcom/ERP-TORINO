@@ -67,6 +67,7 @@ export interface StockItem {
   quantity: number;
   unit: string;
   category: StockCategory;
+  minStock?: number;
 }
 
 export interface StockMovement {

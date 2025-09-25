@@ -173,7 +173,7 @@ export default function ReportsPage() {
   
   const lowStockItems = useMemo((): StockItem[] => {
     return stockItems.filter(item => 
-        item.category === 'Corrediças' && item.quantity < 10
+        typeof item.minStock === 'number' && item.quantity < item.minStock
     );
   }, [stockItems]);
 

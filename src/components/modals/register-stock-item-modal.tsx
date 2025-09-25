@@ -40,6 +40,7 @@ const stockItemSchema = z.object({
   quantity: z.coerce.number().min(0, 'A quantidade não pode ser negativa.'),
   unit: z.string().min(1, 'A unidade é obrigatória.'),
   category: z.enum(STOCK_CATEGORIES),
+  minStock: z.coerce.number().min(0, 'O estoque mínimo não pode ser negativo.').optional(),
 });
 
 type StockItemFormValues = z.infer<typeof stockItemSchema>;
@@ -75,6 +76,7 @@ export function RegisterStockItemModal({
       quantity: 0,
       unit: 'unidade',
       category: 'Outros',
+      minStock: 0,
     },
   });
 
@@ -88,6 +90,7 @@ export function RegisterStockItemModal({
           quantity: 0,
           unit: 'unidade',
           category: 'Outros',
+          minStock: 0,
         });
       }
     }
@@ -146,7 +149,7 @@ export function RegisterStockItemModal({
                 name="quantity"
                 render={({ field }) => (
                   <FormItem className="flex-grow">
-                    <FormLabel>Quantidade</FormLabel>
+                    <FormLabel>Quantidade Atual</FormLabel>
                     <FormControl>
                       <Input type="number" {...field} />
                     </FormControl>
@@ -202,6 +205,19 @@ export function RegisterStockItemModal({
                         ))}
                       </SelectContent>
                     </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+               <FormField
+                control={form.control}
+                name="minStock"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Estoque Mínimo</FormLabel>
+                    <FormControl>
+                      <Input type="number" placeholder="Ex: 10" {...field} />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}

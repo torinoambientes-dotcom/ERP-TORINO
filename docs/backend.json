@@ -115,6 +115,7 @@
         "name": { "type": "string" },
         "quantity": { "type": "number" },
         "unit": { "type": "string" },
+        "minStock": { "type": "number", "description": "The minimum stock quantity to trigger an alert." },
         "category": {
           "type": "string",
           "description": "The category of the stock item.",
