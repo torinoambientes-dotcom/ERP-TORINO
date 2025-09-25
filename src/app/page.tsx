@@ -138,7 +138,7 @@ export default function ProjectsPage() {
             onChange={(e) => setSearchTerm(e.target.value)}
             className="flex-grow"
           />
-          <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as ProjectStatus | 'Todos')}>
+          <Select value={statusFilter} onValueChange={(value: ProjectStatus | 'Todos') => setStatusFilter(value)}>
             <SelectTrigger className="w-full sm:w-[180px]">
               <SelectValue placeholder="Filtrar por status" />
             </SelectTrigger>
@@ -188,10 +188,7 @@ export default function ProjectsPage() {
                         variant="ghost"
                         size="icon"
                         className="text-muted-foreground/80 hover:text-foreground"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleEditClick(project);
-                        }}
+                        onClick={() => handleEditClick(project)}
                       >
                         <Pencil className="h-4 w-4" />
                         <span className="sr-only">Editar Projeto</span>
@@ -199,10 +196,7 @@ export default function ProjectsPage() {
                     <Button 
                       variant="ghost" 
                       size="sm" 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleCompleteClick(project.id);
-                      }}
+                      onClick={() => handleCompleteClick(project.id)}
                       className="text-xs"
                       >
                       <CheckCircle className="mr-1.5 h-3.5 w-3.5" />
@@ -212,10 +206,7 @@ export default function ProjectsPage() {
                       variant="ghost" 
                       size="icon" 
                       className="text-destructive/80 hover:text-destructive"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteClick(project);
-                      }}
+                      onClick={() => handleDeleteClick(project)}
                       >
                       <Trash2 className="h-4 w-4" />
                       <span className="sr-only">Remover Projeto</span>
