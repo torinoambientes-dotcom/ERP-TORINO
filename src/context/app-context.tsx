@@ -6,21 +6,39 @@ import { generateId } from '@/lib/utils';
 
 // Helper for localStorage
 const useStickyState = <T,>(defaultValue: T, key: string): [T, (value: T) => void] => {
-  const [value, setValue] = useState<T>(() => {
-    if (typeof window === 'undefined') {
-      return defaultValue;
-    }
-    const stickyValue = window.localStorage.getItem(key);
-    return stickyValue !== null ? JSON.parse(stickyValue) : defaultValue;
-  });
+  const [isMounted, setIsMounted] = useState(false);
+  const [value, setValue] = useState<T>(defaultValue);
 
   useEffect(() => {
-    window.localStorage.setItem(key, JSON.stringify(value));
-  }, [key, value]);
-  
+    setIsMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (isMounted) {
+      try {
+        const stickyValue = window.localStorage.getItem(key);
+        if (stickyValue !== null) {
+          setValue(JSON.parse(stickyValue));
+        }
+      } catch (e) {
+        console.error(`Could not load state from localStorage for key "${key}"`, e);
+      }
+    }
+  }, [isMounted, key]);
+
+  useEffect(() => {
+    if (isMounted) {
+      try {
+        window.localStorage.setItem(key, JSON.stringify(value));
+      } catch (e) {
+        console.error(`Could not save state to localStorage for key "${key}"`, e);
+      }
+    }
+  }, [key, value, isMounted]);
+
   const setStickyValue = useCallback((newValue: T) => {
     setValue(newValue);
-  }, [key]);
+  }, []);
 
   return [value, setStickyValue];
 };
@@ -61,25 +79,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
         })),
       })),
     };
-    setProjects([...projects, newProject]);
-  }, [projects, setProjects]);
+    setProjects(prev => [...prev, newProject]);
+  }, [setProjects]);
 
   const updateProject = useCallback((updatedProject: Project) => {
-    setProjects(projects.map((p) => (p.id === updatedProject.id ? updatedProject : p)));
-  }, [projects, setProjects]);
+    setProjects(prev => prev.map((p) => (p.id === updatedProject.id ? updatedProject : p)));
+  }, [setProjects]);
 
   const deleteProject = useCallback((projectId: string) => {
-    setProjects(projects.filter((p) => p.id !== projectId));
-  }, [projects, setProjects]);
+    setProjects(prev => prev.filter((p) => p.id !== projectId));
+  }, [setProjects]);
 
   const addTeamMember = useCallback((memberData: Omit<TeamMember, 'id'>) => {
     const newMember = { ...memberData, id: generateId('member') };
-    setTeamMembers([...teamMembers, newMember]);
-  }, [teamMembers, setTeamMembers]);
+    setTeamMembers(prev => [...prev, newMember]);
+  }, [setTeamMembers]);
   
   const completeProjectStages = useCallback((projectId: string) => {
     setProjects(
-      projects.map((p) => {
+      prev => prev.map((p) => {
         if (p.id === projectId) {
           const newEnvironments = p.environments.map((env) => ({
             ...env,
@@ -96,7 +114,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return p;
       })
     );
-  }, [projects, setProjects]);
+  }, [setProjects]);
 
   return (
     <AppContext.Provider value={{ projects, teamMembers, addProject, updateProject, deleteProject, addTeamMember, completeProjectStages }}>
