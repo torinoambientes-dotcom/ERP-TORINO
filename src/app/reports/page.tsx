@@ -7,16 +7,6 @@ import {
   CardTitle,
   CardDescription,
 } from '@/components/ui/card';
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-} from 'recharts';
 import { PageHeader } from '@/components/layout/page-header';
 import { AppContext } from '@/context/app-context';
 import type { StageStatus } from '@/lib/types';
@@ -27,11 +17,6 @@ export default function ReportsPage() {
   const stats = useMemo(() => {
     let completedProjects = 0;
     let ongoingProjects = 0;
-    const tasksByMember: { [key: string]: { todo: number; in_progress: number; done: number; } } = {};
-  
-    teamMembers.forEach(member => {
-      tasksByMember[member.id] = { todo: 0, in_progress: 0, done: 0 };
-    });
 
     projects.forEach((project) => {
       let isCompleted = true;
@@ -44,9 +29,6 @@ export default function ReportsPage() {
               const stage = fur[key as 'measurement'];
               if (stage.status !== 'done') isCompleted = false;
               if (stage.status !== 'todo') hasStarted = true;
-              if (stage.responsibleId && tasksByMember[stage.responsibleId]) {
-                 tasksByMember[stage.responsibleId][stage.status]++;
-              }
             }
           });
         });
@@ -59,22 +41,13 @@ export default function ReportsPage() {
       }
     });
 
-    const chartData = teamMembers.map(member => ({
-        name: member.name,
-        'A Fazer': tasksByMember[member.id]?.todo || 0,
-        'Em Andamento': tasksByMember[member.id]?.in_progress || 0,
-        'Concluído': tasksByMember[member.id]?.done || 0,
-    }));
-
-
     return {
       totalProjects: projects.length,
       completedProjects,
       ongoingProjects,
       pendingProjects: projects.length - completedProjects - ongoingProjects,
-      chartData,
     };
-  }, [projects, teamMembers]);
+  }, [projects]);
   
   const memberMap = useMemo(() => {
     return new Map(teamMembers.map(m => [m.id, m]));
@@ -137,27 +110,6 @@ export default function ReportsPage() {
       </div>
       
       <div className="grid gap-6 md:grid-cols-2">
-        <Card className="col-span-2">
-          <CardHeader>
-            <CardTitle className="font-headline">Produtividade da Equipe</CardTitle>
-            <CardDescription>Distribuição de tarefas por membro da equipe.</CardDescription>
-          </CardHeader>
-          <CardContent className="pl-2">
-            <ResponsiveContainer width="100%" height={350}>
-              <BarChart data={stats.chartData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
-                <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
-                <Tooltip />
-                <Legend />
-                <Bar dataKey="A Fazer" fill="hsl(var(--secondary))" stackId="a" />
-                <Bar dataKey="Em Andamento" fill="hsl(var(--accent))" stackId="a" />
-                <Bar dataKey="Concluído" fill="hsl(var(--primary))" stackId="a" />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
         <Card className="col-span-2">
           <CardHeader>
             <CardTitle className="font-headline">Pendências Gerais</CardTitle>
