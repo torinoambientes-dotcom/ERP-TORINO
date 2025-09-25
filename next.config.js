@@ -34,6 +34,7 @@ const nextConfig = {
   experimental: {
     allowedDevOrigins: [
       'https://*.cloudworkstations.dev',
+      'https://identitytoolkit.googleapis.com',
     ],
   },
 };
