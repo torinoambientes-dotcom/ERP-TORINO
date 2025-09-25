@@ -74,10 +74,7 @@ export function RegisterProjectModal({
 
   const form = useForm<ProjectFormValues>({
     resolver: zodResolver(projectSchema),
-    defaultValues: isEditMode ? {
-      clientName: projectToEdit.clientName,
-      environments: [{ name: '', furniture: [{ name: '' }] }] // Start with a new empty environment for editing
-    } : defaultValues,
+    defaultValues: defaultValues,
   });
 
   const {
@@ -90,27 +87,28 @@ export function RegisterProjectModal({
   });
   
   useEffect(() => {
-    if (!isOpen) {
-      form.reset(defaultValues);
-    } else if (isEditMode) {
+    if (isOpen) {
+      if (isEditMode && projectToEdit) {
         form.reset({
-            clientName: projectToEdit.clientName,
-            // When editing, start with one empty environment to add new ones.
-            // The existing ones are not shown to keep the UI simple.
-            environments: [{ name: '', furniture: [{ name: '' }] }]
+          clientName: projectToEdit.clientName,
+          // When editing, start with one empty environment to add new ones.
+          // The existing ones are not shown to keep the UI simple.
+          environments: [{ name: '', furniture: [{ name: '' }] }],
         });
-    } else {
+      } else {
         form.reset(defaultValues);
+      }
     }
   }, [isOpen, isEditMode, projectToEdit, form]);
 
 
   const onSubmit = (data: ProjectFormValues) => {
     if (isEditMode && projectToEdit) {
-      const newEnvironments = data.environments.map(env => ({
+      // Filter out empty environments or furniture before submitting
+      const validEnvironments = data.environments.filter(env => env.name.trim() !== '' && env.furniture.some(fur => fur.name.trim() !== '')).map(env => ({
         ...env,
         id: generateId('env'),
-        furniture: env.furniture.map(fur => ({
+        furniture: env.furniture.filter(fur => fur.name.trim() !== '').map(fur => ({
           ...fur,
           id: generateId('fur'),
           measurement: { status: 'todo' as const },
@@ -122,9 +120,18 @@ export function RegisterProjectModal({
         }))
       }));
 
+      if (validEnvironments.length === 0) {
+        toast({
+          variant: "destructive",
+          title: 'Nenhuma alteração detectada',
+          description: `Preencha pelo menos um novo ambiente e um móvel.`,
+        });
+        return;
+      }
+
       const updatedProject: Project = {
         ...projectToEdit,
-        environments: [...projectToEdit.environments, ...newEnvironments],
+        environments: [...projectToEdit.environments, ...validEnvironments],
       };
       
       updateProject(updatedProject);
