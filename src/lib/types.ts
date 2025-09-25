@@ -47,4 +47,5 @@ export interface Project {
   id: string;
   clientName: string;
   environments: Environment[];
+  completedAt?: string; // ISO date string
 }

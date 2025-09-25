@@ -16,6 +16,8 @@ import { Input } from '@/components/ui/input';
 import type { Project } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft } from 'lucide-react';
+import { format, parseISO } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 const getProjectProgress = (project: Project) => {
   let totalTasks = 0;
@@ -47,18 +49,15 @@ export default function CompletedProjectsPage() {
 
   const completedProjects = useMemo(() => {
     return projects
+      .filter((project) => project.completedAt) // Apenas projetos com data de conclusão
       .map((project) => ({
         project,
         progressInfo: getProjectProgress(project),
       }))
-      .filter(({ progressInfo }) => {
-        if (progressInfo.progress < 100) return false;
-
-        const matchesSearch = projects.find(p => p.id === p.id)!.clientName
-          .toLowerCase()
-          .includes(searchTerm.toLowerCase());
-        return matchesSearch;
-      });
+      .filter(({ project }) => 
+        project.clientName.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+      .sort((a, b) => new Date(b.project.completedAt!).getTime() - new Date(a.project.completedAt!).getTime());
   }, [projects, searchTerm]);
 
   return (
@@ -118,7 +117,12 @@ export default function CompletedProjectsPage() {
                       </p>
                     </div>
                   </CardContent>
-                  <CardFooter>
+                   <CardFooter className="flex-col items-start gap-1">
+                    {project.completedAt && (
+                      <p className="text-xs text-muted-foreground/80">
+                        Finalizado em: {format(parseISO(project.completedAt), "dd/MM/yyyy", { locale: ptBR })}
+                      </p>
+                    )}
                     <p className="text-xs text-muted-foreground/70">
                       ID: {project.id}
                     </p>

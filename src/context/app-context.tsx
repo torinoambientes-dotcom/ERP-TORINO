@@ -34,6 +34,22 @@ export const AppContext = createContext<AppContextType>({
   completeProjectStages: () => {},
 });
 
+const isProjectComplete = (project: Project): boolean => {
+  if (!project.environments || project.environments.length === 0) {
+    return false; // Ou true, dependendo da regra de negócio para projetos vazios
+  }
+
+  return project.environments.every(env =>
+    env.furniture.every(fur =>
+      fur.measurement.status === 'done' &&
+      fur.cutting.status === 'done' &&
+      fur.purchase.status === 'done' &&
+      fur.assembly.status === 'done'
+    )
+  );
+};
+
+
 export function AppProvider({ children }: { children: ReactNode }) {
   const firestore = useFirestore();
 
@@ -70,9 +86,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const updateProject = useCallback((updatedProject: Project) => {
     if (!firestore) return;
-    const projectRef = doc(firestore, 'projects', updatedProject.id);
-    setDocumentNonBlocking(projectRef, updatedProject, { merge: true });
+    
+    const projectWithCompletion = { ...updatedProject };
+    
+    // Verifica se o projeto está sendo concluído e ainda não tem data de conclusão
+    if (isProjectComplete(projectWithCompletion) && !projectWithCompletion.completedAt) {
+      projectWithCompletion.completedAt = new Date().toISOString();
+    }
+    
+    const projectRef = doc(firestore, 'projects', projectWithCompletion.id);
+    setDocumentNonBlocking(projectRef, projectWithCompletion, { merge: true });
   }, [firestore]);
+
 
   const deleteProject = useCallback((projectId: string) => {
     if (!firestore) return;

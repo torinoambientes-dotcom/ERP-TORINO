@@ -10,6 +10,11 @@
         "environments": {
           "type": "array",
           "items": { "$ref": "#/entities/Environment" }
+        },
+        "completedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The timestamp when the project was completed."
         }
       },
       "required": ["id", "clientName", "environments"]

@@ -25,6 +25,7 @@ import { AppContext } from '@/context/app-context';
 import type { Pendency, StageStatus } from '@/lib/types';
 import { Separator } from '@/components/ui/separator';
 import { ChevronsUpDown } from 'lucide-react';
+import { isThisWeek, isThisMonth, isThisYear, parseISO } from 'date-fns';
 
 interface GeneralPendency extends Pendency {
   projectName: string;
@@ -78,6 +79,19 @@ export default function ReportsPage() {
       pendingProjects: projects.length - completedProjects - ongoingProjects,
     };
   }, [projects]);
+  
+  const completedStats = useMemo(() => {
+    const completedThisWeek = projects.filter(p => p.completedAt && isThisWeek(parseISO(p.completedAt), { weekStartsOn: 1 })).length;
+    const completedThisMonth = projects.filter(p => p.completedAt && isThisMonth(parseISO(p.completedAt))).length;
+    const completedThisYear = projects.filter(p => p.completedAt && isThisYear(parseISO(p.completedAt))).length;
+    
+    return {
+      week: completedThisWeek,
+      month: completedThisMonth,
+      year: completedThisYear
+    }
+  }, [projects]);
+
 
   const memberMap = useMemo(() => {
     return new Map(teamMembers.map((m) => [m.id, m]));
@@ -177,7 +191,7 @@ export default function ReportsPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              Projetos em Andamento
+              Em Andamento
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -187,7 +201,7 @@ export default function ReportsPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              Projetos Concluídos
+              Concluídos
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -205,6 +219,30 @@ export default function ReportsPage() {
           </CardContent>
         </Card>
       </div>
+
+       <Card>
+        <CardHeader>
+            <CardTitle className="font-headline">Projetos Concluídos ao Longo do Tempo</CardTitle>
+            <CardDescription>Resumo de projetos finalizados na semana, mês e ano.</CardDescription>
+        </CardHeader>
+        <CardContent>
+            <div className="grid gap-6 grid-cols-1 sm:grid-cols-3">
+                <div className="p-4 rounded-lg bg-muted/50 flex flex-col items-center justify-center text-center">
+                    <p className="text-3xl font-bold">{completedStats.week}</p>
+                    <p className="text-sm text-muted-foreground">nesta semana</p>
+                </div>
+                <div className="p-4 rounded-lg bg-muted/50 flex flex-col items-center justify-center text-center">
+                    <p className="text-3xl font-bold">{completedStats.month}</p>
+                    <p className="text-sm text-muted-foreground">neste mês</p>
+                </div>
+                <div className="p-4 rounded-lg bg-muted/50 flex flex-col items-center justify-center text-center">
+                    <p className="text-3xl font-bold">{completedStats.year}</p>
+                    <p className="text-sm text-muted-foreground">neste ano</p>
+                </div>
+            </div>
+        </CardContent>
+      </Card>
+
 
       <Collapsible
         open={isPendenciesOpen}

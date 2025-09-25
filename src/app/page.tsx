@@ -119,8 +119,8 @@ export default function ProjectsPage() {
         statusInfo: getProjectStatus(project),
       }))
       .filter(({ project, statusInfo }) => {
-        const isCompleted = statusInfo.status === 'Concluído';
-        if (isCompleted) return false;
+        // Exclui projetos concluídos da lista de projetos ativos
+        if (project.completedAt) return false;
 
         const matchesSearch = project.clientName
           .toLowerCase()
