@@ -22,10 +22,11 @@ import {
 } from '@/components/ui/select';
 import { PageHeader } from '@/components/layout/page-header';
 import { AppContext } from '@/context/app-context';
-import type { Pendency, StageStatus } from '@/lib/types';
+import type { Pendency, StageStatus, StockItem } from '@/lib/types';
 import { Separator } from '@/components/ui/separator';
-import { ChevronsUpDown } from 'lucide-react';
+import { AlertTriangle, ChevronsUpDown } from 'lucide-react';
 import { isThisWeek, isThisMonth, isThisYear, parseISO } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 interface GeneralPendency extends Pendency {
   projectName: string;
@@ -38,11 +39,12 @@ export default function ReportsPage() {
   if (!context) {
     throw new Error('ReportsPage must be used within an AppProvider');
   }
-  const { projects, teamMembers } = context;
+  const { projects, teamMembers, stockItems } = context;
 
   const [selectedMemberId, setSelectedMemberId] = useState('all');
   const [isPendenciesOpen, setIsPendenciesOpen] = useState(true);
   const [isActivitiesOpen, setIsActivitiesOpen] = useState(true);
+  const [isStockAlertOpen, setIsStockAlertOpen] = useState(true);
 
   const projectStats = useMemo(() => {
     let completedProjects = 0;
@@ -168,6 +170,12 @@ export default function ReportsPage() {
     });
     return pendencies;
   }, [projects]);
+  
+  const lowStockItems = useMemo((): StockItem[] => {
+    return stockItems.filter(item => 
+        item.category === 'Corrediças' && item.quantity < 10
+    );
+  }, [stockItems]);
 
 
   return (
@@ -242,6 +250,49 @@ export default function ReportsPage() {
             </div>
         </CardContent>
       </Card>
+
+      <Collapsible
+        open={isStockAlertOpen}
+        onOpenChange={setIsStockAlertOpen}
+        className="w-full"
+      >
+        <Card>
+          <CardHeader>
+             <div className="flex items-center justify-between">
+              <div className='space-y-1.5'>
+                <CardTitle className="font-headline">Alerta de Estoque Mínimo ({lowStockItems.length})</CardTitle>
+                <CardDescription>Lista de materiais que atingiram o nível mínimo de estoque.</CardDescription>
+              </div>
+              <CollapsibleTrigger asChild>
+                <Button variant="ghost" size="icon">
+                  <ChevronsUpDown className="h-4 w-4" />
+                  <span className="sr-only">Toggle</span>
+                </Button>
+              </CollapsibleTrigger>
+            </div>
+          </CardHeader>
+          <CollapsibleContent>
+            <CardContent>
+              <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
+                {lowStockItems.length > 0 ? lowStockItems.map((item) => (
+                  <div key={item.id} className="p-3 rounded-md bg-destructive/10 border-l-4 border-destructive flex items-center justify-between">
+                    <div>
+                      <p className="font-semibold">{item.name}</p>
+                      <p className="text-sm text-destructive/80 font-medium">
+                        Categoria: {item.category}
+                      </p>
+                    </div>
+                    <div className='text-right'>
+                      <p className="font-bold text-lg text-destructive">{item.quantity}</p>
+                      <p className='text-sm text-destructive/80'>{item.unit}(s) restantes</p>
+                    </div>
+                  </div>
+                )) : <p className="text-sm text-muted-foreground">Nenhum item com estoque baixo.</p>}
+              </div>
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
 
 
       <Collapsible
