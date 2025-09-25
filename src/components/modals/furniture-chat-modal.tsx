@@ -1,5 +1,5 @@
 'use client';
-import { useContext, useState, useMemo, useCallback } from 'react';
+import { useContext, useState, useMemo } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -12,14 +12,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { AppContext } from '@/context/app-context';
-import type { Furniture, Project, Pendency, Comment, TeamMember } from '@/lib/types';
+import type { Furniture, Pendency, Comment, TeamMember } from '@/lib/types';
 import { ScrollArea } from '../ui/scroll-area';
 import { generateId } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '../ui/separator';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { useUser } from '@/firebase';
 
 interface FurnitureChatModalProps {
   isOpen: boolean;
@@ -39,27 +39,26 @@ export function FurnitureChatModal({
     throw new Error('FurnitureChatModal must be used within an AppProvider');
   }
   const { teamMembers } = context;
+  const { user } = useUser();
 
   const [newComment, setNewComment] = useState('');
   const [newPendency, setNewPendency] = useState('');
   
-  const [selectedMemberId, setSelectedMemberId] = useState<string | undefined>(
-    teamMembers.length > 0 ? teamMembers[0].id : undefined
-  );
-
   const memberMap = useMemo(() => {
     return new Map(teamMembers.map((m) => [m.id, m]));
   }, [teamMembers]);
 
-  const selectedMember = selectedMemberId ? memberMap.get(selectedMemberId) : null;
-
+  const loggedInMember = useMemo(() => {
+    if (!user || !teamMembers) return null;
+    return teamMembers.find(member => member.id === user.uid);
+  }, [user, teamMembers]);
 
   const handleAddComment = () => {
-    if (!newComment.trim() || !selectedMemberId) return;
+    if (!newComment.trim() || !loggedInMember) return;
 
     const comment: Comment = {
       id: generateId('comm'),
-      memberId: selectedMemberId,
+      memberId: loggedInMember.id,
       text: newComment,
       timestamp: new Date().toISOString(),
     };
@@ -73,13 +72,13 @@ export function FurnitureChatModal({
   };
 
   const handleAddPendency = () => {
-    if (!newPendency.trim() || !selectedMemberId) return;
+    if (!newPendency.trim() || !loggedInMember) return;
 
     const pendency: Pendency = {
       id: generateId('pend'),
       text: newPendency,
       isResolved: false,
-      authorId: selectedMemberId,
+      authorId: loggedInMember.id,
     };
 
     const updatedFurniture = { 
@@ -96,37 +95,6 @@ export function FurnitureChatModal({
     );
     onUpdate({ ...furniture, pendencies: updatedPendencies });
   };
-
-  const UserSelector = () => (
-    <div className='mb-2'>
-        <Select value={selectedMemberId} onValueChange={setSelectedMemberId}>
-          <SelectTrigger className="w-full">
-             {selectedMember ? (
-                  <div className="flex items-center gap-2">
-                    <span className="h-4 w-4 rounded-full" style={{ backgroundColor: selectedMember.color }}></span>
-                    <span>{selectedMember.name}</span>
-                  </div>
-                ) : (
-                  <SelectValue placeholder="Selecione o usuário" />
-                )}
-          </SelectTrigger>
-          <SelectContent>
-            {teamMembers.length > 0 ? (
-                teamMembers.map((member: TeamMember) => (
-                    <SelectItem key={member.id} value={member.id}>
-                        <div className="flex items-center gap-2">
-                            <span className="h-4 w-4 rounded-full" style={{ backgroundColor: member.color }}></span>
-                            <span>{member.name}</span>
-                        </div>
-                    </SelectItem>
-                ))
-            ) : (
-                <div className='p-2 text-sm text-muted-foreground'>Cadastre uma equipe.</div>
-            )}
-          </SelectContent>
-        </Select>
-    </div>
-  );
 
   const safePendencies = furniture.pendencies || [];
   const safeComments = furniture.comments || [];
@@ -180,16 +148,15 @@ export function FurnitureChatModal({
               </div>
             </ScrollArea>
              <Separator className="my-4" />
-             <UserSelector />
             <div className="flex gap-2 mt-2">
               <Input
                 value={newPendency}
                 onChange={(e) => setNewPendency(e.target.value)}
                 placeholder="Nova pendência..."
                 onKeyDown={(e) => e.key === 'Enter' && handleAddPendency()}
-                disabled={!selectedMember}
+                disabled={!loggedInMember}
               />
-              <Button onClick={handleAddPendency} disabled={!selectedMember}>
+              <Button onClick={handleAddPendency} disabled={!loggedInMember}>
                 Adicionar
               </Button>
             </div>
@@ -231,16 +198,15 @@ export function FurnitureChatModal({
               </div>
             </ScrollArea>
              <Separator className="my-4" />
-             <UserSelector />
             <div className="flex gap-2 mt-2">
               <Input
                 value={newComment}
                 onChange={(e) => setNewComment(e.target.value)}
                 placeholder="Escreva um comentário..."
                 onKeyDown={(e) => e.key === 'Enter' && handleAddComment()}
-                disabled={!selectedMember}
+                disabled={!loggedInMember}
               />
-              <Button onClick={handleAddComment} disabled={!selectedMember}>
+              <Button onClick={handleAddComment} disabled={!loggedInMember}>
                 Enviar
               </Button>
             </div>
