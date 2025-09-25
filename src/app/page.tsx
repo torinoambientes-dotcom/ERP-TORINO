@@ -75,6 +75,8 @@ export default function ProjectsPage() {
   const [statusFilter, setStatusFilter] = useState<ProjectStatus | 'Todos'>('Todos');
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
   const [projectToEdit, setProjectToEdit] = useState<Project | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+
 
   const filteredProjects = useMemo(() => {
     return projects
@@ -104,6 +106,7 @@ export default function ProjectsPage() {
 
   const handleEditClick = (project: Project) => {
     setProjectToEdit(project);
+    setIsEditModalOpen(true);
   };
   
   const handleCompleteClick = (projectId: string) => {
@@ -113,6 +116,11 @@ export default function ProjectsPage() {
   const handleDeleteClick = (project: Project) => {
     setProjectToDelete(project);
   };
+  
+  const closeEditModal = () => {
+    setIsEditModalOpen(false);
+    setProjectToEdit(null);
+  }
 
   return (
     <>
@@ -138,7 +146,7 @@ export default function ProjectsPage() {
             onChange={(e) => setSearchTerm(e.target.value)}
             className="flex-grow"
           />
-          <Select value={statusFilter} onValueChange={(value: ProjectStatus | 'Todos') => setStatusFilter(value)}>
+          <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as ProjectStatus | 'Todos')}>
             <SelectTrigger className="w-full sm:w-[180px]">
               <SelectValue placeholder="Filtrar por status" />
             </SelectTrigger>
@@ -236,8 +244,8 @@ export default function ProjectsPage() {
         projectName={projectToDelete?.clientName || ''}
     />
     <RegisterProjectModal
-      isOpen={!!projectToEdit}
-      onClose={() => setProjectToEdit(null)}
+      isOpen={isEditModalOpen}
+      onClose={closeEditModal}
       projectToEdit={projectToEdit}
     />
     </>
