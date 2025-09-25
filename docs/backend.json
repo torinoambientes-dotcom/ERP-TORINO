@@ -55,6 +55,10 @@
         "materials": {
           "type": "array",
           "items": { "$ref": "#/entities/MaterialItem" }
+        },
+        "glassItems": {
+          "type": "array",
+          "items": { "$ref": "#/entities/GlassItem" }
         }
       },
       "required": ["id", "name", "measurement", "cutting", "purchase", "assembly"]
@@ -110,6 +114,19 @@
         "unit": { "type": "string" }
       },
       "required": ["id", "name", "quantity", "unit"]
+    },
+    "GlassItem": {
+      "title": "GlassItem",
+      "type": "object",
+      "description": "Represents a single glass item required for a piece of furniture.",
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "type": "string", "enum": ["Vidro Incolor", "Espelho", "Vidro Reflecta Incolor", "Vidro Reflecta Bronze", "Vidro Reflecta Fume"]},
+        "height": { "type": "number" },
+        "width": { "type": "number" },
+        "quantity": { "type": "number" }
+      },
+      "required": ["id", "type", "height", "width", "quantity"]
     },
     "TeamMember": {
       "title": "TeamMember",

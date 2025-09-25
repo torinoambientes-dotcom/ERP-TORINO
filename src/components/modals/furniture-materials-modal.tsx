@@ -28,7 +28,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import type { Furniture, MaterialItem } from '@/lib/types';
+import type { Furniture, MaterialItem, GlassItem } from '@/lib/types';
 import { ScrollArea } from '../ui/scroll-area';
 import { generateId, cn } from '@/lib/utils';
 import { Separator } from '../ui/separator';
@@ -49,13 +49,24 @@ const materialSchema = z.object({
   unit: z.string().min(1, 'Unidade é obrigatória.'),
 });
 
+const glassSchema = z.object({
+    id: z.string().optional(),
+    type: z.string().min(1, "Tipo de vidro é obrigatório."),
+    quantity: z.coerce.number().min(1, "Quantidade deve ser pelo menos 1."),
+    width: z.coerce.number().min(1, "Largura é obrigatória."),
+    height: z.coerce.number().min(1, "Altura é obrigatória."),
+});
+
 const formSchema = z.object({
   materials: z.array(materialSchema),
+  glassItems: z.array(glassSchema),
 });
 
 type MaterialFormValues = z.infer<typeof formSchema>;
 
 const units = ['m²', 'm linear', 'unidade', 'chapa', 'litro', 'kg'];
+const glassTypes = ['Vidro Incolor', 'Espelho', 'Vidro Reflecta Incolor', 'Vidro Reflecta Bronze', 'Vidro Reflecta Fume'];
+
 
 export function FurnitureMaterialsModal({
   isOpen,
@@ -69,26 +80,34 @@ export function FurnitureMaterialsModal({
     resolver: zodResolver(formSchema),
     defaultValues: {
       materials: [],
+      glassItems: [],
     },
   });
 
-  const { fields, append, remove } = useFieldArray({
+  const { fields: materialFields, append: appendMaterial, remove: removeMaterial } = useFieldArray({
     control: form.control,
     name: 'materials',
+  });
+  
+  const { fields: glassFields, append: appendGlass, remove: removeGlass } = useFieldArray({
+    control: form.control,
+    name: "glassItems",
   });
   
   useEffect(() => {
     if (isOpen) {
       form.reset({
         materials: furniture.materials || [],
+        glassItems: furniture.glassItems || [],
       });
     }
   }, [isOpen, furniture, form]);
 
   const onSubmit = (data: MaterialFormValues) => {
-    const updatedFurniture = {
+    const updatedFurniture: Furniture = {
       ...furniture,
       materials: data.materials.map(m => (m.id ? m : { ...m, id: generateId('mat') })),
+      glassItems: data.glassItems.map(g => (g.id ? g : { ...g, id: generateId('gla') })) as GlassItem[],
     };
     onUpdate(updatedFurniture);
     toast({
@@ -99,105 +118,202 @@ export function FurnitureMaterialsModal({
   };
   
   const handleAddNewMaterial = () => {
-    append({ name: '', quantity: 1, unit: 'unidade' });
+    appendMaterial({ name: '', quantity: 1, unit: 'unidade' });
+  };
+  
+  const handleAddNewGlass = () => {
+    appendGlass({ type: glassTypes[0], quantity: 1, width: 0, height: 0 });
   };
 
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="w-[95vw] max-w-2xl h-[80vh] flex flex-col">
+      <DialogContent className="w-[95vw] max-w-4xl h-[85vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="font-headline">
             Lista de Materiais - {furniture.name}
           </DialogTitle>
           <DialogDescription>
-            Adicione ou remova os materiais necessários para este móvel.
+            Adicione ou remova os materiais e vidros necessários para este móvel.
           </DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="flex-grow flex flex-col overflow-hidden">
             <ScrollArea className="flex-grow pr-4 -mr-4">
-              <div className="space-y-4">
-                {fields.length > 0 ? (
-                  fields.map((field, index) => (
-                    <div
-                      key={field.id}
-                      className="flex items-end gap-2 p-3 rounded-lg bg-muted/50 border"
-                    >
-                      <FormField
-                        control={form.control}
-                        name={`materials.${index}.name`}
-                        render={({ field }) => (
-                          <FormItem className="flex-grow">
-                            <FormLabel>Material</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Ex: MDF Branco 18mm" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                       <FormField
-                        control={form.control}
-                        name={`materials.${index}.quantity`}
-                        render={({ field }) => (
-                          <FormItem className="w-24">
-                            <FormLabel>Qtd.</FormLabel>
-                            <FormControl>
-                              <Input type="number" {...field} />
-                            </FormControl>
-                             <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name={`materials.${index}.unit`}
-                        render={({ field }) => (
-                          <FormItem className="w-32">
-                            <FormLabel>Unidade</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Unid." />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {units.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="text-destructive/80 hover:text-destructive h-10 w-10"
-                        onClick={() => remove(index)}
+              <div className="space-y-6">
+                
+                <div>
+                  <h3 className="text-lg font-semibold mb-2">Vidraçaria</h3>
+                  <div className="space-y-4">
+                    {glassFields.map((field, index) => (
+                       <div
+                        key={field.id}
+                        className="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto_auto_auto] items-end gap-2 p-3 rounded-lg bg-muted/50 border"
                       >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-sm text-muted-foreground text-center py-8">
-                    Nenhum material adicionado.
-                  </p>
-                )}
+                         <FormField
+                          control={form.control}
+                          name={`glassItems.${index}.type`}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Tipo de Vidro</FormLabel>
+                              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Selecione..." />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {glassTypes.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name={`glassItems.${index}.quantity`}
+                          render={({ field }) => (
+                            <FormItem className="w-20">
+                              <FormLabel>Qtd.</FormLabel>
+                              <FormControl><Input type="number" {...field} /></FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name={`glassItems.${index}.width`}
+                          render={({ field }) => (
+                            <FormItem className="w-24">
+                              <FormLabel>Largura (mm)</FormLabel>
+                              <FormControl><Input type="number" {...field} /></FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name={`glassItems.${index}.height`}
+                          render={({ field }) => (
+                            <FormItem className="w-24">
+                              <FormLabel>Altura (mm)</FormLabel>
+                              <FormControl><Input type="number" {...field} /></FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                         <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="text-destructive/80 hover:text-destructive h-10 w-10"
+                          onClick={() => removeGlass(index)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                       </div>
+                    ))}
+                  </div>
+                   <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="mt-4"
+                      onClick={handleAddNewGlass}
+                    >
+                      <PlusCircle className="mr-2 h-4 w-4" />
+                      Adicionar Vidraçaria
+                    </Button>
+                </div>
+
+                <Separator />
+
+                <div>
+                  <h3 className="text-lg font-semibold mb-2">Materiais Gerais</h3>
+                   <div className="space-y-4">
+                    {materialFields.length > 0 ? (
+                      materialFields.map((field, index) => (
+                        <div
+                          key={field.id}
+                          className="flex items-end gap-2 p-3 rounded-lg bg-muted/50 border"
+                        >
+                          <FormField
+                            control={form.control}
+                            name={`materials.${index}.name`}
+                            render={({ field }) => (
+                              <FormItem className="flex-grow">
+                                <FormLabel>Material</FormLabel>
+                                <FormControl>
+                                  <Input placeholder="Ex: MDF Branco 18mm" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                           <FormField
+                            control={form.control}
+                            name={`materials.${index}.quantity`}
+                            render={({ field }) => (
+                              <FormItem className="w-24">
+                                <FormLabel>Qtd.</FormLabel>
+                                <FormControl>
+                                  <Input type="number" {...field} />
+                                </FormControl>
+                                 <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={form.control}
+                            name={`materials.${index}.unit`}
+                            render={({ field }) => (
+                              <FormItem className="w-32">
+                                <FormLabel>Unidade</FormLabel>
+                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                  <FormControl>
+                                    <SelectTrigger>
+                                      <SelectValue placeholder="Unid." />
+                                    </SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent>
+                                    {units.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
+                                  </SelectContent>
+                                </Select>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="text-destructive/80 hover:text-destructive h-10 w-10"
+                            onClick={() => removeMaterial(index)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-sm text-muted-foreground text-center py-4">
+                        Nenhum material geral adicionado.
+                      </p>
+                    )}
+                  </div>
+                   <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="mt-4"
+                      onClick={handleAddNewMaterial}
+                    >
+                      <PlusCircle className="mr-2 h-4 w-4" />
+                      Adicionar Material Geral
+                    </Button>
+                </div>
               </div>
-               <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="mt-4"
-                  onClick={handleAddNewMaterial}
-                >
-                  <PlusCircle className="mr-2 h-4 w-4" />
-                  Adicionar Material
-                </Button>
             </ScrollArea>
             
             <DialogFooter className="mt-4 pt-4 border-t">

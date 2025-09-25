@@ -122,6 +122,7 @@ export function RegisterProjectModal({
               comments: [],
               pendencies: [],
               materials: [],
+              glassItems: [],
             }))
         }));
 

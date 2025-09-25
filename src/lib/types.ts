@@ -35,6 +35,14 @@ export interface MaterialItem {
   unit: string;
 }
 
+export interface GlassItem {
+  id: string;
+  type: 'Vidro Incolor' | 'Espelho' | 'Vidro Reflecta Incolor' | 'Vidro Reflecta Bronze' | 'Vidro Reflecta Fume';
+  height: number;
+  width: number;
+  quantity: number;
+}
+
 export interface Furniture {
   id: string;
   name: string;
@@ -45,6 +53,7 @@ export interface Furniture {
   comments?: Comment[];
   pendencies?: Pendency[];
   materials?: MaterialItem[];
+  glassItems?: GlassItem[];
 }
 
 export interface Environment {
