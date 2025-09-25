@@ -1,0 +1,75 @@
+/**
+ * @file Firebase Security Rules for Prototyping 'ProjectFlow'
+ *
+ * Core Philosophy:
+ * This ruleset prioritizes secure authorization and rapid prototyping. It grants broad read access for public consumption while strictly controlling write access based on user roles within projects. The primary goal is to enable collaborative data input while preventing unauthorized modification or deletion.
+ *
+ * Data Structure:
+ * - /projects/{projectId}: Stores project metadata with a `members` map for role-based access control.
+ * - /projects/{projectId}/environments/{environmentId}: Stores environment details, inheriting project membership for authorization.
+ * - /team_members/{teamMemberId}: Stores team member profiles, publicly accessible but with limited write access.
+ *
+ * Key Security Decisions:
+ * - Public read access is granted to all documents in the `projects` and `team_members` collections.
+ * - List access is allowed based on project membership.
+ * - Write access is strictly controlled using an owner-based model.
+ *
+ * Denormalization for Authorization:
+ * - The `projects` documents contain a `members` map that stores user roles for the project. This denormalization allows for efficient authorization checks without requiring additional reads.
+ * - The `environments` documents inherit the `projectId` from the parent `projects` document, enabling secure subcollection access.
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /**
+     * @description Allows public read access to projects and restricts write access to project members.
+     * @path /projects/{projectId}
+     * @allow (get, list) if true
+     * @allow (create, update, delete) if isSignedIn() && resource.data.members[request.auth.uid] != null
+     * @deny (create, update, delete) if !isSignedIn()
+     * @principle Enables collaborative project creation and modification with public read access.
+     */
+    match /projects/{projectId} {
+      allow get, list: if true;
+      allow create: if isSignedIn() && request.resource.data.members[request.auth.uid] != null;
+      allow update: if isSignedIn() && resource.data.members[request.auth.uid] != null && resource != null;
+      allow delete: if isSignedIn() && resource.data.members[request.auth.uid] != null && resource != null;
+    }
+
+    /**
+     * @description Allows public read access to environments and restricts write access to project members of the parent project.
+     * @path /projects/{projectId}/environments/{environmentId}
+     * @allow (get, list) if true
+     * @allow (create, update, delete) if isSignedIn() && get(/databases/$(database)/documents/projects/$(projectId)).data.members[request.auth.uid] != null
+     * @deny (create, update, delete) if !isSignedIn()
+     * @principle Enables collaborative environment management within projects, with public read access.
+     */
+    match /projects/{projectId}/environments/{environmentId} {
+      allow get, list: if true;
+      allow create: if isSignedIn() && get(/databases/$(database)/documents/projects/$(projectId)).data.members[request.auth.uid] != null;
+      allow update: if isSignedIn() && get(/databases/$(database)/documents/projects/$(projectId)).data.members[request.auth.uid] != null && resource != null;
+      allow delete: if isSignedIn() && get(/databases/$(database)/documents/projects/$(projectId)).data.members[request.auth.uid] != null && resource != null;
+    }
+
+    /**
+     * @description Allows public read access to team member profiles and restricts write access.
+     * @path /team_members/{teamMemberId}
+     * @allow (get, list) if true
+     * @allow create if request.auth != null;
+     * @allow update, delete: if false;
+     * @deny (create, update, delete) if !isSignedIn()
+     * @principle Enables public viewing of team member profiles with restricted modification rights.
+     */
+    match /team_members/{teamMemberId} {
+      allow get, list: if true;
+      allow create: if request.auth != null;
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+  }
+}

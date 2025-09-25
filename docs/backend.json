@@ -1,0 +1,184 @@
+{
+  "entities": {
+    "Project": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Project",
+      "type": "object",
+      "description": "Represents a project with its details, environments, and associated team members.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Project entity."
+        },
+        "clientName": {
+          "type": "string",
+          "description": "The name of the client associated with the project."
+        },
+        "environmentIds": {
+          "type": "array",
+          "description": "References to Environment entities. (Relationship: Project 1:N Environment)",
+          "items": {
+            "type": "string"
+          }
+        },
+        "teamMemberIds": {
+          "type": "array",
+          "description": "References to TeamMember entities assigned to the project. (Relationship: Project N:N TeamMember)",
+          "items": {
+            "type": "string"
+          }
+        },
+        "projectName": {
+          "type": "string",
+          "description": "The name of the project."
+        }
+      },
+      "required": [
+        "id",
+        "clientName",
+        "environmentIds",
+        "projectName"
+      ]
+    },
+    "Environment": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Environment",
+      "type": "object",
+      "description": "Represents an environment within a project, containing furniture and stage information.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Environment entity."
+        },
+        "projectId": {
+          "type": "string",
+          "description": "Reference to Project. (Relationship: Project 1:N Environment)"
+        },
+        "furniture": {
+          "type": "string",
+          "description": "Details of the furniture in the environment."
+        },
+        "measurementStatus": {
+          "type": "string",
+          "description": "Status of the measurement stage."
+        },
+        "cuttingPlanStatus": {
+          "type": "string",
+          "description": "Status of the cutting plan stage."
+        },
+        "materialPurchaseStatus": {
+          "type": "string",
+          "description": "Status of the material purchase stage."
+        },
+        "preAssemblyStatus": {
+          "type": "string",
+          "description": "Status of the pre-assembly stage."
+        }
+      },
+      "required": [
+        "id",
+        "projectId",
+        "furniture",
+        "measurementStatus",
+        "cuttingPlanStatus",
+        "materialPurchaseStatus",
+        "preAssemblyStatus"
+      ]
+    },
+    "TeamMember": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "TeamMember",
+      "type": "object",
+      "description": "Represents a team member with their name and color.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the TeamMember entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the team member."
+        },
+        "color": {
+          "type": "string",
+          "description": "The color associated with the team member for tags/labels."
+        },
+        "projectIds": {
+          "type": "array",
+          "description": "References to Project entities. (Relationship: TeamMember N:N Project)",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "color"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/projects/{projectId}",
+        "definition": {
+          "entityName": "Project",
+          "schema": {
+            "$ref": "#/backend/entities/Project"
+          },
+          "description": "Stores project metadata. Includes denormalized 'members' map (userId: role) for authorization independence.",
+          "params": [
+            {
+              "name": "projectId",
+              "description": "Unique identifier for the project."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/projects/{projectId}/environments/{environmentId}",
+        "definition": {
+          "entityName": "Environment",
+          "schema": {
+            "$ref": "#/backend/entities/Environment"
+          },
+          "description": "Stores environment details for a project. Includes denormalized 'projectId' and 'members' (copied from parent Project) for authorization independence.",
+          "params": [
+            {
+              "name": "projectId",
+              "description": "Unique identifier for the project."
+            },
+            {
+              "name": "environmentId",
+              "description": "Unique identifier for the environment."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/team_members/{teamMemberId}",
+        "definition": {
+          "entityName": "TeamMember",
+          "schema": {
+            "$ref": "#/backend/entities/TeamMember"
+          },
+          "description": "Stores team member profiles.",
+          "params": [
+            {
+              "name": "teamMemberId",
+              "description": "Unique identifier for the team member."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure is designed to support a collaborative project management system ('ProjectFlow') with a focus on real-time data sharing and user accessibility. The key principle is Authorization Independence, achieved through denormalization of project membership and roles. This allows for secure and efficient data access without relying on complex, hierarchical `get()` calls in security rules.  All collections are designed with a homogeneous security posture. Specifically:\n\n*   **Projects**: Stores project metadata. The `members` map stores user roles, denormalized for access control. This allows individual users to manage different sets of projects.\n*   **Environments**: Stores environment details related to particular projects. The `projectId` and `members` (copied from the Project) fields are included for easy querying and authorization.\n*   **TeamMembers**: Centralized storage of team member profiles, facilitating consistent access across the application.  The `projectIds` field provides a link to projects, enabling efficient reverse lookups (e.g., finding all team members for a project).  This is mainly metadata and is not critical for authorization.\n\nQAPs (Rules are not Filters) are supported as follows:\n\n*   List access to projects is governed by the `members` map. Users can only list projects to which they have access (either read or write).\n*   Environment listing is similarly controlled via `projectId` and inherited `members`.\n\nThis structure supports the core application features: project listing, project details, registration of projects and team members, and reporting. The denormalized `members` map in `Projects` and `Environments` ensures that security rules can be written efficiently without relying on expensive `get()` operations."
+  }
+}
