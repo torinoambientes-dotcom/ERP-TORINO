@@ -50,7 +50,6 @@ type ProjectFormValues = z.infer<typeof projectSchema>;
 interface RegisterProjectModalProps {
   isOpen: boolean;
   onClose: () => void;
-  projectToEdit?: Project | null;
 }
 
 const defaultValues: ProjectFormValues = {
@@ -61,25 +60,14 @@ const defaultValues: ProjectFormValues = {
 export function RegisterProjectModal({
   isOpen,
   onClose,
-  projectToEdit
 }: RegisterProjectModalProps) {
-  const { addProject, updateProject } = useContext(AppContext);
+  const { addProject } = useContext(AppContext);
   const { toast } = useToast();
-  const isEditMode = !!projectToEdit;
 
   const form = useForm<ProjectFormValues>({
     resolver: zodResolver(projectSchema),
     defaultValues: defaultValues,
   });
-  
-  useEffect(() => {
-    if (projectToEdit && isOpen) {
-      form.reset(projectToEdit);
-    } else if (!isOpen) {
-      form.reset(defaultValues);
-    }
-  }, [projectToEdit, isOpen, form]);
-
 
   const {
     fields: envFields,
@@ -91,38 +79,27 @@ export function RegisterProjectModal({
   });
 
   const onSubmit = (data: ProjectFormValues) => {
-    if (isEditMode && projectToEdit) {
-        updateProject({
-            ...projectToEdit,
-            ...data
-        });
-         toast({
-            title: 'Projeto atualizado!',
-            description: `O projeto para "${data.clientName}" foi atualizado.`,
-        });
-    } else {
-        addProject({
-            ...data,
-            id: generateId('proj'),
-            environments: data.environments.map((env) => ({
-                ...env,
-                id: generateId('env'),
-                furniture: env.furniture.map((fur) => ({
-                ...fur,
-                id: generateId('fur'),
-                measurement: { status: 'todo' },
-                cutting: { status: 'todo' },
-                purchase: { status: 'todo' },
-                assembly: { status: 'todo' },
-                })),
+    addProject({
+        ...data,
+        id: generateId('proj'),
+        environments: data.environments.map((env) => ({
+            ...env,
+            id: generateId('env'),
+            furniture: env.furniture.map((fur) => ({
+            ...fur,
+            id: generateId('fur'),
+            measurement: { status: 'todo' },
+            cutting: { status: 'todo' },
+            purchase: { status: 'todo' },
+            assembly: { status: 'todo' },
             })),
-        });
-        toast({
-            title: 'Projeto cadastrado!',
-            description: `O projeto para "${data.clientName}" foi criado com sucesso.`,
-        });
-    }
-
+        })),
+    });
+    toast({
+        title: 'Projeto cadastrado!',
+        description: `O projeto para "${data.clientName}" foi criado com sucesso.`,
+    });
+    
     form.reset(defaultValues);
     onClose();
   };
@@ -136,9 +113,9 @@ export function RegisterProjectModal({
     }}>
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="font-headline">{isEditMode ? 'Editar Projeto' : 'Cadastrar Novo Projeto'}</DialogTitle>
+          <DialogTitle className="font-headline">Cadastrar Novo Projeto</DialogTitle>
           <DialogDescription>
-            {isEditMode ? 'Altere os dados do projeto abaixo.' : 'Preencha os dados para registrar um novo projeto.'}
+            Preencha os dados para registrar um novo projeto.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>

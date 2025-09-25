@@ -22,9 +22,8 @@ import {
 } from '@/components/ui/select';
 import type { Project } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { Archive, CheckCircle, Pencil, Trash2 } from 'lucide-react';
+import { Archive, CheckCircle, Trash2 } from 'lucide-react';
 import { DeleteProjectAlert } from '@/components/modals/delete-project-alert';
-import { RegisterProjectModal } from '@/components/modals/register-project-modal';
 
 type ProjectStatus = 'Novo' | 'Em Andamento' | 'Concluído';
 
@@ -74,7 +73,6 @@ export default function ProjectsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<ProjectStatus | 'Todos'>('Todos');
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
-  const [projectToEdit, setProjectToEdit] = useState<Project | null>(null);
 
   const filteredProjects = useMemo(() => {
     return projects
@@ -94,7 +92,7 @@ export default function ProjectsPage() {
         return matchesSearch && matchesStatus;
       });
   }, [projects, searchTerm, statusFilter]);
-
+  
   const handleDeleteClick = useCallback((project: Project) => {
     setProjectToDelete(project);
   }, []);
@@ -105,19 +103,11 @@ export default function ProjectsPage() {
       setProjectToDelete(null);
     }
   }, [projectToDelete, deleteProject]);
-  
-  const handleEditClick = useCallback((project: Project) => {
-    setProjectToEdit(project);
-  }, []);
-  
-  const closeEditModal = useCallback(() => {
-    setProjectToEdit(null);
-  }, []);
 
   const handleCompleteClick = useCallback((projectId: string) => {
     completeProjectStages(projectId);
   }, [completeProjectStages]);
-  
+
   const handleStatusFilterChange = useCallback((value: string) => {
     setStatusFilter(value as ProjectStatus | 'Todos');
   }, []);
@@ -183,24 +173,17 @@ export default function ProjectsPage() {
                       <p className="text-sm text-muted-foreground">
                         {project.environments.length} ambiente(s)
                       </p>
-                      <div className="space-y-2">
-                        <Progress value={progress} className="h-2" />
-                        <p className="text-xs text-muted-foreground">
-                          {doneTasks} de {totalTasks} tarefas concluídas
-                        </p>
-                      </div>
+                       {totalTasks > 0 && (
+                        <div className="space-y-2">
+                            <Progress value={progress} className="h-2" />
+                            <p className="text-xs text-muted-foreground">
+                            {doneTasks} de {totalTasks} tarefas concluídas
+                            </p>
+                        </div>
+                        )}
                     </CardContent>
                   </Link>
                   <CardFooter className="flex justify-end gap-2">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="text-muted-foreground/80 hover:text-foreground"
-                      onClick={() => handleEditClick(project)}
-                    >
-                      <Pencil className="h-4 w-4" />
-                      <span className="sr-only">Editar Projeto</span>
-                    </Button>
                     <Button
                       variant="ghost"
                       size="sm"
@@ -243,12 +226,6 @@ export default function ProjectsPage() {
         onConfirm={handleDeleteConfirm}
         projectName={projectToDelete?.clientName || ''}
       />
-      {projectToEdit && (
-        <RegisterProjectModal
-          isOpen={!!projectToEdit}
-          onClose={closeEditModal}
-          projectToEdit={projectToEdit}
-        />
-      )}
     </>
   );
+}

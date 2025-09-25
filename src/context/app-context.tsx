@@ -2,7 +2,6 @@
 
 import { createContext, useState, useEffect, type ReactNode } from 'react';
 import type { Project, TeamMember, Environment, Furniture } from '@/lib/types';
-import { generateId } from '@/lib/utils';
 
 interface AppContextType {
   projects: Project[];
@@ -64,29 +63,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   const updateProject = (updatedProject: Project) => {
-    // When updating, check for new environments or furniture that don't have IDs or default stages
-    const processedProject = {
-      ...updatedProject,
-      environments: updatedProject.environments.map((env: Partial<Environment>) => ({
-        ...env,
-        id: env.id || generateId('env'),
-        name: env.name || '',
-        furniture: (env.furniture || []).map((fur: Partial<Furniture>) => ({
-          ...fur,
-          id: fur.id || generateId('fur'),
-          name: fur.name || '',
-          measurement: fur.measurement || { status: 'todo' },
-          cutting: fur.cutting || { status: 'todo' },
-          purchase: fur.purchase || { status: 'todo' },
-          assembly: fur.assembly || { status: 'todo' },
-          comments: fur.comments || [],
-          pendencies: fur.pendencies || [],
-        })),
-      })),
-    };
-    
     setProjects((prev) =>
-      prev.map((p) => (p.id === processedProject.id ? processedProject : p))
+      prev.map((p) => (p.id === updatedProject.id ? updatedProject : p))
     );
   };
   
