@@ -1,5 +1,5 @@
 'use client';
-import { useContext, useState, useEffect, useMemo, use, useCallback } from 'react';
+import { useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ChevronLeft, MessageSquare } from 'lucide-react';
@@ -44,9 +44,8 @@ export default function ProjectDetailsPage({
 }: {
   params: { id: string };
 }) {
-  const resolvedParams = use(params);
   const { projects, teamMembers, updateProject } = useContext(AppContext);
-  const { id } = resolvedParams;
+  const { id } = params;
 
   const initialProject = useMemo(() => 
     projects.find((p) => p.id === id),
@@ -84,7 +83,7 @@ export default function ProjectDetailsPage({
     }
   }, [project, initialProject, updateProject]);
 
-  const handleStatusChange = (
+  const handleStatusChange = useCallback((
     envId: string,
     furId: string,
     stage: StageKey,
@@ -103,9 +102,9 @@ export default function ProjectDetailsPage({
       }
       return newProject;
     });
-  };
+  }, [project]);
 
-  const handleMemberChange = (
+  const handleMemberChange = useCallback((
     envId: string,
     furId: string,
     stage: StageKey,
@@ -124,7 +123,7 @@ export default function ProjectDetailsPage({
       }
       return newProject;
     });
-  };
+  }, [project]);
 
   const openChatModal = useCallback((furniture: Furniture, envId: string) => {
     setSelectedFurniture(furniture);
