@@ -28,6 +28,12 @@ import { AlertTriangle, ChevronsUpDown, CheckCircle, Copy } from 'lucide-react';
 import { isThisWeek, isThisMonth, isThisYear, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion';
 
 interface GeneralPendency extends Pendency {
   projectName: string;
@@ -35,8 +41,14 @@ interface GeneralPendency extends Pendency {
   furnitureName: string;
 }
 
-interface AggregatedMaterial extends Omit<MaterialItem, 'id'> {
-    projects: string[];
+interface ShoppingListItem {
+  materials: MaterialItem[];
+}
+
+interface ShoppingList {
+    [projectName: string]: {
+        [environmentName: string]: ShoppingListItem
+    }
 }
 
 
@@ -188,39 +200,64 @@ export default function ReportsPage() {
     );
   }, [stockItems]);
 
-    const shoppingList = useMemo((): AggregatedMaterial[] => {
-        const materialMap = new Map<string, AggregatedMaterial>();
+    const shoppingList = useMemo((): ShoppingList => {
+        const list: ShoppingList = {};
         const activeProjects = projects.filter(p => !p.completedAt);
 
         activeProjects.forEach(project => {
+            list[project.clientName] = {};
+
             project.environments.forEach(environment => {
+                const materialMap = new Map<string, MaterialItem>();
+
                 environment.furniture.forEach(furniture => {
                     if (furniture.materials) {
                         furniture.materials.forEach(material => {
                             const key = `${material.name.trim().toLowerCase()}|${material.unit}`;
-                            
                             if (materialMap.has(key)) {
                                 const existing = materialMap.get(key)!;
                                 existing.quantity += material.quantity;
-                                if (!existing.projects.includes(project.clientName)) {
-                                    existing.projects.push(project.clientName);
-                                }
                             } else {
-                                materialMap.set(key, {
-                                    ...material,
-                                    projects: [project.clientName],
-                                });
+                                materialMap.set(key, { ...material });
                             }
                         });
                     }
                 });
+
+                if (materialMap.size > 0) {
+                   if (!list[project.clientName][environment.name]) {
+                        list[project.clientName][environment.name] = { materials: [] };
+                    }
+                    list[project.clientName][environment.name].materials = Array.from(materialMap.values()).sort((a,b) => a.name.localeCompare(b.name));
+                }
             });
+
+             if (Object.keys(list[project.clientName]).length === 0) {
+                delete list[project.clientName];
+            }
         });
-        return Array.from(materialMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+
+        return list;
     }, [projects]);
 
     const copyShoppingListToClipboard = () => {
-        const listText = shoppingList.map(item => `${item.name}: ${item.quantity} ${item.unit}`).join('\n');
+        let listText = "Lista de Compras Centralizada:\n\n";
+
+        Object.entries(shoppingList).forEach(([projectName, environments]) => {
+            listText += `Projeto: ${projectName}\n`;
+            Object.entries(environments).forEach(([environmentName, environmentData]) => {
+                listText += `  Ambiente: ${environmentName}\n`;
+                environmentData.materials.forEach(item => {
+                    listText += `    - ${item.name}: ${item.quantity} ${item.unit}\n`;
+                });
+            });
+            listText += `\n`;
+        });
+        
+        if (Object.keys(shoppingList).length === 0) {
+            listText = "Nenhum material necessário para os projetos ativos."
+        }
+        
         navigator.clipboard.writeText(listText).then(() => {
             toast({
                 title: "Lista de compras copiada!",
@@ -378,11 +415,11 @@ export default function ReportsPage() {
           <CardHeader>
              <div className="flex items-center justify-between">
               <div className='space-y-1.5'>
-                <CardTitle className="font-headline">Lista de Compras Centralizada ({shoppingList.length})</CardTitle>
+                <CardTitle className="font-headline">Lista de Compras Centralizada ({Object.keys(shoppingList).length})</CardTitle>
                 <CardDescription>Materiais agregados de todos os projetos ativos, prontos para a compra.</CardDescription>
               </div>
               <div className="flex items-center gap-2">
-                <Button onClick={copyShoppingListToClipboard} size="sm" disabled={shoppingList.length === 0}>
+                <Button onClick={copyShoppingListToClipboard} size="sm" disabled={Object.keys(shoppingList).length === 0}>
                     <Copy className="mr-2 h-4 w-4" />
                     Copiar Lista
                 </Button>
@@ -397,15 +434,34 @@ export default function ReportsPage() {
           </CardHeader>
           <CollapsibleContent>
             <CardContent>
-              <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
-                {shoppingList.length > 0 ? shoppingList.map((item) => (
-                  <div key={`${item.name}-${item.unit}`} className="p-3 rounded-md bg-muted/50 border-l-4 border-primary">
-                    <p className="font-semibold">{item.name}</p>
-                    <p className="text-sm text-muted-foreground">
-                      <span className='font-medium text-foreground'>{item.quantity} {item.unit}</span> - (Projetos: {item.projects.join(', ')})
-                    </p>
-                  </div>
-                )) : <p className="text-sm text-muted-foreground text-center py-4">Nenhum material necessário para os projetos ativos.</p>}
+              <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2">
+                {Object.keys(shoppingList).length > 0 ? (
+                    <Accordion type="multiple" className="w-full space-y-4">
+                        {Object.entries(shoppingList).map(([projectName, environments]) => (
+                            <AccordionItem value={projectName} key={projectName} className='border rounded-lg bg-muted/30'>
+                                <AccordionTrigger className="p-4 font-semibold text-base hover:no-underline">
+                                    {projectName}
+                                </AccordionTrigger>
+                                <AccordionContent className="px-4 pb-4">
+                                     <div className="space-y-2">
+                                        {Object.entries(environments).map(([environmentName, envData]) => (
+                                            <div key={environmentName} className="p-3 rounded-md bg-background border">
+                                                <h4 className='font-medium mb-2'>{environmentName}</h4>
+                                                <ul className='space-y-1 text-sm list-disc pl-5 text-muted-foreground'>
+                                                {envData.materials.map((item, index) => (
+                                                    <li key={index}>
+                                                        <span className="font-semibold text-foreground">{item.name}:</span> {item.quantity} {item.unit}
+                                                    </li>
+                                                ))}
+                                                </ul>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </AccordionContent>
+                            </AccordionItem>
+                        ))}
+                    </Accordion>
+                ) : <p className="text-sm text-muted-foreground text-center py-4">Nenhum material necessário para os projetos ativos.</p>}
               </div>
             </CardContent>
           </CollapsibleContent>
@@ -535,3 +591,5 @@ export default function ReportsPage() {
     </div>
   );
 }
+
+    
