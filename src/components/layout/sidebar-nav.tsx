@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BarChart3, LayoutGrid, PlusCircle, Users, Boxes } from 'lucide-react';
+import { BarChart3, LayoutGrid, PlusCircle, Users, Boxes, LogOut } from 'lucide-react';
 import {
   SidebarHeader,
   SidebarContent,
@@ -15,6 +15,9 @@ import {
 import { Logo } from '@/components/logo';
 import { RegisterProjectModal } from '../modals/register-project-modal';
 import { Button } from '../ui/button';
+import { useAuth } from '@/firebase';
+import { signOut } from 'firebase/auth';
+import { useRouter } from 'next/navigation';
 
 const menuItems = [
   { href: '/', label: 'Projetos', icon: LayoutGrid },
@@ -26,6 +29,17 @@ const menuItems = [
 export function SidebarNav() {
   const pathname = usePathname();
   const [isProjectModalOpen, setProjectModalOpen] = useState(false);
+  const auth = useAuth();
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      router.push('/login');
+    } catch (error) {
+      console.error("Error signing out: ", error);
+    }
+  };
 
   return (
     <>
@@ -65,6 +79,14 @@ export function SidebarNav() {
           >
             <PlusCircle className="h-5 w-5" />
             <span className="text-base text-center">Novo Projeto</span>
+          </Button>
+           <Button
+            onClick={handleLogout}
+            variant="outline"
+            className="w-full justify-start [&>span]:flex-1"
+          >
+            <LogOut className="h-5 w-5" />
+            <span className="text-base text-center">Sair</span>
           </Button>
          </div>
       </SidebarFooter>
