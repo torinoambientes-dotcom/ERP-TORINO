@@ -1,3 +1,4 @@
+
 'use client';
 import { useContext, useMemo, useState } from 'react';
 import {
@@ -22,16 +23,53 @@ import {
 } from '@/components/ui/select';
 import { PageHeader } from '@/components/layout/page-header';
 import { AppContext } from '@/context/app-context';
-import type { Pendency, StageStatus } from '@/lib/types';
-import { Separator } from '@/components/ui/separator';
+import type { Pendency, StageStatus, TeamMember } from '@/lib/types';
 import { ChevronsUpDown } from 'lucide-react';
 import { isThisWeek, isThisMonth, isThisYear, parseISO } from 'date-fns';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from 'recharts';
 
 interface GeneralPendency extends Pendency {
   projectName: string;
   environmentName: string;
   furnitureName: string;
 }
+
+const statusColors = {
+  done: '#16a34a', // green
+  in_progress: '#2563eb', // blue
+  todo: '#f97316', // orange
+};
+
+const SawBladeBar = (props: any) => {
+  const { fill, x, y, width, height } = props;
+  const toothWidth = 8;
+  const toothHeight = 5;
+  const numTeeth = Math.floor(width / toothWidth);
+
+  if (height === 0) return null;
+
+  let pathData = `M${x},${y + height} L${x},${y + toothHeight}`;
+
+  for (let i = 0; i < numTeeth; i++) {
+    const currentX = x + i * toothWidth;
+    pathData += ` L${currentX + toothWidth / 2},${y}`;
+    pathData += ` L${currentX + toothWidth},${y + toothHeight}`;
+  }
+   pathData += ` L${x + width},${y + toothHeight} L${x + width},${y + height} Z`;
+
+
+  return <path d={pathData} fill={fill} />;
+};
+
 
 export default function ReportsPage() {
   const context = useContext(AppContext);
@@ -40,9 +78,8 @@ export default function ReportsPage() {
   }
   const { projects, teamMembers } = context;
 
-  const [selectedMemberId, setSelectedMemberId] = useState('all');
   const [isPendenciesOpen, setIsPendenciesOpen] = useState(true);
-  const [isActivitiesOpen, setIsActivitiesOpen] = useState(true);
+  const [isProductivityOpen, setIsProductivityOpen] = useState(true);
 
 
   const projectStats = useMemo(() => {
@@ -94,58 +131,37 @@ export default function ReportsPage() {
   }, [projects]);
 
 
-  const memberMap = useMemo(() => {
-    return new Map(teamMembers.map((m) => [m.id, m]));
-  }, [teamMembers]);
+  const productivityData = useMemo(() => {
+    return teamMembers.map(member => {
+      const tasks = {
+        todo: 0,
+        in_progress: 0,
+        done: 0,
+      };
 
-  const filteredTasks = useMemo(() => {
-    const allTasks: {
-      id: string;
-      stage: string;
-      fur: string;
-      env: string;
-      project: string;
-      memberId?: string;
-      status: StageStatus;
-    }[] = [];
-
-    projects.forEach((p) => {
-      p.environments.forEach((e) => {
-        e.furniture.forEach((f) => {
-            const stages = {
-                measurement: 'Medição',
-                cutting: 'Plano de Corte',
-                purchase: 'Compra Material',
-                assembly: 'Pré Montagem',
-            } as const;
-
-            Object.entries(stages).forEach(([key, label]) => {
-                const stageKey = key as keyof typeof stages;
-                allTasks.push({
-                    id: `${p.id}-${e.id}-${f.id}-${stageKey}`,
-                    stage: label,
-                    fur: f.name,
-                    env: e.name,
-                    project: p.clientName,
-                    memberId: f[stageKey].responsibleId,
-                    status: f[stageKey].status,
-                });
+      projects.forEach(p => {
+        p.environments.forEach(e => {
+          e.furniture.forEach(f => {
+            const stages = ['measurement', 'cutting', 'purchase', 'assembly'] as const;
+            stages.forEach(key => {
+              const stage = f[key];
+              if (stage.responsibleId === member.id) {
+                tasks[stage.status]++;
+              }
             });
+          });
         });
       });
+      
+      return {
+        name: member.name.split(' ')[0], // Use first name for brevity
+        A_Fazer: tasks.todo,
+        Em_Andamento: tasks.in_progress,
+        Concluido: tasks.done,
+      };
     });
+  }, [projects, teamMembers]);
 
-    const filtered =
-      selectedMemberId === 'all'
-        ? allTasks
-        : allTasks.filter((task) => task.memberId === selectedMemberId);
-
-    return {
-      todo: filtered.filter(t => t.status === 'todo'),
-      in_progress: filtered.filter(t => t.status === 'in_progress'),
-      done: filtered.filter(t => t.status === 'done')
-    }
-  }, [projects, selectedMemberId]);
 
   const unresolvedPendencies = useMemo((): GeneralPendency[] => {
     const pendencies: GeneralPendency[] = [];
@@ -242,6 +258,57 @@ export default function ReportsPage() {
             </div>
         </CardContent>
       </Card>
+      
+      <Collapsible
+        open={isProductivityOpen}
+        onOpenChange={setIsProductivityOpen}
+        className="w-full"
+      >
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+                <div className='space-y-1.5'>
+                    <CardTitle className="font-headline">Produtividade da Equipe</CardTitle>
+                    <CardDescription>Distribuição de tarefas por membro da equipe.</CardDescription>
+                </div>
+                <CollapsibleTrigger asChild>
+                    <Button variant="ghost" size="icon">
+                    <ChevronsUpDown className="h-4 w-4" />
+                    <span className="sr-only">Toggle</span>
+                    </Button>
+                </CollapsibleTrigger>
+            </div>
+          </CardHeader>
+          <CollapsibleContent>
+            <CardContent>
+               <div style={{ width: '100%', height: 300 }}>
+                 <ResponsiveContainer>
+                   <BarChart
+                     data={productivityData}
+                     margin={{ top: 5, right: 20, left: -10, bottom: 5 }}
+                   >
+                     <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                     <XAxis dataKey="name" />
+                     <YAxis allowDecimals={false}/>
+                     <Tooltip 
+                        contentStyle={{
+                          background: 'hsl(var(--background))',
+                          borderColor: 'hsl(var(--border))',
+                          borderRadius: 'var(--radius)',
+                        }}
+                     />
+                     <Legend />
+                     <Bar dataKey="A_Fazer" stackId="a" fill={statusColors.todo} name="A Fazer" shape={<SawBladeBar />} />
+                     <Bar dataKey="Em_Andamento" stackId="a" fill={statusColors.in_progress} name="Em Andamento" shape={<SawBladeBar />} />
+                     <Bar dataKey="Concluido" stackId="a" fill={statusColors.done} name="Concluído" shape={<SawBladeBar />} />
+                   </BarChart>
+                 </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
+
 
       <Collapsible
         open={isPendenciesOpen}
@@ -280,88 +347,6 @@ export default function ReportsPage() {
         </Card>
       </Collapsible>
 
-
-      <Collapsible
-        open={isActivitiesOpen}
-        onOpenChange={setIsActivitiesOpen}
-        className="w-full"
-      >
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-                <div className='space-y-1.5'>
-                    <CardTitle className="font-headline">Atividades por Membro</CardTitle>
-                    <CardDescription>Filtre as tarefas por membro da equipe para ver o que está pendente, em andamento ou concluído.</CardDescription>
-                </div>
-                <CollapsibleTrigger asChild>
-                    <Button variant="ghost" size="icon">
-                    <ChevronsUpDown className="h-4 w-4" />
-                    <span className="sr-only">Toggle</span>
-                    </Button>
-                </CollapsibleTrigger>
-            </div>
-          </CardHeader>
-          <CollapsibleContent>
-            <CardContent>
-              <div className="max-w-xs">
-                <Select value={selectedMemberId} onValueChange={setSelectedMemberId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione um membro" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos os membros</SelectItem>
-                    <Separator />
-                    {teamMembers.map(member => (
-                      <SelectItem key={member.id} value={member.id}>
-                        <div className="flex items-center gap-2">
-                          <span className="h-4 w-4 rounded-full" style={{ backgroundColor: member.color }}></span>
-                          <span>{member.name}</span>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="space-y-4">
-                  <h3 className="font-headline text-lg font-semibold text-amber-600">A Fazer ({filteredTasks.todo.length})</h3>
-                  <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
-                    {filteredTasks.todo.length > 0 ? filteredTasks.todo.map((task) => (
-                      <div key={task.id} className="p-3 rounded-md bg-muted/50 border-l-4 border-amber-500">
-                        <p className="font-semibold">{task.stage}: {task.fur}</p>
-                        <p className="text-sm text-muted-foreground">{task.project} / {task.env}</p>
-                      </div>
-                    )) : <p className="text-sm text-muted-foreground">Nenhuma tarefa.</p>}
-                  </div>
-                </div>
-                <div className="space-y-4">
-                  <h3 className="font-headline text-lg font-semibold text-blue-600">Em Andamento ({filteredTasks.in_progress.length})</h3>
-                  <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
-                    {filteredTasks.in_progress.length > 0 ? filteredTasks.in_progress.map((task) => (
-                      <div key={task.id} className="p-3 rounded-md bg-muted/50 border-l-4 border-blue-500">
-                        <p className="font-semibold">{task.stage}: {task.fur}</p>
-                        <p className="text-sm text-muted-foreground">{task.project} / {task.env}</p>
-                      </div>
-                    )) : <p className="text-sm text-muted-foreground">Nenhuma tarefa.</p>}
-                  </div>
-                </div>
-                <div className="space-y-4">
-                  <h3 className="font-headline text-lg font-semibold text-green-600">Concluído ({filteredTasks.done.length})</h3>
-                  <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
-                    {filteredTasks.done.length > 0 ? filteredTasks.done.map((task) => (
-                      <div key={task.id} className="p-3 rounded-md bg-muted/50 border-l-4 border-green-500">
-                        <p className="font-semibold">{task.stage}: {task.fur}</p>
-                        <p className="text-sm text-muted-foreground">{task.project} / {task.env}</p>
-                      </div>
-                    )) : <p className="text-sm text-muted-foreground">Nenhuma tarefa.</p>}
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </CollapsibleContent>
-        </Card>
-      </Collapsible>
     </div>
   );
 }
