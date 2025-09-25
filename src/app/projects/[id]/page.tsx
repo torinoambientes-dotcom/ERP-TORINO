@@ -80,19 +80,33 @@ export default function ProjectDetailsPage() {
           } else {
             fur[stage].status = value;
           }
-          // Trigger update to Firestore non-blockingly
-          updateProject(newProject);
         }
       }
+      // Trigger update to Firestore non-blockingly
+      updateProject(newProject);
       // Return the new state for immediate UI update
       return newProject;
     });
   }, [updateProject]);
 
-  const handleFurnitureUpdateInModal = useCallback((updatedProject: Project) => {
-    setProject(updatedProject);
-    updateProject(updatedProject);
-  }, [updateProject]);
+  const handleFurnitureUpdateInModal = useCallback((updatedFurniture: Furniture) => {
+    setProject(currentProject => {
+        if (!currentProject || !selectedEnvironmentId) return currentProject;
+
+        const newProject = JSON.parse(JSON.stringify(currentProject));
+        const env = newProject.environments.find((e: any) => e.id === selectedEnvironmentId);
+
+        if (env) {
+            const furIndex = env.furniture.findIndex((f: any) => f.id === updatedFurniture.id);
+            if (furIndex !== -1) {
+                env.furniture[furIndex] = updatedFurniture;
+                updateProject(newProject);
+                return newProject;
+            }
+        }
+        return currentProject;
+    });
+  }, [selectedEnvironmentId, updateProject]);
 
   const openChatModal = useCallback((furniture: Furniture, envId: string) => {
     setSelectedFurniture(furniture);
@@ -115,6 +129,13 @@ export default function ProjectDetailsPage() {
 
   if (project === null) {
       notFound();
+  }
+
+  const getFurnitureForModal = () => {
+    if (!project || !selectedEnvironmentId || !selectedFurniture) return null;
+    const env = project.environments.find(e => e.id === selectedEnvironmentId);
+    if (!env) return null;
+    return env.furniture.find(f => f.id === selectedFurniture.id) || null;
   }
 
   return (
@@ -220,14 +241,12 @@ export default function ProjectDetailsPage() {
         </Accordion>
       </div>
 
-       {selectedFurniture && selectedEnvironmentId && project &&(
+       {getFurnitureForModal() && (
         <FurnitureChatModal
           isOpen={isChatModalOpen}
           onClose={() => setChatModalOpen(false)}
-          furniture={selectedFurniture}
-          environmentId={selectedEnvironmentId}
-          project={project}
-          onProjectUpdate={handleFurnitureUpdateInModal}
+          furniture={getFurnitureForModal()!}
+          onUpdate={handleFurnitureUpdateInModal}
         />
       )}
     </>

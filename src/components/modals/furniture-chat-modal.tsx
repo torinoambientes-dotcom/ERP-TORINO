@@ -25,18 +25,14 @@ interface FurnitureChatModalProps {
   isOpen: boolean;
   onClose: () => void;
   furniture: Furniture;
-  environmentId: string;
-  project: Project;
-  onProjectUpdate: (project: Project) => void;
+  onUpdate: (furniture: Furniture) => void;
 }
 
 export function FurnitureChatModal({
   isOpen,
   onClose,
   furniture,
-  environmentId,
-  project,
-  onProjectUpdate,
+  onUpdate,
 }: FurnitureChatModalProps) {
   const context = useContext(AppContext);
   if (!context) {
@@ -57,17 +53,6 @@ export function FurnitureChatModal({
 
   const selectedMember = selectedMemberId ? memberMap.get(selectedMemberId) : null;
 
-  const updateProjectData = useCallback((updatedFurniture: Furniture) => {
-    const newProject = JSON.parse(JSON.stringify(project));
-    const env = newProject.environments.find((e: any) => e.id === environmentId);
-    if (env) {
-      const furIndex = env.furniture.findIndex((f: any) => f.id === furniture.id);
-      if (furIndex !== -1) {
-        env.furniture[furIndex] = updatedFurniture;
-        onProjectUpdate(newProject);
-      }
-    }
-  }, [project, environmentId, furniture.id, onProjectUpdate]);
 
   const handleAddComment = () => {
     if (!newComment.trim() || !selectedMemberId) return;
@@ -79,8 +64,11 @@ export function FurnitureChatModal({
       timestamp: new Date().toISOString(),
     };
     
-    const updatedFurniture = { ...furniture, comments: [...(furniture.comments || []), comment] };
-    updateProjectData(updatedFurniture);
+    const updatedFurniture = { 
+      ...furniture, 
+      comments: [...(furniture.comments || []), comment] 
+    };
+    onUpdate(updatedFurniture);
     setNewComment('');
   };
 
@@ -94,18 +82,19 @@ export function FurnitureChatModal({
       authorId: selectedMemberId,
     };
 
-    const updatedFurniture = { ...furniture, pendencies: [...(furniture.pendencies || []), pendency] };
-    updateProjectData(updatedFurniture);
+    const updatedFurniture = { 
+      ...furniture, 
+      pendencies: [...(furniture.pendencies || []), pendency] 
+    };
+    onUpdate(updatedFurniture);
     setNewPendency('');
   };
 
   const handleTogglePendency = (pendencyId: string) => {
-    const updatedPendencies = furniture.pendencies?.map(p => 
+    const updatedPendencies = (furniture.pendencies || []).map(p => 
       p.id === pendencyId ? { ...p, isResolved: !p.isResolved } : p
     );
-    if (updatedPendencies) {
-      updateProjectData({ ...furniture, pendencies: updatedPendencies });
-    }
+    onUpdate({ ...furniture, pendencies: updatedPendencies });
   };
 
   const UserSelector = () => (
@@ -139,6 +128,10 @@ export function FurnitureChatModal({
     </div>
   );
 
+  const safePendencies = furniture.pendencies || [];
+  const safeComments = furniture.comments || [];
+
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="w-[95vw] max-w-xl h-[80vh] flex flex-col">
@@ -151,15 +144,15 @@ export function FurnitureChatModal({
 
         <Tabs defaultValue="pendencies" className="flex-grow flex flex-col overflow-hidden">
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="pendencies">Pendências</TabsTrigger>
-            <TabsTrigger value="chat">Conversa</TabsTrigger>
+            <TabsTrigger value="pendencies">Pendências ({safePendencies.length})</TabsTrigger>
+            <TabsTrigger value="chat">Conversa ({safeComments.length})</TabsTrigger>
           </TabsList>
           
           <TabsContent value="pendencies" className="flex-grow flex flex-col mt-4 overflow-hidden">
             <ScrollArea className="h-full pr-4 flex-grow">
               <div className="space-y-3">
-                {furniture.pendencies && furniture.pendencies.length > 0 ? (
-                  furniture.pendencies.map((p) => (
+                {safePendencies.length > 0 ? (
+                  safePendencies.map((p) => (
                     <div
                       key={p.id}
                       className="flex items-center space-x-3"
@@ -205,8 +198,8 @@ export function FurnitureChatModal({
           <TabsContent value="chat" className="flex-grow flex flex-col mt-4 overflow-hidden">
              <ScrollArea className="h-full pr-4 flex-grow">
               <div className="space-y-4">
-                {furniture.comments && furniture.comments.length > 0 ? (
-                  furniture.comments.map((c) => {
+                {safeComments.length > 0 ? (
+                  safeComments.map((c) => {
                     const member = memberMap.get(c.memberId);
                     return (
                       <div key={c.id} className="flex gap-3 text-sm">
