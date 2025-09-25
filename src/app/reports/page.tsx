@@ -236,7 +236,7 @@ export default function ReportsPage() {
                  <div className="space-y-4">
                     <h3 className="font-headline text-lg font-semibold text-green-600">Concluído ({filteredTasks.done.length})</h3>
                     <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
-                        {filteredTasks.done.length > <strong>0</strong> ? filteredTasks.done.map((task) => (
+                        {filteredTasks.done.length > 0 ? filteredTasks.done.map((task) => (
                              <div key={task.id} className="p-3 rounded-md bg-muted/50 border-l-4 border-green-500">
                                 <p className="font-semibold">{task.stage}: {task.fur}</p>
                                 <p className="text-sm text-muted-foreground">{task.project} / {task.env}</p>

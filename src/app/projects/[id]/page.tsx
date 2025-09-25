@@ -62,16 +62,15 @@ export default function ProjectDetailsPage({
   const [selectedEnvironmentId, setSelectedEnvironmentId] = useState<string | null>(null);
 
   useEffect(() => {
-    const currentProject = projects.find((p) => p.id === id);
-    if (!currentProject) {
-      // Delay notFound to prevent static export errors.
+    if (initialProject) {
+      // Deep copy to prevent direct mutation of context state
+      setProject(JSON.parse(JSON.stringify(initialProject)));
+    } else {
+       // Delay notFound to prevent static export errors.
       // In a real app, you might fetch data here and handle loading/error states.
       setTimeout(() => notFound(), 0);
-      return;
     }
-    // Deep copy to prevent direct mutation of context state
-    setProject(JSON.parse(JSON.stringify(currentProject)));
-  }, [id, projects]);
+  }, [initialProject]);
   
   // Auto-save with debounce
   useEffect(() => {
@@ -215,7 +214,7 @@ export default function ProjectDetailsPage({
                                         <span>{responsibleMember.name}</span>
                                       </>
                                     ) : (
-                                      <SelectValue placeholder="Responsável" />
+                                      <span className='text-muted-foreground'>Não atribuído</span>
                                     )}
                                   </div>
                               </SelectTrigger>
