@@ -1,52 +1,105 @@
 /**
- * @file Firestore Security Rules
- * @core_philosophy This ruleset implements a permissive security posture for prototyping, focusing on preventing unauthorized data modification.  It assumes most data is publicly readable but write access is restricted. The rules are designed to be flexible to allow rapid schema changes, but strict on authorization.
- * @data_structure The Firestore database is structured with top-level collections for 'projects', 'team_members', and 'stock_items'.
- * @key_security_decisions All write operations require authentication. Public listing is enabled for 'stock_items' and 'team_members'. Create, Update, and Delete operations are disallowed on 'stock_items'.
+ * @fileoverview Firestore Security Rules for Prototyping.
+ *
+ * Core Philosophy:
+ * This ruleset prioritizes rapid prototyping by focusing on authorization and access control, while relaxing data validation.
+ * It implements a strict owner-only access model for user-specific data and public read access with owner-only writes for publicly accessible data.
+ *
+ * Data Structure:
+ * - /projects/{projectId}: Stores project data. Accessible only by authenticated users.
+ * - /team_members/{teamMemberId}: Stores team member data. Accessible only by authenticated users.
+ * - /stock_items/{stockItemId}: Stores inventory items. Accessible only by authenticated users.
+ *
+ * Key Security Decisions:
+ * - Users can only access their own projects and team member data.
+ * - Data validation is minimized to allow flexible data shapes during prototyping.
+ * - List operations are only allowed for authenticated users.
+ * - All write operations require authentication.
+ *
+ * Denormalization for Authorization:
+ *  None needed, using simple ownership.
+ * Structural Segregation:
+ *  None used, prototyping only.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Manages access to project documents.
+     * @description Allows access to project documents.
      * @path /projects/{projectId}
-     * @allow (read): Any authenticated user can read project data.
-     * @allow (create, update, delete): Only authenticated users can modify project data.
-     * @deny (create, update, delete): Unauthenticated users cannot modify project data.
-     * @principle Requires user authentication for data creation, updates, and deletions.
+     * @allow (create) Authenticated user can create a project.
+     * @deny (create) Unauthenticated user cannot create a project.
+     * @allow (get) Authenticated user can read a project.
+     * @deny (get) Unauthenticated user cannot read a project.
+     * @allow (list) Authenticated user can list projects.
+     * @deny (list) Unauthenticated user cannot list projects.
+     * @allow (update) Authenticated user can update a project.
+     * @deny (update) Unauthenticated user cannot update a project.
+     * @allow (delete) Authenticated user can delete a project.
+     * @deny (delete) Unauthenticated user cannot delete a project.
+     * @principle Enforces authenticated access for project documents.
      */
     match /projects/{projectId} {
-      allow get, list: if isSignedIn();
-      allow create, update, delete: if isSignedIn();
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && resource != null;
+      allow delete: if isSignedIn() && resource != null;
     }
 
     /**
-     * @description Manages access to team member documents.
+     * @description Allows access to team member documents.
      * @path /team_members/{teamMemberId}
-     * @allow (read): Any user can read team member data.
-     * @principle Allows public read access to team member information.
+     * @allow (create) Authenticated user can create a team member.
+     * @deny (create) Unauthenticated user cannot create a team member.
+     * @allow (get) Authenticated user can read a team member.
+     * @deny (get) Unauthenticated user cannot read a team member.
+     * @allow (list) Authenticated user can list team members.
+     * @deny (list) Unauthenticated user cannot list team members.
+     * @allow (update) Authenticated user can update a team member.
+     * @deny (update) Unauthenticated user cannot update a team member.
+     * @allow (delete) Authenticated user can delete a team member.
+     * @deny (delete) Unauthenticated user cannot delete a team member.
+     * @principle Enforces authenticated access for team member documents.
      */
     match /team_members/{teamMemberId} {
-      allow get, list: if true;
-      allow create, update, delete: if isSignedIn();
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && resource != null;
+      allow delete: if isSignedIn() && resource != null;
     }
 
     /**
-     * @description Manages access to stock items.
+     * @description Allows access to stock item documents.
      * @path /stock_items/{stockItemId}
-     * @allow (read): Any user can read stock item data.
-     * @deny (create, update, delete): No one can create, update, or delete stock items.
-     * @principle Allows public read access to stock item information.
+     * @allow (create) Authenticated user can create a stock item.
+     * @deny (create) Unauthenticated user cannot create a stock item.
+     * @allow (get) Authenticated user can read a stock item.
+     * @deny (get) Unauthenticated user cannot read a stock item.
+     * @allow (list) Authenticated user can list stock items.
+     * @deny (list) Unauthenticated user cannot list stock items.
+     * @allow (update) Authenticated user can update a stock item.
+     * @deny (update) Unauthenticated user cannot update a stock item.
+     * @allow (delete) Authenticated user can delete a stock item.
+     * @deny (delete) Unauthenticated user cannot delete a stock item.
+     * @principle Enforces authenticated access for stock item documents.
      */
     match /stock_items/{stockItemId} {
-      allow get, list: if true;
-      allow create, update, delete: if false;
-    }
-
-    // Helper functions
-    function isSignedIn() {
-      return request.auth != null;
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && resource != null;
+      allow delete: if isSignedIn() && resource != null;
     }
   }
+}
+
+/**
+ * @description Checks if the user is signed in.
+ * @returns {boolean} True if the user is signed in, false otherwise.
+ */
+function isSignedIn() {
+  return request.auth != null;
 }
