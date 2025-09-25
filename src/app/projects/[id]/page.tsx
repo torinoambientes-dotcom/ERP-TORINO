@@ -1,7 +1,7 @@
 'use client';
 import { useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
+import { notFound, useParams } from 'next/navigation';
 import { ChevronLeft, MessageSquare } from 'lucide-react';
 import {
   Accordion,
@@ -39,13 +39,10 @@ const statusColors: Record<StageStatus, string> = {
   done: 'bg-green-100 border-green-200 text-green-800',
 };
 
-export default function ProjectDetailsPage({
-  params,
-}: {
-  params: { id: string };
-}) {
+export default function ProjectDetailsPage() {
   const { projects, teamMembers, updateProject, isLoading } = useContext(AppContext);
-  const id = params.id;
+  const params = useParams();
+  const id = params.id as string;
 
   const [project, setProject] = useState<Project | null | undefined>(undefined);
 
