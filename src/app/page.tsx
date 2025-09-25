@@ -1,6 +1,6 @@
 'use client';
 import Link from 'next/link';
-import { useContext, useState, useMemo } from 'react';
+import { useContext, useState, useMemo, useCallback } from 'react';
 import {
   Card,
   CardContent,
@@ -75,8 +75,6 @@ export default function ProjectsPage() {
   const [statusFilter, setStatusFilter] = useState<ProjectStatus | 'Todos'>('Todos');
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
   const [projectToEdit, setProjectToEdit] = useState<Project | null>(null);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-
 
   const filteredProjects = useMemo(() => {
     return projects
@@ -96,158 +94,156 @@ export default function ProjectsPage() {
         return matchesSearch && matchesStatus;
       });
   }, [projects, searchTerm, statusFilter]);
-  
-  const handleDeleteConfirm = () => {
+
+  const handleDeleteConfirm = useCallback(() => {
     if (projectToDelete) {
       deleteProject(projectToDelete.id);
       setProjectToDelete(null);
     }
-  };
+  }, [projectToDelete, deleteProject]);
 
-  const handleEditClick = (project: Project) => {
+  const handleEditClick = useCallback((project: Project) => {
     setProjectToEdit(project);
-    setIsEditModalOpen(true);
-  };
-  
-  const handleCompleteClick = (projectId: string) => {
+  }, []);
+
+  const handleCompleteClick = useCallback((projectId: string) => {
     completeProjectStages(projectId);
-  };
-  
-  const handleDeleteClick = (project: Project) => {
+  }, [completeProjectStages]);
+
+  const handleDeleteClick = useCallback((project: Project) => {
     setProjectToDelete(project);
-  };
-  
-  const closeEditModal = () => {
-    setIsEditModalOpen(false);
+  }, []);
+
+  const closeEditModal = useCallback(() => {
     setProjectToEdit(null);
-  }
+  }, []);
 
   return (
     <>
-    <div className="flex flex-col gap-8">
-       <div className="flex items-center justify-between">
-        <PageHeader
-          title="Projetos Ativos"
-          description="Visualize e gerencie os projetos em andamento."
-        />
-        <Button asChild variant="outline">
-          <Link href="/projects/completed">
-            <Archive className="mr-2 h-4 w-4" />
-            Ver Concluídos
-          </Link>
-        </Button>
-      </div>
-
-      <Card>
-        <CardContent className="p-4 flex flex-col sm:flex-row gap-4">
-          <Input
-            placeholder="Buscar por cliente..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="flex-grow"
+      <div className="flex flex-col gap-8">
+        <div className="flex items-center justify-between">
+          <PageHeader
+            title="Projetos Ativos"
+            description="Visualize e gerencie os projetos em andamento."
           />
-          <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as ProjectStatus | 'Todos')}>
-            <SelectTrigger className="w-full sm:w-[180px]">
-              <SelectValue placeholder="Filtrar por status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Todos">Todos os Status</SelectItem>
-              <SelectItem value="Novo">Novo</SelectItem>
-              <SelectItem value="Em Andamento">Em Andamento</SelectItem>
-            </SelectContent>
-          </Select>
-        </CardContent>
-      </Card>
+          <Button asChild variant="outline">
+            <Link href="/projects/completed">
+              <Archive className="mr-2 h-4 w-4" />
+              Ver Concluídos
+            </Link>
+          </Button>
+        </div>
 
-      {filteredProjects.length > 0 ? (
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {filteredProjects.map((project) => {
-            const { status, progress, totalTasks, doneTasks } = project.statusInfo;
-            return (
-              <Card key={project.id} className="h-full flex flex-col bg-card/80 backdrop-blur-sm border-border/80 shadow-sm transition-all duration-300 ease-in-out hover:shadow-lg">
-                <Link
-                  href={`/projects/${project.id}`}
-                  className="block h-full"
-                >
-                  <CardHeader>
-                    <div className="flex justify-between items-start gap-2">
-                      <CardTitle className="font-headline text-xl tracking-tight text-foreground/90">
-                        {project.clientName}
-                      </CardTitle>
-                      <Badge variant={status.variant} className={status.className}>
-                        {status.text}
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="flex-grow space-y-4">
-                    <p className="text-sm text-muted-foreground">
-                      {project.environments.length} ambiente(s)
-                    </p>
-                    <div className="space-y-2">
-                      <Progress value={progress} className="h-2" />
-                      <p className="text-xs text-muted-foreground">
-                        {doneTasks} de {totalTasks} tarefas concluídas
+        <Card>
+          <CardContent className="p-4 flex flex-col sm:flex-row gap-4">
+            <Input
+              placeholder="Buscar por cliente..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="flex-grow"
+            />
+            <Select
+              value={statusFilter}
+              onValueChange={(value) => setStatusFilter(value as ProjectStatus | 'Todos')}
+            >
+              <SelectTrigger className="w-full sm:w-[180px]">
+                <SelectValue placeholder="Filtrar por status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Todos">Todos os Status</SelectItem>
+                <SelectItem value="Novo">Novo</SelectItem>
+                <SelectItem value="Em Andamento">Em Andamento</SelectItem>
+              </SelectContent>
+            </Select>
+          </CardContent>
+        </Card>
+
+        {filteredProjects.length > 0 ? (
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {filteredProjects.map((project) => {
+              const { status, progress, totalTasks, doneTasks } = project.statusInfo;
+              return (
+                <Card key={project.id} className="h-full flex flex-col bg-card/80 backdrop-blur-sm border-border/80 shadow-sm transition-all duration-300 ease-in-out hover:shadow-lg">
+                  <Link href={`/projects/${project.id}`} className="block flex-grow">
+                    <CardHeader>
+                      <div className="flex justify-between items-start gap-2">
+                        <CardTitle className="font-headline text-xl tracking-tight text-foreground/90">
+                          {project.clientName}
+                        </CardTitle>
+                        <Badge variant={status.variant} className={status.className}>
+                          {status.text}
+                        </Badge>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="flex-grow space-y-4">
+                      <p className="text-sm text-muted-foreground">
+                        {project.environments.length} ambiente(s)
                       </p>
-                    </div>
-                  </CardContent>
-                </Link>
-                <CardFooter className="flex justify-end gap-2">
+                      <div className="space-y-2">
+                        <Progress value={progress} className="h-2" />
+                        <p className="text-xs text-muted-foreground">
+                          {doneTasks} de {totalTasks} tarefas concluídas
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Link>
+                  <CardFooter className="flex justify-end gap-2">
                     <Button
-                        variant="ghost"
-                        size="icon"
-                        className="text-muted-foreground/80 hover:text-foreground"
-                        onClick={() => handleEditClick(project)}
-                      >
-                        <Pencil className="h-4 w-4" />
-                        <span className="sr-only">Editar Projeto</span>
+                      variant="ghost"
+                      size="icon"
+                      className="text-muted-foreground/80 hover:text-foreground"
+                      onClick={() => handleEditClick(project)}
+                    >
+                      <Pencil className="h-4 w-4" />
+                      <span className="sr-only">Editar Projeto</span>
                     </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       onClick={() => handleCompleteClick(project.id)}
                       className="text-xs"
-                      >
+                    >
                       <CheckCircle className="mr-1.5 h-3.5 w-3.5" />
                       Concluir Etapas
                     </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
+                    <Button
+                      variant="ghost"
+                      size="icon"
                       className="text-destructive/80 hover:text-destructive"
                       onClick={() => handleDeleteClick(project)}
-                      >
+                    >
                       <Trash2 className="h-4 w-4" />
                       <span className="sr-only">Remover Projeto</span>
                     </Button>
                   </CardFooter>
-              </Card>
-            );
-          })}
-        </div>
-      ) : (
-        <div className="flex h-64 items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/20 bg-muted/30">
-          <div className="text-center">
-            <h3 className="font-headline text-xl font-semibold text-muted-foreground/80">
-              Nenhum projeto ativo encontrado
-            </h3>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Cadastre um novo projeto ou verifique os projetos concluídos.
-            </p>
+                </Card>
+              );
+            })}
           </div>
-        </div>
-      )}
-    </div>
-    <DeleteProjectAlert 
+        ) : (
+          <div className="flex h-64 items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/20 bg-muted/30">
+            <div className="text-center">
+              <h3 className="font-headline text-xl font-semibold text-muted-foreground/80">
+                Nenhum projeto ativo encontrado
+              </h3>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Cadastre um novo projeto ou verifique os projetos concluídos.
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
+      <DeleteProjectAlert
         isOpen={!!projectToDelete}
         onClose={() => setProjectToDelete(null)}
         onConfirm={handleDeleteConfirm}
         projectName={projectToDelete?.clientName || ''}
-    />
-    <RegisterProjectModal
-      isOpen={isEditModalOpen}
-      onClose={closeEditModal}
-      projectToEdit={projectToEdit}
-    />
+      />
+      <RegisterProjectModal
+        isOpen={!!projectToEdit}
+        onClose={closeEditModal}
+        projectToEdit={projectToEdit}
+      />
     </>
   );
 }

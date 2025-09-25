@@ -1,7 +1,7 @@
 'use client';
-import { useContext, useState, useEffect, useMemo, use } from 'react';
+import { useContext, useState, useEffect, useMemo, use, useCallback } from 'react';
 import Link from 'next/link';
-import { notFound, useRouter } from 'next/navigation';
+import { notFound } from 'next/navigation';
 import { ChevronLeft, MessageSquare } from 'lucide-react';
 import {
   Accordion,
@@ -24,7 +24,6 @@ import { STAGE_STATUSES } from '@/lib/types';
 import { FurnitureChatModal } from '@/components/modals/furniture-chat-modal';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
-import { useToast } from '@/hooks/use-toast';
 
 type StageKey = 'measurement' | 'cutting' | 'purchase' | 'assembly';
 const stages: { key: StageKey; label: string }[] = [
@@ -53,26 +52,24 @@ export default function ProjectDetailsPage({
     projects.find((p) => p.id === id),
     [id, projects]
   );
-  
+
   const [project, setProject] = useState<Project | undefined>(
     initialProject ? JSON.parse(JSON.stringify(initialProject)) : undefined
   );
-  
+
   const [isChatModalOpen, setChatModalOpen] = useState(false);
   const [selectedFurniture, setSelectedFurniture] = useState<Furniture | null>(null);
   const [selectedEnvironmentId, setSelectedEnvironmentId] = useState<string | null>(null);
 
   useEffect(() => {
-    const currentProject = projects.find((p) => p.id === id);
-    if (currentProject) {
-      // Deep copy to prevent direct mutation of context state
-      setProject(JSON.parse(JSON.stringify(currentProject)));
+    if (initialProject) {
+      setProject(JSON.parse(JSON.stringify(initialProject)));
     } else {
-       // Delay notFound to prevent static export errors.
-      // In a real app, you might fetch data here and handle loading/error states.
-      setTimeout(() => notFound(), 0);
+      // Delay notFound to prevent static export errors.
+      const timer = setTimeout(() => notFound(), 0);
+      return () => clearTimeout(timer);
     }
-  }, [id, projects]);
+  }, [id, initialProject]);
   
   // Auto-save with debounce
   useEffect(() => {
@@ -87,7 +84,6 @@ export default function ProjectDetailsPage({
     }
   }, [project, initialProject, updateProject]);
 
-
   const handleStatusChange = (
     envId: string,
     furId: string,
@@ -95,15 +91,18 @@ export default function ProjectDetailsPage({
     value: StageStatus
   ) => {
     if (!project) return;
-    const newProject = { ...project };
-    const env = newProject.environments.find((e) => e.id === envId);
-    if (env) {
-      const fur = env.furniture.find((f) => f.id === furId);
-      if (fur) {
-        fur[stage].status = value;
-        setProject(newProject);
+    setProject(prevProject => {
+      if (!prevProject) return prevProject;
+      const newProject = { ...prevProject };
+      const env = newProject.environments.find((e) => e.id === envId);
+      if (env) {
+        const fur = env.furniture.find((f) => f.id === furId);
+        if (fur) {
+          fur[stage].status = value;
+        }
       }
-    }
+      return newProject;
+    });
   };
 
   const handleMemberChange = (
@@ -113,27 +112,29 @@ export default function ProjectDetailsPage({
     value: string
   ) => {
     if (!project) return;
-    const newProject = { ...project };
-    const env = newProject.environments.find((e) => e.id === envId);
-    if (env) {
-      const fur = env.furniture.find((f) => f.id === furId);
-      if (fur) {
-        fur[stage].responsibleId = value === 'unassigned' ? undefined : value;
-        setProject(newProject);
+     setProject(prevProject => {
+      if (!prevProject) return prevProject;
+      const newProject = { ...prevProject };
+      const env = newProject.environments.find((e) => e.id === envId);
+      if (env) {
+        const fur = env.furniture.find((f) => f.id === furId);
+        if (fur) {
+          fur[stage].responsibleId = value === 'unassigned' ? undefined : value;
+        }
       }
-    }
+      return newProject;
+    });
   };
 
-  const openChatModal = (furniture: Furniture, envId: string) => {
+  const openChatModal = useCallback((furniture: Furniture, envId: string) => {
     setSelectedFurniture(furniture);
     setSelectedEnvironmentId(envId);
     setChatModalOpen(true);
-  };
+  }, []);
   
   const memberMap = useMemo(() => {
     return new Map(teamMembers.map(m => [m.id, m]));
   }, [teamMembers]);
-
 
   if (!project) {
     return (
