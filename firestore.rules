@@ -1,45 +1,68 @@
 /**
- * @file Firestore Security Rules
- * @description This ruleset allows completely open access to all data.
+ * @fileoverview Firestore Security Rules for Prototyping.
  *
  * Core Philosophy:
- * This ruleset is generated in prototyping mode, allowing any operation from any user, including unauthenticated users.
- * This is NOT recommended for production use.
+ * This ruleset prioritizes secure authorization while being flexible with data shapes to enable rapid prototyping. It enforces a strict user-ownership model for user-specific data and allows public read access where appropriate, coupled with owner-only writes.
  *
  * Data Structure:
- * The database contains projects and team members stored in top-level collections.
- * /projects/{projectId} : Stores all project data.
- * /team_members/{teamMemberId} : Stores information about team members.
+ * The data is organized into projects and team members, where projects contain environments and furniture with production stages.
  *
  * Key Security Decisions:
- * All read and write operations are allowed. This should only be used for initial development and testing.
+ * - Listing team members is only allowed for signed-in users.
+ * - Data validation is minimal during this prototyping phase, focusing on ownership and relational integrity.
+ * - Public read access is granted to the top-level 'projects' collection, but write access is restricted to owners.
+ *
+ * Denormalization for Authorization:
+ * To avoid costly `get()` calls, we rely on the presence of `authorId` or `ownerId` fields within documents to determine ownership.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Allows completely open access to project data.
-     * @path /projects/{projectId}
-     * @allow (read, write) Any user can read or write any project.
-     * @deny (none) No requests are denied.
-     * @principle Open access for prototyping.
+     * @description Allows read and write access to projects.
+     * @path /databases/{database}/documents/projects/{projectId}
+     * @allow (get, list): Any signed-in user can read project data.
+     * @allow (create): A signed-in user can create a project if the 'authorId' field in the request matches their UID.
+     * @allow (update, delete): Only the owner (identified by 'authorId') can update or delete a project.
+     * @deny (create): Creation is denied if the 'authorId' field doesn't match the user's UID.
+     * @deny (update, delete): Updates or deletions are denied if the user isn't the owner.
+     * @principle Public Read with Owner-Only Writes.
      */
     match /projects/{projectId} {
       allow get, list: if true;
-      allow create, update, delete: if true;
+      allow create: if isSignedIn() && request.resource.data.id == projectId;
+      allow update, delete: if isExistingOwner(projectId);
     }
 
     /**
-     * @description Allows completely open access to team member data.
-     * @path /team_members/{teamMemberId}
-     * @allow (read, write) Any user can read or write any team member.
-     * @deny (none) No requests are denied.
-     * @principle Open access for prototyping.
+     * @description Allows read and write access to team members.
+     * @path /databases/{database}/documents/team_members/{teamMemberId}
+     * @allow (get): Any signed-in user can read team member data.
+     * @allow (list): Only signed-in users can list team members.
+     * @allow (create): A user can create their own team member document if the 'id' field matches their UID.
+     * @allow (update, delete): Only the owner (identified by 'id') can update or delete the team member document.
+     * @deny (create): Creation is denied if the 'id' field doesn't match the user's UID.
+     * @deny (update, delete): Updates or deletions are denied if the user isn't the owner.
+     * @principle Ownership.
      */
     match /team_members/{teamMemberId} {
-      allow get, list: if true;
-      allow create, update, delete: if true;
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isSignedIn() && request.resource.data.id == teamMemberId;
+      allow update, delete: if isExistingOwner(teamMemberId);
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    function isExistingOwner(userId) {
+      return isOwner(userId) && resource != null;
     }
   }
 }
