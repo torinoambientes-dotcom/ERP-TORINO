@@ -101,19 +101,19 @@ export default function ProjectsPage() {
       setProjectToDelete(null);
     }
   }, [projectToDelete, deleteProject]);
-
-  const handleEditClick = useCallback((project: Project) => {
+  
+  const handleEditClick = (project: Project) => {
     setProjectToEdit(project);
-  }, []);
+  };
 
-  const handleCompleteClick = useCallback((projectId: string) => {
+  const handleCompleteClick = (projectId: string) => {
     completeProjectStages(projectId);
-  }, [completeProjectStages]);
+  };
 
-  const handleDeleteClick = useCallback((project: Project) => {
+  const handleDeleteClick = (project: Project) => {
     setProjectToDelete(project);
-  }, []);
-
+  };
+  
   const closeEditModal = useCallback(() => {
     setProjectToEdit(null);
   }, []);
@@ -144,7 +144,7 @@ export default function ProjectsPage() {
             />
             <Select
               value={statusFilter}
-              onValueChange={(value) => setStatusFilter(value as ProjectStatus | 'Todos')}
+              onValueChange={(value: ProjectStatus | 'Todos') => setStatusFilter(value)}
             >
               <SelectTrigger className="w-full sm:w-[180px]">
                 <SelectValue placeholder="Filtrar por status" />
