@@ -10,7 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { AppContext } from '@/context/app-context';
 import { PageHeader } from '@/components/layout/page-header';
-import { PlusCircle, Edit, Trash2, ArrowRightLeft, History } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, ArrowRightLeft, History, AlertTriangle } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27,6 +27,7 @@ import { RegisterStockItemModal } from '@/components/modals/register-stock-item-
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { StockMovementModal } from '@/components/modals/stock-movement-modal';
 import { StockMovementHistoryModal } from '@/components/modals/stock-movement-history-modal';
+import { cn } from '@/lib/utils';
 
 const categories = [
   'Corrediças',
@@ -121,17 +122,22 @@ export default function StockPage() {
 
     return (
       <div className="space-y-4">
-        {items.map((item) => (
+        {items.map((item) => {
+          const isLowStock = category === 'Corrediças' && item.quantity < 10;
+          return (
           <div
             key={item.id}
-            className="flex items-center justify-between rounded-lg border p-4 gap-2 flex-wrap"
+            className={cn("flex items-center justify-between rounded-lg border p-4 gap-2 flex-wrap", isLowStock && "bg-destructive/10 border-destructive/20")}
           >
             <div className="flex items-center gap-4">
               <div>
                 <p className="font-medium">{item.name}</p>
-                <p className="text-sm text-muted-foreground">
-                  {item.quantity} {item.unit}
-                </p>
+                 <div className="flex items-center gap-2">
+                  {isLowStock && <AlertTriangle className="h-4 w-4 text-destructive" />}
+                  <p className={cn("text-sm", isLowStock ? "text-destructive font-semibold" : "text-muted-foreground")}>
+                    {item.quantity} {item.unit}
+                  </p>
+                </div>
               </div>
             </div>
             <div className="flex gap-1 flex-wrap">
@@ -171,7 +177,7 @@ export default function StockPage() {
               </Button>
             </div>
           </div>
-        ))}
+        )})}
       </div>
     );
   };
