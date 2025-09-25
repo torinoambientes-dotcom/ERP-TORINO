@@ -22,7 +22,7 @@ import {
 } from '@/components/ui/select';
 import { PageHeader } from '@/components/layout/page-header';
 import { AppContext } from '@/context/app-context';
-import type { Pendency, StageStatus, StockItem, MaterialItem } from '@/lib/types';
+import type { Pendency, StageStatus, StockItem, MaterialItem, Furniture } from '@/lib/types';
 import { Separator } from '@/components/ui/separator';
 import { AlertTriangle, ChevronsUpDown, CheckCircle, Copy, ShoppingCart } from 'lucide-react';
 import { isThisWeek, isThisMonth, isThisYear, parseISO } from 'date-fns';
@@ -41,20 +41,21 @@ interface GeneralPendency extends Pendency {
   furnitureName: string;
 }
 
-interface ShoppingListItem {
-  materials: MaterialItem[];
-}
-
 interface ShoppingList {
-    [projectName: string]: {
+  [projectName: string]: {
+    id: string;
+    environments: {
+      [environmentName: string]: {
         id: string;
-        environments: {
-            [environmentName: string]: {
-                id: string;
-                materials: MaterialItem[];
-            }
-        }
-    }
+        furnitures: {
+          [furnitureName: string]: {
+            id: string;
+            materials: MaterialItem[];
+          };
+        };
+      };
+    };
+  };
 }
 
 
@@ -207,47 +208,41 @@ export default function ReportsPage() {
   }, [stockItems]);
 
   const shoppingList = useMemo((): ShoppingList => {
-      const list: ShoppingList = {};
-      const activeProjects = projects.filter(p => !p.completedAt);
+    const list: ShoppingList = {};
+    const activeProjects = projects.filter(p => !p.completedAt);
 
-      activeProjects.forEach(project => {
-          const projectEnvironments: ShoppingList[string]['environments'] = {};
+    activeProjects.forEach(project => {
+      const projectEnvironments: ShoppingList[string]['environments'] = {};
 
-          project.environments.forEach(environment => {
-              const materialMap = new Map<string, MaterialItem>();
+      project.environments.forEach(environment => {
+        const environmentFurnitures: ShoppingList[string]['environments'][string]['furnitures'] = {};
 
-              environment.furniture.forEach(furniture => {
-                  // Apenas adiciona materiais se a etapa de compra não estiver concluída
-                  if (furniture.purchase?.status !== 'done' && furniture.materials) {
-                      furniture.materials.forEach(material => {
-                          const key = `${material.name.trim().toLowerCase()}|${material.unit}`;
-                          if (materialMap.has(key)) {
-                              const existing = materialMap.get(key)!;
-                              existing.quantity += material.quantity;
-                          } else {
-                              materialMap.set(key, { ...material });
-                          }
-                      });
-                  }
-              });
-
-              if (materialMap.size > 0) {
-                  projectEnvironments[environment.name] = {
-                      id: environment.id,
-                      materials: Array.from(materialMap.values()).sort((a,b) => a.name.localeCompare(b.name))
-                  };
-              }
-          });
-
-          if (Object.keys(projectEnvironments).length > 0) {
-              list[project.clientName] = {
-                  id: project.id,
-                  environments: projectEnvironments,
-              };
+        environment.furniture.forEach(furniture => {
+          if (furniture.purchase?.status !== 'done' && furniture.materials && furniture.materials.length > 0) {
+            environmentFurnitures[furniture.name] = {
+              id: furniture.id,
+              materials: furniture.materials.sort((a,b) => a.name.localeCompare(b.name)),
+            };
           }
+        });
+
+        if (Object.keys(environmentFurnitures).length > 0) {
+          projectEnvironments[environment.name] = {
+            id: environment.id,
+            furnitures: environmentFurnitures,
+          };
+        }
       });
 
-      return list;
+      if (Object.keys(projectEnvironments).length > 0) {
+        list[project.clientName] = {
+          id: project.id,
+          environments: projectEnvironments,
+        };
+      }
+    });
+
+    return list;
   }, [projects]);
 
     const copyShoppingListToClipboard = () => {
@@ -257,8 +252,11 @@ export default function ReportsPage() {
             listText += `Projeto: ${projectName}\n`;
             Object.entries(projectData.environments).forEach(([environmentName, environmentData]) => {
                 listText += `  Ambiente: ${environmentName}\n`;
-                environmentData.materials.forEach(item => {
-                    listText += `    - ${item.name}: ${item.quantity} ${item.unit}\n`;
+                Object.entries(environmentData.furnitures).forEach(([furnitureName, furnitureData]) => {
+                  listText += `    Móvel: ${furnitureName}\n`;
+                  furnitureData.materials.forEach(item => {
+                      listText += `      - ${item.name}: ${item.quantity} ${item.unit}\n`;
+                  });
                 });
             });
             listText += `\n`;
@@ -282,12 +280,15 @@ export default function ReportsPage() {
         });
     };
     
-    const copyEnvironmentListToClipboard = (projectName: string, environmentName: string, materials: MaterialItem[]) => {
+    const copyEnvironmentListToClipboard = (projectName: string, environmentName: string, furnitures: ShoppingList[string]['environments'][string]['furnitures']) => {
         let listText = `Lista de Compras - Projeto: ${projectName}\n`;
         listText += `Ambiente: ${environmentName}\n\n`;
 
-        materials.forEach(item => {
-            listText += `- ${item.name}: ${item.quantity} ${item.unit}\n`;
+        Object.entries(furnitures).forEach(([furnitureName, furnitureData]) => {
+          listText += `  Móvel: ${furnitureName}\n`;
+          furnitureData.materials.forEach(item => {
+              listText += `    - ${item.name}: ${item.quantity} ${item.unit}\n`;
+          });
         });
         
         navigator.clipboard.writeText(listText).then(() => {
@@ -456,7 +457,7 @@ export default function ReportsPage() {
              <div className="flex items-center justify-between">
               <div className='space-y-1.5'>
                 <CardTitle className="font-headline">Lista de Compras Centralizada ({Object.keys(shoppingList).length})</CardTitle>
-                <CardDescription>Materiais agregados de todos os projetos ativos, prontos para a compra.</CardDescription>
+                <CardDescription>Materiais de todos os projetos ativos, prontos para a compra.</CardDescription>
               </div>
               <div className="flex items-center gap-2">
                 <Button onClick={copyShoppingListToClipboard} size="sm" disabled={Object.keys(shoppingList).length === 0}>
@@ -489,7 +490,7 @@ export default function ReportsPage() {
                                                 <div className="flex justify-between items-center mb-3 flex-wrap gap-2">
                                                     <h4 className='font-medium'>{environmentName}</h4>
                                                     <div className='flex gap-1.5'>
-                                                        <Button variant="ghost" size="sm" onClick={() => copyEnvironmentListToClipboard(projectName, environmentName, envData.materials)}>
+                                                        <Button variant="ghost" size="sm" onClick={() => copyEnvironmentListToClipboard(projectName, environmentName, envData.furnitures)}>
                                                             <Copy className="mr-2 h-3 w-3" />
                                                             Copiar
                                                         </Button>
@@ -499,13 +500,20 @@ export default function ReportsPage() {
                                                         </Button>
                                                     </div>
                                                 </div>
-                                                <ul className='space-y-1 text-sm list-disc pl-5 text-muted-foreground'>
-                                                {envData.materials.map((item, index) => (
-                                                    <li key={index}>
-                                                        <span className="font-semibold text-foreground">{item.name}:</span> {item.quantity} {item.unit}
-                                                    </li>
-                                                ))}
-                                                </ul>
+                                                <div className="space-y-2">
+                                                  {Object.entries(envData.furnitures).map(([furnitureName, furnitureData]) => (
+                                                    <div key={furnitureData.id}>
+                                                      <p className="font-semibold text-sm">{furnitureName}</p>
+                                                      <ul className='space-y-1 text-sm list-disc pl-5 text-muted-foreground'>
+                                                      {furnitureData.materials.map((item, index) => (
+                                                          <li key={index}>
+                                                              <span className="font-medium text-foreground/90">{item.name}:</span> {item.quantity} {item.unit}
+                                                          </li>
+                                                      ))}
+                                                      </ul>
+                                                    </div>
+                                                  ))}
+                                                </div>
                                             </div>
                                         ))}
                                     </div>
