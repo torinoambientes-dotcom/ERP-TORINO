@@ -14,7 +14,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { AppContext } from '@/context/app-context';
 import type { Furniture, Project, Pendency, Comment, TeamMember } from '@/lib/types';
 import { ScrollArea } from '../ui/scroll-area';
-import { Separator } from '../ui/separator';
+import { generateId } from '@/lib/utils';
 
 interface FurnitureChatModalProps {
   isOpen: boolean;
@@ -48,7 +48,7 @@ export function FurnitureChatModal({
     if (!newComment.trim() || !currentMember) return;
 
     const comment: Comment = {
-      id: `comm-${Date.now()}`,
+      id: generateId('comm'),
       memberId: currentMember.id,
       text: newComment,
       timestamp: new Date().toISOString(),
@@ -71,7 +71,7 @@ export function FurnitureChatModal({
     if (!newPendency.trim() || !currentMember) return;
 
     const pendency: Pendency = {
-      id: `pend-${Date.now()}`,
+      id: generateId('pend'),
       text: newPendency,
       isResolved: false,
       authorId: currentMember.id

@@ -26,6 +26,7 @@ import { Input } from '@/components/ui/input';
 import { AppContext } from '@/context/app-context';
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from '../ui/separator';
+import { generateId } from '@/lib/utils';
 
 const furnitureSchema = z.object({
   name: z.string().min(1, 'Nome do móvel é obrigatório.'),
@@ -77,13 +78,13 @@ export function RegisterProjectModal({
   const onSubmit = (data: ProjectFormValues) => {
     addProject({
       ...data,
-      id: `proj-${Date.now()}`,
-      environments: data.environments.map((env, envIndex) => ({
+      id: generateId('proj'),
+      environments: data.environments.map((env) => ({
         ...env,
-        id: `env-${Date.now()}-${envIndex}`,
-        furniture: env.furniture.map((fur, furIndex) => ({
+        id: generateId('env'),
+        furniture: env.furniture.map((fur) => ({
           ...fur,
-          id: `fur-${Date.now()}-${envIndex}-${furIndex}`,
+          id: generateId('fur'),
           measurement: { status: 'todo' },
           cutting: { status: 'todo' },
           purchase: { status: 'todo' },

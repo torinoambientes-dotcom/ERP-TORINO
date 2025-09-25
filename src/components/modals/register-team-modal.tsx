@@ -25,6 +25,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { AppContext } from '@/context/app-context';
 import { useToast } from '@/hooks/use-toast';
+import { generateId } from '@/lib/utils';
 
 const teamMemberSchema = z.object({
   name: z.string().min(2, 'O nome deve ter pelo menos 2 caracteres.'),
@@ -59,7 +60,7 @@ export function RegisterTeamModal({ isOpen, onClose }: RegisterTeamModalProps) {
   const onSubmit = (data: TeamMemberFormValues) => {
     addTeamMember({
         ...data,
-        id: `member-${Date.now()}`,
+        id: generateId('member'),
     });
     toast({
       title: 'Membro da equipe cadastrado!',
