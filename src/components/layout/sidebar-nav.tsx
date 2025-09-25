@@ -50,7 +50,7 @@ export function SidebarNav() {
     <>
       <SidebarHeader>
         <Link href="/" className="flex items-center justify-center gap-2 w-full">
-          <Logo className="h-12 w-auto" />
+          <Logo className="h-14 w-auto" />
         </Link>
       </SidebarHeader>
 
