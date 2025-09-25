@@ -3,7 +3,7 @@
 import { createContext, type ReactNode, useCallback, useMemo } from 'react';
 import { collection, doc, serverTimestamp, deleteField } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import type { Project, TeamMember, StageStatus, StockItem, StockMovement, StockCategory, Furniture } from '@/lib/types';
+import type { Project, TeamMember, StageStatus, StockItem, StockMovement, StockCategory, Furniture, Environment } from '@/lib/types';
 import { generateId } from '@/lib/utils';
 import { setDocumentNonBlocking, deleteDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
@@ -23,6 +23,7 @@ interface AppContextType {
   updateTeamMember: (updatedMember: TeamMember) => void;
   deleteTeamMember: (memberId: string) => void;
   completeProjectStages: (projectId: string) => void;
+  markMaterialsAsPurchased: (projectId: string, environmentId: string) => void;
   addStockItem: (itemData: Omit<StockItem, 'id'>) => void;
   updateStockItem: (updatedItem: StockItem) => void;
   deleteStockItem: (itemId: string) => void;
@@ -45,6 +46,7 @@ export const AppContext = createContext<AppContextType>({
   updateTeamMember: () => {},
   deleteTeamMember: () => {},
   completeProjectStages: () => {},
+  markMaterialsAsPurchased: () => {},
   addStockItem: () => {},
   updateStockItem: () => {},
   deleteStockItem: () => {},
@@ -225,6 +227,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [projects, updateProject]);
 
+  const markMaterialsAsPurchased = useCallback((projectId: string, environmentId: string) => {
+      if (!projects) return;
+      const project = projects.find(p => p.id === projectId);
+      if (!project) return;
+      
+      const newEnvironments = project.environments.map(env => {
+          if (env.id === environmentId) {
+              const newFurniture = env.furniture.map(fur => ({
+                  ...fur,
+                  purchase: { ...fur.purchase, status: 'done' as StageStatus }
+              }));
+              return { ...env, furniture: newFurniture };
+          }
+          return env;
+      });
+
+      const updatedProject = { ...project, environments: newEnvironments };
+      updateProject(updatedProject);
+  }, [projects, updateProject]);
+
   const addStockItem = useCallback((itemData: Omit<StockItem, 'id'>) => {
     if (!firestore) return;
     const itemId = generateId('stock');
@@ -313,6 +335,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     updateTeamMember,
     deleteTeamMember,
     completeProjectStages,
+    markMaterialsAsPurchased,
     addStockItem,
     updateStockItem,
     deleteStockItem,
@@ -336,6 +359,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     updateTeamMember, 
     deleteTeamMember, 
     completeProjectStages,
+    markMaterialsAsPurchased,
     addStockItem,
     updateStockItem,
     deleteStockItem,
@@ -352,5 +376,3 @@ export function AppProvider({ children }: { children: ReactNode }) {
     </AppContext.Provider>
   );
 }
-
-    
