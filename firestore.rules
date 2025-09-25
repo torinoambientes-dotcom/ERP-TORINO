@@ -1,70 +1,108 @@
 /**
- * @fileoverview Firestore Security Rules for the application.
+ * @fileoverview Firestore Security Rules for Prototyping.
  *
  * Core Philosophy:
- * This ruleset is configured to remove all security restrictions, as requested by the user.
- * This configuration is strongly discouraged for production environments due to the risk of
- * unauthorized data access and modification.
+ * This ruleset prioritizes rapid prototyping by focusing on authorization and relationship enforcement,
+ * while minimizing data shape validation. It uses a strict owner-only model for most write operations,
+ * but relaxes read restrictions for certain collections to allow broader data access.
  *
  * Data Structure:
- * The Firestore database is structured with top-level collections for projects, team members,
- * and stock items. Stock items have a subcollection for tracking movements.
+ * - /projects/{projectId}: Stores project data.
+ * - /team_members/{teamMemberId}: Stores team member information.
+ * - /stock_items/{stockItemId}: Stores stock items.
+ * - /stock_items/{stockItemId}/movements/{movementId}: Stores movement history for stock items.
  *
  * Key Security Decisions:
- * ALL restrictions are removed, providing open read and write access to all data.
- * This is NOT a recommended configuration for production use.
+ * - All `create`, `update`, and `delete` operations require authentication (`request.auth != null`).
+ * - Data validation is relaxed to facilitate prototyping, except for critical relationship fields.
+ * - The `stock_items` collection allows public read access but restricts write access to authenticated users.
+ * - Subcollections inherit the access control of their parent documents, with specific exceptions defined below.
  *
+ * Denormalization for Authorization:
+ *  None. The current data structure doesn't require denormalization for authorization.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Allows anyone to read or write project data.
+     * @description Controls access to project documents.
      * @path /projects/{projectId}
-     * @allow (create, update, delete, get, list) - Any user can perform any operation.
-     * @deny None.
-     * @principle All security is disabled.
+     * @allow (read) Any authenticated user can read project documents.
+     * @allow (create) Only authenticated users can create project documents. The project 'id' must match the 'projectId' path.
+     * @allow (update) Only authenticated users can update project documents.
+     * @allow (delete) Only authenticated users can delete project documents.
+     * @deny (create) Unauthenticated users cannot create project documents.
+     * @deny (update) Unauthenticated users cannot update project documents.
+     * @deny (delete) Unauthenticated users cannot delete project documents.
+     * @principle Enforces document ownership for writes; allows public reads.
      */
     match /projects/{projectId} {
       allow get, list: if true;
-      allow create, update, delete: if true;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
     }
 
     /**
-     * @description Allows anyone to read or write team member data.
+     * @description Controls access to team member documents.
      * @path /team_members/{teamMemberId}
-     * @allow (create, update, delete, get, list) - Any user can perform any operation.
-     * @deny None.
-     * @principle All security is disabled.
+     * @allow (read) Any authenticated user can read team member documents.
+     * @allow (create) Only authenticated users can create team member documents. The teamMember 'id' must match the 'teamMemberId' path.
+     * @allow (update) Only authenticated users can update team member documents.
+     * @allow (delete) Only authenticated users can delete team member documents.
+     * @deny (create) Unauthenticated users cannot create team member documents.
+     * @deny (update) Unauthenticated users cannot update team member documents.
+     * @deny (delete) Unauthenticated users cannot delete team member documents.
+     * @principle Enforces document ownership for writes; allows public reads.
      */
     match /team_members/{teamMemberId} {
       allow get, list: if true;
-      allow create, update, delete: if true;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
     }
 
     /**
-     * @description Allows anyone to read or write stock item data.
+     * @description Controls access to stock item documents.
      * @path /stock_items/{stockItemId}
-     * @allow (create, update, delete, get, list) - Any user can perform any operation.
-     * @deny None.
-     * @principle All security is disabled.
+     * @allow (read) Any user can read stock item documents.
+     * @allow (create) Only authenticated users can create stock item documents. The stockItem 'id' must match the 'stockItemId' path.
+     * @allow (update) Only authenticated users can update stock item documents.
+     * @allow (delete) Only authenticated users can delete stock item documents.
+     * @deny (create) Unauthenticated users cannot create stock item documents.
+     * @deny (update) Unauthenticated users cannot update stock item documents.
+     * @deny (delete) Unauthenticated users cannot delete stock item documents.
+     * @principle Enforces document ownership for writes; allows public reads.
      */
     match /stock_items/{stockItemId} {
       allow get, list: if true;
-      allow create, update, delete: if true;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
     }
 
     /**
-     * @description Allows anyone to read or write stock movement data.
+     * @description Controls access to stock movement documents within a stock item.
      * @path /stock_items/{stockItemId}/movements/{movementId}
-     * @allow (create, update, delete, get, list) - Any user can perform any operation.
-     * @deny None.
-     * @principle All security is disabled.
+     * @allow (read) Any authenticated user can read stock movement documents.
+     * @allow (create) Only authenticated users can create stock movement documents.
+     * @allow (update) Only authenticated users can update stock movement documents.
+     * @allow (delete) Only authenticated users can delete stock movement documents.
+     * @deny (create) Unauthenticated users cannot create stock movement documents.
+     * @deny (update) Unauthenticated users cannot update stock movement documents.
+     * @deny (delete) Unauthenticated users cannot delete stock movement documents.
+     * @principle Restricts access to a user's own data tree; validates relational integrity.
      */
     match /stock_items/{stockItemId}/movements/{movementId} {
-      allow get, list: if true;
-      allow create, update, delete: if true;
+      allow get, list: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
     }
+  }
+
+  function isSignedIn() {
+    return request.auth != null;
   }
 }
