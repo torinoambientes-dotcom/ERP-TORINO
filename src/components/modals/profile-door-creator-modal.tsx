@@ -29,7 +29,7 @@ import {
 } from '@/components/ui/form';
 import type { ProfileDoorItem } from '@/lib/types';
 import { cn } from '@/lib/utils';
-import { Door } from 'lucide-react';
+import { DoorOpen } from 'lucide-react';
 
 
 interface ProfileDoorCreatorModalProps {
@@ -218,7 +218,7 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave }: ProfileDoor
                 Cancelar
               </Button>
               <Button type="submit">
-                <Door className="mr-2 h-4 w-4" />
+                <DoorOpen className="mr-2 h-4 w-4" />
                 Adicionar Porta
               </Button>
             </DialogFooter>
