@@ -126,91 +126,45 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName }:
     const doc = new jsPDF();
     const doorData = form.getValues();
     const scale = 0.2; // Escala para desenhar
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const pageWidth = doc.internal.pageSize.getWidth();
+
     const profileWidthMM = 45;
     const hingeDiameterMM = 35;
-
-    // Título
-    doc.setFontSize(18);
-    doc.text('Folha de Produção - Porta de Perfil', 10, 20);
-
-    // Especificações
-    let currentY = 30;
-    doc.setFontSize(12);
-    doc.text(`Cliente: ${clientName || 'N/A'}`, 10, currentY);
-    
-    currentY += 6;
-    doc.text(`Tipo de Porta: ${doorData.doorType}`, 10, currentY);
-
-    if (doorData.doorType === 'Correr' && doorData.slidingSystem) {
-        currentY += 6;
-        doc.text(`Sistema de Correr: ${doorData.slidingSystem}`, 10, currentY);
-    }
-    
-    currentY += 6;
-    doc.text(`Quantidade: ${doorData.quantity}${doorData.isPair ? ' (par)' : ''}`, 10, currentY);
-    
-    currentY += 6;
-    doc.text(`Dimensões (por porta): ${doorData.width}mm x ${doorData.height}mm`, 10, currentY);
-    
-    currentY += 6;
-    doc.text(`Cor do Perfil: ${doorData.profileColor}`, 10, currentY);
-    
-    currentY += 6;
-    doc.text(`Tipo de Vidro: ${doorData.glassType}`, 10, currentY);
-    
-    currentY += 6;
-    doc.text(`Tipo de Puxador: ${doorData.handleType}`, 10, currentY);
-
-    if (doorData.handleType !== 'Sem Puxador') {
-        currentY += 6;
-        const handlePosLabel = handlePositions[doorData.handlePosition];
-        const mirrorPosLabel = doorData.isPair ? ` / ${handlePositions[{left: 'right', right: 'left', top: 'top', bottom: 'bottom'}[doorData.handlePosition]]}` : '';
-        doc.text(`Posição do Puxador: ${handlePosLabel}${mirrorPosLabel}`, 10, currentY);
-        
-        if (doorData.handleType === 'Aba Usinada') {
-            currentY += 6;
-            doc.text(`Largura do Puxador: ${doorData.handleWidth}mm`, 10, currentY);
-            currentY += 6;
-            doc.text(`Distância do Canto: ${doorData.handleOffset}mm`, 10, currentY);
-        }
-    }
-
-    // Dobradiças
-    currentY += 10;
-    doc.text('Dobradiças (a partir da base):', 10, currentY);
-    doorData.hinges?.forEach((hinge, index) => {
-      doc.text(`- Furo ${index + 1}: ${hinge.position}mm`, 15, (currentY + 6) + (index * 6));
-    });
+    const marginLeft = 10;
+    const textBlockWidth = 90;
+    const drawingAreaX = marginLeft + textBlockWidth;
+    const drawingAreaWidth = pageWidth - drawingAreaX - marginLeft;
 
     // --- Desenho da(s) porta(s) ---
-    const drawDoor = (startX: number, mirrored: boolean) => {
+    const drawDoor = (startX: number, startY: number, mirrored: boolean) => {
         const doorWidthPx = doorData.width * scale;
         const doorHeightPx = doorData.height * scale;
         const profileWidthPx = profileWidthMM * scale;
-        const doorY = 30;
 
         doc.setDrawColor(0);
         // Borda externa
-        doc.rect(startX, doorY, doorWidthPx, doorHeightPx);
+        doc.rect(startX, startY, doorWidthPx, doorHeightPx);
         // Borda interna (vidro)
-        doc.rect(startX + profileWidthPx, doorY + profileWidthPx, doorWidthPx - (2*profileWidthPx), doorHeightPx - (2*profileWidthPx));
+        doc.rect(startX + profileWidthPx, startY + profileWidthPx, doorWidthPx - (2 * profileWidthPx), doorHeightPx - (2 * profileWidthPx));
 
         // Dobradiças no desenho
         doc.setFillColor(255, 0, 0);
         doorData.hinges?.forEach(hinge => {
-            const hingeY = doorY + doorHeightPx - (hinge.position * scale);
-            const hingeX = mirrored 
-                ? startX + doorWidthPx - (profileWidthPx / 2) 
-                : startX + (profileWidthPx / 2);
+            const hingeY = startY + doorHeightPx - (hinge.position * scale);
+            const hingeCenterInProfilePx = (profileWidthMM / 2) * scale;
+            const hingeX = mirrored
+                ? startX + doorWidthPx - hingeCenterInProfilePx
+                : startX + hingeCenterInProfilePx;
             doc.circle(hingeX, hingeY, (hingeDiameterMM / 2) * scale, 'F');
         });
 
         // Puxador no desenho
         if (doorData.handleType !== 'Sem Puxador') {
             doc.setFillColor(255, 0, 0);
-            const handleThicknessPx = 4 * scale; 
+            const handleThicknessPx = 4 * scale;
             let handleX = 0, handleY = 0, handleW = 0, handleH = 0;
-            
+
             const position = mirrored ? {
                 'left': 'right', 'right': 'left', 'top': 'top', 'bottom': 'bottom'
             }[doorData.handlePosition] : doorData.handlePosition;
@@ -219,7 +173,7 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName }:
                 case 'top':
                 case 'bottom':
                     handleH = handleThicknessPx;
-                    handleY = position === 'top' ? doorY : doorY + doorHeightPx - handleThicknessPx;
+                    handleY = position === 'top' ? startY : startY + doorHeightPx - handleThicknessPx;
                     if (doorData.handleType === 'Linear inteiro') {
                         handleW = doorWidthPx;
                         handleX = startX;
@@ -234,10 +188,10 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName }:
                     handleX = position === 'left' ? startX : startX + doorWidthPx - handleThicknessPx;
                     if (doorData.handleType === 'Linear inteiro') {
                         handleH = doorHeightPx;
-                        handleY = doorY;
+                        handleY = startY;
                     } else { // Aba Usinada
                         handleH = doorData.handleWidth! * scale;
-                        handleY = doorY + (doorData.handleOffset! * scale);
+                        handleY = startY + (doorData.handleOffset! * scale);
                     }
                     break;
             }
@@ -245,15 +199,73 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName }:
         }
     };
     
-    if (doorData.isPair) {
-        const firstDoorX = 105;
-        const spacing = 5;
-        const secondDoorX = firstDoorX + (doorData.width * scale) + spacing;
-        drawDoor(firstDoorX, false);
-        drawDoor(secondDoorX, true);
-    } else {
-        drawDoor(110, false);
+    // Título
+    doc.setFontSize(18);
+    doc.text('Folha de Produção - Porta de Perfil', marginLeft, 20);
+
+    // Especificações
+    let currentY = 30;
+    doc.setFontSize(12);
+    doc.text(`Cliente: ${clientName || 'N/A'}`, marginLeft, currentY);
+    
+    currentY += 6;
+    doc.text(`Tipo de Porta: ${doorData.doorType}`, marginLeft, currentY);
+
+    if (doorData.doorType === 'Correr' && doorData.slidingSystem) {
+        currentY += 6;
+        doc.text(`Sistema de Correr: ${doorData.slidingSystem}`, marginLeft, currentY);
     }
+    
+    currentY += 6;
+    doc.text(`Quantidade: ${doorData.quantity}${doorData.isPair ? ' (par)' : ''}`, marginLeft, currentY);
+    
+    currentY += 6;
+    doc.text(`Dimensões (por porta): ${doorData.width}mm x ${doorData.height}mm`, marginLeft, currentY);
+    
+    currentY += 6;
+    doc.text(`Cor do Perfil: ${doorData.profileColor}`, marginLeft, currentY);
+    
+    currentY += 6;
+    doc.text(`Tipo de Vidro: ${doorData.glassType}`, marginLeft, currentY);
+    
+    currentY += 6;
+    doc.text(`Tipo de Puxador: ${doorData.handleType}`, marginLeft, currentY);
+
+    if (doorData.handleType !== 'Sem Puxador') {
+        currentY += 6;
+        const handlePosLabel = handlePositions[doorData.handlePosition];
+        const mirrorPosLabel = doorData.isPair ? ` / ${handlePositions[{left: 'right', right: 'left', top: 'top', bottom: 'bottom'}[doorData.handlePosition]]}` : '';
+        doc.text(`Posição do Puxador: ${handlePosLabel}${mirrorPosLabel}`, marginLeft, currentY);
+        
+        if (doorData.handleType === 'Aba Usinada') {
+            currentY += 6;
+            doc.text(`Largura do Puxador: ${doorData.handleWidth}mm`, marginLeft, currentY);
+            currentY += 6;
+            doc.text(`Distância do Canto: ${doorData.handleOffset}mm`, marginLeft, currentY);
+        }
+    }
+
+    // Dobradiças
+    currentY += 10;
+    doc.text('Dobradiças (a partir da base):', marginLeft, currentY);
+    doorData.hinges?.forEach((hinge, index) => {
+      doc.text(`- Furo ${index + 1}: ${hinge.position}mm`, marginLeft + 5, (currentY + 6) + (index * 6));
+    });
+
+    const totalDrawingWidth = (doorData.width * scale) * (doorData.isPair ? 2 : 1) + (doorData.isPair ? 5 : 0);
+    const totalDrawingHeight = doorData.height * scale;
+    
+    const drawingStartY = (pageHeight - totalDrawingHeight) / 2;
+    let drawingStartX = drawingAreaX + (drawingAreaWidth - totalDrawingWidth) / 2;
+    
+    if (doorData.isPair) {
+        const spacing = 5;
+        drawDoor(drawingStartX, drawingStartY, false);
+        drawDoor(drawingStartX + (doorData.width * scale) + spacing, drawingStartY, true);
+    } else {
+        drawDoor(drawingStartX, drawingStartY, false);
+    }
+
 
     doc.save(`Porta_${clientName || 'especificacao'}.pdf`);
   };
