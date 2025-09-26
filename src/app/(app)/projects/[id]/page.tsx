@@ -26,6 +26,7 @@ import { FurnitureMaterialsModal } from '@/components/modals/furniture-materials
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { ProfileDoorCreatorModal } from '@/components/modals/profile-door-creator-modal';
 
 type StageKey = 'measurement' | 'cutting' | 'purchase' | 'assembly';
 const stages: { key: StageKey; label: string }[] = [
@@ -143,8 +144,17 @@ export default function ProjectDetailsPage() {
     return new Map(teamMembers.map(m => [m.id, m]));
   }, [teamMembers]);
   
-  const marceneiros = useMemo(() => {
-    return teamMembers.filter(m => m.role === 'Marceneiro');
+  const { marceneiros, outrosMembros } = useMemo(() => {
+    const marceneiros: TeamMember[] = [];
+    const outrosMembros: TeamMember[] = [];
+    teamMembers.forEach(member => {
+      if (member.role === 'Marceneiro') {
+        marceneiros.push(member);
+      } else {
+        outrosMembros.push(member);
+      }
+    });
+    return { marceneiros, outrosMembros };
   }, [teamMembers]);
 
   if (project === undefined || isLoading) {
@@ -218,7 +228,7 @@ export default function ProjectDetailsPage() {
                         {stages.map((stage) => {
                           const stageData = fur[stage.key] || { status: 'todo' };
                           const responsibleMember = stageData.responsibleId ? memberMap.get(stageData.responsibleId) : undefined;
-                          const responsibleList = stage.key === 'assembly' ? marceneiros : teamMembers;
+                          const responsibleList = stage.key === 'assembly' ? marceneiros : outrosMembros;
                           
                           return (
                           <div key={stage.key} className="space-y-2">
