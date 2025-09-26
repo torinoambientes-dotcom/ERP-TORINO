@@ -363,7 +363,7 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
   const DoorVisualizer = ({ mirrored = false }) => {
     return (
       <div
-        className={cn("relative flex items-center justify-center transition-all duration-300 w-full h-full", profileColorClass)}
+        className={cn("relative flex items-center justify-center transition-all duration-300 h-full", profileColorClass, isPair ? 'w-1/2' : 'w-full')}
         style={{
           aspectRatio: `${doorWidth} / ${doorHeight}`,
         }}
@@ -476,7 +476,7 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
             {/* Right Column: Visualizer */}
             <div ref={doorVisualizerRef} className="flex flex-col items-center justify-center bg-muted/30 rounded-lg relative h-full border p-4 gap-4">
                 <div className="w-full h-full flex items-center justify-center p-8">
-                    <div className="flex w-full h-full items-center justify-center gap-2">
+                    <div className="flex h-full items-center justify-center gap-2">
                         <DoorVisualizer />
                         {isPair && <DoorVisualizer mirrored={true} />}
                     </div>
