@@ -513,6 +513,7 @@ export function FurnitureMaterialsModal({
         onClose={handleCloseGlassEditor}
         onSave={handleSaveGlass}
         glassToEdit={glassToEdit}
+        clientName={clientName}
         viewOnly={isOriginalItem(glassToEdit?.addedAt)}
       />
     )}
