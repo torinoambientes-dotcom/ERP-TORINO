@@ -56,14 +56,20 @@ const doorCreatorSchema = z.object({
   quantity: z.coerce.number().min(1, 'Quantidade mínima de 1.'),
   hinges: z.array(hingeSchema).optional(),
   isPair: z.boolean().optional(),
+  handlePosition: z.enum(['top', 'bottom', 'left', 'right']).default('left'),
+  handleWidth: z.coerce.number().optional(),
+  handleOffset: z.coerce.number().optional(),
 });
 
 type DoorCreatorFormValues = z.infer<typeof doorCreatorSchema>;
 
-const profileColors = ['Preto', 'Aluminio', 'Inox'];
-const profileGlassTypes = ['Incolor', 'Fume', 'Bronze', 'Espelho Fume', 'Espelho Bronze', 'Espelho Prata', 'Reflecta Incolor', 'Reflecta Fume', 'Reflecta Prata'];
 const handleTypes = ['Linear inteiro', 'Aba Usinada', 'Sem Puxador'];
-
+const handlePositions = {
+    top: 'Em cima',
+    bottom: 'Em baixo',
+    left: 'Esquerda',
+    right: 'Direita',
+};
 
 export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName }: ProfileDoorCreatorModalProps) {
   const form = useForm<DoorCreatorFormValues>({
@@ -72,11 +78,14 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName }:
       width: 400,
       height: 700,
       quantity: 1,
-      profileColor: profileColors[0],
-      glassType: profileGlassTypes[0],
+      profileColor: 'Preto',
+      glassType: 'Incolor',
       handleType: handleTypes[0],
       hinges: [{position: 100}, {position: 600}],
       isPair: false,
+      handlePosition: 'left',
+      handleWidth: 150,
+      handleOffset: 50,
     },
   });
 
@@ -86,6 +95,8 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName }:
   });
   
   const isPair = form.watch('isPair');
+  const handleType = form.watch('handleType');
+  const doorData = form.watch();
 
   useEffect(() => {
     if (isPair) {
@@ -117,16 +128,30 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName }:
     // Especificações
     doc.setFontSize(12);
     doc.text(`Cliente: ${clientName || 'N/A'}`, 10, 30);
-    doc.text(`Quantidade: ${doorData.quantity}${doorData.isPair ? ' par(es)' : ''}`, 10, 36);
+    doc.text(`Quantidade: ${doorData.quantity}${doorData.isPair ? ' (par)' : ''}`, 10, 36);
     doc.text(`Dimensões: ${doorData.width}mm x ${doorData.height}mm`, 10, 42);
     doc.text(`Cor do Perfil: ${doorData.profileColor}`, 10, 48);
     doc.text(`Tipo de Vidro: ${doorData.glassType}`, 10, 54);
-    doc.text(`Tipo de Puxador: ${doorData.handleType}`, 10, 60);
+    
+    let handleY = 60;
+    doc.text(`Tipo de Puxador: ${doorData.handleType}`, 10, handleY);
+
+    if (doorData.handleType !== 'Sem Puxador') {
+        handleY += 6;
+        doc.text(`Posição do Puxador: ${handlePositions[doorData.handlePosition]}`, 10, handleY);
+        if (doorData.handleType === 'Aba Usinada') {
+            handleY += 6;
+            doc.text(`Largura do Puxador: ${doorData.handleWidth}mm`, 10, handleY);
+            handleY += 6;
+            doc.text(`Distância do Canto: ${doorData.handleOffset}mm`, 10, handleY);
+        }
+    }
 
     // Dobradiças
-    doc.text('Dobradiças (a partir da base):', 10, 70);
+    handleY += 10;
+    doc.text('Dobradiças (a partir da base):', 10, handleY);
     doorData.hinges?.forEach((hinge, index) => {
-      doc.text(`- Furo ${index + 1}: ${hinge.position}mm`, 15, 76 + (index * 6));
+      doc.text(`- Furo ${index + 1}: ${hinge.position}mm`, 15, (handleY + 6) + (index * 6));
     });
 
     // Desenho da porta
@@ -152,7 +177,6 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName }:
     doc.save(`Porta_${clientName || 'especificacao'}.pdf`);
   };
 
-  const doorData = form.watch();
   const { width: doorWidth, height: doorHeight, hinges } = doorData;
 
   const profileColorClass = {
@@ -162,6 +186,54 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName }:
   }[doorData.profileColor] || 'bg-gray-700';
 
   const PROFILE_WIDTH_MM = 45;
+
+  const HandleVisualizer = ({ mirrored = false }) => {
+    if (handleType === 'Sem Puxador') return null;
+
+    const style: React.CSSProperties = {
+        position: 'absolute',
+        backgroundColor: 'red',
+        fontWeight: 'bold',
+    };
+
+    const position = mirrored ? {
+        'left': 'right',
+        'right': 'left',
+        'top': 'top',
+        'bottom': 'bottom'
+    }[doorData.handlePosition] : doorData.handlePosition;
+
+    const handleThickness = 8;
+
+    switch (position) {
+        case 'top':
+        case 'bottom':
+            style.height = `${handleThickness}px`;
+            if (handleType === 'Linear inteiro') {
+                style.width = '100%';
+                style.left = '0';
+            } else { // Aba Usinada
+                style.width = `${(doorData.handleWidth! / doorData.width) * 100}%`;
+                style.left = `${(doorData.handleOffset! / doorData.width) * 100}%`;
+            }
+            if (position === 'top') style.top = '0'; else style.bottom = '0';
+            break;
+        case 'left':
+        case 'right':
+            style.width = `${handleThickness}px`;
+            if (handleType === 'Linear inteiro') {
+                style.height = '100%';
+                style.top = '0';
+            } else { // Aba Usinada
+                style.height = `${(doorData.handleWidth! / doorData.height) * 100}%`;
+                style.top = `${(doorData.handleOffset! / doorData.height) * 100}%`;
+            }
+            if (position === 'left') style.left = '0'; else style.right = '0';
+            break;
+    }
+
+    return <div style={style}></div>;
+};
 
   const DoorVisualizer = ({ mirrored = false }) => (
     <div
@@ -190,6 +262,7 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName }:
         }
         return <div key={index} className="absolute bg-red-500 rounded-full" style={hingeStyle}></div>;
       })}
+       <HandleVisualizer mirrored={mirrored} />
     </div>
   );
 
@@ -229,8 +302,26 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName }:
 
               <FormField control={form.control} name="profileColor" render={({ field }) => ( <FormItem><FormLabel>Cor do Perfil</FormLabel><FormControl><Input placeholder="Ex: Preto" {...field} /></FormControl><FormMessage /></FormItem> )}/>
               <FormField control={form.control} name="glassType" render={({ field }) => ( <FormItem><FormLabel>Tipo de Vidro</FormLabel><FormControl><Input placeholder="Ex: Incolor" {...field} /></FormControl><FormMessage /></FormItem> )}/>
+              
+              <Separator />
+
+              <h4 className='font-medium'>Puxador</h4>
               <FormField control={form.control} name="handleType" render={({ field }) => ( <FormItem><FormLabel>Tipo de Puxador</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{handleTypes.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem> )}/>
               
+              {handleType !== 'Sem Puxador' && (
+                <>
+                    <FormField control={form.control} name="handlePosition" render={({ field }) => ( <FormItem><FormLabel>Posição do Puxador</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{Object.entries(handlePositions).map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem> )}/>
+                    
+                    {handleType === 'Aba Usinada' && (
+                        <div className="grid grid-cols-2 gap-4">
+                            <FormField control={form.control} name="handleWidth" render={({ field }) => ( <FormItem><FormLabel>Largura Puxador (mm)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                            <FormField control={form.control} name="handleOffset" render={({ field }) => ( <FormItem><FormLabel>Dist. do Canto (mm)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                        </div>
+                    )}
+                </>
+              )}
+
+
               <Separator />
 
               <div>
@@ -261,7 +352,12 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName }:
                     <p><strong>Dimensões:</strong> {doorWidth}mm x {doorHeight}mm</p>
                     <p><strong>Cor Perfil:</strong> {doorData.profileColor}</p>
                     <p><strong>Vidro:</strong> {doorData.glassType}</p>
-                    <p><strong>Puxador:</strong> {doorData.handleType}</p>
+                    <p><strong>Puxador:</strong> {doorData.handleType}
+                        {doorData.handleType !== 'Sem Puxador' && ` - ${handlePositions[doorData.handlePosition]}`}
+                    </p>
+                     {doorData.handleType === 'Aba Usinada' && (
+                        <p className="pl-4 text-xs">Largura: {doorData.handleWidth}mm, Dist. Canto: {doorData.handleOffset}mm</p>
+                    )}
                     <p><strong>Dobradiças (da base):</strong> {hinges?.map(h => `${h.position}mm`).join(', ')}</p>
                 </div>
             </div>

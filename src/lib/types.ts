@@ -53,6 +53,9 @@ export interface ProfileDoorItem {
   width: number;
   quantity: number;
   hinges?: { position: number }[];
+  handlePosition?: 'top' | 'bottom' | 'left' | 'right';
+  handleWidth?: number;
+  handleOffset?: number;
 }
 
 export interface Furniture {
