@@ -246,45 +246,66 @@ export function GlassCreatorModal({ isOpen, onClose, onSave, glassToEdit, client
     doc.save(`Vidro_${clientName || 'especificacao'}.pdf`);
   };
 
-
   const GlassVisualizer = () => {
-    const { shape, width = 0, height = 0, diameter = 0, cornerRadius = 0, type } = glassData;
-
+    const {
+      shape,
+      width = 0,
+      height = 0,
+      diameter = 0,
+      cornerRadius = 0,
+      type,
+      hasFrostedStrips,
+      frostedStripWidth = 0,
+      frostedStripTop = 0,
+      frostedStripBottom = 0,
+      frostedStripLeft = 0,
+      frostedStripRight = 0
+    } = glassData;
+  
     const glassColorClass = type === 'Espelho' ? 'bg-gray-300' : 'bg-blue-200/50';
-    
     const isCircle = shape === 'circle';
     const displayWidth = isCircle ? diameter : width;
     const displayHeight = isCircle ? diameter : height;
+  
+    if (displayWidth === 0 || displayHeight === 0) return null;
+  
+    const scaleFactor = 300 / Math.max(displayWidth, displayHeight, 300);
+  
+    const outerWidth = displayWidth * scaleFactor;
+    const outerHeight = displayHeight * scaleFactor;
+    const outerRadius = isCircle ? '50%' : `${Math.min(cornerRadius, Math.min(displayWidth, displayHeight) / 2) * scaleFactor}px`;
+  
+    const innerTop = frostedStripTop * scaleFactor;
+    const innerBottom = frostedStripBottom * scaleFactor;
+    const innerLeft = frostedStripLeft * scaleFactor;
+    const innerRight = frostedStripRight * scaleFactor;
+  
+    const innerRadiusValue = Math.max(0, (isCircle ? outerWidth / 2 : Math.min(cornerRadius, Math.min(displayWidth, displayHeight) / 2)) - Math.max(frostedStripLeft, frostedStripRight, frostedStripTop, frostedStripBottom));
+    const innerRadius = isCircle ? '50%' : `${innerRadiusValue * scaleFactor}px`;
 
-    const maxRadius = Math.min(displayWidth, displayHeight) / 2;
-    const clampedRadius = Math.min(cornerRadius, maxRadius);
-    
-    const stripWidth = glassData.frostedStripWidth || 0;
-    const topOffset = glassData.frostedStripTop || 0;
-    const bottomOffset = glassData.frostedStripBottom || 0;
-    const leftOffset = glassData.frostedStripLeft || 0;
-    const rightOffset = glassData.frostedStripRight || 0;
-
-    const scaleFactor = 300 / Math.max(displayWidth, displayHeight);
-
+    const showStrips = hasFrostedStrips && frostedStripWidth > 0;
+  
     return (
       <div
-        className={cn("relative flex items-center justify-center transition-all duration-300 border-2 border-gray-500 overflow-hidden", glassColorClass)}
+        className={cn("relative flex items-center justify-center transition-all duration-300 overflow-hidden", showStrips ? 'bg-yellow-400' : glassColorClass)}
         style={{
-          width: `${displayWidth * scaleFactor}px`,
-          height: `${displayHeight * scaleFactor}px`,
-          borderRadius: isCircle ? '50%' : `${clampedRadius * scaleFactor}px`,
+          width: `${outerWidth}px`,
+          height: `${outerHeight}px`,
+          borderRadius: outerRadius,
         }}
       >
-        <span className="text-sm text-muted-foreground text-center p-2 break-all">{type}</span>
-         {hasFrostedStripsFeature && stripWidth > 0 && (
-            <>
-              {topOffset > 0 && <div className="absolute bg-yellow-400" style={{ top: `${topOffset * scaleFactor}px`, left: `${leftOffset*scaleFactor}px`, right: `${rightOffset*scaleFactor}px`, height: `${stripWidth * scaleFactor}px` }}></div>}
-              {bottomOffset > 0 && <div className="absolute bg-yellow-400" style={{ bottom: `${bottomOffset * scaleFactor}px`, left: `${leftOffset*scaleFactor}px`, right: `${rightOffset*scaleFactor}px`, height: `${stripWidth * scaleFactor}px` }}></div>}
-              {leftOffset > 0 && <div className="absolute bg-yellow-400" style={{ left: `${leftOffset * scaleFactor}px`, top: `${topOffset*scaleFactor}px`, bottom: `${bottomOffset*scaleFactor}px`, width: `${stripWidth * scaleFactor}px` }}></div>}
-              {rightOffset > 0 && <div className="absolute bg-yellow-400" style={{ right: `${rightOffset * scaleFactor}px`, top: `${topOffset*scaleFactor}px`, bottom: `${bottomOffset*scaleFactor}px`, width: `${stripWidth * scaleFactor}px` }}></div>}
-            </>
-         )}
+        <div
+            className={cn("absolute", glassColorClass)}
+            style={{
+                top: `${innerTop}px`,
+                right: `${innerRight}px`,
+                bottom: `${innerBottom}px`,
+                left: `${innerLeft}px`,
+                borderRadius: innerRadius,
+            }}
+        >
+          {!showStrips && <span className="absolute inset-0 flex items-center justify-center text-sm text-muted-foreground text-center p-2 break-all">{type}</span>}
+        </div>
       </div>
     );
   };
