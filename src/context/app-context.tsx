@@ -221,7 +221,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 ...fur,
                 measurement: { ...fur.measurement, status: 'done' as StageStatus },
                 cutting: { ...fur.cutting, status: 'done' as StageStatus },
-                purchase: { ...fur.purchase, status: 'done' as StageStatus },
+                purchase: { ...fur.purchase, status: 'done' as StageStatus, completedAt: new Date().toISOString() },
                 assembly: { ...fur.assembly, status: 'done' as StageStatus },
             })),
         }));
@@ -239,7 +239,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           if (env.id === environmentId) {
               const newFurniture = env.furniture.map(fur => ({
                   ...fur,
-                  purchase: { ...fur.purchase, status: 'done' as StageStatus }
+                  purchase: { ...fur.purchase, status: 'done' as StageStatus, completedAt: new Date().toISOString() }
               }));
               return { ...env, furniture: newFurniture };
           }

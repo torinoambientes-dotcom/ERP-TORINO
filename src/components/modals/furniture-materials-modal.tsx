@@ -32,10 +32,13 @@ import type { Furniture, MaterialItem, GlassItem, ProfileDoorItem } from '@/lib/
 import { ScrollArea } from '../ui/scroll-area';
 import { generateId, cn } from '@/lib/utils';
 import { Separator } from '../ui/separator';
-import { PlusCircle, Trash2, Pencil } from 'lucide-react';
+import { PlusCircle, Trash2, Pencil, CheckCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { ProfileDoorCreatorModal } from './profile-door-creator-modal';
 import { GlassCreatorModal } from './glass-creator-modal';
+import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 interface FurnitureMaterialsModalProps {
   isOpen: boolean;
@@ -114,6 +117,8 @@ export function FurnitureMaterialsModal({
     },
   });
 
+  const isPurchased = furniture.purchase?.status === 'done';
+
   const { fields: materialFields, append: appendMaterial, remove: removeMaterial } = useFieldArray({
     control: form.control,
     name: 'materials',
@@ -140,6 +145,10 @@ export function FurnitureMaterialsModal({
   }, [isOpen, furniture, form]);
 
   const onSubmit = (data: MaterialFormValues) => {
+    if (isPurchased) {
+        onClose();
+        return;
+    }
     const updatedFurniture: Furniture = {
       ...furniture,
       materials: data.materials.map(m => (m.id ? m : { ...m, id: generateId('mat') })),
@@ -231,10 +240,20 @@ export function FurnitureMaterialsModal({
           </DialogDescription>
         </DialogHeader>
 
+        {isPurchased && furniture.purchase?.completedAt && (
+            <Alert variant="default" className="bg-green-100 border-green-200 text-green-800">
+                <CheckCircle className="h-4 w-4 !text-green-800" />
+                <AlertTitle>Compra Finalizada</AlertTitle>
+                <AlertDescription>
+                    Estes materiais foram marcados como comprados em {format(new Date(furniture.purchase.completedAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}. A edição está desativada.
+                </AlertDescription>
+            </Alert>
+        )}
+
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="flex-grow flex flex-col overflow-hidden">
-            <ScrollArea className="flex-grow pr-4 -mr-4">
-              <div className="space-y-6">
+            <ScrollArea className="flex-grow pr-4 -mr-4 pt-4">
+              <fieldset disabled={isPurchased} className="space-y-6">
                 
                 <div>
                   <h3 className="text-lg font-semibold mb-2">Portas de Perfil</h3>
@@ -278,6 +297,7 @@ export function FurnitureMaterialsModal({
                       </p>
                     )}
                   </div>
+                  {!isPurchased && (
                    <Button
                       type="button"
                       variant="outline"
@@ -288,6 +308,7 @@ export function FurnitureMaterialsModal({
                       <PlusCircle className="mr-2 h-4 w-4" />
                       Adicionar Porta de Perfil
                     </Button>
+                  )}
                 </div>
 
                 <Separator />
@@ -334,6 +355,7 @@ export function FurnitureMaterialsModal({
                       </p>
                     )}
                   </div>
+                  {!isPurchased && (
                    <Button
                       type="button"
                       variant="outline"
@@ -344,6 +366,7 @@ export function FurnitureMaterialsModal({
                       <PlusCircle className="mr-2 h-4 w-4" />
                       Adicionar Vidraçaria
                     </Button>
+                  )}
                 </div>
 
                 <Separator />
@@ -403,6 +426,7 @@ export function FurnitureMaterialsModal({
                               </FormItem>
                             )}
                           />
+                          {!isPurchased && (
                           <Button
                             type="button"
                             variant="ghost"
@@ -412,6 +436,7 @@ export function FurnitureMaterialsModal({
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
+                          )}
                         </div>
                       ))
                     ) : (
@@ -420,6 +445,7 @@ export function FurnitureMaterialsModal({
                       </p>
                     )}
                   </div>
+                  {!isPurchased && (
                    <Button
                       type="button"
                       variant="outline"
@@ -430,15 +456,18 @@ export function FurnitureMaterialsModal({
                       <PlusCircle className="mr-2 h-4 w-4" />
                       Adicionar Material Geral
                     </Button>
+                  )}
                 </div>
-              </div>
+              </fieldset>
             </ScrollArea>
             
             <DialogFooter className="mt-4 pt-4 border-t">
-              <Button type="button" variant="outline" onClick={onClose}>
-                Cancelar
+              <Button type="button" variant={isPurchased ? 'default' : 'ghost'} onClick={onClose}>
+                {isPurchased ? 'Fechar' : 'Cancelar'}
               </Button>
+              {!isPurchased && (
               <Button type="submit">Salvar Materiais</Button>
+              )}
             </DialogFooter>
           </form>
         </Form>
@@ -451,6 +480,7 @@ export function FurnitureMaterialsModal({
             onSave={handleSaveProfileDoor}
             clientName={clientName}
             doorToEdit={doorToEdit}
+            viewOnly={isPurchased}
         />
     )}
     {isOpen && (
@@ -459,6 +489,7 @@ export function FurnitureMaterialsModal({
         onClose={handleCloseGlassEditor}
         onSave={handleSaveGlass}
         glassToEdit={glassToEdit}
+        viewOnly={isPurchased}
       />
     )}
     </>

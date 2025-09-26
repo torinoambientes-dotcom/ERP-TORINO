@@ -74,7 +74,7 @@ export interface Furniture {
   name: string;
   measurement: { status: StageStatus; responsibleId?: string };
   cutting: { status: StageStatus; responsibleId?: string };
-  purchase: { status: StageStatus; responsibleId?: string };
+  purchase: { status: StageStatus; responsibleId?: string; completedAt?: string };
   assembly: { status: StageStatus; responsibleId?: string };
   comments?: Comment[];
   pendencies?: Pendency[];
