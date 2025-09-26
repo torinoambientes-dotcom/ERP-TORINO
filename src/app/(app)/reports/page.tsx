@@ -1,6 +1,7 @@
 
 'use client';
 import { useContext, useMemo, useState } from 'react';
+import Link from 'next/link';
 import {
   Card,
   CardContent,
@@ -23,8 +24,8 @@ import {
 } from '@/components/ui/select';
 import { PageHeader } from '@/components/layout/page-header';
 import { AppContext } from '@/context/app-context';
-import type { Pendency, StageStatus, TeamMember } from '@/lib/types';
-import { ChevronsUpDown } from 'lucide-react';
+import type { Pendency, Project, StageStatus, TeamMember } from '@/lib/types';
+import { ChevronsUpDown, ExternalLink } from 'lucide-react';
 import { isThisWeek, isThisMonth, isThisYear, parseISO } from 'date-fns';
 import {
   BarChart,
@@ -38,6 +39,9 @@ import {
 } from 'recharts';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { getInitials } from '@/lib/utils';
+import { getProjectStatus, ProjectStatusInfo } from '@/lib/projects';
+import { Progress } from '@/components/ui/progress';
+import { Separator } from '@/components/ui/separator';
 
 interface GeneralPendency extends Pendency {
   projectName: string;
@@ -83,6 +87,7 @@ export default function ReportsPage() {
 
   const [isPendenciesOpen, setIsPendenciesOpen] = useState(true);
   const [isProductivityOpen, setIsProductivityOpen] = useState(true);
+  const [isProjectsStatusOpen, setIsProjectsStatusOpen] = useState(true);
   const [selectedMemberId, setSelectedMemberId] = useState('all');
 
 
@@ -205,6 +210,64 @@ export default function ReportsPage() {
     
     return pendencies;
   }, [projects, selectedMemberId]);
+
+  const projectsByStatus = useMemo(() => {
+    const statuses: { [key: string]: { project: Project, statusInfo: ProjectStatusInfo }[] } = {
+      'Em Andamento': [],
+      'Novo': [],
+      'Concluído': []
+    };
+    
+    const memberProjects = projects.filter(project => {
+      if (selectedMemberId === 'all') return true;
+      return project.environments.some(env => 
+        env.furniture.some(fur => 
+          Object.values(fur).some(stage => (stage as any)?.responsibleId === selectedMemberId)
+        )
+      );
+    });
+
+    memberProjects.forEach(project => {
+      const statusInfo = getProjectStatus(project);
+      if (statuses[statusInfo.status]) {
+        statuses[statusInfo.status].push({ project, statusInfo });
+      }
+    });
+
+    return statuses;
+
+  }, [projects, selectedMemberId]);
+  
+  const ProjectStatusList = ({ title, projectsWithStatus }: { title: string, projectsWithStatus: { project: Project, statusInfo: ProjectStatusInfo }[] }) => {
+    if (projectsWithStatus.length === 0) return null;
+
+    return (
+      <div>
+        <h4 className="font-semibold text-lg mb-2">{title} ({projectsWithStatus.length})</h4>
+        <div className="space-y-3">
+          {projectsWithStatus.map(({ project, statusInfo }) => (
+            <Link key={project.id} href={`/projects/${project.id}`} className="block">
+              <div className="p-3 rounded-md border bg-muted/50 hover:bg-muted/80 transition-colors">
+                <div className="flex justify-between items-center">
+                  <p className="font-medium">{project.clientName}</p>
+                  <Button variant="ghost" size="sm" className="h-7">
+                    <ExternalLink className="mr-2 h-3 w-3" />
+                    Ver
+                  </Button>
+                </div>
+                <div className="space-y-1 mt-1">
+                  <Progress value={statusInfo.progress} className="h-1.5" />
+                  <p className="text-xs text-muted-foreground">
+                    {statusInfo.doneTasks} de {statusInfo.totalTasks} tarefas concluídas
+                  </p>
+                </div>
+              </div>
+            </Link>
+          ))}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-8">
@@ -357,6 +420,50 @@ export default function ReportsPage() {
         </Card>
       </Collapsible>
 
+      <Collapsible
+        open={isProjectsStatusOpen}
+        onOpenChange={setIsProjectsStatusOpen}
+        className="w-full"
+      >
+        <Card>
+          <CardHeader>
+             <div className="flex items-center justify-between">
+              <div className='space-y-1.5'>
+                <CardTitle className="font-headline">Status dos Projetos</CardTitle>
+                <CardDescription>
+                  {selectedMemberId === 'all' 
+                    ? 'Lista de todos os projetos por status.'
+                    : `Projetos associados a ${teamMembers.find(m => m.id === selectedMemberId)?.name || ''}.`
+                  }
+                </CardDescription>
+              </div>
+              <CollapsibleTrigger asChild>
+                <Button variant="ghost" size="icon">
+                  <ChevronsUpDown className="h-4 w-4" />
+                  <span className="sr-only">Toggle</span>
+                </Button>
+              </CollapsibleTrigger>
+            </div>
+          </CardHeader>
+          <CollapsibleContent>
+            <CardContent>
+              <div className="space-y-6">
+                <ProjectStatusList title="Em Andamento" projectsWithStatus={projectsByStatus['Em Andamento']} />
+                <Separator />
+                <ProjectStatusList title="Novos" projectsWithStatus={projectsByStatus['Novo']} />
+                <Separator />
+                <ProjectStatusList title="Concluídos" projectsWithStatus={projectsByStatus['Concluído']} />
+
+                {Object.values(projectsByStatus).every(arr => arr.length === 0) && (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    Nenhum projeto encontrado para o filtro selecionado.
+                  </p>
+                )}
+              </div>
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
 
       <Collapsible
         open={isPendenciesOpen}

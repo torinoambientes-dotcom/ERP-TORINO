@@ -25,36 +25,9 @@ import { Button } from '@/components/ui/button';
 import { Archive, CheckCircle, Pencil, Trash2 } from 'lucide-react';
 import { DeleteProjectAlert } from '@/components/modals/delete-project-alert';
 import { RegisterProjectModal } from '@/components/modals/register-project-modal';
+import { getProjectStatus } from '@/lib/projects';
 
 type ProjectStatus = 'Novo' | 'Em Andamento' | 'Concluído';
-
-const getProjectStatus = (project: Project): { status: ProjectStatus; progress: number, totalTasks: number, doneTasks: number } => {
-  let totalTasks = 0;
-  let doneTasks = 0;
-  
-  if (project.environments) {
-    project.environments.forEach((env) => {
-      if (env.furniture) {
-        env.furniture.forEach((fur) => {
-          const stages = ['measurement', 'cutting', 'purchase', 'assembly'] as const;
-          stages.forEach((stage) => {
-            totalTasks++;
-            if (fur[stage] && fur[stage].status === 'done') {
-              doneTasks++;
-            }
-          });
-        });
-      }
-    });
-  }
-
-  const progress = totalTasks > 0 ? (doneTasks / totalTasks) * 100 : 0;
-  
-  if (progress === 100) return { status: 'Concluído', progress, totalTasks, doneTasks };
-  if (progress > 0) return { status: 'Em Andamento', progress, totalTasks, doneTasks };
-  return { status: 'Novo', progress, totalTasks, doneTasks };
-};
-
 
 export default function ProjectsPage() {
   const { projects, deleteProject, completeProjectStages, isLoading } = useContext(AppContext);
