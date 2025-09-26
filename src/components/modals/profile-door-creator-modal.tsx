@@ -192,11 +192,66 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName }:
     doc.rect(doorX + profileWidthPx, doorY + profileWidthPx, doorWidthPx - (2*profileWidthPx), doorHeightPx - (2*profileWidthPx));
 
     // Dobradiças no desenho
+    doc.setFillColor(255, 0, 0);
     doorData.hinges?.forEach(hinge => {
         const hingeY = doorY + doorHeightPx - (hinge.position * scale);
-        doc.setFillColor(255, 0, 0);
         doc.circle(doorX + (profileWidthPx / 2), hingeY, (35/2) * scale, 'F');
     });
+
+    // Puxador no desenho
+    if (doorData.handleType !== 'Sem Puxador') {
+        doc.setFillColor(255, 0, 0);
+        const handleThicknessPx = 4 * scale; 
+        let handleX = 0, handleY = 0, handleW = 0, handleH = 0;
+
+        switch (doorData.handlePosition) {
+            case 'top':
+                handleH = handleThicknessPx;
+                handleY = doorY;
+                if (doorData.handleType === 'Linear inteiro') {
+                    handleW = doorWidthPx;
+                    handleX = doorX;
+                } else {
+                    handleW = doorData.handleWidth! * scale;
+                    handleX = doorX + (doorData.handleOffset! * scale);
+                }
+                break;
+            case 'bottom':
+                handleH = handleThicknessPx;
+                handleY = doorY + doorHeightPx - handleThicknessPx;
+                if (doorData.handleType === 'Linear inteiro') {
+                    handleW = doorWidthPx;
+                    handleX = doorX;
+                } else {
+                    handleW = doorData.handleWidth! * scale;
+                    handleX = doorX + (doorData.handleOffset! * scale);
+                }
+                break;
+            case 'left':
+                handleW = handleThicknessPx;
+                handleX = doorX;
+                if (doorData.handleType === 'Linear inteiro') {
+                    handleH = doorHeightPx;
+                    handleY = doorY;
+                } else {
+                    handleH = doorData.handleWidth! * scale;
+                    handleY = doorY + (doorData.handleOffset! * scale);
+                }
+                break;
+            case 'right':
+                handleW = handleThicknessPx;
+                handleX = doorX + doorWidthPx - handleThicknessPx;
+                if (doorData.handleType === 'Linear inteiro') {
+                    handleH = doorHeightPx;
+                    handleY = doorY;
+                } else {
+                    handleH = doorData.handleWidth! * scale;
+                    handleY = doorY + (doorData.handleOffset! * scale);
+                }
+                break;
+        }
+        doc.rect(handleX, handleY, handleW, handleH, 'F');
+    }
 
     doc.save(`Porta_${clientName || 'especificacao'}.pdf`);
   };
