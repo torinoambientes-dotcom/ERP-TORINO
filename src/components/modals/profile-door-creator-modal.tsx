@@ -360,36 +360,6 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
     return <div style={style}></div>;
 };
 
-  const DoorVisualizer = ({ mirrored = false, style }: { mirrored?: boolean, style?: React.CSSProperties }) => {
-    return (
-      <div
-        className={cn("relative flex items-center justify-center transition-all duration-300", profileColorClass)}
-        style={style}
-      >
-        <div className='absolute inset-0 bg-gray-300/30 backdrop-blur-sm flex items-center justify-center' style={{ margin: `${(PROFILE_WIDTH_MM / Math.min(doorWidth, doorHeight)) * 50}%`}}>
-          <span className="text-sm text-muted-foreground text-center p-2 break-all">{doorData.glassType}</span>
-        </div>
-        {doorType === 'Giro' && hinges?.map((hinge, index) => {
-          const hingeDiameter = 35;
-          const style: React.CSSProperties = {
-              bottom: `calc(${(hinge.position - (hingeDiameter/2)) / doorHeight * 100}%)`,
-              width: `${hingeDiameter / doorWidth * 100}%`,
-              aspectRatio: '1/1',
-          };
-          const hingeCenterInProfile = (PROFILE_WIDTH_MM / 2) - (hingeDiameter / 2);
-          
-          if (mirrored) {
-              style.right = `calc(${hingeCenterInProfile / doorWidth * 100}%)`;
-          } else {
-              style.left = `calc(${hingeCenterInProfile / doorWidth * 100}%)`;
-          }
-          return <div key={index} className="absolute bg-red-500 rounded-full" style={style}></div>;
-        })}
-         <HandleVisualizer mirrored={mirrored} />
-      </div>
-    );
-  };
-  
     const VisualizerContainer = () => {
         const containerRef = useRef<HTMLDivElement>(null);
         const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
@@ -421,12 +391,12 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
             let doorDisplayWidth, doorDisplayHeight;
 
             if (isPair) {
-                const totalDrawingWidth = containerWidth - gap;
-                const potentialHeightFromWidth = (totalDrawingWidth / 2) / aspectRatio;
+                const totalAvailableWidth = containerWidth - gap;
+                const potentialHeightFromWidth = (totalAvailableWidth / 2) / aspectRatio;
                 
                 if (potentialHeightFromWidth <= containerHeight) {
                     doorDisplayHeight = potentialHeightFromWidth;
-                    doorDisplayWidth = totalDrawingWidth / 2;
+                    doorDisplayWidth = totalAvailableWidth / 2;
                 } else {
                     doorDisplayHeight = containerHeight;
                     doorDisplayWidth = doorDisplayHeight * aspectRatio;
@@ -445,6 +415,36 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
         };
 
         const doorDimensions = calculateDimensions();
+        
+        const DoorVisualizer = ({ mirrored = false, style }: { mirrored?: boolean, style?: React.CSSProperties }) => {
+            return (
+              <div
+                className={cn("relative flex items-center justify-center transition-all duration-300", profileColorClass)}
+                style={style}
+              >
+                <div className='absolute inset-0 bg-gray-300/30 backdrop-blur-sm flex items-center justify-center' style={{ margin: `${(PROFILE_WIDTH_MM / Math.min(doorWidth, doorHeight)) * 50}%`}}>
+                  <span className="text-sm text-muted-foreground text-center p-2 break-all">{doorData.glassType}</span>
+                </div>
+                {doorType === 'Giro' && hinges?.map((hinge, index) => {
+                  const hingeDiameter = 35;
+                  const style: React.CSSProperties = {
+                      bottom: `calc(${(hinge.position - (hingeDiameter/2)) / doorHeight * 100}%)`,
+                      width: `${hingeDiameter / doorWidth * 100}%`,
+                      aspectRatio: '1/1',
+                  };
+                  const hingeCenterInProfile = (PROFILE_WIDTH_MM / 2) - (hingeDiameter / 2);
+                  
+                  if (mirrored) {
+                      style.right = `calc(${hingeCenterInProfile / doorWidth * 100}%)`;
+                  } else {
+                      style.left = `calc(${hingeCenterInProfile / doorWidth * 100}%)`;
+                  }
+                  return <div key={index} className="absolute bg-red-500 rounded-full" style={style}></div>;
+                })}
+                 <HandleVisualizer mirrored={mirrored} />
+              </div>
+            );
+        };
 
         return (
             <div ref={containerRef} className="w-full h-full flex items-center justify-center p-8">
