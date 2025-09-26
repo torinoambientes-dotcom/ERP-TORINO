@@ -125,7 +125,7 @@
       "description": "Represents a single glass item required for a piece of furniture.",
       "properties": {
         "id": { "type": "string" },
-        "type": { "type": "string", "enum": ["Vidro Incolor", "Espelho", "Vidro Reflecta Incolor", "Vidro Reflecta Bronze", "Vidro Reflecta Fume"]},
+        "type": { "type": "string", "enum": ["Vidro Incolor", "Espelho", "Vidro Reflecta Incolor", "Vidro Reflecta Bronze", "Vidro Reflecta Fume", "Espelho Fumê", "Espelho Bronze"]},
         "height": { "type": "number" },
         "width": { "type": "number" },
         "quantity": { "type": "number" }

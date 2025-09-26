@@ -47,7 +47,7 @@ interface GlassCreatorModalProps {
   viewOnly?: boolean;
 }
 
-const glassTypes = ['Vidro Incolor', 'Espelho', 'Vidro Reflecta Incolor', 'Vidro Reflecta Bronze', 'Vidro Reflecta Fume'];
+const glassTypes = ['Vidro Incolor', 'Espelho', 'Vidro Reflecta Incolor', 'Vidro Reflecta Bronze', 'Vidro Reflecta Fume', 'Espelho Fumê', 'Espelho Bronze'];
 
 const glassCreatorSchema = z.object({
   shape: z.enum(['rectangle', 'circle']),

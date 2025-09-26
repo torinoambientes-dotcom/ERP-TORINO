@@ -40,7 +40,7 @@ export interface MaterialItem {
 export interface GlassItem {
   id: string;
   shape: 'rectangle' | 'circle';
-  type: 'Vidro Incolor' | 'Espelho' | 'Vidro Reflecta Incolor' | 'Vidro Reflecta Bronze' | 'Vidro Reflecta Fume';
+  type: 'Vidro Incolor' | 'Espelho' | 'Vidro Reflecta Incolor' | 'Vidro Reflecta Bronze' | 'Vidro Reflecta Fume' | 'Espelho Fumê' | 'Espelho Bronze';
   height?: number;
   width?: number;
   diameter?: number;
