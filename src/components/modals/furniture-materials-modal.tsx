@@ -174,15 +174,16 @@ export function FurnitureMaterialsModal({
   };
   
   const handleSaveProfileDoor = (doorData: Omit<ProfileDoorItem, 'id' | 'addedAt'>) => {
+    const newDoorData = {
+      ...doorData,
+      addedAt: new Date().toISOString(),
+    };
     if (doorIndexToEdit !== null) {
       const existingDoor = profileDoorFields[doorIndexToEdit];
-      updateProfileDoor(doorIndexToEdit, { ...existingDoor, ...doorData });
+      updateProfileDoor(doorIndexToEdit, { ...existingDoor, ...newDoorData });
       toast({ title: "Porta atualizada!" });
     } else {
-      appendProfileDoor({
-        ...doorData,
-        addedAt: new Date().toISOString(),
-      });
+      appendProfileDoor(newDoorData);
       toast({ title: "Porta adicionada!" });
     }
   };
@@ -205,15 +206,16 @@ export function FurnitureMaterialsModal({
   }
 
   const handleSaveGlass = (glassData: Omit<GlassItem, 'id' | 'addedAt'>) => {
+    const newGlassData = {
+      ...glassData,
+      addedAt: new Date().toISOString(),
+    };
     if (glassIndexToEdit !== null) {
       const existingGlass = glassFields[glassIndexToEdit];
-      updateGlass(glassIndexToEdit, { ...existingGlass, ...glassData });
+      updateGlass(glassIndexToEdit, { ...existingGlass, ...newGlassData });
       toast({ title: "Vidro atualizado!" });
     } else {
-      appendGlass({
-        ...glassData,
-        addedAt: new Date().toISOString(),
-      });
+      appendGlass(newGlassData);
       toast({ title: "Vidro adicionado!" });
     }
   };
