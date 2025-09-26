@@ -140,10 +140,10 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName }:
   const { width: doorWidth, height: doorHeight, hinges } = doorData;
 
   const profileColorClass = {
-    'Preto': 'border-gray-800',
-    'Aluminio': 'border-gray-400',
-    'Inox': 'border-gray-500'
-  }[doorData.profileColor] || 'border-gray-700';
+    'Preto': 'bg-gray-800',
+    'Aluminio': 'bg-gray-400',
+    'Inox': 'bg-gray-500'
+  }[doorData.profileColor] || 'bg-gray-700';
 
   const PROFILE_WIDTH_MM = 45;
 
@@ -189,7 +189,7 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName }:
             <div ref={doorVisualizerRef} className="flex flex-col items-center justify-center bg-muted/30 rounded-lg relative h-full border p-4 gap-4">
                 <div className="w-full h-full flex items-center justify-center p-8">
                     <div
-                      className={cn("relative bg-background/50 flex items-center justify-center transition-all duration-300")}
+                      className={cn("relative bg-transparent flex items-center justify-center transition-all duration-300", profileColorClass)}
                       style={{
                         aspectRatio: `${doorWidth} / ${doorHeight}`,
                         width: (doorWidth / doorHeight) > 1 ? '100%' : 'auto',
@@ -198,7 +198,6 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName }:
                         maxWidth: '100%',
                       }}
                     >
-                      <div className={cn('absolute inset-0', profileColorClass)} style={{borderWidth: `${(PROFILE_WIDTH_MM / doorWidth) * 100}%`}}></div>
                       <div className='absolute inset-0 bg-gray-300/30 backdrop-blur-sm flex items-center justify-center' style={{ margin: `${(PROFILE_WIDTH_MM / doorWidth) * 100}%`}}>
                         <span className="text-sm text-muted-foreground text-center p-2 break-all">{doorData.glassType}</span>
                       </div>
