@@ -30,10 +30,12 @@ import type { Project, Furniture, Environment } from '@/lib/types';
 import { generateId } from '@/lib/utils';
 
 const furnitureSchema = z.object({
+  id: z.string().optional(),
   name: z.string().min(1, 'Nome do móvel é obrigatório.'),
 });
 
 const environmentSchema = z.object({
+  id: z.string().optional(),
   name: z.string().min(1, 'Nome do ambiente é obrigatório.'),
   furniture: z.array(furnitureSchema).min(1, 'Adicione ao menos um móvel.'),
 });
@@ -93,7 +95,7 @@ export function RegisterProjectModal({
           clientName: projectToEdit.clientName,
           // No modo de edição, começa com campos vazios para adicionar novos ambientes/móveis.
           // Os existentes não são mostrados para manter a UI simples.
-          environments: [{ name: '', furniture: [{ name: '' }] }],
+          environments: projectToEdit.environments,
         });
       } else {
         form.reset(defaultValues);
@@ -105,61 +107,48 @@ export function RegisterProjectModal({
   const onSubmit = (data: ProjectFormValues) => {
     if (isEditMode && projectToEdit) {
       // Filtra ambientes e móveis vazios antes de submeter
-      const newValidEnvironments: Environment[] = data.environments
+      const updatedEnvironments: Environment[] = data.environments
         .filter(env => env.name.trim() !== '' && env.furniture.some(fur => fur.name.trim() !== ''))
         .map(env => ({
-          id: generateId('env'),
+          id: env.id || generateId('env'),
           name: env.name,
           furniture: env.furniture
             .filter(fur => fur.name.trim() !== '')
-            .map(fur => ({
-              id: generateId('fur'),
-              name: fur.name,
-              measurement: { status: 'todo' as const },
-              cutting: { status: 'todo' as const },
-              purchase: { status: 'todo' as const },
-              assembly: { status: 'todo' as const },
-              comments: [],
-              pendencies: [],
-              materials: [],
-              glassItems: [],
-              profileDoors: [],
-            }))
+            .map(fur => {
+              const existingFur = projectToEdit.environments
+                .flatMap(e => e.furniture)
+                .find(f => f.id === (fur as any).id);
+
+              return existingFur ? existingFur : {
+                id: generateId('fur'),
+                name: fur.name,
+                measurement: { status: 'todo' as const },
+                cutting: { status: 'todo' as const },
+                purchase: { status: 'todo' as const },
+                assembly: { status: 'todo' as const },
+                comments: [],
+                pendencies: [],
+                materials: [],
+                glassItems: [],
+                profileDoors: [],
+              };
+            })
         }));
-
-      if (newValidEnvironments.length === 0) {
-        toast({
-          variant: "destructive",
-          title: 'Nenhuma alteração detectada',
-          description: `Preencha pelo menos um novo ambiente e um móvel para adicionar.`,
-        });
-        return;
-      }
-
+      
       const updatedProject: Project = {
         ...projectToEdit,
-        clientName: data.clientName, // Permite atualizar o nome do cliente
-        environments: [...projectToEdit.environments, ...newValidEnvironments],
+        clientName: data.clientName,
+        environments: updatedEnvironments,
       };
       
       updateProject(updatedProject);
       toast({
         title: 'Projeto atualizado!',
-        description: `Novos ambientes foram adicionados ao projeto de "${data.clientName}".`,
+        description: `O projeto de "${data.clientName}" foi atualizado.`,
       });
 
     } else { // Modo de Criação
-      const projectWithHandleType = {
-        ...data,
-        environments: data.environments.map(env => ({
-          ...env,
-          furniture: env.furniture.map(fur => ({
-            ...fur,
-            profileDoors: fur.profileDoors ? fur.profileDoors.map(pd => ({...pd, handleType: 'Linear inteiro'})) : []
-          }))
-        }))
-      };
-      addProject(projectWithHandleType);
+      addProject(data);
       toast({
           title: 'Projeto cadastrado!',
           description: `O projeto para "${data.clientName}" foi criado com sucesso.`,
@@ -196,7 +185,7 @@ export function RegisterProjectModal({
             <Separator />
 
             <div>
-              <h3 className="text-lg font-medium mb-2 font-headline">{isEditMode ? "Adicionar Novos Ambientes" : "Ambientes"}</h3>
+              <h3 className="text-lg font-medium mb-2 font-headline">{isEditMode ? "Editar Ambientes" : "Ambientes"}</h3>
               {envFields.map((envField, envIndex) => (
                 <div key={envField.id} className="p-4 border rounded-lg mb-4 space-y-4 bg-muted/50 relative">
                    <Button
@@ -221,7 +210,7 @@ export function RegisterProjectModal({
                       </FormItem>
                     )}
                   />
-                  <FurnitureArray control={form.control} envIndex={envIndex} />
+                  <FurnitureArray control={form.control} envIndex={envIndex} isEditMode={isEditMode} />
                 </div>
               ))}
               <Button
@@ -251,7 +240,7 @@ export function RegisterProjectModal({
 }
 
 
-function FurnitureArray({ control, envIndex }: { control: any, envIndex: number }) {
+function FurnitureArray({ control, envIndex, isEditMode }: { control: any, envIndex: number, isEditMode: boolean }) {
   const { fields, append, remove } = useFieldArray({
     control,
     name: `environments.${envIndex}.furniture`,

@@ -152,9 +152,6 @@ export function FurnitureMaterialsModal({
   const handleAddProfileDoor = (newDoor: Omit<ProfileDoorItem, 'id'>) => {
     appendProfileDoor({
       ...newDoor,
-      profileColor: newDoor.profileColor as any,
-      glassType: newDoor.glassType as any,
-      handleType: newDoor.handleType as any,
     });
   };
 
@@ -179,116 +176,34 @@ export function FurnitureMaterialsModal({
                 
                 <div>
                   <h3 className="text-lg font-semibold mb-2">Portas de Perfil</h3>
-                  <div className="space-y-4">
-                    {profileDoorFields.map((field, index) => (
-                       <div
-                        key={field.id}
-                        className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_1fr_auto_auto_auto_auto] items-end gap-2 p-3 rounded-lg bg-muted/50 border"
-                      >
-                         <FormField
-                          control={form.control}
-                          name={`profileDoors.${index}.profileColor`}
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Cor do Perfil</FormLabel>
-                              <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                <FormControl>
-                                  <SelectTrigger>
-                                    <SelectValue placeholder="Selecione..." />
-                                  </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                  {profileColors.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-                                </SelectContent>
-                              </Select>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                         <FormField
-                          control={form.control}
-                          name={`profileDoors.${index}.glassType`}
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Tipo de Vidro</FormLabel>
-                              <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                <FormControl>
-                                  <SelectTrigger>
-                                    <SelectValue placeholder="Selecione..." />
-                                  </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                  {profileGlassTypes.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-                                </SelectContent>
-                              </Select>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name={`profileDoors.${index}.handleType`}
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Puxador</FormLabel>
-                              <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                <FormControl>
-                                  <SelectTrigger>
-                                    <SelectValue placeholder="Selecione..." />
-                                  </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                  {handleTypes.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-                                </SelectContent>
-                              </Select>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name={`profileDoors.${index}.quantity`}
-                          render={({ field }) => (
-                            <FormItem className="w-20">
-                              <FormLabel>Qtd.</FormLabel>
-                              <FormControl><Input type="number" {...field} /></FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name={`profileDoors.${index}.width`}
-                          render={({ field }) => (
-                            <FormItem className="w-24">
-                              <FormLabel>Largura (mm)</FormLabel>
-                              <FormControl><Input type="number" {...field} /></FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name={`profileDoors.${index}.height`}
-                          render={({ field }) => (
-                            <FormItem className="w-24">
-                              <FormLabel>Altura (mm)</FormLabel>
-                              <FormControl><Input type="number" {...field} /></FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
+                  <div className="space-y-2">
+                    {profileDoorFields.length > 0 ? (
+                      profileDoorFields.map((field, index) => (
+                       <div key={field.id} className="flex items-center justify-between rounded-lg border p-3 gap-2 bg-muted/50 text-sm">
+                          <div>
+                            <p className="font-medium">
+                                {field.quantity}x Porta {field.profileColor} / Vidro {field.glassType}
+                            </p>
+                            <p className="text-muted-foreground">
+                                {field.width}mm x {field.height}mm - Puxador: {field.handleType}
+                            </p>
+                          </div>
                          <Button
                           type="button"
                           variant="ghost"
                           size="icon"
-                          className="text-destructive/80 hover:text-destructive h-10 w-10"
+                          className="text-destructive/80 hover:text-destructive h-9 w-9 flex-shrink-0"
                           onClick={() => removeProfileDoor(index)}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
                        </div>
-                    ))}
+                    ))
+                    ) : (
+                      <p className="text-sm text-muted-foreground text-center py-4">
+                        Nenhuma porta de perfil adicionada.
+                      </p>
+                    )}
                   </div>
                    <Button
                       type="button"
