@@ -117,7 +117,7 @@ export function FurnitureMaterialsModal({
     },
   });
 
-  const isPurchased = furniture.purchase?.status === 'done';
+  const isPurchased = useMemo(() => furniture.purchase?.status === 'done', [furniture.purchase]);
 
   const { fields: materialFields, append: appendMaterial, remove: removeMaterial } = useFieldArray({
     control: form.control,
@@ -145,10 +145,6 @@ export function FurnitureMaterialsModal({
   }, [isOpen, furniture, form]);
 
   const onSubmit = (data: MaterialFormValues) => {
-    if (isPurchased) {
-        onClose();
-        return;
-    }
     const updatedFurniture: Furniture = {
       ...furniture,
       materials: data.materials.map(m => (m.id ? m : { ...m, id: generateId('mat') })),
@@ -243,9 +239,9 @@ export function FurnitureMaterialsModal({
         {isPurchased && furniture.purchase?.completedAt && (
             <Alert variant="default" className="bg-green-100 border-green-200 text-green-800">
                 <CheckCircle className="h-4 w-4 !text-green-800" />
-                <AlertTitle>Compra Finalizada</AlertTitle>
+                <AlertTitle>Compra Principal Finalizada</AlertTitle>
                 <AlertDescription>
-                    Estes materiais foram marcados como comprados em {format(new Date(furniture.purchase.completedAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}. A edição está desativada.
+                    Os materiais originais foram marcados como comprados em {format(new Date(furniture.purchase.completedAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}. Você pode adicionar novos itens se necessário.
                 </AlertDescription>
             </Alert>
         )}
@@ -253,7 +249,7 @@ export function FurnitureMaterialsModal({
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="flex-grow flex flex-col overflow-hidden">
             <ScrollArea className="flex-grow pr-4 -mr-4 pt-4">
-              <fieldset disabled={isPurchased} className="space-y-6">
+              <div className="space-y-6">
                 
                 <div>
                   <h3 className="text-lg font-semibold mb-2">Portas de Perfil</h3>
@@ -276,6 +272,7 @@ export function FurnitureMaterialsModal({
                             size="icon"
                             className="text-muted-foreground hover:text-primary h-9 w-9 flex-shrink-0"
                             onClick={() => handleOpenDoorEditor(index)}
+                            disabled={isPurchased}
                           >
                             <Pencil className="h-4 w-4" />
                           </Button>
@@ -285,6 +282,7 @@ export function FurnitureMaterialsModal({
                             size="icon"
                             className="text-destructive/80 hover:text-destructive h-9 w-9 flex-shrink-0"
                             onClick={() => removeProfileDoor(index)}
+                            disabled={isPurchased}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -297,7 +295,7 @@ export function FurnitureMaterialsModal({
                       </p>
                     )}
                   </div>
-                  {!isPurchased && (
+                  
                    <Button
                       type="button"
                       variant="outline"
@@ -308,7 +306,6 @@ export function FurnitureMaterialsModal({
                       <PlusCircle className="mr-2 h-4 w-4" />
                       Adicionar Porta de Perfil
                     </Button>
-                  )}
                 </div>
 
                 <Separator />
@@ -334,6 +331,7 @@ export function FurnitureMaterialsModal({
                             size="icon"
                             className="text-muted-foreground hover:text-primary h-9 w-9 flex-shrink-0"
                             onClick={() => handleOpenGlassEditor(index)}
+                            disabled={isPurchased}
                           >
                             <Pencil className="h-4 w-4" />
                           </Button>
@@ -343,6 +341,7 @@ export function FurnitureMaterialsModal({
                             size="icon"
                             className="text-destructive/80 hover:text-destructive h-9 w-9 flex-shrink-0"
                             onClick={() => removeGlass(index)}
+                            disabled={isPurchased}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -355,7 +354,7 @@ export function FurnitureMaterialsModal({
                       </p>
                     )}
                   </div>
-                  {!isPurchased && (
+                  
                    <Button
                       type="button"
                       variant="outline"
@@ -366,7 +365,6 @@ export function FurnitureMaterialsModal({
                       <PlusCircle className="mr-2 h-4 w-4" />
                       Adicionar Vidraçaria
                     </Button>
-                  )}
                 </div>
 
                 <Separator />
@@ -380,63 +378,64 @@ export function FurnitureMaterialsModal({
                           key={field.id}
                           className="flex items-end gap-2 p-3 rounded-lg bg-muted/50 border"
                         >
-                          <FormField
-                            control={form.control}
-                            name={`materials.${index}.name`}
-                            render={({ field }) => (
-                              <FormItem className="flex-grow">
-                                <FormLabel>Material</FormLabel>
-                                <FormControl>
-                                  <Input placeholder="Ex: MDF Branco 18mm" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                           <FormField
-                            control={form.control}
-                            name={`materials.${index}.quantity`}
-                            render={({ field }) => (
-                              <FormItem className="w-24">
-                                <FormLabel>Qtd.</FormLabel>
-                                <FormControl>
-                                  <Input type="number" {...field} />
-                                </FormControl>
-                                 <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          <FormField
-                            control={form.control}
-                            name={`materials.${index}.unit`}
-                            render={({ field }) => (
-                              <FormItem className="w-32">
-                                <FormLabel>Unidade</FormLabel>
-                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <fieldset disabled={isPurchased} className="flex items-end gap-2 flex-grow">
+                            <FormField
+                              control={form.control}
+                              name={`materials.${index}.name`}
+                              render={({ field }) => (
+                                <FormItem className="flex-grow">
+                                  <FormLabel>Material</FormLabel>
                                   <FormControl>
-                                    <SelectTrigger>
-                                      <SelectValue placeholder="Unid." />
-                                    </SelectTrigger>
+                                    <Input placeholder="Ex: MDF Branco 18mm" {...field} />
                                   </FormControl>
-                                  <SelectContent>
-                                    {units.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
-                                  </SelectContent>
-                                </Select>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          {!isPurchased && (
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                            <FormField
+                              control={form.control}
+                              name={`materials.${index}.quantity`}
+                              render={({ field }) => (
+                                <FormItem className="w-24">
+                                  <FormLabel>Qtd.</FormLabel>
+                                  <FormControl>
+                                    <Input type="number" {...field} />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                            <FormField
+                              control={form.control}
+                              name={`materials.${index}.unit`}
+                              render={({ field }) => (
+                                <FormItem className="w-32">
+                                  <FormLabel>Unidade</FormLabel>
+                                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                    <FormControl>
+                                      <SelectTrigger>
+                                        <SelectValue placeholder="Unid." />
+                                      </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                      {units.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
+                                    </SelectContent>
+                                  </Select>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </fieldset>
                           <Button
                             type="button"
                             variant="ghost"
                             size="icon"
-                            className="text-destructive/80 hover:text-destructive h-10 w-10"
+                            className="text-destructive/80 hover:text-destructive h-10 w-10 flex-shrink-0"
                             onClick={() => removeMaterial(index)}
+                            disabled={isPurchased}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
-                          )}
                         </div>
                       ))
                     ) : (
@@ -445,7 +444,7 @@ export function FurnitureMaterialsModal({
                       </p>
                     )}
                   </div>
-                  {!isPurchased && (
+                  
                    <Button
                       type="button"
                       variant="outline"
@@ -456,18 +455,15 @@ export function FurnitureMaterialsModal({
                       <PlusCircle className="mr-2 h-4 w-4" />
                       Adicionar Material Geral
                     </Button>
-                  )}
                 </div>
-              </fieldset>
+              </div>
             </ScrollArea>
             
             <DialogFooter className="mt-4 pt-4 border-t">
-              <Button type="button" variant={isPurchased ? 'default' : 'ghost'} onClick={onClose}>
-                {isPurchased ? 'Fechar' : 'Cancelar'}
+              <Button type="button" variant="ghost" onClick={onClose}>
+                Cancelar
               </Button>
-              {!isPurchased && (
-              <Button type="submit">Salvar Materiais</Button>
-              )}
+              <Button type="submit">Salvar Alterações</Button>
             </DialogFooter>
           </form>
         </Form>
@@ -480,7 +476,7 @@ export function FurnitureMaterialsModal({
             onSave={handleSaveProfileDoor}
             clientName={clientName}
             doorToEdit={doorToEdit}
-            viewOnly={isPurchased}
+            viewOnly={isPurchased && !!doorToEdit}
         />
     )}
     {isOpen && (
@@ -489,7 +485,7 @@ export function FurnitureMaterialsModal({
         onClose={handleCloseGlassEditor}
         onSave={handleSaveGlass}
         glassToEdit={glassToEdit}
-        viewOnly={isPurchased}
+        viewOnly={isPurchased && !!glassToEdit}
       />
     )}
     </>
