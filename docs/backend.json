@@ -128,7 +128,8 @@
         "type": { "type": "string", "enum": ["Vidro Incolor", "Espelho", "Vidro Reflecta Incolor", "Vidro Reflecta Bronze", "Vidro Reflecta Fume", "Espelho Fumê", "Espelho Bronze"]},
         "height": { "type": "number" },
         "width": { "type": "number" },
-        "quantity": { "type": "number" }
+        "quantity": { "type": "number" },
+        "isBeveled": { "type": "boolean", "description": "Indicates if the glass has a beveled edge." }
       },
       "required": ["id", "type", "height", "width", "quantity"]
     },

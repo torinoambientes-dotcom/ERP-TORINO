@@ -54,6 +54,7 @@ export interface GlassItem {
   frostedStripRight?: number;
   frostedStripWidth?: number;
   frostedStripCircularOffset?: number;
+  isBeveled?: boolean;
   addedAt?: string; // ISO date string
 }
 

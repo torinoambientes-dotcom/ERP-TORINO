@@ -57,6 +57,7 @@ const glassCreatorSchema = z.object({
   diameter: z.coerce.number().optional(),
   quantity: z.coerce.number().min(1, 'A quantidade mínima é 1.'),
   cornerRadius: z.coerce.number().min(0, 'O raio não pode ser negativo.').optional(),
+  isBeveled: z.boolean().default(false),
   hasFrostedStrips: z.boolean().default(false),
   frostedStripWidth: z.coerce.number().min(0, 'A largura não pode ser negativa.').optional(),
   frostedStripTop: z.coerce.number().min(0, 'Offset não pode ser negativo.').optional(),
@@ -106,6 +107,7 @@ export function GlassCreatorModal({ isOpen, onClose, onSave, glassToEdit, client
       diameter: 500,
       quantity: 1,
       cornerRadius: 0,
+      isBeveled: false,
       hasFrostedStrips: false,
       frostedStripWidth: 50,
       frostedStripTop: 0,
@@ -122,6 +124,7 @@ export function GlassCreatorModal({ isOpen, onClose, onSave, glassToEdit, client
         form.reset({
           ...glassToEdit,
           shape: glassToEdit.shape || 'rectangle',
+          isBeveled: glassToEdit.isBeveled || false,
           hasFrostedStrips: glassToEdit.hasFrostedStrips || false,
           frostedStripWidth: glassToEdit.frostedStripWidth || 50,
           frostedStripTop: glassToEdit.frostedStripTop || 0,
@@ -139,6 +142,7 @@ export function GlassCreatorModal({ isOpen, onClose, onSave, glassToEdit, client
           diameter: 500,
           quantity: 1,
           cornerRadius: 0,
+          isBeveled: false,
           hasFrostedStrips: false,
           frostedStripWidth: 50,
           frostedStripTop: 0,
@@ -159,6 +163,7 @@ export function GlassCreatorModal({ isOpen, onClose, onSave, glassToEdit, client
 
   const glassData = form.watch();
   const hasFrostedStripsFeature = form.watch('hasFrostedStrips');
+  const isBeveled = form.watch('isBeveled');
   const shape = form.watch('shape');
 
   const generatePDF = () => {
@@ -195,6 +200,10 @@ export function GlassCreatorModal({ isOpen, onClose, onSave, glassToEdit, client
         writeSpec('Raio do Canto', `${data.cornerRadius || 0} mm`);
     }
 
+    if (data.isBeveled) {
+      writeSpec('Acabamento', 'Bisotê');
+    }
+
     if (data.hasFrostedStrips && data.frostedStripWidth) {
         currentY += 2;
         doc.setFontSize(11);
@@ -227,6 +236,17 @@ export function GlassCreatorModal({ isOpen, onClose, onSave, glassToEdit, client
         doc.ellipse(startX + drawWidth / 2, startY + drawHeight / 2, drawWidth / 2, drawHeight / 2, 'FD');
     } else {
         doc.roundedRect(startX, startY, drawWidth, drawHeight, drawRadius, drawRadius, 'FD');
+    }
+
+    if (data.isBeveled) {
+      doc.setDrawColor(150);
+      doc.setLineWidth(0.5);
+      const bevelOffset = 2 * scale; // 2mm bevel visual representation
+      if (data.shape === 'circle') {
+        doc.ellipse(startX + drawWidth / 2, startY + drawHeight / 2, (drawWidth / 2) - bevelOffset, (drawHeight / 2) - bevelOffset, 'D');
+      } else {
+        doc.roundedRect(startX + bevelOffset, startY + bevelOffset, drawWidth - 2 * bevelOffset, drawHeight - 2 * bevelOffset, drawRadius, drawRadius, 'D');
+      }
     }
 
     if (data.hasFrostedStrips && data.frostedStripWidth) {
@@ -267,6 +287,7 @@ const GlassVisualizer = () => {
         diameter = 0,
         cornerRadius = 0,
         type,
+        isBeveled,
         hasFrostedStrips,
         frostedStripWidth = 0,
         frostedStripTop = 0,
@@ -297,9 +318,24 @@ const GlassVisualizer = () => {
     const showStrips = hasFrostedStrips && frostedStripWidth > 0;
 
     return (
-        <div style={outerStyle} className={glassColorClass}>
+        <div style={outerStyle} className={cn(glassColorClass, 'shadow-md')}>
             <div className="absolute inset-0 flex items-center justify-center text-xs text-muted-foreground text-center p-2 break-words">{type}</div>
             
+            {isBeveled && (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: '5px',
+                  bottom: '5px',
+                  left: '5px',
+                  right: '5px',
+                  borderRadius: 'inherit',
+                  border: '1px dashed rgba(0,0,0,0.3)',
+                  boxSizing: 'border-box'
+                }}
+              ></div>
+            )}
+
             {showStrips && (
                 isCircle ? (
                     <div
@@ -310,7 +346,7 @@ const GlassVisualizer = () => {
                             left: `${frostedStripCircularOffset * scaleFactor}px`,
                             right: `${frostedStripCircularOffset * scaleFactor}px`,
                             borderRadius: '50%',
-                            border: `${frostedStripWidth * scaleFactor}px solid yellow`,
+                            border: `${frostedStripWidth * scaleFactor}px solid rgba(255, 255, 0, 0.8)`,
                             boxSizing: 'border-box'
                         }}
                     ></div>
@@ -323,7 +359,7 @@ const GlassVisualizer = () => {
                             left: `${frostedStripLeft * scaleFactor}px`,
                             right: `${frostedStripRight * scaleFactor}px`,
                             borderRadius: 'inherit',
-                            border: `${frostedStripWidth * scaleFactor}px solid yellow`,
+                            border: `${frostedStripWidth * scaleFactor}px solid rgba(255, 255, 0, 0.8)`,
                             boxSizing: 'border-box'
                         }}
                     ></div>
@@ -411,10 +447,27 @@ const GlassVisualizer = () => {
                     <FormField control={form.control} name="quantity" render={({ field }) => ( <FormItem><FormLabel>Quantidade</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )}/>
                 </div>
               )}
-
+                
                 <Separator />
-
-                <div>
+                
+                <div className="space-y-4">
+                    <FormField
+                      control={form.control}
+                      name="isBeveled"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm bg-muted/50">
+                          <div className="space-y-0.5">
+                            <FormLabel>Acabamento Bisotê</FormLabel>
+                          </div>
+                          <FormControl>
+                            <Switch
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
                     <FormField
                       control={form.control}
                       name="hasFrostedStrips"
@@ -477,6 +530,7 @@ const GlassVisualizer = () => {
                         </>
                     )}
                     <p><strong>Quantidade:</strong> {glassData.quantity}</p>
+                    {isBeveled && <p><strong>Acabamento:</strong> Bisotê</p>}
                     {hasFrostedStripsFeature && (glassData.frostedStripWidth || 0) > 0 && (
                         <>
                             <p className='text-xs'><strong>Largura Faixa:</strong> {glassData.frostedStripWidth}mm</p>
