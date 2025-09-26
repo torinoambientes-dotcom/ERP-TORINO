@@ -25,6 +25,7 @@ import {
 import type { TeamMember } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { getInitials } from '@/lib/utils';
 
 export default function TeamPage() {
   const { teamMembers, deleteTeamMember, isLoading } = useContext(AppContext);
@@ -80,15 +81,6 @@ export default function TeamPage() {
     }
     handleCloseAlert();
   };
-  
-    const getInitials = (name: string) => {
-      if (!name) return '';
-      const names = name.split(' ');
-      if (names.length > 1) {
-        return `${names[0][0]}${names[names.length - 1][0]}`.toUpperCase();
-      }
-      return name.substring(0, 2).toUpperCase();
-    };
 
   const renderMemberList = (members: TeamMember[]) => {
     if (members.length === 0) {

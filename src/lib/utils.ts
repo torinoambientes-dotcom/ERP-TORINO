@@ -8,3 +8,12 @@ export function cn(...inputs: ClassValue[]) {
 export function generateId(prefix: string) {
   return `${prefix}_${Math.random().toString(36).substring(2, 10)}`;
 }
+
+export const getInitials = (name: string) => {
+  if (!name) return '';
+  const names = name.split(' ');
+  if (names.length > 1) {
+    return `${names[0][0]}${names[names.length - 1][0]}`.toUpperCase();
+  }
+  return name.substring(0, 2).toUpperCase();
+};

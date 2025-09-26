@@ -36,11 +36,14 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { getInitials } from '@/lib/utils';
 
 interface GeneralPendency extends Pendency {
   projectName: string;
   environmentName: string;
   furnitureName: string;
+  isAssignedToMember: boolean;
 }
 
 const statusColors = {
@@ -64,7 +67,7 @@ const SawBladeBar = (props: any) => {
     pathData += ` L${currentX + toothWidth / 2},${y}`;
     pathData += ` L${currentX + toothWidth},${y + toothHeight}`;
   }
-   pathData += ` L${x + width},${y + toothHeight} L${x + width},${y + height} Z`;
+   pathData += ` L${x + width},${y + height} Z`;
 
 
   return <path d={pathData} fill={fill} />;
@@ -80,6 +83,7 @@ export default function ReportsPage() {
 
   const [isPendenciesOpen, setIsPendenciesOpen] = useState(true);
   const [isProductivityOpen, setIsProductivityOpen] = useState(true);
+  const [selectedMemberId, setSelectedMemberId] = useState('all');
 
 
   const projectStats = useMemo(() => {
@@ -132,7 +136,11 @@ export default function ReportsPage() {
 
 
   const productivityData = useMemo(() => {
-    return teamMembers.map(member => {
+    const membersToDisplay = selectedMemberId === 'all'
+      ? teamMembers
+      : teamMembers.filter(m => m.id === selectedMemberId);
+
+    return membersToDisplay.map(member => {
       const tasks = {
         todo: 0,
         in_progress: 0,
@@ -160,7 +168,7 @@ export default function ReportsPage() {
         Concluido: tasks.done,
       };
     });
-  }, [projects, teamMembers]);
+  }, [projects, teamMembers, selectedMemberId]);
 
 
   const unresolvedPendencies = useMemo((): GeneralPendency[] => {
@@ -168,6 +176,12 @@ export default function ReportsPage() {
     projects.forEach(project => {
       project.environments.forEach(environment => {
         environment.furniture.forEach(furniture => {
+          let isAssignedToMember = false;
+          if (selectedMemberId !== 'all') {
+            const stages = ['measurement', 'cutting', 'purchase', 'assembly'] as const;
+            isAssignedToMember = stages.some(key => furniture[key]?.responsibleId === selectedMemberId);
+          }
+
           if (furniture.pendencies) {
             furniture.pendencies.forEach(pendency => {
               if (!pendency.isResolved) {
@@ -176,6 +190,7 @@ export default function ReportsPage() {
                   projectName: project.clientName,
                   environmentName: environment.name,
                   furnitureName: furniture.name,
+                  isAssignedToMember: isAssignedToMember,
                 });
               }
             });
@@ -183,15 +198,48 @@ export default function ReportsPage() {
         });
       });
     });
+
+    if (selectedMemberId !== 'all') {
+      return pendencies.filter(p => p.isAssignedToMember);
+    }
+    
     return pendencies;
-  }, [projects]);
+  }, [projects, selectedMemberId]);
 
   return (
     <div className="space-y-8">
-      <PageHeader
-        title="Relatórios"
-        description="Acompanhe a produtividade e o andamento dos projetos."
-      />
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <PageHeader
+          title="Relatórios"
+          description="Acompanhe a produtividade e o andamento dos projetos."
+        />
+        <Select value={selectedMemberId} onValueChange={setSelectedMemberId}>
+          <SelectTrigger className="w-full sm:w-[280px]">
+            <SelectValue placeholder="Filtrar por membro" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">
+                <div className="flex items-center gap-2">
+                    Equipe Completa
+                </div>
+            </SelectItem>
+            {teamMembers.map(member => (
+              <SelectItem key={member.id} value={member.id}>
+                <div className="flex items-center gap-2">
+                  <Avatar className="h-6 w-6">
+                    {member.avatarUrl && <AvatarImage src={member.avatarUrl} alt={member.name} />}
+                    <AvatarFallback style={{ backgroundColor: member.color }} className='text-xs'>
+                      {getInitials(member.name)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span>{member.name}</span>
+                </div>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         <Card>
@@ -340,7 +388,14 @@ export default function ReportsPage() {
                       {pendency.projectName} / {pendency.environmentName} / {pendency.furnitureName}
                     </p>
                   </div>
-                )) : <p className="text-sm text-muted-foreground">Nenhuma pendência em aberto.</p>}
+                )) : (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    {selectedMemberId === 'all'
+                      ? "Nenhuma pendência em aberto."
+                      : "Nenhuma pendência para o membro selecionado."
+                    }
+                  </p>
+                )}
               </div>
             </CardContent>
           </CollapsibleContent>

@@ -20,7 +20,7 @@ import { signOut } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { AppContext } from '@/context/app-context';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
-import { cn } from '@/lib/utils';
+import { cn, getInitials } from '@/lib/utils';
 
 const menuItems = [
   { href: '/', label: 'Projetos', icon: LayoutGrid, adminOnly: false },
@@ -58,15 +58,6 @@ export function SidebarNav() {
     const order = ['Projetos', 'Compras', 'Estoque', 'Relatórios', 'Equipe'];
     return order.indexOf(a.label) - order.indexOf(b.label);
   });
-  
-  const getInitials = (name: string) => {
-    if (!name) return '';
-    const names = name.split(' ');
-    if (names.length > 1) {
-      return `${names[0][0]}${names[names.length - 1][0]}`.toUpperCase();
-    }
-    return name.substring(0, 2).toUpperCase();
-  };
 
   return (
     <>

@@ -23,7 +23,7 @@ import type { Project, Furniture, StageStatus, TeamMember } from '@/lib/types';
 import { STAGE_STATUSES } from '@/lib/types';
 import { FurnitureChatModal } from '@/components/modals/furniture-chat-modal';
 import { FurnitureMaterialsModal } from '@/components/modals/furniture-materials-modal';
-import { cn } from '@/lib/utils';
+import { cn, getInitials } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ProfileDoorCreatorModal } from '@/components/modals/profile-door-creator-modal';
@@ -40,15 +40,6 @@ const statusColors: Record<StageStatus, string> = {
   todo: 'bg-amber-100 border-amber-200 text-amber-800',
   in_progress: 'bg-blue-100 border-blue-200 text-blue-800',
   done: 'bg-green-100 border-green-200 text-green-800',
-};
-
-const getInitials = (name: string) => {
-  if (!name) return '';
-  const names = name.split(' ');
-  if (names.length > 1) {
-    return `${names[0][0]}${names[names.length - 1][0]}`.toUpperCase();
-  }
-  return name.substring(0, 2).toUpperCase();
 };
 
 
