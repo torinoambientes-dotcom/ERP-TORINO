@@ -360,20 +360,15 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
     return <div style={style}></div>;
 };
 
-  const DoorVisualizer = ({ mirrored = false, scale = 1 }) => {
-    const scaledWidth = doorWidth * scale;
-    const scaledHeight = doorHeight * scale;
-  
+  const DoorVisualizer = () => {
     return (
       <div
-        className={cn("relative flex items-center justify-center transition-all duration-300", profileColorClass)}
+        className={cn("relative flex items-center justify-center transition-all duration-300 max-w-full max-h-full", profileColorClass)}
         style={{
-          aspectRatio: `${scaledWidth} / ${scaledHeight}`,
-          width: '100%',
-          height: '100%',
+          aspectRatio: `${doorWidth} / ${doorHeight}`,
         }}
       >
-        <div className='absolute inset-0 bg-gray-300/30 backdrop-blur-sm flex items-center justify-center' style={{ margin: `${(PROFILE_WIDTH_MM / doorWidth) * 100}%`}}>
+        <div className='absolute inset-0 bg-gray-300/30 backdrop-blur-sm flex items-center justify-center' style={{ margin: `${(PROFILE_WIDTH_MM / Math.min(doorWidth, doorHeight)) * 50}%`}}>
           <span className="text-sm text-muted-foreground text-center p-2 break-all">{doorData.glassType}</span>
         </div>
         {doorType === 'Giro' && hinges?.map((hinge, index) => {
@@ -384,14 +379,14 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
               aspectRatio: '1/1',
           };
           const hingeCenterInProfile = (PROFILE_WIDTH_MM / 2) - (hingeDiameter / 2);
-          if (mirrored) {
+          if (isPair) { // This assumes mirrored is true for the second door, but this component is now singular
               style.right = `calc(${hingeCenterInProfile / doorWidth * 100}%)`;
           } else {
               style.left = `calc(${hingeCenterInProfile / doorWidth * 100}%)`;
           }
           return <div key={index} className="absolute bg-red-500 rounded-full" style={style}></div>;
         })}
-         <HandleVisualizer mirrored={mirrored} />
+         <HandleVisualizer mirrored={isPair} />
       </div>
     );
   };
@@ -480,17 +475,17 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
             {/* Right Column: Visualizer */}
             <div ref={doorVisualizerRef} className="flex flex-col items-center justify-center bg-muted/30 rounded-lg relative h-full border p-4 gap-4">
                 <div className="w-full h-full flex items-center justify-center p-8">
-                <div 
-                    className="flex w-full h-full items-center justify-center gap-2"
-                    style={{ 
-                    aspectRatio: isPair ? `${doorWidth * 2} / ${doorHeight}` : `${doorWidth} / ${doorHeight}`,
-                    }}
-                >
-                    <div className="flex w-full h-full items-center justify-center gap-2">
-                        <DoorVisualizer />
-                        {isPair && <DoorVisualizer mirrored />}
+                    <div 
+                        className="flex w-full h-full items-center justify-center gap-2"
+                        style={{ 
+                            aspectRatio: isPair ? `${doorWidth * 2} / ${doorHeight}` : `${doorWidth} / ${doorHeight}`,
+                        }}
+                    >
+                         <div className="flex w-full h-full items-center justify-center gap-2 max-w-full max-h-full">
+                            <DoorVisualizer />
+                            {isPair && <DoorVisualizer />}
+                        </div>
                     </div>
-                </div>
                 </div>
                 <div className="w-full p-4 border rounded-lg bg-background text-sm">
                     <h4 className="font-bold mb-2">Especificações</h4>
@@ -530,5 +525,3 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
     </Dialog>
   );
 }
-
-    
