@@ -34,6 +34,7 @@ export interface MaterialItem {
   name: string;
   quantity: number;
   unit: string;
+  addedAt?: string; // ISO date string
 }
 
 export interface GlassItem {
@@ -49,6 +50,7 @@ export interface GlassItem {
   frostedStripLeft?: number;
   frostedStripRight?: number;
   frostedStripWidth?: number;
+  addedAt?: string; // ISO date string
 }
 
 export interface ProfileDoorItem {
@@ -67,6 +69,7 @@ export interface ProfileDoorItem {
   handleWidth?: number;
   handleOffset?: number;
   purchased?: boolean;
+  addedAt?: string; // ISO date string
 }
 
 export interface Furniture {

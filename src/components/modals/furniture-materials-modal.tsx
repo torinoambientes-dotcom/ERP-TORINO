@@ -53,6 +53,7 @@ const materialSchema = z.object({
   name: z.string().min(1, 'Nome do material é obrigatório.'),
   quantity: z.coerce.number().min(0.01, 'Quantidade deve ser positiva.'),
   unit: z.string().min(1, 'Unidade é obrigatória.'),
+  addedAt: z.string().optional(),
 });
 
 const glassSchema = z.object({
@@ -62,6 +63,7 @@ const glassSchema = z.object({
     width: z.coerce.number().min(1, "Largura é obrigatória."),
     height: z.coerce.number().min(1, "Altura é obrigatória."),
     cornerRadius: z.coerce.number().optional(),
+    addedAt: z.string().optional(),
 });
 
 const profileDoorSchema = z.object({
@@ -79,6 +81,7 @@ const profileDoorSchema = z.object({
     handlePosition: z.enum(['top', 'bottom', 'left', 'right']).optional(),
     handleWidth: z.coerce.number().optional(),
     handleOffset: z.coerce.number().optional(),
+    addedAt: z.string().optional(),
 });
 
 const formSchema = z.object({
@@ -135,16 +138,6 @@ export function FurnitureMaterialsModal({
     name: "profileDoors",
   });
 
-  const originalItems = useMemo(() => {
-    if (!purchaseTimestamp) return { materials: [], glassItems: [], profileDoors: [] };
-    
-    return {
-      materials: new Set(furniture.materials?.map(m => m.id) || []),
-      glassItems: new Set(furniture.glassItems?.map(g => g.id) || []),
-      profileDoors: new Set(furniture.profileDoors?.map(p => p.id) || []),
-    };
-  }, [purchaseTimestamp, furniture]);
-  
   useEffect(() => {
     if (isOpen) {
       form.reset({
@@ -158,9 +151,9 @@ export function FurnitureMaterialsModal({
   const onSubmit = (data: MaterialFormValues) => {
     const updatedFurniture: Furniture = {
       ...furniture,
-      materials: data.materials.map(m => (m.id ? m : { ...m, id: generateId('mat') })),
-      glassItems: data.glassItems.map(g => (g.id ? g : { ...g, id: generateId('gla') })) as GlassItem[],
-      profileDoors: data.profileDoors.map(p => (p.id ? p : { ...p, id: generateId('pfd') })) as ProfileDoorItem[],
+      materials: data.materials.map(m => (m.id ? m : { ...m, id: generateId('mat'), addedAt: new Date().toISOString() })),
+      glassItems: data.glassItems.map(g => (g.id ? g : { ...g, id: generateId('gla'), addedAt: new Date().toISOString() })) as GlassItem[],
+      profileDoors: data.profileDoors.map(p => (p.id ? p : { ...p, id: generateId('pfd'), addedAt: new Date().toISOString() })) as ProfileDoorItem[],
     };
     onUpdate(updatedFurniture);
     toast({
@@ -171,10 +164,10 @@ export function FurnitureMaterialsModal({
   };
   
   const handleAddNewMaterial = () => {
-    appendMaterial({ name: '', quantity: 1, unit: 'unidade' });
+    appendMaterial({ name: '', quantity: 1, unit: 'unidade', addedAt: new Date().toISOString() });
   };
   
-  const handleSaveProfileDoor = (doorData: Omit<ProfileDoorItem, 'id'>) => {
+  const handleSaveProfileDoor = (doorData: Omit<ProfileDoorItem, 'id' | 'addedAt'>) => {
     if (doorIndexToEdit !== null) {
       const existingDoor = profileDoorFields[doorIndexToEdit];
       updateProfileDoor(doorIndexToEdit, { ...existingDoor, ...doorData });
@@ -182,6 +175,7 @@ export function FurnitureMaterialsModal({
     } else {
       appendProfileDoor({
         ...doorData,
+        addedAt: new Date().toISOString(),
       });
       toast({ title: "Porta adicionada!" });
     }
@@ -204,7 +198,7 @@ export function FurnitureMaterialsModal({
     setDoorCreatorOpen(false);
   }
 
-  const handleSaveGlass = (glassData: Omit<GlassItem, 'id'>) => {
+  const handleSaveGlass = (glassData: Omit<GlassItem, 'id' | 'addedAt'>) => {
     if (glassIndexToEdit !== null) {
       const existingGlass = glassFields[glassIndexToEdit];
       updateGlass(glassIndexToEdit, { ...existingGlass, ...glassData });
@@ -212,6 +206,7 @@ export function FurnitureMaterialsModal({
     } else {
       appendGlass({
         ...glassData,
+        addedAt: new Date().toISOString(),
       });
       toast({ title: "Vidro adicionado!" });
     }
@@ -234,6 +229,13 @@ export function FurnitureMaterialsModal({
     setGlassCreatorOpen(false);
   };
 
+  const isOriginalItem = (itemAddedAt?: string) => {
+      if (!purchaseTimestamp || !itemAddedAt) {
+          return false;
+      }
+      return new Date(itemAddedAt) <= new Date(purchaseTimestamp);
+  };
+
   return (
     <>
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -252,7 +254,7 @@ export function FurnitureMaterialsModal({
                 <CheckCircle className="h-4 w-4 !text-green-800" />
                 <AlertTitle>Compra Principal Finalizada</AlertTitle>
                 <AlertDescription>
-                    Os materiais originais foram marcados como comprados em {format(new Date(furniture.purchase.completedAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}. Você pode adicionar novos itens se necessário.
+                    Os materiais originais foram marcados como comprados em {format(new Date(furniture.purchase.completedAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}. Você ainda pode adicionar novos itens se necessário.
                 </AlertDescription>
             </Alert>
         )}
@@ -267,8 +269,7 @@ export function FurnitureMaterialsModal({
                   <div className="space-y-2">
                     {profileDoorFields.length > 0 ? (
                       profileDoorFields.map((field, index) => {
-                       const isOriginalItem = originalItems.profileDoors.has(field.id!);
-                       const isDisabled = isPurchased && isOriginalItem;
+                       const isDisabled = isOriginalItem(field.addedAt);
                        return (
                        <div key={field.id} className={cn("flex items-center justify-between rounded-lg border p-3 gap-2 bg-muted/50 text-sm", isDisabled && "opacity-70")}>
                           <div className='flex-grow'>
@@ -330,8 +331,7 @@ export function FurnitureMaterialsModal({
                    <div className="space-y-2">
                     {glassFields.length > 0 ? (
                       glassFields.map((field, index) => {
-                        const isOriginalItem = originalItems.glassItems.has(field.id!);
-                        const isDisabled = isPurchased && isOriginalItem;
+                        const isDisabled = isOriginalItem(field.addedAt);
                         return (
                        <div key={field.id} className={cn("flex items-center justify-between rounded-lg border p-3 gap-2 bg-muted/50 text-sm", isDisabled && "opacity-70")}>
                           <div className='flex-grow'>
@@ -393,8 +393,7 @@ export function FurnitureMaterialsModal({
                    <div className="space-y-4">
                     {materialFields.length > 0 ? (
                       materialFields.map((field, index) => {
-                        const isOriginalItem = originalItems.materials.has(field.id!);
-                        const isDisabled = isPurchased && isOriginalItem;
+                        const isDisabled = isOriginalItem(field.addedAt);
                         return (
                         <div
                           key={field.id}
@@ -497,7 +496,7 @@ export function FurnitureMaterialsModal({
             onSave={handleSaveProfileDoor}
             clientName={clientName}
             doorToEdit={doorToEdit}
-            viewOnly={isPurchased && doorToEdit !== null && originalItems.profileDoors.has(doorToEdit.id)}
+            viewOnly={isOriginalItem(doorToEdit?.addedAt)}
         />
     )}
     {isOpen && (
@@ -506,7 +505,7 @@ export function FurnitureMaterialsModal({
         onClose={handleCloseGlassEditor}
         onSave={handleSaveGlass}
         glassToEdit={glassToEdit}
-        viewOnly={isPurchased && glassToEdit !== null && originalItems.glassItems.has(glassToEdit.id)}
+        viewOnly={isOriginalItem(glassToEdit?.addedAt)}
       />
     )}
     </>

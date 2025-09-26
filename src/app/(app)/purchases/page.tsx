@@ -114,34 +114,44 @@ export default function PurchasesPage() {
     const activeProjects = projects.filter(p => !p.completedAt);
 
     activeProjects.forEach(project => {
-      const projectEnvironments: ShoppingList[string]['environments'] = {};
+        const projectEnvironments: ShoppingList[string]['environments'] = {};
 
-      project.environments.forEach(environment => {
-        const environmentFurnitures: ShoppingList[string]['environments'][string]['furnitures'] = {};
+        project.environments.forEach(environment => {
+            const environmentFurnitures: ShoppingList[string]['environments'][string]['furnitures'] = {};
 
-        environment.furniture.forEach(furniture => {
-          if (furniture.purchase?.status !== 'done' && furniture.materials && furniture.materials.length > 0) {
-            environmentFurnitures[furniture.name] = {
-              id: furniture.id,
-              materials: furniture.materials.sort((a,b) => a.name.localeCompare(b.name)),
-            };
-          }
+            environment.furniture.forEach(furniture => {
+                const materialsToPurchase = (furniture.materials || []).filter(material => {
+                    if (furniture.purchase?.status !== 'done') {
+                        return true;
+                    }
+                    if (furniture.purchase.completedAt && material.addedAt) {
+                        return new Date(material.addedAt) > new Date(furniture.purchase.completedAt);
+                    }
+                    return false;
+                });
+
+                if (materialsToPurchase.length > 0) {
+                    environmentFurnitures[furniture.name] = {
+                        id: furniture.id,
+                        materials: materialsToPurchase.sort((a, b) => a.name.localeCompare(b.name)),
+                    };
+                }
+            });
+
+            if (Object.keys(environmentFurnitures).length > 0) {
+                projectEnvironments[environment.name] = {
+                    id: environment.id,
+                    furnitures: environmentFurnitures,
+                };
+            }
         });
 
-        if (Object.keys(environmentFurnitures).length > 0) {
-          projectEnvironments[environment.name] = {
-            id: environment.id,
-            furnitures: environmentFurnitures,
-          };
+        if (Object.keys(projectEnvironments).length > 0) {
+            list[project.clientName] = {
+                id: project.id,
+                environments: projectEnvironments,
+            };
         }
-      });
-
-      if (Object.keys(projectEnvironments).length > 0) {
-        list[project.clientName] = {
-          id: project.id,
-          environments: projectEnvironments,
-        };
-      }
     });
 
     return list;
@@ -160,8 +170,8 @@ export default function PurchasesPage() {
             environment.furniture.forEach(furniture => {
                 const items = (furniture.glassItems || [])
                     .filter(item => {
-                        const isPurchased = item.purchased === true;
-                        return showPurchasedGlass ? isPurchased : (!item.purchased);
+                        const isPurchased = !!item.purchased;
+                        return showPurchasedGlass ? isPurchased : !isPurchased;
                     })
                     .map(item => ({...item, projectId: project.id, envId: environment.id, furId: furniture.id }));
 
@@ -205,8 +215,8 @@ export default function PurchasesPage() {
             environment.furniture.forEach(furniture => {
                 const items = (furniture.profileDoors || [])
                     .filter(item => {
-                        const isPurchased = item.purchased === true;
-                        return showPurchasedDoors ? isPurchased : (!item.purchased);
+                        const isPurchased = !!item.purchased;
+                        return showPurchasedDoors ? isPurchased : !isPurchased;
                     })
                     .map(item => ({...item, projectId: project.id, envId: environment.id, furId: furniture.id }));
 
