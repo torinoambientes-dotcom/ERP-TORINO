@@ -118,6 +118,7 @@ export function FurnitureMaterialsModal({
   });
 
   const isPurchased = useMemo(() => furniture.purchase?.status === 'done', [furniture.purchase]);
+  const purchaseTimestamp = useMemo(() => furniture.purchase?.completedAt, [furniture.purchase]);
 
   const { fields: materialFields, append: appendMaterial, remove: removeMaterial } = useFieldArray({
     control: form.control,
@@ -133,6 +134,16 @@ export function FurnitureMaterialsModal({
     control: form.control,
     name: "profileDoors",
   });
+
+  const originalItems = useMemo(() => {
+    if (!purchaseTimestamp) return { materials: [], glassItems: [], profileDoors: [] };
+    
+    return {
+      materials: new Set(furniture.materials?.map(m => m.id) || []),
+      glassItems: new Set(furniture.glassItems?.map(g => g.id) || []),
+      profileDoors: new Set(furniture.profileDoors?.map(p => p.id) || []),
+    };
+  }, [purchaseTimestamp, furniture]);
   
   useEffect(() => {
     if (isOpen) {
@@ -255,8 +266,11 @@ export function FurnitureMaterialsModal({
                   <h3 className="text-lg font-semibold mb-2">Portas de Perfil</h3>
                   <div className="space-y-2">
                     {profileDoorFields.length > 0 ? (
-                      profileDoorFields.map((field, index) => (
-                       <div key={field.id} className="flex items-center justify-between rounded-lg border p-3 gap-2 bg-muted/50 text-sm">
+                      profileDoorFields.map((field, index) => {
+                       const isOriginalItem = originalItems.profileDoors.has(field.id!);
+                       const isDisabled = isPurchased && isOriginalItem;
+                       return (
+                       <div key={field.id} className={cn("flex items-center justify-between rounded-lg border p-3 gap-2 bg-muted/50 text-sm", isDisabled && "opacity-70")}>
                           <div className='flex-grow'>
                             <p className="font-medium">
                                 {field.quantity}x Porta {field.profileColor} / Vidro {field.glassType}
@@ -272,7 +286,7 @@ export function FurnitureMaterialsModal({
                             size="icon"
                             className="text-muted-foreground hover:text-primary h-9 w-9 flex-shrink-0"
                             onClick={() => handleOpenDoorEditor(index)}
-                            disabled={isPurchased}
+                            disabled={isDisabled}
                           >
                             <Pencil className="h-4 w-4" />
                           </Button>
@@ -282,13 +296,14 @@ export function FurnitureMaterialsModal({
                             size="icon"
                             className="text-destructive/80 hover:text-destructive h-9 w-9 flex-shrink-0"
                             onClick={() => removeProfileDoor(index)}
-                            disabled={isPurchased}
+                            disabled={isDisabled}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
                          </div>
                        </div>
-                    ))
+                       );
+                    })
                     ) : (
                       <p className="text-sm text-muted-foreground text-center py-4">
                         Nenhuma porta de perfil adicionada.
@@ -314,8 +329,11 @@ export function FurnitureMaterialsModal({
                   <h3 className="text-lg font-semibold mb-2">Vidraçaria</h3>
                    <div className="space-y-2">
                     {glassFields.length > 0 ? (
-                      glassFields.map((field, index) => (
-                       <div key={field.id} className="flex items-center justify-between rounded-lg border p-3 gap-2 bg-muted/50 text-sm">
+                      glassFields.map((field, index) => {
+                        const isOriginalItem = originalItems.glassItems.has(field.id!);
+                        const isDisabled = isPurchased && isOriginalItem;
+                        return (
+                       <div key={field.id} className={cn("flex items-center justify-between rounded-lg border p-3 gap-2 bg-muted/50 text-sm", isDisabled && "opacity-70")}>
                           <div className='flex-grow'>
                             <p className="font-medium">
                                 {field.quantity}x {field.type}
@@ -331,7 +349,7 @@ export function FurnitureMaterialsModal({
                             size="icon"
                             className="text-muted-foreground hover:text-primary h-9 w-9 flex-shrink-0"
                             onClick={() => handleOpenGlassEditor(index)}
-                            disabled={isPurchased}
+                            disabled={isDisabled}
                           >
                             <Pencil className="h-4 w-4" />
                           </Button>
@@ -341,13 +359,14 @@ export function FurnitureMaterialsModal({
                             size="icon"
                             className="text-destructive/80 hover:text-destructive h-9 w-9 flex-shrink-0"
                             onClick={() => removeGlass(index)}
-                            disabled={isPurchased}
+                            disabled={isDisabled}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
                          </div>
                        </div>
-                    ))
+                        );
+                    })
                     ) : (
                       <p className="text-sm text-muted-foreground text-center py-4">
                         Nenhum item de vidraçaria adicionado.
@@ -373,12 +392,14 @@ export function FurnitureMaterialsModal({
                   <h3 className="text-lg font-semibold mb-2">Materiais Gerais</h3>
                    <div className="space-y-4">
                     {materialFields.length > 0 ? (
-                      materialFields.map((field, index) => (
+                      materialFields.map((field, index) => {
+                        const isOriginalItem = originalItems.materials.has(field.id!);
+                        const isDisabled = isPurchased && isOriginalItem;
+                        return (
                         <div
                           key={field.id}
-                          className="flex items-end gap-2 p-3 rounded-lg bg-muted/50 border"
+                          className={cn("flex items-end gap-2 p-3 rounded-lg bg-muted/50 border", isDisabled && "opacity-70")}
                         >
-                          <fieldset disabled={isPurchased} className="flex items-end gap-2 flex-grow">
                             <FormField
                               control={form.control}
                               name={`materials.${index}.name`}
@@ -386,7 +407,7 @@ export function FurnitureMaterialsModal({
                                 <FormItem className="flex-grow">
                                   <FormLabel>Material</FormLabel>
                                   <FormControl>
-                                    <Input placeholder="Ex: MDF Branco 18mm" {...field} />
+                                    <Input placeholder="Ex: MDF Branco 18mm" {...field} disabled={isDisabled} />
                                   </FormControl>
                                   <FormMessage />
                                 </FormItem>
@@ -399,7 +420,7 @@ export function FurnitureMaterialsModal({
                                 <FormItem className="w-24">
                                   <FormLabel>Qtd.</FormLabel>
                                   <FormControl>
-                                    <Input type="number" {...field} />
+                                    <Input type="number" {...field} disabled={isDisabled} />
                                   </FormControl>
                                   <FormMessage />
                                 </FormItem>
@@ -411,7 +432,7 @@ export function FurnitureMaterialsModal({
                               render={({ field }) => (
                                 <FormItem className="w-32">
                                   <FormLabel>Unidade</FormLabel>
-                                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                  <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isDisabled}>
                                     <FormControl>
                                       <SelectTrigger>
                                         <SelectValue placeholder="Unid." />
@@ -425,19 +446,19 @@ export function FurnitureMaterialsModal({
                                 </FormItem>
                               )}
                             />
-                          </fieldset>
                           <Button
                             type="button"
                             variant="ghost"
                             size="icon"
                             className="text-destructive/80 hover:text-destructive h-10 w-10 flex-shrink-0"
                             onClick={() => removeMaterial(index)}
-                            disabled={isPurchased}
+                            disabled={isDisabled}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
-                      ))
+                        );
+                      })
                     ) : (
                       <p className="text-sm text-muted-foreground text-center py-4">
                         Nenhum material geral adicionado.
@@ -476,7 +497,7 @@ export function FurnitureMaterialsModal({
             onSave={handleSaveProfileDoor}
             clientName={clientName}
             doorToEdit={doorToEdit}
-            viewOnly={isPurchased && !!doorToEdit}
+            viewOnly={isPurchased && doorToEdit !== null && originalItems.profileDoors.has(doorToEdit.id)}
         />
     )}
     {isOpen && (
@@ -485,7 +506,7 @@ export function FurnitureMaterialsModal({
         onClose={handleCloseGlassEditor}
         onSave={handleSaveGlass}
         glassToEdit={glassToEdit}
-        viewOnly={isPurchased && !!glassToEdit}
+        viewOnly={isPurchased && glassToEdit !== null && originalItems.glassItems.has(glassToEdit.id)}
       />
     )}
     </>
