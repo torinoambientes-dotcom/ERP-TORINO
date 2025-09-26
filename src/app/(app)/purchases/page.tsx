@@ -146,38 +146,41 @@ export default function PurchasesPage() {
     const activeProjects = projects.filter(p => !p.completedAt);
 
     activeProjects.forEach(project => {
-      const projectEnvironments: GlasswareList[string]['environments'] = {};
+        const projectEnvironments: GlasswareList[string]['environments'] = {};
 
-      project.environments.forEach(environment => {
-        const environmentFurnitures: GlasswareList[string]['environments'][string]['furnitures'] = {};
+        project.environments.forEach(environment => {
+            const environmentFurnitures: GlasswareList[string]['environments'][string]['furnitures'] = {};
 
-        environment.furniture.forEach(furniture => {
-          const items = (furniture.glassItems || [])
-            .filter(item => item.purchased === showPurchasedGlass)
-            .map(item => ({...item, projectId: project.id, envId: environment.id, furId: furniture.id }));
+            environment.furniture.forEach(furniture => {
+                const items = (furniture.glassItems || [])
+                    .filter(item => {
+                        const isPurchased = item.purchased === true;
+                        return showPurchasedGlass ? isPurchased : !isPurchased;
+                    })
+                    .map(item => ({...item, projectId: project.id, envId: environment.id, furId: furniture.id }));
 
-          if (items.length > 0) {
-            environmentFurnitures[furniture.name] = {
-              id: furniture.id,
-              glassItems: items.sort((a, b) => a.type.localeCompare(b.type)),
-            };
-          }
+                if (items.length > 0) {
+                    environmentFurnitures[furniture.name] = {
+                        id: furniture.id,
+                        glassItems: items.sort((a, b) => a.type.localeCompare(b.type)),
+                    };
+                }
+            });
+
+            if (Object.keys(environmentFurnitures).length > 0) {
+                projectEnvironments[environment.name] = {
+                    id: environment.id,
+                    furnitures: environmentFurnitures,
+                };
+            }
         });
 
-        if (Object.keys(environmentFurnitures).length > 0) {
-          projectEnvironments[environment.name] = {
-            id: environment.id,
-            furnitures: environmentFurnitures,
-          };
+        if (Object.keys(projectEnvironments).length > 0) {
+            list[project.clientName] = {
+                id: project.id,
+                environments: projectEnvironments,
+            };
         }
-      });
-
-      if (Object.keys(projectEnvironments).length > 0) {
-        list[project.clientName] = {
-          id: project.id,
-          environments: projectEnvironments,
-        };
-      }
     });
 
     return list;
@@ -188,38 +191,41 @@ export default function PurchasesPage() {
     const activeProjects = projects.filter(p => !p.completedAt);
 
     activeProjects.forEach(project => {
-      const projectEnvironments: ProfileDoorList[string]['environments'] = {};
+        const projectEnvironments: ProfileDoorList[string]['environments'] = {};
 
-      project.environments.forEach(environment => {
-        const environmentFurnitures: ProfileDoorList[string]['environments'][string]['furnitures'] = {};
+        project.environments.forEach(environment => {
+            const environmentFurnitures: ProfileDoorList[string]['environments'][string]['furnitures'] = {};
 
-        environment.furniture.forEach(furniture => {
-          const items = (furniture.profileDoors || [])
-            .filter(item => item.purchased === showPurchasedDoors)
-            .map(item => ({...item, projectId: project.id, envId: environment.id, furId: furniture.id }));
+            environment.furniture.forEach(furniture => {
+                const items = (furniture.profileDoors || [])
+                    .filter(item => {
+                        const isPurchased = item.purchased === true;
+                        return showPurchasedDoors ? isPurchased : !isPurchased;
+                    })
+                    .map(item => ({...item, projectId: project.id, envId: environment.id, furId: furniture.id }));
 
-          if (items.length > 0) {
-            environmentFurnitures[furniture.name] = {
-              id: furniture.id,
-              profileDoors: items.sort((a,b) => a.profileColor.localeCompare(b.profileColor)),
-            };
-          }
+                if (items.length > 0) {
+                    environmentFurnitures[furniture.name] = {
+                        id: furniture.id,
+                        profileDoors: items.sort((a,b) => a.profileColor.localeCompare(b.profileColor)),
+                    };
+                }
+            });
+
+            if (Object.keys(environmentFurnitures).length > 0) {
+                projectEnvironments[environment.name] = {
+                    id: environment.id,
+                    furnitures: environmentFurnitures,
+                };
+            }
         });
 
-        if (Object.keys(environmentFurnitures).length > 0) {
-          projectEnvironments[environment.name] = {
-            id: environment.id,
-            furnitures: environmentFurnitures,
-          };
+        if (Object.keys(projectEnvironments).length > 0) {
+            list[project.clientName] = {
+                id: project.id,
+                environments: projectEnvironments,
+            };
         }
-      });
-
-      if (Object.keys(projectEnvironments).length > 0) {
-        list[project.clientName] = {
-          id: project.id,
-          environments: projectEnvironments,
-        };
-      }
     });
 
     return list;
