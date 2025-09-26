@@ -64,6 +64,12 @@ const glassSchema = z.object({
     height: z.coerce.number().min(1, "Altura é obrigatória."),
     cornerRadius: z.coerce.number().optional(),
     addedAt: z.string().optional(),
+    purchased: z.boolean().optional(),
+    frostedStripTop: z.coerce.number().optional(),
+    frostedStripBottom: z.coerce.number().optional(),
+    frostedStripLeft: z.coerce.number().optional(),
+    frostedStripRight: z.coerce.number().optional(),
+    frostedStripWidth: z.coerce.number().optional(),
 });
 
 const profileDoorSchema = z.object({
@@ -82,6 +88,7 @@ const profileDoorSchema = z.object({
     handleWidth: z.coerce.number().optional(),
     handleOffset: z.coerce.number().optional(),
     addedAt: z.string().optional(),
+    purchased: z.boolean().optional(),
 });
 
 const formSchema = z.object({
@@ -151,8 +158,8 @@ export function FurnitureMaterialsModal({
     const updatedFurniture: Furniture = {
       ...furniture,
       materials: data.materials.map(m => (m.id ? m : { ...m, id: generateId('mat'), addedAt: new Date().toISOString() })),
-      glassItems: data.glassItems.map(g => (g.id ? g : { ...g, id: generateId('gla'), addedAt: new Date().toISOString() })) as GlassItem[],
-      profileDoors: data.profileDoors.map(p => (p.id ? p : { ...p, id: generateId('pfd'), addedAt: new Date().toISOString() })) as ProfileDoorItem[],
+      glassItems: data.glassItems.map(g => (g.id ? { ...g, purchased: g.purchased ?? false } : { ...g, id: generateId('gla'), addedAt: new Date().toISOString(), purchased: false })) as GlassItem[],
+      profileDoors: data.profileDoors.map(p => (p.id ? { ...p, purchased: p.purchased ?? false } : { ...p, id: generateId('pfd'), addedAt: new Date().toISOString(), purchased: false })) as ProfileDoorItem[],
     };
     onUpdate(updatedFurniture);
     toast({
@@ -268,9 +275,9 @@ export function FurnitureMaterialsModal({
                   <div className="space-y-2">
                     {profileDoorFields.length > 0 ? (
                       profileDoorFields.map((field, index) => {
-                       const isDisabled = isOriginalItem(field.addedAt);
+                       const isPurchased = isOriginalItem(field.addedAt);
                        return (
-                       <div key={field.id} className={cn("flex items-center justify-between rounded-lg border p-3 gap-2 bg-muted/50 text-sm", isDisabled && "opacity-70")}>
+                       <div key={field.id} className={cn("flex items-center justify-between rounded-lg border p-3 gap-2 text-sm", isPurchased ? "bg-green-100/60 border-green-200" : "bg-muted/50")}>
                           <div className='flex-grow'>
                             <p className="font-medium">
                                 {field.quantity}x Porta {field.profileColor} / Vidro {field.glassType}
@@ -286,7 +293,7 @@ export function FurnitureMaterialsModal({
                             size="icon"
                             className="text-muted-foreground hover:text-primary h-9 w-9 flex-shrink-0"
                             onClick={() => handleOpenDoorEditor(index)}
-                            disabled={isDisabled}
+                            disabled={isPurchased}
                           >
                             <Pencil className="h-4 w-4" />
                           </Button>
@@ -296,7 +303,7 @@ export function FurnitureMaterialsModal({
                             size="icon"
                             className="text-destructive/80 hover:text-destructive h-9 w-9 flex-shrink-0"
                             onClick={() => removeProfileDoor(index)}
-                            disabled={isDisabled}
+                            disabled={isPurchased}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -330,9 +337,9 @@ export function FurnitureMaterialsModal({
                    <div className="space-y-2">
                     {glassFields.length > 0 ? (
                       glassFields.map((field, index) => {
-                        const isDisabled = isOriginalItem(field.addedAt);
+                        const isPurchased = isOriginalItem(field.addedAt);
                         return (
-                       <div key={field.id} className={cn("flex items-center justify-between rounded-lg border p-3 gap-2 bg-muted/50 text-sm", isDisabled && "opacity-70")}>
+                       <div key={field.id} className={cn("flex items-center justify-between rounded-lg border p-3 gap-2 text-sm", isPurchased ? "bg-green-100/60 border-green-200" : "bg-muted/50")}>
                           <div className='flex-grow'>
                             <p className="font-medium">
                                 {field.quantity}x {field.type}
@@ -348,7 +355,7 @@ export function FurnitureMaterialsModal({
                             size="icon"
                             className="text-muted-foreground hover:text-primary h-9 w-9 flex-shrink-0"
                             onClick={() => handleOpenGlassEditor(index)}
-                            disabled={isDisabled}
+                            disabled={isPurchased}
                           >
                             <Pencil className="h-4 w-4" />
                           </Button>
@@ -358,7 +365,7 @@ export function FurnitureMaterialsModal({
                             size="icon"
                             className="text-destructive/80 hover:text-destructive h-9 w-9 flex-shrink-0"
                             onClick={() => removeGlass(index)}
-                            disabled={isDisabled}
+                            disabled={isPurchased}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
