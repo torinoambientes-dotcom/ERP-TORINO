@@ -35,6 +35,7 @@ import { Separator } from '../ui/separator';
 import { PlusCircle, Trash2, Pencil } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { ProfileDoorCreatorModal } from './profile-door-creator-modal';
+import { GlassCreatorModal } from './glass-creator-modal';
 
 interface FurnitureMaterialsModalProps {
   isOpen: boolean;
@@ -57,6 +58,7 @@ const glassSchema = z.object({
     quantity: z.coerce.number().min(1, "Quantidade deve ser pelo menos 1."),
     width: z.coerce.number().min(1, "Largura é obrigatória."),
     height: z.coerce.number().min(1, "Altura é obrigatória."),
+    cornerRadius: z.coerce.number().optional(),
 });
 
 const profileDoorSchema = z.object({
@@ -85,8 +87,6 @@ const formSchema = z.object({
 type MaterialFormValues = z.infer<typeof formSchema>;
 
 const units = ['m²', 'm linear', 'unidade', 'chapa', 'litro', 'kg'];
-const glassTypes = ['Vidro Incolor', 'Espelho', 'Vidro Reflecta Incolor', 'Vidro Reflecta Bronze', 'Vidro Reflecta Fume'];
-
 
 export function FurnitureMaterialsModal({
   isOpen,
@@ -96,9 +96,14 @@ export function FurnitureMaterialsModal({
   clientName
 }: FurnitureMaterialsModalProps) {
   const { toast } = useToast();
+  
   const [isDoorCreatorOpen, setDoorCreatorOpen] = useState(false);
   const [doorToEdit, setDoorToEdit] = useState<ProfileDoorItem | null>(null);
   const [doorIndexToEdit, setDoorIndexToEdit] = useState<number | null>(null);
+
+  const [isGlassCreatorOpen, setGlassCreatorOpen] = useState(false);
+  const [glassToEdit, setGlassToEdit] = useState<GlassItem | null>(null);
+  const [glassIndexToEdit, setGlassIndexToEdit] = useState<number | null>(null);
 
   const form = useForm<MaterialFormValues>({
     resolver: zodResolver(formSchema),
@@ -114,7 +119,7 @@ export function FurnitureMaterialsModal({
     name: 'materials',
   });
   
-  const { fields: glassFields, append: appendGlass, remove: removeGlass } = useFieldArray({
+  const { fields: glassFields, append: appendGlass, remove: removeGlass, update: updateGlass } = useFieldArray({
     control: form.control,
     name: "glassItems",
   });
@@ -153,10 +158,6 @@ export function FurnitureMaterialsModal({
     appendMaterial({ name: '', quantity: 1, unit: 'unidade' });
   };
   
-  const handleAddNewGlass = () => {
-    appendGlass({ type: glassTypes[0], quantity: 1, width: 0, height: 0 });
-  };
-  
   const handleSaveProfileDoor = (doorData: Omit<ProfileDoorItem, 'id'>) => {
     if (doorIndexToEdit !== null) {
       const existingDoor = profileDoorFields[doorIndexToEdit];
@@ -187,6 +188,35 @@ export function FurnitureMaterialsModal({
     setDoorCreatorOpen(false);
   }
 
+  const handleSaveGlass = (glassData: Omit<GlassItem, 'id'>) => {
+    if (glassIndexToEdit !== null) {
+      const existingGlass = glassFields[glassIndexToEdit];
+      updateGlass(glassIndexToEdit, { ...existingGlass, ...glassData });
+      toast({ title: "Vidro atualizado!" });
+    } else {
+      appendGlass({
+        ...glassData,
+      });
+      toast({ title: "Vidro adicionado!" });
+    }
+  };
+
+  const handleOpenGlassEditor = (index: number | null) => {
+    if (index !== null) {
+      setGlassToEdit(glassFields[index] as GlassItem);
+      setGlassIndexToEdit(index);
+    } else {
+      setGlassToEdit(null);
+      setGlassIndexToEdit(null);
+    }
+    setGlassCreatorOpen(true);
+  };
+  
+  const handleCloseGlassEditor = () => {
+    setGlassToEdit(null);
+    setGlassIndexToEdit(null);
+    setGlassCreatorOpen(false);
+  };
 
   return (
     <>
@@ -264,83 +294,52 @@ export function FurnitureMaterialsModal({
                 
                 <div>
                   <h3 className="text-lg font-semibold mb-2">Vidraçaria</h3>
-                  <div className="space-y-4">
-                    {glassFields.map((field, index) => (
-                       <div
-                        key={field.id}
-                        className="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto_auto_auto] items-end gap-2 p-3 rounded-lg bg-muted/50 border"
-                      >
-                         <FormField
-                          control={form.control}
-                          name={`glassItems.${index}.type`}
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Tipo de Vidro</FormLabel>
-                              <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                <FormControl>
-                                  <SelectTrigger>
-                                    <SelectValue placeholder="Selecione..." />
-                                  </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                  {glassTypes.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-                                </SelectContent>
-                              </Select>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name={`glassItems.${index}.quantity`}
-                          render={({ field }) => (
-                            <FormItem className="w-20">
-                              <FormLabel>Qtd.</FormLabel>
-                              <FormControl><Input type="number" {...field} /></FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name={`glassItems.${index}.width`}
-                          render={({ field }) => (
-                            <FormItem className="w-24">
-                              <FormLabel>Largura (mm)</FormLabel>
-                              <FormControl><Input type="number" {...field} /></FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name={`glassItems.${index}.height`}
-                          render={({ field }) => (
-                            <FormItem className="w-24">
-                              <FormLabel>Altura (mm)</FormLabel>
-                              <FormControl><Input type="number" {...field} /></FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                         <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="text-destructive/80 hover:text-destructive h-10 w-10"
-                          onClick={() => removeGlass(index)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                   <div className="space-y-2">
+                    {glassFields.length > 0 ? (
+                      glassFields.map((field, index) => (
+                       <div key={field.id} className="flex items-center justify-between rounded-lg border p-3 gap-2 bg-muted/50 text-sm">
+                          <div className='flex-grow'>
+                            <p className="font-medium">
+                                {field.quantity}x {field.type}
+                            </p>
+                            <p className="text-muted-foreground">
+                                {field.width}mm x {field.height}mm {field.cornerRadius ? `(Raio ${field.cornerRadius}mm)` : ''}
+                            </p>
+                          </div>
+                         <div className='flex items-center'>
+                            <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="text-muted-foreground hover:text-primary h-9 w-9 flex-shrink-0"
+                            onClick={() => handleOpenGlassEditor(index)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="text-destructive/80 hover:text-destructive h-9 w-9 flex-shrink-0"
+                            onClick={() => removeGlass(index)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                         </div>
                        </div>
-                    ))}
+                    ))
+                    ) : (
+                      <p className="text-sm text-muted-foreground text-center py-4">
+                        Nenhum item de vidraçaria adicionado.
+                      </p>
+                    )}
                   </div>
                    <Button
                       type="button"
                       variant="outline"
                       size="sm"
                       className="mt-4"
-                      onClick={handleAddNewGlass}
+                      onClick={() => handleOpenGlassEditor(null)}
                     >
                       <PlusCircle className="mr-2 h-4 w-4" />
                       Adicionar Vidraçaria
@@ -453,6 +452,14 @@ export function FurnitureMaterialsModal({
             clientName={clientName}
             doorToEdit={doorToEdit}
         />
+    )}
+    {isOpen && (
+      <GlassCreatorModal
+        isOpen={isGlassCreatorOpen}
+        onClose={handleCloseGlassEditor}
+        onSave={handleSaveGlass}
+        glassToEdit={glassToEdit}
+      />
     )}
     </>
   );

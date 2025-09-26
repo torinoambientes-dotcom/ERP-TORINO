@@ -42,6 +42,7 @@ export interface GlassItem {
   height: number;
   width: number;
   quantity: number;
+  cornerRadius?: number;
   purchased?: boolean;
 }
 
