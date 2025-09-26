@@ -47,7 +47,10 @@ const hingeSchema = z.object({
   position: z.coerce.number().min(0, "Posição não pode ser negativa.")
 });
 
+const doorTypes = ['Giro', 'Correr', 'Escamoteavel'] as const;
+
 const doorCreatorSchema = z.object({
+  doorType: z.enum(doorTypes).default(doorTypes[0]),
   profileColor: z.string().min(1, 'Cor do perfil é obrigatória.'),
   glassType: z.string().min(1, 'Tipo de vidro é obrigatório.'),
   handleType: z.string().min(1, 'Tipo de puxador é obrigatório.'),
@@ -75,6 +78,7 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName }:
   const form = useForm<DoorCreatorFormValues>({
     resolver: zodResolver(doorCreatorSchema),
     defaultValues: {
+      doorType: 'Giro',
       width: 400,
       height: 700,
       quantity: 1,
@@ -128,12 +132,13 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName }:
     // Especificações
     doc.setFontSize(12);
     doc.text(`Cliente: ${clientName || 'N/A'}`, 10, 30);
-    doc.text(`Quantidade: ${doorData.quantity}${doorData.isPair ? ' (par)' : ''}`, 10, 36);
-    doc.text(`Dimensões: ${doorData.width}mm x ${doorData.height}mm`, 10, 42);
-    doc.text(`Cor do Perfil: ${doorData.profileColor}`, 10, 48);
-    doc.text(`Tipo de Vidro: ${doorData.glassType}`, 10, 54);
+    doc.text(`Tipo de Porta: ${doorData.doorType}`, 10, 36);
+    doc.text(`Quantidade: ${doorData.quantity}${doorData.isPair ? ' (par)' : ''}`, 10, 42);
+    doc.text(`Dimensões: ${doorData.width}mm x ${doorData.height}mm`, 10, 48);
+    doc.text(`Cor do Perfil: ${doorData.profileColor}`, 10, 54);
+    doc.text(`Tipo de Vidro: ${doorData.glassType}`, 10, 60);
     
-    let handleY = 60;
+    let handleY = 66;
     doc.text(`Tipo de Puxador: ${doorData.handleType}`, 10, handleY);
 
     if (doorData.handleType !== 'Sem Puxador') {
@@ -279,6 +284,8 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName }:
           <form onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-1 md:grid-cols-2 gap-8 flex-grow overflow-hidden">
             {/* Left Column: Form */}
             <div className="flex flex-col space-y-4 overflow-y-auto pr-4 -mr-4">
+              <FormField control={form.control} name="doorType" render={({ field }) => ( <FormItem><FormLabel>Tipo de Porta</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{doorTypes.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem> )}/>
+
               <div className="grid grid-cols-2 gap-4">
                 <FormField control={form.control} name="width" render={({ field }) => ( <FormItem><FormLabel>Largura (mm)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )}/>
                 <FormField control={form.control} name="height" render={({ field }) => ( <FormItem><FormLabel>Altura (mm)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )}/>
@@ -349,6 +356,7 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName }:
                 <div className="w-full p-4 border rounded-lg bg-background text-sm">
                     <h4 className="font-bold mb-2">Especificações</h4>
                     <p><strong>Cliente:</strong> {clientName || "Não especificado"}</p>
+                    <p><strong>Tipo:</strong> {doorData.doorType}</p>
                     <p><strong>Dimensões:</strong> {doorWidth}mm x {doorHeight}mm</p>
                     <p><strong>Cor Perfil:</strong> {doorData.profileColor}</p>
                     <p><strong>Vidro:</strong> {doorData.glassType}</p>

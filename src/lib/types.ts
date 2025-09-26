@@ -46,8 +46,9 @@ export interface GlassItem {
 
 export interface ProfileDoorItem {
   id: string;
-  profileColor: 'Preto' | 'Aluminio' | 'Inox';
-  glassType: 'Incolor' | 'Fume' | 'Bronze' | 'Espelho Fume' | 'Espelho Bronze' | 'Espelho Prata' | 'Reflecta Incolor' | 'Reflecta Fume' | 'Reflecta Prata';
+  doorType?: 'Giro' | 'Correr' | 'Escamoteavel';
+  profileColor: string;
+  glassType: string;
   handleType: 'Linear inteiro' | 'Aba Usinada' | 'Sem Puxador';
   height: number;
   width: number;
