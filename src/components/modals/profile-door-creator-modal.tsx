@@ -41,6 +41,7 @@ interface ProfileDoorCreatorModalProps {
   onClose: () => void;
   onSave: (door: Omit<ProfileDoorItem, 'id'>) => void;
   clientName?: string;
+  doorToEdit?: ProfileDoorItem | null;
 }
 
 const hingeSchema = z.object({
@@ -75,7 +76,9 @@ const handlePositions = {
     right: 'Direita',
 };
 
-export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName }: ProfileDoorCreatorModalProps) {
+export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, doorToEdit }: ProfileDoorCreatorModalProps) {
+  const isEditMode = !!doorToEdit;
+  
   const form = useForm<DoorCreatorFormValues>({
     resolver: zodResolver(doorCreatorSchema),
     defaultValues: {
@@ -94,6 +97,35 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName }:
       handleOffset: 50,
     },
   });
+
+  useEffect(() => {
+    if (isOpen) {
+      if (isEditMode && doorToEdit) {
+        form.reset({
+          ...doorToEdit,
+          doorType: doorToEdit.doorType || 'Giro',
+          handlePosition: doorToEdit.handlePosition || 'left',
+          handleType: doorToEdit.handleType || 'Sem Puxador',
+        });
+      } else {
+        form.reset({
+          doorType: 'Giro',
+          slidingSystem: '',
+          width: 400,
+          height: 700,
+          quantity: 1,
+          profileColor: 'Preto',
+          glassType: 'Incolor',
+          handleType: handleTypes[0],
+          hinges: [{position: 100}, {position: 600}],
+          isPair: false,
+          handlePosition: 'left',
+          handleWidth: 150,
+          handleOffset: 50,
+        });
+      }
+    }
+  }, [isOpen, isEditMode, doorToEdit, form]);
 
   const { fields: hingeFields, append: appendHinge, remove: removeHinge } = useFieldArray({
     control: form.control,
@@ -363,16 +395,16 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName }:
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="w-[95vw] max-w-6xl h-[90vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle className="font-headline">Criador de Porta de Perfil</DialogTitle>
+          <DialogTitle className="font-headline">{isEditMode ? 'Editar Porta de Perfil' : 'Criador de Porta de Perfil'}</DialogTitle>
           <DialogDescription>
-            Configure os detalhes da nova porta para adicioná-la à lista de materiais do móvel.
+             {isEditMode ? 'Edite os detalhes da porta.' : 'Configure os detalhes da nova porta para adicioná-la à lista de materiais do móvel.'}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-1 md:grid-cols-2 gap-8 flex-grow overflow-hidden">
             {/* Left Column: Form */}
             <div className="flex flex-col space-y-4 overflow-y-auto pr-4 -mr-4">
-              <FormField control={form.control} name="doorType" render={({ field }) => ( <FormItem><FormLabel>Tipo de Porta</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{doorTypes.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem> )}/>
+              <FormField control={form.control} name="doorType" render={({ field }) => ( <FormItem><FormLabel>Tipo de Porta</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{doorTypes.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem> )}/>
 
               {doorType === 'Correr' && (
                   <FormField control={form.control} name="slidingSystem" render={({ field }) => ( <FormItem><FormLabel>Sistema de Correr</FormLabel><FormControl><Input placeholder="Ex: RO-65" {...field} /></FormControl><FormMessage /></FormItem> )}/>
@@ -405,11 +437,11 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName }:
               <Separator />
 
               <h4 className='font-medium'>Puxador</h4>
-              <FormField control={form.control} name="handleType" render={({ field }) => ( <FormItem><FormLabel>Tipo de Puxador</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{handleTypes.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem> )}/>
+              <FormField control={form.control} name="handleType" render={({ field }) => ( <FormItem><FormLabel>Tipo de Puxador</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{handleTypes.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem> )}/>
               
               {handleType !== 'Sem Puxador' && (
                 <>
-                    <FormField control={form.control} name="handlePosition" render={({ field }) => ( <FormItem><FormLabel>Posição do Puxador</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{Object.entries(handlePositions).map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem> )}/>
+                    <FormField control={form.control} name="handlePosition" render={({ field }) => ( <FormItem><FormLabel>Posição do Puxador</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{Object.entries(handlePositions).map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem> )}/>
                     
                     {handleType === 'Aba Usinada' && (
                         <div className="grid grid-cols-2 gap-4">
@@ -474,7 +506,7 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName }:
               </Button>
               <Button type="submit">
                 <DoorOpen className="mr-2 h-4 w-4" />
-                Adicionar Porta
+                 {isEditMode ? 'Salvar Alterações' : 'Adicionar Porta'}
               </Button>
             </DialogFooter>
           </form>

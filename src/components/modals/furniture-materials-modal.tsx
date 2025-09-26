@@ -32,7 +32,7 @@ import type { Furniture, MaterialItem, GlassItem, ProfileDoorItem } from '@/lib/
 import { ScrollArea } from '../ui/scroll-area';
 import { generateId, cn } from '@/lib/utils';
 import { Separator } from '../ui/separator';
-import { PlusCircle, Trash2 } from 'lucide-react';
+import { PlusCircle, Trash2, Pencil } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { ProfileDoorCreatorModal } from './profile-door-creator-modal';
 
@@ -61,6 +61,9 @@ const glassSchema = z.object({
 
 const profileDoorSchema = z.object({
     id: z.string().optional(),
+    doorType: z.enum(['Giro', 'Correr', 'Escamoteavel']).optional(),
+    slidingSystem: z.string().optional(),
+    isPair: z.boolean().optional(),
     profileColor: z.string().min(1, "Cor do perfil é obrigatória."),
     glassType: z.string().min(1, "Tipo de vidro é obrigatório."),
     handleType: z.string().min(1, "Tipo de puxador é obrigatório."),
@@ -68,6 +71,9 @@ const profileDoorSchema = z.object({
     width: z.coerce.number().min(1, "Largura é obrigatória."),
     height: z.coerce.number().min(1, "Altura é obrigatória."),
     hinges: z.array(z.object({ position: z.number() })).optional(),
+    handlePosition: z.enum(['top', 'bottom', 'left', 'right']).optional(),
+    handleWidth: z.coerce.number().optional(),
+    handleOffset: z.coerce.number().optional(),
 });
 
 const formSchema = z.object({
@@ -91,6 +97,8 @@ export function FurnitureMaterialsModal({
 }: FurnitureMaterialsModalProps) {
   const { toast } = useToast();
   const [isDoorCreatorOpen, setDoorCreatorOpen] = useState(false);
+  const [doorToEdit, setDoorToEdit] = useState<ProfileDoorItem | null>(null);
+  const [doorIndexToEdit, setDoorIndexToEdit] = useState<number | null>(null);
 
   const form = useForm<MaterialFormValues>({
     resolver: zodResolver(formSchema),
@@ -111,7 +119,7 @@ export function FurnitureMaterialsModal({
     name: "glassItems",
   });
   
-  const { fields: profileDoorFields, append: appendProfileDoor, remove: removeProfileDoor } = useFieldArray({
+  const { fields: profileDoorFields, append: appendProfileDoor, remove: removeProfileDoor, update: updateProfileDoor } = useFieldArray({
     control: form.control,
     name: "profileDoors",
   });
@@ -149,11 +157,35 @@ export function FurnitureMaterialsModal({
     appendGlass({ type: glassTypes[0], quantity: 1, width: 0, height: 0 });
   };
   
-  const handleAddProfileDoor = (newDoor: Omit<ProfileDoorItem, 'id'>) => {
-    appendProfileDoor({
-      ...newDoor,
-    });
+  const handleSaveProfileDoor = (doorData: Omit<ProfileDoorItem, 'id'>) => {
+    if (doorIndexToEdit !== null) {
+      const existingDoor = profileDoorFields[doorIndexToEdit];
+      updateProfileDoor(doorIndexToEdit, { ...existingDoor, ...doorData });
+      toast({ title: "Porta atualizada!" });
+    } else {
+      appendProfileDoor({
+        ...doorData,
+      });
+      toast({ title: "Porta adicionada!" });
+    }
   };
+
+  const handleOpenDoorEditor = (index: number | null) => {
+    if (index !== null) {
+      setDoorToEdit(profileDoorFields[index] as ProfileDoorItem);
+      setDoorIndexToEdit(index);
+    } else {
+      setDoorToEdit(null);
+      setDoorIndexToEdit(null);
+    }
+    setDoorCreatorOpen(true);
+  };
+  
+  const handleCloseDoorEditor = () => {
+    setDoorToEdit(null);
+    setDoorIndexToEdit(null);
+    setDoorCreatorOpen(false);
+  }
 
 
   return (
@@ -180,7 +212,7 @@ export function FurnitureMaterialsModal({
                     {profileDoorFields.length > 0 ? (
                       profileDoorFields.map((field, index) => (
                        <div key={field.id} className="flex items-center justify-between rounded-lg border p-3 gap-2 bg-muted/50 text-sm">
-                          <div>
+                          <div className='flex-grow'>
                             <p className="font-medium">
                                 {field.quantity}x Porta {field.profileColor} / Vidro {field.glassType}
                             </p>
@@ -188,15 +220,26 @@ export function FurnitureMaterialsModal({
                                 {field.width}mm x {field.height}mm - Puxador: {field.handleType}
                             </p>
                           </div>
-                         <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="text-destructive/80 hover:text-destructive h-9 w-9 flex-shrink-0"
-                          onClick={() => removeProfileDoor(index)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                         <div className='flex items-center'>
+                            <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="text-muted-foreground hover:text-primary h-9 w-9 flex-shrink-0"
+                            onClick={() => handleOpenDoorEditor(index)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="text-destructive/80 hover:text-destructive h-9 w-9 flex-shrink-0"
+                            onClick={() => removeProfileDoor(index)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                         </div>
                        </div>
                     ))
                     ) : (
@@ -210,7 +253,7 @@ export function FurnitureMaterialsModal({
                       variant="outline"
                       size="sm"
                       className="mt-4"
-                      onClick={() => setDoorCreatorOpen(true)}
+                      onClick={() => handleOpenDoorEditor(null)}
                     >
                       <PlusCircle className="mr-2 h-4 w-4" />
                       Adicionar Porta de Perfil
@@ -405,9 +448,10 @@ export function FurnitureMaterialsModal({
     {isOpen && (
         <ProfileDoorCreatorModal
             isOpen={isDoorCreatorOpen}
-            onClose={() => setDoorCreatorOpen(false)}
-            onSave={handleAddProfileDoor}
+            onClose={handleCloseDoorEditor}
+            onSave={handleSaveProfileDoor}
             clientName={clientName}
+            doorToEdit={doorToEdit}
         />
     )}
     </>

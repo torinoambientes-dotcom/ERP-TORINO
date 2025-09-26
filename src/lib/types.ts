@@ -50,11 +50,12 @@ export interface ProfileDoorItem {
   slidingSystem?: string;
   profileColor: string;
   glassType: string;
-  handleType: 'Linear inteiro' | 'Aba Usinada' | 'Sem Puxador';
+  handleType: string;
   height: number;
   width: number;
   quantity: number;
   hinges?: { position: number }[];
+  isPair?: boolean;
   handlePosition?: 'top' | 'bottom' | 'left' | 'right';
   handleWidth?: number;
   handleOffset?: number;
