@@ -34,6 +34,7 @@ import jsPDF from 'jspdf';
 import { useRef } from 'react';
 import { Separator } from '../ui/separator';
 import { Switch } from '../ui/switch';
+import { Label } from '../ui/label';
 
 interface ProfileDoorCreatorModalProps {
   isOpen: boolean;
