@@ -130,7 +130,7 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName }:
     doorData.hinges?.forEach(hinge => {
         const hingeY = doorY + doorHeightPx - (hinge.position * scale);
         doc.setFillColor(255, 0, 0);
-        doc.circle(doorX, hingeY, (35/2) * scale, 'F');
+        doc.circle(doorX + (profileWidthPx / 2), hingeY, (35/2) * scale, 'F');
     });
 
     doc.save(`Porta_${clientName || 'especificacao'}.pdf`);
@@ -204,7 +204,7 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName }:
                       </div>
                       {hinges?.map((hinge, index) => (
                           <div key={index} className="absolute bg-red-500 rounded-full" style={{
-                              left: `-${(35 / 2) / doorWidth * 100}%`,
+                              left: `${((PROFILE_WIDTH_MM / 2) - (35 / 2)) / doorWidth * 100}%`,
                               bottom: `calc(${(hinge.position - (35/2)) / doorHeight * 100}%)`,
                               width: `${35 / doorWidth * 100}%`,
                               aspectRatio: '1/1',
