@@ -56,6 +56,7 @@ const glassCreatorSchema = z.object({
   frostedStripBottom: z.coerce.number().min(0, 'Offset não pode ser negativo.').optional(),
   frostedStripLeft: z.coerce.number().min(0, 'Offset não pode ser negativo.').optional(),
   frostedStripRight: z.coerce.number().min(0, 'Offset não pode ser negativo.').optional(),
+  frostedStripWidth: z.coerce.number().min(0, 'A largura não pode ser negativa.').optional(),
 });
 
 type GlassCreatorFormValues = z.infer<typeof glassCreatorSchema>;
@@ -75,6 +76,7 @@ export function GlassCreatorModal({ isOpen, onClose, onSave, glassToEdit, client
       frostedStripBottom: 0,
       frostedStripLeft: 0,
       frostedStripRight: 0,
+      frostedStripWidth: 0,
     },
   });
 
@@ -87,6 +89,7 @@ export function GlassCreatorModal({ isOpen, onClose, onSave, glassToEdit, client
           frostedStripBottom: glassToEdit.frostedStripBottom || 0,
           frostedStripLeft: glassToEdit.frostedStripLeft || 0,
           frostedStripRight: glassToEdit.frostedStripRight || 0,
+          frostedStripWidth: glassToEdit.frostedStripWidth || 0,
         });
       } else {
         form.reset({
@@ -99,6 +102,7 @@ export function GlassCreatorModal({ isOpen, onClose, onSave, glassToEdit, client
           frostedStripBottom: 0,
           frostedStripLeft: 0,
           frostedStripRight: 0,
+          frostedStripWidth: 0,
         });
       }
     }
@@ -111,6 +115,7 @@ export function GlassCreatorModal({ isOpen, onClose, onSave, glassToEdit, client
   };
 
   const glassData = form.watch();
+  const hasFrostedStrips = (glassData.frostedStripTop || 0) > 0 || (glassData.frostedStripBottom || 0) > 0 || (glassData.frostedStripLeft || 0) > 0 || (glassData.frostedStripRight || 0) > 0;
 
   const generatePDF = () => {
     const doc = new jsPDF({ orientation: 'landscape', unit: 'mm' });
@@ -141,22 +146,18 @@ export function GlassCreatorModal({ isOpen, onClose, onSave, glassToEdit, client
     writeSpec('Dimensões', `${data.width} x ${data.height} mm`);
     writeSpec('Raio do Canto', `${data.cornerRadius || 0} mm`);
 
-    const frostedStrips = [
-        data.frostedStripTop,
-        data.frostedStripBottom,
-        data.frostedStripLeft,
-        data.frostedStripRight,
-    ].filter(v => v && v > 0);
+    const hasStrips = (data.frostedStripTop || 0) > 0 || (data.frostedStripBottom || 0) > 0 || (data.frostedStripLeft || 0) > 0 || (data.frostedStripRight || 0) > 0;
 
-    if (frostedStrips.length > 0) {
+    if (hasStrips) {
         currentY += 2;
         doc.setFontSize(11);
         doc.text('Faixa Jateada (offset em mm):', margin, currentY);
         currentY += 5;
-        if(data.frostedStripTop) doc.text(`- Superior: ${data.frostedStripTop} mm`, margin + 5, currentY); currentY += 5;
-        if(data.frostedStripBottom) doc.text(`- Inferior: ${data.frostedStripBottom} mm`, margin + 5, currentY); currentY += 5;
-        if(data.frostedStripLeft) doc.text(`- Esquerda: ${data.frostedStripLeft} mm`, margin + 5, currentY); currentY += 5;
-        if(data.frostedStripRight) doc.text(`- Direita: ${data.frostedStripRight} mm`, margin + 5, currentY); currentY += 5;
+        if(data.frostedStripWidth) doc.text(`- Largura da Faixa: ${data.frostedStripWidth} mm`, margin + 5, currentY); currentY += 5;
+        if(data.frostedStripTop) doc.text(`- Recuo Superior: ${data.frostedStripTop} mm`, margin + 5, currentY); currentY += 5;
+        if(data.frostedStripBottom) doc.text(`- Recuo Inferior: ${data.frostedStripBottom} mm`, margin + 5, currentY); currentY += 5;
+        if(data.frostedStripLeft) doc.text(`- Recuo Esquerda: ${data.frostedStripLeft} mm`, margin + 5, currentY); currentY += 5;
+        if(data.frostedStripRight) doc.text(`- Recuo Direita: ${data.frostedStripRight} mm`, margin + 5, currentY); currentY += 5;
     }
     
 
@@ -173,29 +174,31 @@ export function GlassCreatorModal({ isOpen, onClose, onSave, glassToEdit, client
     doc.roundedRect(startX, startY, drawWidth, drawHeight, drawRadius, drawRadius, 'FD');
 
     // Frosted strips in PDF
-    const stripThicknessPx = 0.5; // Represents the width of the frosted band
     doc.setFillColor(255, 255, 0); // Yellow fill for strips
 
     const topOffset = (data.frostedStripTop || 0) * scale;
     const bottomOffset = (data.frostedStripBottom || 0) * scale;
     const leftOffset = (data.frostedStripLeft || 0) * scale;
     const rightOffset = (data.frostedStripRight || 0) * scale;
+    const stripWidth = (data.frostedStripWidth || 0) * scale;
 
-    // Top strip
-    if (topOffset > 0) {
-      doc.rect(startX + leftOffset, startY + topOffset, drawWidth - leftOffset - rightOffset, stripThicknessPx, 'F');
-    }
-    // Bottom strip
-    if (bottomOffset > 0) {
-      doc.rect(startX + leftOffset, startY + drawHeight - bottomOffset - stripThicknessPx, drawWidth - leftOffset - rightOffset, stripThicknessPx, 'F');
-    }
-    // Left strip
-    if (leftOffset > 0) {
-      doc.rect(startX + leftOffset, startY + topOffset, stripThicknessPx, drawHeight - topOffset - bottomOffset, 'F');
-    }
-    // Right strip
-    if (rightOffset > 0) {
-      doc.rect(startX + drawWidth - rightOffset - stripThicknessPx, startY + topOffset, stripThicknessPx, drawHeight - topOffset - bottomOffset, 'F');
+    if(stripWidth > 0) {
+      // Top strip
+      if (topOffset > 0) {
+        doc.rect(startX + leftOffset, startY + topOffset, drawWidth - leftOffset - rightOffset, stripWidth, 'F');
+      }
+      // Bottom strip
+      if (bottomOffset > 0) {
+        doc.rect(startX + leftOffset, startY + drawHeight - bottomOffset - stripWidth, drawWidth - leftOffset - rightOffset, stripWidth, 'F');
+      }
+      // Left strip
+      if (leftOffset > 0) {
+        doc.rect(startX + leftOffset, startY + topOffset, stripWidth, drawHeight - topOffset - bottomOffset, 'F');
+      }
+      // Right strip
+      if (rightOffset > 0) {
+        doc.rect(startX + drawWidth - rightOffset - stripWidth, startY + topOffset, stripWidth, drawHeight - topOffset - bottomOffset, 'F');
+      }
     }
 
     doc.save(`Vidro_${clientName || 'especificacao'}.pdf`);
@@ -214,12 +217,13 @@ export function GlassCreatorModal({ isOpen, onClose, onSave, glassToEdit, client
       const bottom = glassData.frostedStripBottom || 0;
       const left = glassData.frostedStripLeft || 0;
       const right = glassData.frostedStripRight || 0;
+      const stripWidth = glassData.frostedStripWidth || 0;
 
       if (!top && !bottom && !left && !right) {
         return null;
       }
       
-      const stripThickness = 2; // in pixels for visualization
+      if(stripWidth <= 0) return null;
 
       return (
         <>
@@ -228,7 +232,7 @@ export function GlassCreatorModal({ isOpen, onClose, onSave, glassToEdit, client
             position: 'absolute',
             backgroundColor: 'yellow',
             boxShadow: '0 0 2px yellow',
-            height: `${stripThickness}px`,
+            height: `${(stripWidth / height) * 100}%`,
             top: `${(top / height) * 100}%`,
             left: `${(left / width) * 100}%`,
             right: `${(right / width) * 100}%`,
@@ -238,7 +242,7 @@ export function GlassCreatorModal({ isOpen, onClose, onSave, glassToEdit, client
             position: 'absolute',
             backgroundColor: 'yellow',
             boxShadow: '0 0 2px yellow',
-            height: `${stripThickness}px`,
+            height: `${(stripWidth / height) * 100}%`,
             bottom: `${(bottom / height) * 100}%`,
             left: `${(left / width) * 100}%`,
             right: `${(right / width) * 100}%`,
@@ -248,7 +252,7 @@ export function GlassCreatorModal({ isOpen, onClose, onSave, glassToEdit, client
             position: 'absolute',
             backgroundColor: 'yellow',
             boxShadow: '0 0 2px yellow',
-            width: `${stripThickness}px`,
+            width: `${(stripWidth / width) * 100}%`,
             left: `${(left / width) * 100}%`,
             top: `${(top / height) * 100}%`,
             bottom: `${(bottom / height) * 100}%`,
@@ -258,7 +262,7 @@ export function GlassCreatorModal({ isOpen, onClose, onSave, glassToEdit, client
             position: 'absolute',
             backgroundColor: 'yellow',
             boxShadow: '0 0 2px yellow',
-            width: `${stripThickness}px`,
+            width: `${(stripWidth / width) * 100}%`,
             right: `${(right / width) * 100}%`,
             top: `${(top / height) * 100}%`,
             bottom: `${(bottom / height) * 100}%`,
@@ -331,13 +335,16 @@ export function GlassCreatorModal({ isOpen, onClose, onSave, glassToEdit, client
                 <Separator />
 
                 <div>
-                    <h4 className="font-medium mb-2">Faixa Jateada (mm)</h4>
+                    <h4 className="font-medium mb-2">Faixa Jateada</h4>
                     <p className='text-xs text-muted-foreground mb-3'>Defina o recuo da faixa a partir de cada borda. Deixe `0` para não adicionar.</p>
+                    {hasFrostedStrips && (
+                      <FormField control={form.control} name="frostedStripWidth" render={({ field }) => ( <FormItem className="mb-4"><FormLabel>Largura da Faixa (mm)</FormLabel><FormControl><Input type="number" placeholder='Ex: 50' {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                    )}
                     <div className="grid grid-cols-2 gap-4">
-                        <FormField control={form.control} name="frostedStripTop" render={({ field }) => ( <FormItem><FormLabel>Superior</FormLabel><FormControl><Input type="number" placeholder='0' {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                        <FormField control={form.control} name="frostedStripBottom" render={({ field }) => ( <FormItem><FormLabel>Inferior</FormLabel><FormControl><Input type="number" placeholder='0' {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                        <FormField control={form.control} name="frostedStripLeft" render={({ field }) => ( <FormItem><FormLabel>Esquerda</FormLabel><FormControl><Input type="number" placeholder='0' {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                        <FormField control={form.control} name="frostedStripRight" render={({ field }) => ( <FormItem><FormLabel>Direita</FormLabel><FormControl><Input type="number" placeholder='0' {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                        <FormField control={form.control} name="frostedStripTop" render={({ field }) => ( <FormItem><FormLabel>Recuo Superior (mm)</FormLabel><FormControl><Input type="number" placeholder='0' {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                        <FormField control={form.control} name="frostedStripBottom" render={({ field }) => ( <FormItem><FormLabel>Recuo Inferior (mm)</FormLabel><FormControl><Input type="number" placeholder='0' {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                        <FormField control={form.control} name="frostedStripLeft" render={({ field }) => ( <FormItem><FormLabel>Recuo Esquerda (mm)</FormLabel><FormControl><Input type="number" placeholder='0' {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                        <FormField control={form.control} name="frostedStripRight" render={({ field }) => ( <FormItem><FormLabel>Recuo Direita (mm)</FormLabel><FormControl><Input type="number" placeholder='0' {...field} /></FormControl><FormMessage /></FormItem> )}/>
                     </div>
                 </div>
 
@@ -355,10 +362,11 @@ export function GlassCreatorModal({ isOpen, onClose, onSave, glassToEdit, client
                     <p><strong>Dimensões:</strong> {glassData.width}mm x {glassData.height}mm</p>
                     <p><strong>Raio do Canto:</strong> {glassData.cornerRadius || 0}mm</p>
                     <p><strong>Quantidade:</strong> {glassData.quantity}</p>
-                    {(glassData.frostedStripTop || 0) > 0 && <p className='text-xs'><strong>Jateado Superior:</strong> {glassData.frostedStripTop}mm</p>}
-                    {(glassData.frostedStripBottom || 0) > 0 && <p className='text-xs'><strong>Jateado Inferior:</strong> {glassData.frostedStripBottom}mm</p>}
-                    {(glassData.frostedStripLeft || 0) > 0 && <p className='text-xs'><strong>Jateado Esquerda:</strong> {glassData.frostedStripLeft}mm</p>}
-                    {(glassData.frostedStripRight || 0) > 0 && <p className='text-xs'><strong>Jateado Direita:</strong> {glassData.frostedStripRight}mm</p>}
+                    {hasFrostedStrips && (glassData.frostedStripWidth || 0) > 0 && <p className='text-xs'><strong>Largura Faixa:</strong> {glassData.frostedStripWidth}mm</p>}
+                    {(glassData.frostedStripTop || 0) > 0 && <p className='text-xs'><strong>Recuo Superior:</strong> {glassData.frostedStripTop}mm</p>}
+                    {(glassData.frostedStripBottom || 0) > 0 && <p className='text-xs'><strong>Recuo Inferior:</strong> {glassData.frostedStripBottom}mm</p>}
+                    {(glassData.frostedStripLeft || 0) > 0 && <p className='text-xs'><strong>Recuo Esquerda:</strong> {glassData.frostedStripLeft}mm</p>}
+                    {(glassData.frostedStripRight || 0) > 0 && <p className='text-xs'><strong>Recuo Direita:</strong> {glassData.frostedStripRight}mm</p>}
                 </div>
             </div>
             

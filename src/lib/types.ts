@@ -48,6 +48,7 @@ export interface GlassItem {
   frostedStripBottom?: number;
   frostedStripLeft?: number;
   frostedStripRight?: number;
+  frostedStripWidth?: number;
 }
 
 export interface ProfileDoorItem {
