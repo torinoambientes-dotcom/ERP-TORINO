@@ -123,18 +123,20 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName }:
   const doorVisualizerRef = useRef(null);
 
   const generatePDF = () => {
-    const doc = new jsPDF({ orientation: 'landscape' });
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm' });
     const doorData = form.getValues();
-    const scale = 0.25; // Adjusted scale for landscape
+    const scale = 0.25;
     const pageHeight = doc.internal.pageSize.getHeight();
     const pageWidth = doc.internal.pageSize.getWidth();
+    const margin = 15;
 
     const profileWidthMM = 45;
     const hingeDiameterMM = 35;
-    const marginLeft = 15;
-    const textBlockWidth = 90;
-    const drawingAreaX = marginLeft + textBlockWidth + 10;
-    const drawingAreaWidth = pageWidth - drawingAreaX - marginLeft;
+    
+    // --- Define Layout Areas ---
+    const specsColumnWidth = 90;
+    const drawingColumnX = margin + specsColumnWidth + 10;
+    const drawingColumnWidth = pageWidth - drawingColumnX - margin;
 
     // --- Draw Door Function ---
     const drawDoor = (startX: number, startY: number, mirrored: boolean) => {
@@ -143,10 +145,13 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName }:
         const profileWidthPx = profileWidthMM * scale;
 
         doc.setDrawColor(0);
-        // Outer border
-        doc.rect(startX, startY, doorWidthPx, doorHeightPx);
+        // Outer border (represents the filled profile)
+        doc.setFillColor(230, 230, 230); // Light gray for profile fill
+        doc.rect(startX, startY, doorWidthPx, doorHeightPx, 'FD'); // Fill and draw
+        
         // Inner border (glass)
-        doc.rect(startX + profileWidthPx, startY + profileWidthPx, doorWidthPx - (2 * profileWidthPx), doorHeightPx - (2 * profileWidthPx));
+        doc.setFillColor(255, 255, 255);
+        doc.rect(startX + profileWidthPx, startY + profileWidthPx, doorWidthPx - (2 * profileWidthPx), doorHeightPx - (2 * profileWidthPx), 'FD');
 
         // Hinges in the drawing
         if (doorData.doorType === 'Giro' && doorData.hinges) {
@@ -164,7 +169,7 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName }:
         // Handle in the drawing
         if (doorData.handleType !== 'Sem Puxador') {
             doc.setFillColor(255, 0, 0);
-            const handleThicknessPx = 4 * scale;
+            const handleThicknessPx = 2; // Make it thicker in PDF
             let handleX = 0, handleY = 0, handleW = 0, handleH = 0;
 
             const position = mirrored ? {
@@ -203,12 +208,12 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName }:
     
     // --- PDF Content ---
     doc.setFontSize(18);
-    doc.text('Folha de Produção - Porta de Perfil', marginLeft, 20);
+    doc.text('Folha de Produção - Porta de Perfil', margin, 20);
     
     doc.setFontSize(12);
     let currentY = 30;
     const writeSpec = (text: string) => {
-        doc.text(text, marginLeft, currentY);
+        doc.text(text, margin, currentY);
         currentY += 6;
     };
     
@@ -238,21 +243,24 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName }:
         currentY += 4;
         writeSpec('Dobradiças (a partir da base):');
         doorData.hinges.forEach((hinge, index) => {
-          doc.text(`- Furo ${index + 1}: ${hinge.position}mm`, marginLeft + 5, currentY + (index * 6));
+          doc.text(`- Furo ${index + 1}: ${hinge.position}mm`, margin + 5, currentY + (index * 6));
         });
     }
 
     // --- Drawing Logic ---
-    const totalDrawingWidth = (doorData.width * scale) * (doorData.isPair ? 2 : 1) + (doorData.isPair ? 10 : 0);
-    const totalDrawingHeight = doorData.height * scale;
+    const doorWidthInMM = doorData.width * scale;
+    const doorHeightInMM = doorData.height * scale;
+    const spacingInMM = 10;
+    const totalDrawingWidth = doorWidthInMM * (doorData.isPair ? 2 : 1) + (doorData.isPair ? spacingInMM : 0);
     
-    const drawingStartY = (pageHeight - totalDrawingHeight) / 2;
-    const drawingStartX = drawingAreaX + (drawingAreaWidth - totalDrawingWidth) / 2;
+    // Center the drawing vertically
+    const drawingStartY = (pageHeight - doorHeightInMM) / 2;
+    // Center the drawing horizontally within its designated column
+    const drawingStartX = drawingColumnX + (drawingColumnWidth - totalDrawingWidth) / 2;
     
     if (doorData.isPair) {
-        const spacing = 10;
         drawDoor(drawingStartX, drawingStartY, false);
-        drawDoor(drawingStartX + (doorData.width * scale) + spacing, drawingStartY, true);
+        drawDoor(drawingStartX + doorWidthInMM + spacingInMM, drawingStartY, true);
     } else {
         drawDoor(drawingStartX, drawingStartY, false);
     }
@@ -334,18 +342,18 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName }:
       </div>
       {doorType === 'Giro' && hinges?.map((hinge, index) => {
         const hingeDiameter = 35;
-        const hingeStyle: React.CSSProperties = {
+        const style: React.CSSProperties = {
             bottom: `calc(${(hinge.position - (hingeDiameter/2)) / doorHeight * 100}%)`,
             width: `${hingeDiameter / doorWidth * 100}%`,
             aspectRatio: '1/1',
         };
         const hingeCenterInProfile = (PROFILE_WIDTH_MM / 2) - (hingeDiameter / 2);
         if (mirrored) {
-            hingeStyle.right = `calc(${hingeCenterInProfile / doorWidth * 100}%)`;
+            style.right = `calc(${hingeCenterInProfile / doorWidth * 100}%)`;
         } else {
-            hingeStyle.left = `calc(${hingeCenterInProfile / doorWidth * 100}%)`;
+            style.left = `calc(${hingeCenterInProfile / doorWidth * 100}%)`;
         }
-        return <div key={index} className="absolute bg-red-500 rounded-full" style={hingeStyle}></div>;
+        return <div key={index} className="absolute bg-red-500 rounded-full" style={style}></div>;
       })}
        <HandleVisualizer mirrored={mirrored} />
     </div>
@@ -475,3 +483,5 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName }:
     </Dialog>
   );
 }
+
+    
