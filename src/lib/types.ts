@@ -44,6 +44,10 @@ export interface GlassItem {
   quantity: number;
   cornerRadius?: number;
   purchased?: boolean;
+  frostedStripTop?: number;
+  frostedStripBottom?: number;
+  frostedStripLeft?: number;
+  frostedStripRight?: number;
 }
 
 export interface ProfileDoorItem {
