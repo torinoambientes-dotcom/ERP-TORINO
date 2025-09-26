@@ -41,7 +41,7 @@ import { Switch } from '../ui/switch';
 interface GlassCreatorModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (glass: Omit<GlassItem, 'id'>) => void;
+  onSave: (glass: Omit<GlassItem, 'id' | 'purchased' | 'addedAt'>) => void;
   glassToEdit?: GlassItem | null;
   clientName?: string;
   viewOnly?: boolean;
@@ -157,7 +157,7 @@ export function GlassCreatorModal({ isOpen, onClose, onSave, glassToEdit, client
 
   const onSubmit = (data: GlassCreatorFormValues) => {
     if (viewOnly) return;
-    onSave(data as Omit<GlassItem, 'id'>);
+    onSave(data);
     onClose();
   };
 

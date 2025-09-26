@@ -74,6 +74,7 @@ const glassSchema = z.object({
     frostedStripRight: z.coerce.number().optional(),
     frostedStripWidth: z.coerce.number().optional(),
     frostedStripCircularOffset: z.coerce.number().optional(),
+    isBeveled: z.boolean().optional(),
 });
 
 
@@ -214,16 +215,17 @@ export function FurnitureMaterialsModal({
       if (glassIndexToEdit !== null) {
           const existingGlass = glassFields[glassIndexToEdit];
           const updatedGlass = {
-              ...glassData, // All new data from the form
               id: existingGlass.id, // Keep original ID
               addedAt: existingGlass.addedAt, // Keep original add date
               purchased: existingGlass.purchased, // Keep original purchase status
+              ...glassData, // All new data from the form
           };
           updateGlass(glassIndexToEdit, updatedGlass);
           toast({ title: "Vidro atualizado!" });
       } else {
           const newGlassData = {
               ...glassData,
+              id: generateId('gla'),
               addedAt: new Date().toISOString(),
               purchased: false,
           };
