@@ -220,7 +220,7 @@ export function GlassCreatorModal({ isOpen, onClose, onSave, glassToEdit, client
         doc.roundedRect(startX, startY, drawWidth, drawHeight, drawRadius, drawRadius, 'FD');
     }
 
-    if (data.hasFrostedStrips) {
+    if (data.hasFrostedStrips && data.frostedStripWidth) {
       doc.setFillColor(255, 255, 0); // Yellow fill for strips
 
       const topOffset = (data.frostedStripTop || 0) * scale;
@@ -232,13 +232,13 @@ export function GlassCreatorModal({ isOpen, onClose, onSave, glassToEdit, client
       if(stripWidth > 0) {
         if (data.shape === 'rectangle') {
             // Top strip
-            if (topOffset > 0) doc.rect(startX + leftOffset, startY + topOffset, drawWidth - leftOffset - rightOffset, stripWidth, 'F');
+            if (data.frostedStripTop) doc.rect(startX + leftOffset, startY + topOffset, drawWidth - leftOffset - rightOffset, stripWidth, 'F');
             // Bottom strip
-            if (bottomOffset > 0) doc.rect(startX + leftOffset, startY + drawHeight - bottomOffset - stripWidth, drawWidth - leftOffset - rightOffset, stripWidth, 'F');
+            if (data.frostedStripBottom) doc.rect(startX + leftOffset, startY + drawHeight - bottomOffset - stripWidth, drawWidth - leftOffset - rightOffset, stripWidth, 'F');
             // Left strip
-            if (leftOffset > 0) doc.rect(startX + leftOffset, startY + topOffset, stripWidth, drawHeight - topOffset - bottomOffset, 'F');
+            if (data.frostedStripLeft) doc.rect(startX + leftOffset, startY + topOffset, stripWidth, drawHeight - topOffset - bottomOffset, 'F');
             // Right strip
-            if (rightOffset > 0) doc.rect(startX + drawWidth - rightOffset - stripWidth, startY + topOffset, stripWidth, drawHeight - topOffset - bottomOffset, 'F');
+            if (data.frostedStripRight) doc.rect(startX + drawWidth - rightOffset - stripWidth, startY + topOffset, stripWidth, drawHeight - topOffset - bottomOffset, 'F');
         }
       }
     }
@@ -246,69 +246,69 @@ export function GlassCreatorModal({ isOpen, onClose, onSave, glassToEdit, client
     doc.save(`Vidro_${clientName || 'especificacao'}.pdf`);
   };
 
-  const GlassVisualizer = () => {
+const GlassVisualizer = () => {
     const {
-      shape,
-      width = 0,
-      height = 0,
-      diameter = 0,
-      cornerRadius = 0,
-      type,
-      hasFrostedStrips,
-      frostedStripWidth = 0,
-      frostedStripTop = 0,
-      frostedStripBottom = 0,
-      frostedStripLeft = 0,
-      frostedStripRight = 0
+        shape,
+        width = 0,
+        height = 0,
+        diameter = 0,
+        cornerRadius = 0,
+        type,
+        hasFrostedStrips,
+        frostedStripWidth = 0,
+        frostedStripTop = 0,
+        frostedStripBottom = 0,
+        frostedStripLeft = 0,
+        frostedStripRight = 0
     } = glassData;
-  
+
     const glassColorClass = type === 'Espelho' ? 'bg-gray-300' : 'bg-blue-200/50';
     const isCircle = shape === 'circle';
     const displayWidth = isCircle ? diameter : width;
     const displayHeight = isCircle ? diameter : height;
-  
+
     if (displayWidth === 0 || displayHeight === 0) return null;
-  
+
     const scaleFactor = 300 / Math.max(displayWidth, displayHeight, 300);
-  
+
     const outerWidth = displayWidth * scaleFactor;
     const outerHeight = displayHeight * scaleFactor;
     const outerRadius = isCircle ? '50%' : `${Math.min(cornerRadius, Math.min(displayWidth, displayHeight) / 2) * scaleFactor}px`;
-  
-    const innerTop = frostedStripTop * scaleFactor;
-    const innerBottom = frostedStripBottom * scaleFactor;
-    const innerLeft = frostedStripLeft * scaleFactor;
-    const innerRight = frostedStripRight * scaleFactor;
-  
-    const innerRadiusValue = Math.max(0, (isCircle ? outerWidth / 2 : Math.min(cornerRadius, Math.min(displayWidth, displayHeight) / 2)) - Math.max(frostedStripLeft, frostedStripRight, frostedStripTop, frostedStripBottom));
-    const innerRadius = isCircle ? '50%' : `${innerRadiusValue * scaleFactor}px`;
 
     const showStrips = hasFrostedStrips && frostedStripWidth > 0;
-  
+    const stripWidthPx = frostedStripWidth * scaleFactor;
+    const topOffsetPx = frostedStripTop * scaleFactor;
+    const bottomOffsetPx = frostedStripBottom * scaleFactor;
+    const leftOffsetPx = frostedStripLeft * scaleFactor;
+    const rightOffsetPx = frostedStripRight * scaleFactor;
+
     return (
-      <div
-        className={cn("relative flex items-center justify-center transition-all duration-300 overflow-hidden", showStrips ? 'bg-yellow-400' : glassColorClass)}
-        style={{
-          width: `${outerWidth}px`,
-          height: `${outerHeight}px`,
-          borderRadius: outerRadius,
-        }}
-      >
         <div
-            className={cn("absolute", glassColorClass)}
+            className={cn("relative flex items-center justify-center transition-all duration-300 overflow-hidden", glassColorClass)}
             style={{
-                top: `${innerTop}px`,
-                right: `${innerRight}px`,
-                bottom: `${innerBottom}px`,
-                left: `${innerLeft}px`,
-                borderRadius: innerRadius,
+                width: `${outerWidth}px`,
+                height: `${outerHeight}px`,
+                borderRadius: outerRadius,
             }}
         >
-          {!showStrips && <span className="absolute inset-0 flex items-center justify-center text-sm text-muted-foreground text-center p-2 break-all">{type}</span>}
+            <div className="absolute inset-0 flex items-center justify-center text-sm text-muted-foreground text-center p-2 break-all">{type}</div>
+            
+            {showStrips && (
+                <>
+                    {/* Top Strip */}
+                    {frostedStripTop > 0 && <div className="absolute bg-yellow-400" style={{ top: `${topOffsetPx}px`, left: `${leftOffsetPx}px`, right: `${rightOffsetPx}px`, height: `${stripWidthPx}px` }}></div>}
+                    {/* Bottom Strip */}
+                    {frostedStripBottom > 0 && <div className="absolute bg-yellow-400" style={{ bottom: `${bottomOffsetPx}px`, left: `${leftOffsetPx}px`, right: `${rightOffsetPx}px`, height: `${stripWidthPx}px` }}></div>}
+                    {/* Left Strip */}
+                    {frostedStripLeft > 0 && <div className="absolute bg-yellow-400" style={{ left: `${leftOffsetPx}px`, top: `${topOffsetPx}px`, bottom: `${bottomOffsetPx}px`, width: `${stripWidthPx}px` }}></div>}
+                    {/* Right Strip */}
+                    {frostedStripRight > 0 && <div className="absolute bg-yellow-400" style={{ right: `${rightOffsetPx}px`, top: `${topOffsetPx}px`, bottom: `${bottomOffsetPx}px`, width: `${stripWidthPx}px` }}></div>}
+                </>
+            )}
         </div>
-      </div>
     );
-  };
+};
+
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
