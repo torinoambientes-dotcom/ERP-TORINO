@@ -34,6 +34,7 @@ import { generateId, cn } from '@/lib/utils';
 import { Separator } from '../ui/separator';
 import { PlusCircle, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { ProfileDoorCreatorModal } from './profile-door-creator-modal';
 
 interface FurnitureMaterialsModalProps {
   isOpen: boolean;
@@ -89,6 +90,7 @@ export function FurnitureMaterialsModal({
   onUpdate,
 }: FurnitureMaterialsModalProps) {
   const { toast } = useToast();
+  const [isDoorCreatorOpen, setDoorCreatorOpen] = useState(false);
 
   const form = useForm<MaterialFormValues>({
     resolver: zodResolver(formSchema),
@@ -147,12 +149,18 @@ export function FurnitureMaterialsModal({
     appendGlass({ type: glassTypes[0], quantity: 1, width: 0, height: 0 });
   };
   
-  const handleAddNewProfileDoor = () => {
-    appendProfileDoor({ profileColor: profileColors[0], glassType: profileGlassTypes[0], handleType: handleTypes[0], quantity: 1, width: 0, height: 0 });
+  const handleAddProfileDoor = (newDoor: Omit<ProfileDoorItem, 'id'>) => {
+    appendProfileDoor({
+      ...newDoor,
+      profileColor: newDoor.profileColor as any,
+      glassType: newDoor.glassType as any,
+      handleType: newDoor.handleType as any,
+    });
   };
 
 
   return (
+    <>
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="w-[95vw] max-w-4xl h-[85vh] flex flex-col">
         <DialogHeader>
@@ -287,7 +295,7 @@ export function FurnitureMaterialsModal({
                       variant="outline"
                       size="sm"
                       className="mt-4"
-                      onClick={handleAddNewProfileDoor}
+                      onClick={() => setDoorCreatorOpen(true)}
                     >
                       <PlusCircle className="mr-2 h-4 w-4" />
                       Adicionar Porta de Perfil
@@ -479,5 +487,13 @@ export function FurnitureMaterialsModal({
         </Form>
       </DialogContent>
     </Dialog>
+    {isOpen && (
+        <ProfileDoorCreatorModal
+            isOpen={isDoorCreatorOpen}
+            onClose={() => setDoorCreatorOpen(false)}
+            onSave={handleAddProfileDoor}
+        />
+    )}
+    </>
   );
 }

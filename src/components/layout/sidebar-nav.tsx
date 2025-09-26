@@ -2,7 +2,7 @@
 import { useState, useContext, useMemo } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BarChart3, LayoutGrid, PlusCircle, Users, Boxes, LogOut, ShoppingCart, User, Wrench } from 'lucide-react';
+import { BarChart3, LayoutGrid, PlusCircle, Users, Boxes, LogOut, ShoppingCart, User } from 'lucide-react';
 import {
   SidebarHeader,
   SidebarContent,
@@ -26,7 +26,6 @@ const menuItems = [
   { href: '/', label: 'Projetos', icon: LayoutGrid, adminOnly: false },
   { href: '/purchases', label: 'Compras', icon: ShoppingCart, adminOnly: false },
   { href: '/reports', label: 'Relatórios', icon: BarChart3, adminOnly: false },
-  { href: '/tools/profile-door-creator', label: 'Criador de Portas', icon: Wrench, adminOnly: false },
   { href: '/team', label: 'Equipe', icon: Users, adminOnly: true },
   { href: '/stock', label: 'Estoque', icon: Boxes, adminOnly: false },
 ];
@@ -56,7 +55,7 @@ export function SidebarNav() {
   };
   
   const visibleMenuItems = menuItems.filter(item => !item.adminOnly || isAdmin).sort((a, b) => {
-    const order = ['Projetos', 'Compras', 'Estoque', 'Relatórios', 'Criador de Portas', 'Equipe'];
+    const order = ['Projetos', 'Compras', 'Estoque', 'Relatórios', 'Equipe'];
     return order.indexOf(a.label) - order.indexOf(b.label);
   });
   
