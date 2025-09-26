@@ -52,6 +52,7 @@ export interface ProfileDoorItem {
   height: number;
   width: number;
   quantity: number;
+  hinges?: { position: number }[];
 }
 
 export interface Furniture {

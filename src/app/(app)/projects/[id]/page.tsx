@@ -319,6 +319,7 @@ export default function ProjectDetailsPage() {
             onClose={() => setMaterialsModalOpen(false)}
             furniture={getFurnitureForModal()!}
             onUpdate={handleFurnitureUpdateInModal}
+            clientName={project.clientName}
         />
       )}
     </>

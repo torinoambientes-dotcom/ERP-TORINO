@@ -41,6 +41,7 @@ interface FurnitureMaterialsModalProps {
   onClose: () => void;
   furniture: Furniture;
   onUpdate: (furniture: Furniture) => void;
+  clientName?: string;
 }
 
 const materialSchema = z.object({
@@ -66,6 +67,7 @@ const profileDoorSchema = z.object({
     quantity: z.coerce.number().min(1, "Quantidade deve ser pelo menos 1."),
     width: z.coerce.number().min(1, "Largura é obrigatória."),
     height: z.coerce.number().min(1, "Altura é obrigatória."),
+    hinges: z.array(z.object({ position: z.number() })).optional(),
 });
 
 const formSchema = z.object({
@@ -78,9 +80,6 @@ type MaterialFormValues = z.infer<typeof formSchema>;
 
 const units = ['m²', 'm linear', 'unidade', 'chapa', 'litro', 'kg'];
 const glassTypes = ['Vidro Incolor', 'Espelho', 'Vidro Reflecta Incolor', 'Vidro Reflecta Bronze', 'Vidro Reflecta Fume'];
-const profileColors = ['Preto', 'Aluminio', 'Inox'];
-const profileGlassTypes = ['Incolor', 'Fume', 'Bronze', 'Espelho Fume', 'Espelho Bronze', 'Espelho Prata', 'Reflecta Incolor', 'Reflecta Fume', 'Reflecta Prata'];
-const handleTypes = ['Linear inteiro', 'Aba Usinada', 'Sem Puxador'];
 
 
 export function FurnitureMaterialsModal({
@@ -88,6 +87,7 @@ export function FurnitureMaterialsModal({
   onClose,
   furniture,
   onUpdate,
+  clientName
 }: FurnitureMaterialsModalProps) {
   const { toast } = useToast();
   const [isDoorCreatorOpen, setDoorCreatorOpen] = useState(false);
@@ -407,6 +407,7 @@ export function FurnitureMaterialsModal({
             isOpen={isDoorCreatorOpen}
             onClose={() => setDoorCreatorOpen(false)}
             onSave={handleAddProfileDoor}
+            clientName={clientName}
         />
     )}
     </>
