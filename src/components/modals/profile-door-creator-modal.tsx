@@ -31,7 +31,7 @@ import type { ProfileDoorItem } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { DoorOpen, FileDown, PlusCircle, Trash2 } from 'lucide-react';
 import jsPDF from 'jspdf';
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import { Separator } from '../ui/separator';
 import { Switch } from '../ui/switch';
 import { Label } from '../ui/label';
@@ -360,13 +360,11 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
     return <div style={style}></div>;
 };
 
-  const DoorVisualizer = ({ mirrored = false }) => {
+  const DoorVisualizer = ({ mirrored = false, style }: { mirrored?: boolean, style?: React.CSSProperties }) => {
     return (
       <div
-        className={cn("relative flex items-center justify-center transition-all duration-300 h-full", profileColorClass, isPair ? 'w-1/2' : 'w-full')}
-        style={{
-          aspectRatio: `${doorWidth} / ${doorHeight}`,
-        }}
+        className={cn("relative flex items-center justify-center transition-all duration-300", profileColorClass)}
+        style={style}
       >
         <div className='absolute inset-0 bg-gray-300/30 backdrop-blur-sm flex items-center justify-center' style={{ margin: `${(PROFILE_WIDTH_MM / Math.min(doorWidth, doorHeight)) * 50}%`}}>
           <span className="text-sm text-muted-foreground text-center p-2 break-all">{doorData.glassType}</span>
@@ -392,6 +390,71 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
     );
   };
   
+    const VisualizerContainer = () => {
+        const containerRef = useRef<HTMLDivElement>(null);
+        const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
+
+        useEffect(() => {
+            if (containerRef.current) {
+                const resizeObserver = new ResizeObserver(entries => {
+                    for (let entry of entries) {
+                        setContainerSize({
+                            width: entry.contentRect.width,
+                            height: entry.contentRect.height,
+                        });
+                    }
+                });
+                resizeObserver.observe(containerRef.current);
+                return () => resizeObserver.disconnect();
+            }
+        }, []);
+
+        const calculateDimensions = () => {
+            const { width: containerWidth, height: containerHeight } = containerSize;
+            if (containerWidth === 0 || containerHeight === 0 || !doorWidth || !doorHeight) {
+                return { width: 0, height: 0 };
+            }
+
+            const aspectRatio = doorWidth / doorHeight;
+            const gap = 8; // gap between doors in px
+            
+            let doorDisplayWidth, doorDisplayHeight;
+
+            if (isPair) {
+                const totalDrawingWidth = containerWidth - gap;
+                const potentialHeightFromWidth = (totalDrawingWidth / 2) / aspectRatio;
+                
+                if (potentialHeightFromWidth <= containerHeight) {
+                    doorDisplayHeight = potentialHeightFromWidth;
+                    doorDisplayWidth = totalDrawingWidth / 2;
+                } else {
+                    doorDisplayHeight = containerHeight;
+                    doorDisplayWidth = doorDisplayHeight * aspectRatio;
+                }
+            } else {
+                if (containerWidth / aspectRatio <= containerHeight) {
+                    doorDisplayWidth = containerWidth;
+                    doorDisplayHeight = containerWidth / aspectRatio;
+                } else {
+                    doorDisplayHeight = containerHeight;
+                    doorDisplayWidth = containerHeight * aspectRatio;
+                }
+            }
+
+            return { width: doorDisplayWidth, height: doorDisplayHeight };
+        };
+
+        const doorDimensions = calculateDimensions();
+
+        return (
+            <div ref={containerRef} className="w-full h-full flex items-center justify-center p-8">
+                <div className="flex items-center justify-center gap-2" style={{ width: containerSize.width, height: containerSize.height }}>
+                    <DoorVisualizer style={doorDimensions} />
+                    {isPair && <DoorVisualizer mirrored={true} style={doorDimensions} />}
+                </div>
+            </div>
+        );
+    };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -475,12 +538,7 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
 
             {/* Right Column: Visualizer */}
             <div ref={doorVisualizerRef} className="flex flex-col items-center justify-center bg-muted/30 rounded-lg relative h-full border p-4 gap-4">
-                <div className="w-full h-full flex items-center justify-center p-8">
-                    <div className="flex h-full items-center justify-center gap-2">
-                        <DoorVisualizer />
-                        {isPair && <DoorVisualizer mirrored={true} />}
-                    </div>
-                </div>
+                <VisualizerContainer />
                 <div className="w-full p-4 border rounded-lg bg-background text-sm">
                     <h4 className="font-bold mb-2">Especificações</h4>
                     <p><strong>Cliente:</strong> {clientName || "Não especificado"}</p>
