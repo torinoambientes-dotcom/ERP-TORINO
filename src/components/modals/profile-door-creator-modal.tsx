@@ -51,6 +51,7 @@ const doorTypes = ['Giro', 'Correr', 'Escamoteavel'] as const;
 
 const doorCreatorSchema = z.object({
   doorType: z.enum(doorTypes).default(doorTypes[0]),
+  slidingSystem: z.string().optional(),
   profileColor: z.string().min(1, 'Cor do perfil é obrigatória.'),
   glassType: z.string().min(1, 'Tipo de vidro é obrigatório.'),
   handleType: z.string().min(1, 'Tipo de puxador é obrigatório.'),
@@ -79,6 +80,7 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName }:
     resolver: zodResolver(doorCreatorSchema),
     defaultValues: {
       doorType: 'Giro',
+      slidingSystem: '',
       width: 400,
       height: 700,
       quantity: 1,
@@ -101,6 +103,7 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName }:
   const isPair = form.watch('isPair');
   const handleType = form.watch('handleType');
   const doorData = form.watch();
+  const doorType = form.watch('doorType');
 
   useEffect(() => {
     if (isPair) {
@@ -130,33 +133,49 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName }:
     doc.text('Folha de Produção - Porta de Perfil', 10, 20);
 
     // Especificações
+    let currentY = 30;
     doc.setFontSize(12);
-    doc.text(`Cliente: ${clientName || 'N/A'}`, 10, 30);
-    doc.text(`Tipo de Porta: ${doorData.doorType}`, 10, 36);
-    doc.text(`Quantidade: ${doorData.quantity}${doorData.isPair ? ' (par)' : ''}`, 10, 42);
-    doc.text(`Dimensões: ${doorData.width}mm x ${doorData.height}mm`, 10, 48);
-    doc.text(`Cor do Perfil: ${doorData.profileColor}`, 10, 54);
-    doc.text(`Tipo de Vidro: ${doorData.glassType}`, 10, 60);
+    doc.text(`Cliente: ${clientName || 'N/A'}`, 10, currentY);
     
-    let handleY = 66;
-    doc.text(`Tipo de Puxador: ${doorData.handleType}`, 10, handleY);
+    currentY += 6;
+    doc.text(`Tipo de Porta: ${doorData.doorType}`, 10, currentY);
+
+    if (doorData.doorType === 'Correr' && doorData.slidingSystem) {
+        currentY += 6;
+        doc.text(`Sistema de Correr: ${doorData.slidingSystem}`, 10, currentY);
+    }
+    
+    currentY += 6;
+    doc.text(`Quantidade: ${doorData.quantity}${doorData.isPair ? ' (par)' : ''}`, 10, currentY);
+    
+    currentY += 6;
+    doc.text(`Dimensões: ${doorData.width}mm x ${doorData.height}mm`, 10, currentY);
+    
+    currentY += 6;
+    doc.text(`Cor do Perfil: ${doorData.profileColor}`, 10, currentY);
+    
+    currentY += 6;
+    doc.text(`Tipo de Vidro: ${doorData.glassType}`, 10, currentY);
+    
+    currentY += 6;
+    doc.text(`Tipo de Puxador: ${doorData.handleType}`, 10, currentY);
 
     if (doorData.handleType !== 'Sem Puxador') {
-        handleY += 6;
-        doc.text(`Posição do Puxador: ${handlePositions[doorData.handlePosition]}`, 10, handleY);
+        currentY += 6;
+        doc.text(`Posição do Puxador: ${handlePositions[doorData.handlePosition]}`, 10, currentY);
         if (doorData.handleType === 'Aba Usinada') {
-            handleY += 6;
-            doc.text(`Largura do Puxador: ${doorData.handleWidth}mm`, 10, handleY);
-            handleY += 6;
-            doc.text(`Distância do Canto: ${doorData.handleOffset}mm`, 10, handleY);
+            currentY += 6;
+            doc.text(`Largura do Puxador: ${doorData.handleWidth}mm`, 10, currentY);
+            currentY += 6;
+            doc.text(`Distância do Canto: ${doorData.handleOffset}mm`, 10, currentY);
         }
     }
 
     // Dobradiças
-    handleY += 10;
-    doc.text('Dobradiças (a partir da base):', 10, handleY);
+    currentY += 10;
+    doc.text('Dobradiças (a partir da base):', 10, currentY);
     doorData.hinges?.forEach((hinge, index) => {
-      doc.text(`- Furo ${index + 1}: ${hinge.position}mm`, 15, (handleY + 6) + (index * 6));
+      doc.text(`- Furo ${index + 1}: ${hinge.position}mm`, 15, (currentY + 6) + (index * 6));
     });
 
     // Desenho da porta
@@ -286,6 +305,10 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName }:
             <div className="flex flex-col space-y-4 overflow-y-auto pr-4 -mr-4">
               <FormField control={form.control} name="doorType" render={({ field }) => ( <FormItem><FormLabel>Tipo de Porta</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{doorTypes.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem> )}/>
 
+              {doorType === 'Correr' && (
+                  <FormField control={form.control} name="slidingSystem" render={({ field }) => ( <FormItem><FormLabel>Sistema de Correr</FormLabel><FormControl><Input placeholder="Ex: RO-65" {...field} /></FormControl><FormMessage /></FormItem> )}/>
+              )}
+
               <div className="grid grid-cols-2 gap-4">
                 <FormField control={form.control} name="width" render={({ field }) => ( <FormItem><FormLabel>Largura (mm)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )}/>
                 <FormField control={form.control} name="height" render={({ field }) => ( <FormItem><FormLabel>Altura (mm)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )}/>
@@ -356,7 +379,7 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName }:
                 <div className="w-full p-4 border rounded-lg bg-background text-sm">
                     <h4 className="font-bold mb-2">Especificações</h4>
                     <p><strong>Cliente:</strong> {clientName || "Não especificado"}</p>
-                    <p><strong>Tipo:</strong> {doorData.doorType}</p>
+                    <p><strong>Tipo:</strong> {doorData.doorType} {doorData.doorType === 'Correr' && doorData.slidingSystem ? `(${doorData.slidingSystem})` : ''}</p>
                     <p><strong>Dimensões:</strong> {doorWidth}mm x {doorHeight}mm</p>
                     <p><strong>Cor Perfil:</strong> {doorData.profileColor}</p>
                     <p><strong>Vidro:</strong> {doorData.glassType}</p>

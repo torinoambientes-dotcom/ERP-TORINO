@@ -47,6 +47,7 @@ export interface GlassItem {
 export interface ProfileDoorItem {
   id: string;
   doorType?: 'Giro' | 'Correr' | 'Escamoteavel';
+  slidingSystem?: string;
   profileColor: string;
   glassType: string;
   handleType: 'Linear inteiro' | 'Aba Usinada' | 'Sem Puxador';
