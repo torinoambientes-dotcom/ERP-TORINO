@@ -360,10 +360,10 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
     return <div style={style}></div>;
 };
 
-  const DoorVisualizer = () => {
+  const DoorVisualizer = ({ mirrored = false }) => {
     return (
       <div
-        className={cn("relative flex items-center justify-center transition-all duration-300 max-w-full max-h-full", profileColorClass)}
+        className={cn("relative flex items-center justify-center transition-all duration-300 w-full h-full", profileColorClass)}
         style={{
           aspectRatio: `${doorWidth} / ${doorHeight}`,
         }}
@@ -379,14 +379,15 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
               aspectRatio: '1/1',
           };
           const hingeCenterInProfile = (PROFILE_WIDTH_MM / 2) - (hingeDiameter / 2);
-          if (isPair) { // This assumes mirrored is true for the second door, but this component is now singular
+          
+          if (mirrored) {
               style.right = `calc(${hingeCenterInProfile / doorWidth * 100}%)`;
           } else {
               style.left = `calc(${hingeCenterInProfile / doorWidth * 100}%)`;
           }
           return <div key={index} className="absolute bg-red-500 rounded-full" style={style}></div>;
         })}
-         <HandleVisualizer mirrored={isPair} />
+         <HandleVisualizer mirrored={mirrored} />
       </div>
     );
   };
@@ -475,16 +476,9 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
             {/* Right Column: Visualizer */}
             <div ref={doorVisualizerRef} className="flex flex-col items-center justify-center bg-muted/30 rounded-lg relative h-full border p-4 gap-4">
                 <div className="w-full h-full flex items-center justify-center p-8">
-                    <div 
-                        className="flex w-full h-full items-center justify-center gap-2"
-                        style={{ 
-                            aspectRatio: isPair ? `${doorWidth * 2} / ${doorHeight}` : `${doorWidth} / ${doorHeight}`,
-                        }}
-                    >
-                         <div className="flex w-full h-full items-center justify-center gap-2 max-w-full max-h-full">
-                            <DoorVisualizer />
-                            {isPair && <DoorVisualizer />}
-                        </div>
+                    <div className="flex w-full h-full items-center justify-center gap-2">
+                        <DoorVisualizer />
+                        {isPair && <DoorVisualizer mirrored={true} />}
                     </div>
                 </div>
                 <div className="w-full p-4 border rounded-lg bg-background text-sm">
