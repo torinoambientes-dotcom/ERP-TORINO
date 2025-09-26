@@ -125,7 +125,7 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName }:
   const generatePDF = () => {
     const doc = new jsPDF({ orientation: 'landscape', unit: 'mm' });
     const doorData = form.getValues();
-    const scale = 0.25;
+    const scale = 0.2; // Reduced scale
     const pageHeight = doc.internal.pageSize.getHeight();
     const pageWidth = doc.internal.pageSize.getWidth();
     const margin = 15;
@@ -218,33 +218,33 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName }:
     };
     
     writeSpec(`Cliente: ${clientName || 'N/A'}`);
-    writeSpec(`Tipo de Porta: ${doorData.doorType}`);
-    if (doorData.doorType === 'Correr' && doorData.slidingSystem) {
-        writeSpec(`Sistema de Correr: ${doorData.slidingSystem}`);
-    }
-    writeSpec(`Quantidade: ${doorData.quantity}${doorData.isPair ? ' (par)' : ''}`);
-    writeSpec(`Dimensões (por porta): ${doorData.width}mm x ${doorData.height}mm`);
-    writeSpec(`Cor do Perfil: ${doorData.profileColor}`);
-    writeSpec(`Tipo de Vidro: ${doorData.glassType}`);
-    writeSpec(`Tipo de Puxador: ${doorData.handleType}`);
+    writeSpec(`Tipo: ${doorData.doorType}${doorData.doorType === 'Correr' && doorData.slidingSystem ? ` (${doorData.slidingSystem})` : ''}`);
+    writeSpec(`Qtd: ${doorData.quantity}${doorData.isPair ? ' (par)' : ''}`);
+    writeSpec(`Dimensões: ${doorData.width} x ${doorData.height} mm`);
+    writeSpec(`Perfil: ${doorData.profileColor}`);
+    writeSpec(`Vidro: ${doorData.glassType}`);
+    writeSpec(`Puxador: ${doorData.handleType}`);
 
     if (doorData.handleType !== 'Sem Puxador') {
         const handlePosLabel = handlePositions[doorData.handlePosition];
         const mirrorPosLabel = doorData.isPair ? ` / ${handlePositions[{left: 'right', right: 'left', top: 'top', bottom: 'bottom'}[doorData.handlePosition]]}` : '';
-        writeSpec(`Posição do Puxador: ${handlePosLabel}${mirrorPosLabel}`);
+        writeSpec(`Pos. Puxador: ${handlePosLabel}${mirrorPosLabel}`);
         
         if (doorData.handleType === 'Aba Usinada') {
-            writeSpec(`Largura do Puxador: ${doorData.handleWidth}mm`);
-            writeSpec(`Distância do Canto: ${doorData.handleOffset}mm`);
+            writeSpec(`Larg. Puxador: ${doorData.handleWidth}mm`);
+            writeSpec(`Offset Puxador: ${doorData.handleOffset}mm`);
         }
     }
 
     if (doorData.doorType === 'Giro' && doorData.hinges && doorData.hinges.length > 0) {
         currentY += 4;
-        writeSpec('Dobradiças (a partir da base):');
+        writeSpec('Dobradiças (da base):');
+        doc.setFontSize(11);
         doorData.hinges.forEach((hinge, index) => {
-          doc.text(`- Furo ${index + 1}: ${hinge.position}mm`, margin + 5, currentY + (index * 6));
+          doc.text(`- Furo ${index + 1}: ${hinge.position}mm`, margin + 5, currentY);
+          currentY += 5;
         });
+        doc.setFontSize(12);
     }
 
     // --- Drawing Logic ---
