@@ -53,6 +53,7 @@ export interface GlassItem {
   frostedStripLeft?: number;
   frostedStripRight?: number;
   frostedStripWidth?: number;
+  frostedStripCircularOffset?: number;
   addedAt?: string; // ISO date string
 }
 

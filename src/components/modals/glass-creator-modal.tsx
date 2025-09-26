@@ -58,11 +58,12 @@ const glassCreatorSchema = z.object({
   quantity: z.coerce.number().min(1, 'A quantidade mínima é 1.'),
   cornerRadius: z.coerce.number().min(0, 'O raio não pode ser negativo.').optional(),
   hasFrostedStrips: z.boolean().default(false),
+  frostedStripWidth: z.coerce.number().min(0, 'A largura não pode ser negativa.').optional(),
   frostedStripTop: z.coerce.number().min(0, 'Offset não pode ser negativo.').optional(),
   frostedStripBottom: z.coerce.number().min(0, 'Offset não pode ser negativo.').optional(),
   frostedStripLeft: z.coerce.number().min(0, 'Offset não pode ser negativo.').optional(),
   frostedStripRight: z.coerce.number().min(0, 'Offset não pode ser negativo.').optional(),
-  frostedStripWidth: z.coerce.number().min(0, 'A largura não pode ser negativa.').optional(),
+  frostedStripCircularOffset: z.coerce.number().min(0, 'Offset não pode ser negativo.').optional(),
 }).refine(data => {
     if (data.shape === 'rectangle') {
         return data.width && data.width > 0 && data.height && data.height > 0;
@@ -106,11 +107,12 @@ export function GlassCreatorModal({ isOpen, onClose, onSave, glassToEdit, client
       quantity: 1,
       cornerRadius: 0,
       hasFrostedStrips: false,
+      frostedStripWidth: 50,
       frostedStripTop: 0,
       frostedStripBottom: 0,
       frostedStripLeft: 0,
       frostedStripRight: 0,
-      frostedStripWidth: 50,
+      frostedStripCircularOffset: 50,
     },
   });
 
@@ -121,11 +123,12 @@ export function GlassCreatorModal({ isOpen, onClose, onSave, glassToEdit, client
           ...glassToEdit,
           shape: glassToEdit.shape || 'rectangle',
           hasFrostedStrips: glassToEdit.hasFrostedStrips || false,
+          frostedStripWidth: glassToEdit.frostedStripWidth || 50,
           frostedStripTop: glassToEdit.frostedStripTop || 0,
           frostedStripBottom: glassToEdit.frostedStripBottom || 0,
           frostedStripLeft: glassToEdit.frostedStripLeft || 0,
           frostedStripRight: glassToEdit.frostedStripRight || 0,
-          frostedStripWidth: glassToEdit.frostedStripWidth || 50,
+          frostedStripCircularOffset: glassToEdit.frostedStripCircularOffset || 50,
         });
       } else {
         form.reset({
@@ -137,11 +140,12 @@ export function GlassCreatorModal({ isOpen, onClose, onSave, glassToEdit, client
           quantity: 1,
           cornerRadius: 0,
           hasFrostedStrips: false,
+          frostedStripWidth: 50,
           frostedStripTop: 0,
           frostedStripBottom: 0,
           frostedStripLeft: 0,
           frostedStripRight: 0,
-          frostedStripWidth: 50,
+          frostedStripCircularOffset: 50,
         });
       }
     }
@@ -191,16 +195,21 @@ export function GlassCreatorModal({ isOpen, onClose, onSave, glassToEdit, client
         writeSpec('Raio do Canto', `${data.cornerRadius || 0} mm`);
     }
 
-    if (data.hasFrostedStrips) {
+    if (data.hasFrostedStrips && data.frostedStripWidth) {
         currentY += 2;
         doc.setFontSize(11);
-        doc.text('Faixa Jateada (offset em mm):', margin, currentY);
+        doc.text('Faixa Jateada:', margin, currentY);
         currentY += 5;
-        if(data.frostedStripWidth) doc.text(`- Largura da Faixa: ${data.frostedStripWidth} mm`, margin + 5, currentY); currentY += 5;
-        if(data.frostedStripTop) doc.text(`- Recuo Superior: ${data.frostedStripTop} mm`, margin + 5, currentY); currentY += 5;
-        if(data.frostedStripBottom) doc.text(`- Recuo Inferior: ${data.frostedStripBottom} mm`, margin + 5, currentY); currentY += 5;
-        if(data.frostedStripLeft) doc.text(`- Recuo Esquerda: ${data.frostedStripLeft} mm`, margin + 5, currentY); currentY += 5;
-        if(data.frostedStripRight) doc.text(`- Recuo Direita: ${data.frostedStripRight} mm`, margin + 5, currentY); currentY += 5;
+        doc.text(`- Largura da Faixa: ${data.frostedStripWidth} mm`, margin + 5, currentY); currentY += 5;
+        if(data.shape === 'circle') {
+            doc.text(`- Distância da Borda: ${data.frostedStripCircularOffset} mm`, margin + 5, currentY); currentY += 5;
+        } else {
+            doc.text('Recuos (offset em mm):', margin, currentY); currentY += 5;
+            if(data.frostedStripTop) doc.text(`- Superior: ${data.frostedStripTop} mm`, margin + 5, currentY); currentY += 5;
+            if(data.frostedStripBottom) doc.text(`- Inferior: ${data.frostedStripBottom} mm`, margin + 5, currentY); currentY += 5;
+            if(data.frostedStripLeft) doc.text(`- Esquerda: ${data.frostedStripLeft} mm`, margin + 5, currentY); currentY += 5;
+            if(data.frostedStripRight) doc.text(`- Direita: ${data.frostedStripRight} mm`, margin + 5, currentY); currentY += 5;
+        }
     }
     
 
@@ -223,23 +232,27 @@ export function GlassCreatorModal({ isOpen, onClose, onSave, glassToEdit, client
     if (data.hasFrostedStrips && data.frostedStripWidth) {
       doc.setFillColor(255, 255, 0); // Yellow fill for strips
 
-      const topOffset = (data.frostedStripTop || 0) * scale;
-      const bottomOffset = (data.frostedStripBottom || 0) * scale;
-      const leftOffset = (data.frostedStripLeft || 0) * scale;
-      const rightOffset = (data.frostedStripRight || 0) * scale;
-      const stripWidth = (data.frostedStripWidth || 0) * scale;
+      const stripWidth = data.frostedStripWidth * scale;
 
-      if(stripWidth > 0) {
-        if (data.shape === 'rectangle') {
-            // Top strip
-            if (data.frostedStripTop) doc.rect(startX + leftOffset, startY + topOffset, drawWidth - leftOffset - rightOffset, stripWidth, 'F');
-            // Bottom strip
-            if (data.frostedStripBottom) doc.rect(startX + leftOffset, startY + drawHeight - bottomOffset - stripWidth, drawWidth - leftOffset - rightOffset, stripWidth, 'F');
-            // Left strip
-            if (data.frostedStripLeft) doc.rect(startX + leftOffset, startY + topOffset, stripWidth, drawHeight - topOffset - bottomOffset, 'F');
-            // Right strip
-            if (data.frostedStripRight) doc.rect(startX + drawWidth - rightOffset - stripWidth, startY + topOffset, stripWidth, drawHeight - topOffset - bottomOffset, 'F');
-        }
+      if(data.shape === 'circle' && data.frostedStripCircularOffset){
+          const offset = data.frostedStripCircularOffset * scale;
+          const innerDiameter = drawWidth - 2 * offset;
+          const innerRadius = innerDiameter / 2;
+          const outerRadius = drawWidth / 2;
+          
+          doc.ellipse(startX + outerRadius, startY + outerRadius, outerRadius, outerRadius, 'F');
+          doc.setFillColor(230, 230, 230); // Color of glass
+          doc.ellipse(startX + outerRadius, startY + outerRadius, innerRadius, innerRadius, 'F');
+      } else {
+        const topOffset = (data.frostedStripTop || 0) * scale;
+        const bottomOffset = (data.frostedStripBottom || 0) * scale;
+        const leftOffset = (data.frostedStripLeft || 0) * scale;
+        const rightOffset = (data.frostedStripRight || 0) * scale;
+        
+        doc.setFillColor(255, 255, 255, 0); // Transparent fill
+        doc.setDrawColor(255, 255, 0); // Yellow stroke
+        doc.setLineWidth(stripWidth);
+        doc.roundedRect(startX + leftOffset + stripWidth/2, startY + topOffset + stripWidth/2, drawWidth - leftOffset - rightOffset - stripWidth, drawHeight - topOffset - bottomOffset - stripWidth, drawRadius, drawRadius, 'D');
       }
     }
 
@@ -259,7 +272,8 @@ const GlassVisualizer = () => {
         frostedStripTop = 0,
         frostedStripBottom = 0,
         frostedStripLeft = 0,
-        frostedStripRight = 0
+        frostedStripRight = 0,
+        frostedStripCircularOffset = 0,
     } = glassData;
 
     const glassColorClass = type === 'Espelho' ? 'bg-gray-300' : 'bg-blue-200/50';
@@ -267,43 +281,53 @@ const GlassVisualizer = () => {
     const displayWidth = isCircle ? diameter : width;
     const displayHeight = isCircle ? diameter : height;
 
-    if (displayWidth === 0 || displayHeight === 0) return null;
+    if (!displayWidth || displayWidth <= 0 || !displayHeight || displayHeight <= 0) return null;
 
     const scaleFactor = 300 / Math.max(displayWidth, displayHeight, 300);
 
-    const outerWidth = displayWidth * scaleFactor;
-    const outerHeight = displayHeight * scaleFactor;
-    const outerRadius = isCircle ? '50%' : `${Math.min(cornerRadius, Math.min(displayWidth, displayHeight) / 2) * scaleFactor}px`;
+    const outerStyle: React.CSSProperties = {
+        width: `${displayWidth * scaleFactor}px`,
+        height: `${displayHeight * scaleFactor}px`,
+        borderRadius: isCircle ? '50%' : `${Math.min(cornerRadius, Math.min(displayWidth, displayHeight) / 2) * scaleFactor}px`,
+        position: 'relative',
+        overflow: 'hidden',
+        boxSizing: 'border-box'
+    };
 
     const showStrips = hasFrostedStrips && frostedStripWidth > 0;
-    const stripWidthPx = frostedStripWidth * scaleFactor;
-    const topOffsetPx = frostedStripTop * scaleFactor;
-    const bottomOffsetPx = frostedStripBottom * scaleFactor;
-    const leftOffsetPx = frostedStripLeft * scaleFactor;
-    const rightOffsetPx = frostedStripRight * scaleFactor;
 
     return (
-        <div
-            className={cn("relative flex items-center justify-center transition-all duration-300 overflow-hidden", glassColorClass)}
-            style={{
-                width: `${outerWidth}px`,
-                height: `${outerHeight}px`,
-                borderRadius: outerRadius,
-            }}
-        >
-            <div className="absolute inset-0 flex items-center justify-center text-sm text-muted-foreground text-center p-2 break-all">{type}</div>
+        <div style={outerStyle} className={glassColorClass}>
+            <div className="absolute inset-0 flex items-center justify-center text-xs text-muted-foreground text-center p-2 break-words">{type}</div>
             
             {showStrips && (
-                <>
-                    {/* Top Strip */}
-                    {frostedStripTop > 0 && <div className="absolute bg-yellow-400" style={{ top: `${topOffsetPx}px`, left: `${leftOffsetPx}px`, right: `${rightOffsetPx}px`, height: `${stripWidthPx}px` }}></div>}
-                    {/* Bottom Strip */}
-                    {frostedStripBottom > 0 && <div className="absolute bg-yellow-400" style={{ bottom: `${bottomOffsetPx}px`, left: `${leftOffsetPx}px`, right: `${rightOffsetPx}px`, height: `${stripWidthPx}px` }}></div>}
-                    {/* Left Strip */}
-                    {frostedStripLeft > 0 && <div className="absolute bg-yellow-400" style={{ left: `${leftOffsetPx}px`, top: `${topOffsetPx}px`, bottom: `${bottomOffsetPx}px`, width: `${stripWidthPx}px` }}></div>}
-                    {/* Right Strip */}
-                    {frostedStripRight > 0 && <div className="absolute bg-yellow-400" style={{ right: `${rightOffsetPx}px`, top: `${topOffsetPx}px`, bottom: `${bottomOffsetPx}px`, width: `${stripWidthPx}px` }}></div>}
-                </>
+                isCircle ? (
+                    <div
+                        style={{
+                            position: 'absolute',
+                            top: `${frostedStripCircularOffset * scaleFactor}px`,
+                            bottom: `${frostedStripCircularOffset * scaleFactor}px`,
+                            left: `${frostedStripCircularOffset * scaleFactor}px`,
+                            right: `${frostedStripCircularOffset * scaleFactor}px`,
+                            borderRadius: '50%',
+                            border: `${frostedStripWidth * scaleFactor}px solid yellow`,
+                            boxSizing: 'border-box'
+                        }}
+                    ></div>
+                ) : (
+                    <div
+                        style={{
+                            position: 'absolute',
+                            top: `${frostedStripTop * scaleFactor}px`,
+                            bottom: `${frostedStripBottom * scaleFactor}px`,
+                            left: `${frostedStripLeft * scaleFactor}px`,
+                            right: `${frostedStripRight * scaleFactor}px`,
+                            borderRadius: 'inherit',
+                            border: `${frostedStripWidth * scaleFactor}px solid yellow`,
+                            boxSizing: 'border-box'
+                        }}
+                    ></div>
+                )
             )}
         </div>
     );
@@ -415,13 +439,19 @@ const GlassVisualizer = () => {
                     {hasFrostedStripsFeature && (
                         <div className="space-y-4 mt-4 p-4 border rounded-lg">
                              <FormField control={form.control} name="frostedStripWidth" render={({ field }) => ( <FormItem><FormLabel>Largura da Faixa (mm)</FormLabel><FormControl><Input type="number" placeholder='Ex: 50' {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                            <p className='text-xs text-muted-foreground -mt-2'>Defina o recuo da faixa. Deixe em 0 para não aplicar em uma borda.</p>
-                            <div className="grid grid-cols-2 gap-4">
-                                <FormField control={form.control} name="frostedStripTop" render={({ field }) => ( <FormItem><FormLabel>Recuo Superior (mm)</FormLabel><FormControl><Input type="number" placeholder='0' {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                                <FormField control={form.control} name="frostedStripBottom" render={({ field }) => ( <FormItem><FormLabel>Recuo Inferior (mm)</FormLabel><FormControl><Input type="number" placeholder='0' {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                                <FormField control={form.control} name="frostedStripLeft" render={({ field }) => ( <FormItem><FormLabel>Recuo Esquerdo (mm)</FormLabel><FormControl><Input type="number" placeholder='0' {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                                <FormField control={form.control} name="frostedStripRight" render={({ field }) => ( <FormItem><FormLabel>Recuo Direito (mm)</FormLabel><FormControl><Input type="number" placeholder='0' {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                            </div>
+                             {shape === 'circle' ? (
+                                <FormField control={form.control} name="frostedStripCircularOffset" render={({ field }) => ( <FormItem><FormLabel>Distância da Borda (mm)</FormLabel><FormControl><Input type="number" placeholder='Ex: 50' {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                             ) : (
+                                <>
+                                <p className='text-xs text-muted-foreground -mt-2'>Defina o recuo da faixa. Deixe em 0 para não aplicar em uma borda.</p>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <FormField control={form.control} name="frostedStripTop" render={({ field }) => ( <FormItem><FormLabel>Recuo Superior (mm)</FormLabel><FormControl><Input type="number" placeholder='0' {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                                    <FormField control={form.control} name="frostedStripBottom" render={({ field }) => ( <FormItem><FormLabel>Recuo Inferior (mm)</FormLabel><FormControl><Input type="number" placeholder='0' {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                                    <FormField control={form.control} name="frostedStripLeft" render={({ field }) => ( <FormItem><FormLabel>Recuo Esquerdo (mm)</FormLabel><FormControl><Input type="number" placeholder='0' {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                                    <FormField control={form.control} name="frostedStripRight" render={({ field }) => ( <FormItem><FormLabel>Recuo Direito (mm)</FormLabel><FormControl><Input type="number" placeholder='0' {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                                </div>
+                                </>
+                             )}
                         </div>
                     )}
                 </div>
@@ -447,11 +477,21 @@ const GlassVisualizer = () => {
                         </>
                     )}
                     <p><strong>Quantidade:</strong> {glassData.quantity}</p>
-                    {hasFrostedStripsFeature && (glassData.frostedStripWidth || 0) > 0 && <p className='text-xs'><strong>Largura Faixa:</strong> {glassData.frostedStripWidth}mm</p>}
-                    {hasFrostedStripsFeature && (glassData.frostedStripTop || 0) > 0 && <p className='text-xs'><strong>Recuo Superior: {glassData.frostedStripTop}mm</strong></p>}
-                    {hasFrostedStripsFeature && (glassData.frostedStripBottom || 0) > 0 && <p className='text-xs'><strong>Recuo Inferior: {glassData.frostedStripBottom}mm</strong></p>}
-                    {hasFrostedStripsFeature && (glassData.frostedStripLeft || 0) > 0 && <p className='text-xs'><strong>Recuo Esquerdo: {glassData.frostedStripLeft}mm</strong></p>}
-                    {hasFrostedStripsFeature && (glassData.frostedStripRight || 0) > 0 && <p className='text-xs'><strong>Recuo Direito: {glassData.frostedStripRight}mm</strong></p>}
+                    {hasFrostedStripsFeature && (glassData.frostedStripWidth || 0) > 0 && (
+                        <>
+                            <p className='text-xs'><strong>Largura Faixa:</strong> {glassData.frostedStripWidth}mm</p>
+                             {shape === 'circle' ? (
+                                <p className='text-xs'><strong>Distância Borda:</strong> {glassData.frostedStripCircularOffset || 0}mm</p>
+                             ) : (
+                                <>
+                                {(glassData.frostedStripTop || 0) > 0 && <p className='text-xs'><strong>Recuo Superior: {glassData.frostedStripTop}mm</strong></p>}
+                                {(glassData.frostedStripBottom || 0) > 0 && <p className='text-xs'><strong>Recuo Inferior: {glassData.frostedStripBottom}mm</strong></p>}
+                                {(glassData.frostedStripLeft || 0) > 0 && <p className='text-xs'><strong>Recuo Esquerdo: {glassData.frostedStripLeft}mm</strong></p>}
+                                {(glassData.frostedStripRight || 0) > 0 && <p className='text-xs'><strong>Recuo Direito: {glassData.frostedStripRight}mm</strong></p>}
+                                </>
+                             )}
+                        </>
+                    )}
                 </div>
             </div>
             
