@@ -120,7 +120,6 @@ export function FurnitureMaterialsModal({
     },
   });
 
-  const isPurchased = useMemo(() => furniture.purchase?.status === 'done', [furniture.purchase]);
   const purchaseTimestamp = useMemo(() => furniture.purchase?.completedAt, [furniture.purchase]);
 
   const { fields: materialFields, append: appendMaterial, remove: removeMaterial } = useFieldArray({
@@ -249,12 +248,12 @@ export function FurnitureMaterialsModal({
           </DialogDescription>
         </DialogHeader>
 
-        {isPurchased && furniture.purchase?.completedAt && (
+        {purchaseTimestamp && (
             <Alert variant="default" className="bg-green-100 border-green-200 text-green-800">
                 <CheckCircle className="h-4 w-4 !text-green-800" />
                 <AlertTitle>Compra Principal Finalizada</AlertTitle>
                 <AlertDescription>
-                    Os materiais originais foram marcados como comprados em {format(new Date(furniture.purchase.completedAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}. Você ainda pode adicionar novos itens se necessário.
+                    Os materiais originais foram marcados como comprados em {format(new Date(purchaseTimestamp), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}. Você ainda pode adicionar novos itens se necessário.
                 </AlertDescription>
             </Alert>
         )}
@@ -393,11 +392,13 @@ export function FurnitureMaterialsModal({
                    <div className="space-y-4">
                     {materialFields.length > 0 ? (
                       materialFields.map((field, index) => {
-                        const isDisabled = isOriginalItem(field.addedAt);
+                        const isPurchased = isOriginalItem(field.addedAt);
                         return (
                         <div
                           key={field.id}
-                          className={cn("flex items-end gap-2 p-3 rounded-lg bg-muted/50 border", isDisabled && "opacity-70")}
+                          className={cn("flex items-end gap-2 p-3 rounded-lg border", 
+                            isPurchased ? "bg-green-100/60 border-green-200" : "bg-muted/50"
+                          )}
                         >
                             <FormField
                               control={form.control}
@@ -406,7 +407,7 @@ export function FurnitureMaterialsModal({
                                 <FormItem className="flex-grow">
                                   <FormLabel>Material</FormLabel>
                                   <FormControl>
-                                    <Input placeholder="Ex: MDF Branco 18mm" {...field} disabled={isDisabled} />
+                                    <Input placeholder="Ex: MDF Branco 18mm" {...field} disabled={isPurchased} />
                                   </FormControl>
                                   <FormMessage />
                                 </FormItem>
@@ -419,7 +420,7 @@ export function FurnitureMaterialsModal({
                                 <FormItem className="w-24">
                                   <FormLabel>Qtd.</FormLabel>
                                   <FormControl>
-                                    <Input type="number" {...field} disabled={isDisabled} />
+                                    <Input type="number" {...field} disabled={isPurchased} />
                                   </FormControl>
                                   <FormMessage />
                                 </FormItem>
@@ -431,7 +432,7 @@ export function FurnitureMaterialsModal({
                               render={({ field }) => (
                                 <FormItem className="w-32">
                                   <FormLabel>Unidade</FormLabel>
-                                  <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isDisabled}>
+                                  <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isPurchased}>
                                     <FormControl>
                                       <SelectTrigger>
                                         <SelectValue placeholder="Unid." />
@@ -451,7 +452,7 @@ export function FurnitureMaterialsModal({
                             size="icon"
                             className="text-destructive/80 hover:text-destructive h-10 w-10 flex-shrink-0"
                             onClick={() => removeMaterial(index)}
-                            disabled={isDisabled}
+                            disabled={isPurchased}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
