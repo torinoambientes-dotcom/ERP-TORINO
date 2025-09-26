@@ -29,7 +29,7 @@ import {
 } from '@/components/ui/form';
 import type { GlassItem } from '@/lib/types';
 import { cn } from '@/lib/utils';
-import { Square } from 'lucide-react';
+import { Square, FileDown } from 'lucide-react';
 import { useEffect } from 'react';
 
 interface GlassCreatorModalProps {
@@ -37,6 +37,8 @@ interface GlassCreatorModalProps {
   onClose: () => void;
   onSave: (glass: Omit<GlassItem, 'id'>) => void;
   glassToEdit?: GlassItem | null;
+  clientName?: string;
+  viewOnly?: boolean;
 }
 
 const glassTypes = ['Vidro Incolor', 'Espelho', 'Vidro Reflecta Incolor', 'Vidro Reflecta Bronze', 'Vidro Reflecta Fume'];
@@ -51,7 +53,7 @@ const glassCreatorSchema = z.object({
 
 type GlassCreatorFormValues = z.infer<typeof glassCreatorSchema>;
 
-export function GlassCreatorModal({ isOpen, onClose, onSave, glassToEdit }: GlassCreatorModalProps) {
+export function GlassCreatorModal({ isOpen, onClose, onSave, glassToEdit, clientName, viewOnly = false }: GlassCreatorModalProps) {
   const isEditMode = !!glassToEdit;
   
   const form = useForm<GlassCreatorFormValues>({
@@ -82,6 +84,7 @@ export function GlassCreatorModal({ isOpen, onClose, onSave, glassToEdit }: Glas
   }, [isOpen, isEditMode, glassToEdit, form]);
 
   const onSubmit = (data: GlassCreatorFormValues) => {
+    if (viewOnly) return;
     onSave(data as Omit<GlassItem, 'id'>);
     onClose();
   };
@@ -116,15 +119,15 @@ export function GlassCreatorModal({ isOpen, onClose, onSave, glassToEdit }: Glas
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="w-[95vw] max-w-4xl h-[80vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle className="font-headline">{isEditMode ? 'Editar Vidro / Espelho' : 'Criador de Vidro / Espelho'}</DialogTitle>
+          <DialogTitle className="font-headline">{viewOnly ? "Visualizar Vidro / Espelho" : (isEditMode ? 'Editar Vidro / Espelho' : 'Criador de Vidro / Espelho')}</DialogTitle>
           <DialogDescription>
-             {isEditMode ? 'Edite os detalhes do item.' : 'Configure os detalhes do novo item de vidraçaria.'}
+             {viewOnly ? "Visualize os detalhes do item." : (isEditMode ? 'Edite os detalhes do item.' : 'Configure os detalhes do novo item de vidraçaria.')}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-1 md:grid-cols-2 gap-8 flex-grow overflow-hidden">
             {/* Left Column: Form */}
-            <div className="flex flex-col space-y-4 overflow-y-auto pr-4 -mr-4">
+            <fieldset disabled={viewOnly} className="flex flex-col space-y-4 overflow-y-auto pr-4 -mr-4">
               <FormField
                 control={form.control}
                 name="type"
@@ -154,7 +157,7 @@ export function GlassCreatorModal({ isOpen, onClose, onSave, glassToEdit }: Glas
                 <FormField control={form.control} name="quantity" render={({ field }) => ( <FormItem><FormLabel>Quantidade</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )}/>
                 <FormField control={form.control} name="cornerRadius" render={({ field }) => ( <FormItem><FormLabel>Raio do Canto (mm)</FormLabel><FormControl><Input type="number" placeholder='0' {...field} /></FormControl><FormMessage /></FormItem> )}/>
                </div>
-            </div>
+            </fieldset>
 
             {/* Right Column: Visualizer */}
             <div className="flex flex-col items-center justify-center bg-muted/30 rounded-lg relative h-full border p-4 gap-4">
@@ -163,6 +166,7 @@ export function GlassCreatorModal({ isOpen, onClose, onSave, glassToEdit }: Glas
                 </div>
                 <div className="w-full p-4 border rounded-lg bg-background text-sm">
                     <h4 className="font-bold mb-2">Especificações</h4>
+                    {clientName && <p><strong>Cliente:</strong> {clientName}</p>}
                     <p><strong>Tipo:</strong> {glassData.type}</p>
                     <p><strong>Dimensões:</strong> {glassData.width}mm x {glassData.height}mm</p>
                     <p><strong>Raio do Canto:</strong> {glassData.cornerRadius || 0}mm</p>
@@ -171,13 +175,15 @@ export function GlassCreatorModal({ isOpen, onClose, onSave, glassToEdit }: Glas
             </div>
             
             <DialogFooter className="md:col-span-2 mt-auto pt-6 border-t">
-              <Button type="button" variant="ghost" onClick={onClose}>
-                Cancelar
+              <Button type="button" variant={viewOnly ? 'default' : 'ghost'} onClick={onClose}>
+                {viewOnly ? "Fechar" : "Cancelar"}
               </Button>
-              <Button type="submit">
-                 <Square className="mr-2 h-4 w-4" />
-                 {isEditMode ? 'Salvar Alterações' : 'Adicionar Item'}
-              </Button>
+              {!viewOnly && (
+                 <Button type="submit">
+                    <Square className="mr-2 h-4 w-4" />
+                    {isEditMode ? 'Salvar Alterações' : 'Adicionar Item'}
+                 </Button>
+              )}
             </DialogFooter>
           </form>
         </Form>

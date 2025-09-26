@@ -26,6 +26,7 @@ import {
 } from '@/components/ui/accordion';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ProfileDoorCreatorModal } from '@/components/modals/profile-door-creator-modal';
+import { GlassCreatorModal } from '@/components/modals/glass-creator-modal';
 
 interface ShoppingList {
   [projectName: string]: {
@@ -88,8 +89,13 @@ export default function PurchasesPage() {
   const { toast } = useToast();
 
   const [isStockAlertOpen, setIsStockAlertOpen] = useState(true);
+
   const [isDoorViewerOpen, setIsDoorViewerOpen] = useState(false);
   const [doorToView, setDoorToView] = useState<ProfileDoorItem | null>(null);
+
+  const [isGlassViewerOpen, setIsGlassViewerOpen] = useState(false);
+  const [glassToView, setGlassToView] = useState<GlassItem | null>(null);
+
   const [clientNameToView, setClientNameToView] = useState<string | undefined>(undefined);
 
   const [showPurchasedGlass, setShowPurchasedGlass] = useState(false);
@@ -155,7 +161,7 @@ export default function PurchasesPage() {
                 const items = (furniture.glassItems || [])
                     .filter(item => {
                         const isPurchased = item.purchased === true;
-                        return showPurchasedGlass ? isPurchased : !isPurchased;
+                        return showPurchasedGlass ? isPurchased : (!item.purchased);
                     })
                     .map(item => ({...item, projectId: project.id, envId: environment.id, furId: furniture.id }));
 
@@ -200,7 +206,7 @@ export default function PurchasesPage() {
                 const items = (furniture.profileDoors || [])
                     .filter(item => {
                         const isPurchased = item.purchased === true;
-                        return showPurchasedDoors ? isPurchased : !isPurchased;
+                        return showPurchasedDoors ? isPurchased : (!item.purchased);
                     })
                     .map(item => ({...item, projectId: project.id, envId: environment.id, furId: furniture.id }));
 
@@ -384,6 +390,12 @@ export default function PurchasesPage() {
         setIsDoorViewerOpen(true);
     };
 
+    const handleOpenGlassViewer = (glass: GlassItem, clientName: string) => {
+        setGlassToView(glass);
+        setClientNameToView(clientName);
+        setIsGlassViewerOpen(true);
+    };
+
     const handleToggleItemPurchased = (itemType: 'glass' | 'door', itemId: string, projectId: string, envId: string, furId: string) => {
       toggleItemPurchasedStatus(itemType, itemId, projectId, envId, furId);
       toast({
@@ -565,14 +577,20 @@ export default function PurchasesPage() {
                                         <p className="font-semibold text-sm">{furnitureName}</p>
                                         <ul className='space-y-1 text-sm list-disc pl-5 text-muted-foreground'>
                                             {furnitureData.glassItems.map((item, index) => (
-                                            <li key={index} className='flex justify-between items-center'>
+                                            <li key={index} className='flex justify-between items-center gap-2'>
                                                 <div>
                                                   <span className="font-medium text-foreground/90">{item.type}:</span> {item.quantity} pç(s) - {item.width}mm x {item.height}mm
                                                 </div>
-                                                <Button variant={showPurchasedGlass ? 'secondary': 'outline'} size="sm" onClick={() => handleToggleItemPurchased('glass', item.id, item.projectId, item.envId, item.furId)}>
-                                                    {showPurchasedGlass ? <History className="mr-2 h-4 w-4" /> : <ShoppingCart className="mr-2 h-4 w-4" />}
-                                                    {showPurchasedGlass ? 'Mover para "A comprar"' : 'Marcar como comprado'}
-                                                </Button>
+                                                <div className='flex gap-1 flex-shrink-0'>
+                                                    <Button variant="ghost" size="sm" onClick={() => handleOpenGlassViewer(item, projectName)}>
+                                                        <Eye className="mr-2 h-4 w-4" />
+                                                        Visualizar
+                                                    </Button>
+                                                    <Button variant={showPurchasedGlass ? 'secondary': 'outline'} size="sm" onClick={() => handleToggleItemPurchased('glass', item.id, item.projectId, item.envId, item.furId)}>
+                                                        {showPurchasedGlass ? <History className="mr-2 h-4 w-4" /> : <ShoppingCart className="mr-2 h-4 w-4" />}
+                                                        {showPurchasedGlass ? 'Mover para "A comprar"' : 'Marcar como comprado'}
+                                                    </Button>
+                                                </div>
                                             </li>
                                             ))}
                                         </ul>
@@ -680,6 +698,16 @@ export default function PurchasesPage() {
             onSave={() => {}} // Dummy onSave for view-only mode
             clientName={clientNameToView}
             doorToEdit={doorToView}
+            viewOnly={true}
+        />
+    )}
+     {isGlassViewerOpen && (
+        <GlassCreatorModal
+            isOpen={isGlassViewerOpen}
+            onClose={() => setIsGlassViewerOpen(false)}
+            onSave={() => {}} // Dummy onSave for view-only mode
+            clientName={clientNameToView}
+            glassToEdit={glassToView}
             viewOnly={true}
         />
     )}
