@@ -126,8 +126,9 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName }:
     const doc = new jsPDF();
     const doorData = form.getValues();
     const scale = 0.2; // Escala para desenhar
-    const profileWidth = 45;
-    
+    const profileWidthMM = 45;
+    const hingeDiameterMM = 35;
+
     // Título
     doc.setFontSize(18);
     doc.text('Folha de Produção - Porta de Perfil', 10, 20);
@@ -149,7 +150,7 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName }:
     doc.text(`Quantidade: ${doorData.quantity}${doorData.isPair ? ' (par)' : ''}`, 10, currentY);
     
     currentY += 6;
-    doc.text(`Dimensões: ${doorData.width}mm x ${doorData.height}mm`, 10, currentY);
+    doc.text(`Dimensões (por porta): ${doorData.width}mm x ${doorData.height}mm`, 10, currentY);
     
     currentY += 6;
     doc.text(`Cor do Perfil: ${doorData.profileColor}`, 10, currentY);
@@ -162,7 +163,10 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName }:
 
     if (doorData.handleType !== 'Sem Puxador') {
         currentY += 6;
-        doc.text(`Posição do Puxador: ${handlePositions[doorData.handlePosition]}`, 10, currentY);
+        const handlePosLabel = handlePositions[doorData.handlePosition];
+        const mirrorPosLabel = doorData.isPair ? ` / ${handlePositions[{left: 'right', right: 'left', top: 'top', bottom: 'bottom'}[doorData.handlePosition]]}` : '';
+        doc.text(`Posição do Puxador: ${handlePosLabel}${mirrorPosLabel}`, 10, currentY);
+        
         if (doorData.handleType === 'Aba Usinada') {
             currentY += 6;
             doc.text(`Largura do Puxador: ${doorData.handleWidth}mm`, 10, currentY);
@@ -178,79 +182,77 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName }:
       doc.text(`- Furo ${index + 1}: ${hinge.position}mm`, 15, (currentY + 6) + (index * 6));
     });
 
-    // Desenho da porta
-    const doorX = 110;
-    const doorY = 30;
-    const doorWidthPx = doorData.width * scale;
-    const doorHeightPx = doorData.height * scale;
-    const profileWidthPx = profileWidth * scale;
+    // --- Desenho da(s) porta(s) ---
+    const drawDoor = (startX: number, mirrored: boolean) => {
+        const doorWidthPx = doorData.width * scale;
+        const doorHeightPx = doorData.height * scale;
+        const profileWidthPx = profileWidthMM * scale;
+        const doorY = 30;
 
-    doc.setDrawColor(0);
-    // Borda externa
-    doc.rect(doorX, doorY, doorWidthPx, doorHeightPx);
-    // Borda interna (vidro)
-    doc.rect(doorX + profileWidthPx, doorY + profileWidthPx, doorWidthPx - (2*profileWidthPx), doorHeightPx - (2*profileWidthPx));
+        doc.setDrawColor(0);
+        // Borda externa
+        doc.rect(startX, doorY, doorWidthPx, doorHeightPx);
+        // Borda interna (vidro)
+        doc.rect(startX + profileWidthPx, doorY + profileWidthPx, doorWidthPx - (2*profileWidthPx), doorHeightPx - (2*profileWidthPx));
 
-    // Dobradiças no desenho
-    doc.setFillColor(255, 0, 0);
-    doorData.hinges?.forEach(hinge => {
-        const hingeY = doorY + doorHeightPx - (hinge.position * scale);
-        doc.circle(doorX + (profileWidthPx / 2), hingeY, (35/2) * scale, 'F');
-    });
-
-    // Puxador no desenho
-    if (doorData.handleType !== 'Sem Puxador') {
+        // Dobradiças no desenho
         doc.setFillColor(255, 0, 0);
-        const handleThicknessPx = 4 * scale; 
-        let handleX = 0, handleY = 0, handleW = 0, handleH = 0;
+        doorData.hinges?.forEach(hinge => {
+            const hingeY = doorY + doorHeightPx - (hinge.position * scale);
+            const hingeX = mirrored 
+                ? startX + doorWidthPx - (profileWidthPx / 2) 
+                : startX + (profileWidthPx / 2);
+            doc.circle(hingeX, hingeY, (hingeDiameterMM / 2) * scale, 'F');
+        });
 
-        switch (doorData.handlePosition) {
-            case 'top':
-                handleH = handleThicknessPx;
-                handleY = doorY;
-                if (doorData.handleType === 'Linear inteiro') {
-                    handleW = doorWidthPx;
-                    handleX = doorX;
-                } else {
-                    handleW = doorData.handleWidth! * scale;
-                    handleX = doorX + (doorData.handleOffset! * scale);
-                }
-                break;
-            case 'bottom':
-                handleH = handleThicknessPx;
-                handleY = doorY + doorHeightPx - handleThicknessPx;
-                if (doorData.handleType === 'Linear inteiro') {
-                    handleW = doorWidthPx;
-                    handleX = doorX;
-                } else {
-                    handleW = doorData.handleWidth! * scale;
-                    handleX = doorX + (doorData.handleOffset! * scale);
-                }
-                break;
-            case 'left':
-                handleW = handleThicknessPx;
-                handleX = doorX;
-                if (doorData.handleType === 'Linear inteiro') {
-                    handleH = doorHeightPx;
-                    handleY = doorY;
-                } else {
-                    handleH = doorData.handleWidth! * scale;
-                    handleY = doorY + (doorData.handleOffset! * scale);
-                }
-                break;
-            case 'right':
-                handleW = handleThicknessPx;
-                handleX = doorX + doorWidthPx - handleThicknessPx;
-                if (doorData.handleType === 'Linear inteiro') {
-                    handleH = doorHeightPx;
-                    handleY = doorY;
-                } else {
-                    handleH = doorData.handleWidth! * scale;
-                    handleY = doorY + (doorData.handleOffset! * scale);
-                }
-                break;
+        // Puxador no desenho
+        if (doorData.handleType !== 'Sem Puxador') {
+            doc.setFillColor(255, 0, 0);
+            const handleThicknessPx = 4 * scale; 
+            let handleX = 0, handleY = 0, handleW = 0, handleH = 0;
+            
+            const position = mirrored ? {
+                'left': 'right', 'right': 'left', 'top': 'top', 'bottom': 'bottom'
+            }[doorData.handlePosition] : doorData.handlePosition;
+
+            switch (position) {
+                case 'top':
+                case 'bottom':
+                    handleH = handleThicknessPx;
+                    handleY = position === 'top' ? doorY : doorY + doorHeightPx - handleThicknessPx;
+                    if (doorData.handleType === 'Linear inteiro') {
+                        handleW = doorWidthPx;
+                        handleX = startX;
+                    } else { // Aba Usinada
+                        handleW = doorData.handleWidth! * scale;
+                        handleX = startX + (doorData.handleOffset! * scale);
+                    }
+                    break;
+                case 'left':
+                case 'right':
+                    handleW = handleThicknessPx;
+                    handleX = position === 'left' ? startX : startX + doorWidthPx - handleThicknessPx;
+                    if (doorData.handleType === 'Linear inteiro') {
+                        handleH = doorHeightPx;
+                        handleY = doorY;
+                    } else { // Aba Usinada
+                        handleH = doorData.handleWidth! * scale;
+                        handleY = doorY + (doorData.handleOffset! * scale);
+                    }
+                    break;
+            }
+            doc.rect(handleX, handleY, handleW, handleH, 'F');
         }
-        doc.rect(handleX, handleY, handleW, handleH, 'F');
+    };
+    
+    if (doorData.isPair) {
+        const firstDoorX = 105;
+        const spacing = 5;
+        const secondDoorX = firstDoorX + (doorData.width * scale) + spacing;
+        drawDoor(firstDoorX, false);
+        drawDoor(secondDoorX, true);
+    } else {
+        drawDoor(110, false);
     }
 
     doc.save(`Porta_${clientName || 'especificacao'}.pdf`);
@@ -329,15 +331,17 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName }:
         <span className="text-sm text-muted-foreground text-center p-2 break-all">{doorData.glassType}</span>
       </div>
       {hinges?.map((hinge, index) => {
+        const hingeDiameter = 35;
         const hingeStyle: React.CSSProperties = {
-            bottom: `calc(${(hinge.position - (35/2)) / doorHeight * 100}%)`,
-            width: `${35 / doorWidth * 100}%`,
+            bottom: `calc(${(hinge.position - (hingeDiameter/2)) / doorHeight * 100}%)`,
+            width: `${hingeDiameter / doorWidth * 100}%`,
             aspectRatio: '1/1',
         };
+        const hingeCenterInProfile = (PROFILE_WIDTH_MM / 2) - (hingeDiameter / 2);
         if (mirrored) {
-            hingeStyle.right = `calc(${(PROFILE_WIDTH_MM / 2 - 35 / 2) / doorWidth * 100}%)`;
+            hingeStyle.right = `calc(${hingeCenterInProfile / doorWidth * 100}%)`;
         } else {
-            hingeStyle.left = `calc(${(PROFILE_WIDTH_MM / 2 - 35 / 2) / doorWidth * 100}%)`;
+            hingeStyle.left = `calc(${hingeCenterInProfile / doorWidth * 100}%)`;
         }
         return <div key={index} className="absolute bg-red-500 rounded-full" style={hingeStyle}></div>;
       })}
