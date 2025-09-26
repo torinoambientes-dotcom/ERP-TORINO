@@ -173,25 +173,29 @@ export function GlassCreatorModal({ isOpen, onClose, onSave, glassToEdit, client
     doc.roundedRect(startX, startY, drawWidth, drawHeight, drawRadius, drawRadius, 'FD');
 
     // Frosted strips in PDF
-    const stripWidthPx = 1;
-    doc.setDrawColor(255, 204, 0); // Yellow
-    doc.setLineWidth(stripWidthPx);
+    const stripThicknessPx = 0.5; // Represents the width of the frosted band
+    doc.setFillColor(255, 255, 0); // Yellow fill for strips
 
-    if (data.frostedStripTop && data.frostedStripTop > 0) {
-        const y = startY + (data.frostedStripTop * scale);
-        doc.line(startX, y, startX + drawWidth, y);
+    const topOffset = (data.frostedStripTop || 0) * scale;
+    const bottomOffset = (data.frostedStripBottom || 0) * scale;
+    const leftOffset = (data.frostedStripLeft || 0) * scale;
+    const rightOffset = (data.frostedStripRight || 0) * scale;
+
+    // Top strip
+    if (topOffset > 0) {
+      doc.rect(startX + leftOffset, startY + topOffset, drawWidth - leftOffset - rightOffset, stripThicknessPx, 'F');
     }
-    if (data.frostedStripBottom && data.frostedStripBottom > 0) {
-        const y = startY + drawHeight - (data.frostedStripBottom * scale);
-        doc.line(startX, y, startX + drawWidth, y);
+    // Bottom strip
+    if (bottomOffset > 0) {
+      doc.rect(startX + leftOffset, startY + drawHeight - bottomOffset - stripThicknessPx, drawWidth - leftOffset - rightOffset, stripThicknessPx, 'F');
     }
-    if (data.frostedStripLeft && data.frostedStripLeft > 0) {
-        const x = startX + (data.frostedStripLeft * scale);
-        doc.line(x, startY, x, startY + drawHeight);
+    // Left strip
+    if (leftOffset > 0) {
+      doc.rect(startX + leftOffset, startY + topOffset, stripThicknessPx, drawHeight - topOffset - bottomOffset, 'F');
     }
-    if (data.frostedStripRight && data.frostedStripRight > 0) {
-        const x = startX + drawWidth - (data.frostedStripRight * scale);
-        doc.line(x, startY, x, startY + drawHeight);
+    // Right strip
+    if (rightOffset > 0) {
+      doc.rect(startX + drawWidth - rightOffset - stripThicknessPx, startY + topOffset, stripThicknessPx, drawHeight - topOffset - bottomOffset, 'F');
     }
 
     doc.save(`Vidro_${clientName || 'especificacao'}.pdf`);
@@ -205,27 +209,62 @@ export function GlassCreatorModal({ isOpen, onClose, onSave, glassToEdit, client
     const maxRadius = Math.min(width, height) / 2;
     const clampedRadius = Math.min(cornerRadius || 0, maxRadius);
     
-    const FrostedStrip = ({ side, value }: { side: 'top' | 'bottom' | 'left' | 'right', value?: number }) => {
-      if (!value || value <= 0) return null;
-      const style: React.CSSProperties = {
-        position: 'absolute',
-        backgroundColor: 'yellow',
-        boxShadow: '0 0 2px yellow',
-      };
-      const offsetPercent = `${(value / (side === 'top' || side === 'bottom' ? height : width)) * 100}%`;
+    const FrostedRectangle = () => {
+      const top = glassData.frostedStripTop || 0;
+      const bottom = glassData.frostedStripBottom || 0;
+      const left = glassData.frostedStripLeft || 0;
+      const right = glassData.frostedStripRight || 0;
 
-      if (side === 'top' || side === 'bottom') {
-        style.height = '2px';
-        style.width = '100%';
-        style[side] = offsetPercent;
-        style.left = '0';
-      } else {
-        style.width = '2px';
-        style.height = '100%';
-        style[side] = offsetPercent;
-        style.top = '0';
+      if (!top && !bottom && !left && !right) {
+        return null;
       }
-      return <div style={style}></div>;
+      
+      const stripThickness = 2; // in pixels for visualization
+
+      return (
+        <>
+          {/* Top */}
+          {top > 0 && <div style={{
+            position: 'absolute',
+            backgroundColor: 'yellow',
+            boxShadow: '0 0 2px yellow',
+            height: `${stripThickness}px`,
+            top: `${(top / height) * 100}%`,
+            left: `${(left / width) * 100}%`,
+            right: `${(right / width) * 100}%`,
+          }}></div>}
+          {/* Bottom */}
+           {bottom > 0 && <div style={{
+            position: 'absolute',
+            backgroundColor: 'yellow',
+            boxShadow: '0 0 2px yellow',
+            height: `${stripThickness}px`,
+            bottom: `${(bottom / height) * 100}%`,
+            left: `${(left / width) * 100}%`,
+            right: `${(right / width) * 100}%`,
+          }}></div>}
+          {/* Left */}
+          {left > 0 && <div style={{
+            position: 'absolute',
+            backgroundColor: 'yellow',
+            boxShadow: '0 0 2px yellow',
+            width: `${stripThickness}px`,
+            left: `${(left / width) * 100}%`,
+            top: `${(top / height) * 100}%`,
+            bottom: `${(bottom / height) * 100}%`,
+          }}></div>}
+          {/* Right */}
+          {right > 0 && <div style={{
+            position: 'absolute',
+            backgroundColor: 'yellow',
+            boxShadow: '0 0 2px yellow',
+            width: `${stripThickness}px`,
+            right: `${(right / width) * 100}%`,
+            top: `${(top / height) * 100}%`,
+            bottom: `${(bottom / height) * 100}%`,
+          }}></div>}
+        </>
+      )
     };
 
     return (
@@ -241,10 +280,7 @@ export function GlassCreatorModal({ isOpen, onClose, onSave, glassToEdit, client
         }}
       >
         <span className="text-sm text-muted-foreground text-center p-2 break-all">{type}</span>
-        <FrostedStrip side="top" value={glassData.frostedStripTop} />
-        <FrostedStrip side="bottom" value={glassData.frostedStripBottom} />
-        <FrostedStrip side="left" value={glassData.frostedStripLeft} />
-        <FrostedStrip side="right" value={glassData.frostedStripRight} />
+        <FrostedRectangle />
       </div>
     );
   };
