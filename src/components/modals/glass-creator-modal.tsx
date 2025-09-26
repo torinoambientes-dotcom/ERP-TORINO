@@ -29,10 +29,11 @@ import {
 } from '@/components/ui/form';
 import type { GlassItem } from '@/lib/types';
 import { cn } from '@/lib/utils';
-import { Square, FileDown } from 'lucide-react';
+import { Square, FileDown, Circle } from 'lucide-react';
 import { useEffect } from 'react';
 import jsPDF from 'jspdf';
 import { Separator } from '../ui/separator';
+import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 
 
 interface GlassCreatorModalProps {
@@ -47,9 +48,11 @@ interface GlassCreatorModalProps {
 const glassTypes = ['Vidro Incolor', 'Espelho', 'Vidro Reflecta Incolor', 'Vidro Reflecta Bronze', 'Vidro Reflecta Fume'];
 
 const glassCreatorSchema = z.object({
+  shape: z.enum(['rectangle', 'circle']),
   type: z.string().min(1, 'O tipo de vidro é obrigatório.'),
-  width: z.coerce.number().min(1, 'Largura mínima de 1mm.'),
-  height: z.coerce.number().min(1, 'Altura mínima de 1mm.'),
+  width: z.coerce.number().optional(),
+  height: z.coerce.number().optional(),
+  diameter: z.coerce.number().optional(),
   quantity: z.coerce.number().min(1, 'A quantidade mínima é 1.'),
   cornerRadius: z.coerce.number().min(0, 'O raio não pode ser negativo.').optional(),
   frostedStripTop: z.coerce.number().min(0, 'Offset não pode ser negativo.').optional(),
@@ -57,7 +60,24 @@ const glassCreatorSchema = z.object({
   frostedStripLeft: z.coerce.number().min(0, 'Offset não pode ser negativo.').optional(),
   frostedStripRight: z.coerce.number().min(0, 'Offset não pode ser negativo.').optional(),
   frostedStripWidth: z.coerce.number().min(0, 'A largura não pode ser negativa.').optional(),
+}).refine(data => {
+    if (data.shape === 'rectangle') {
+        return data.width && data.width > 0 && data.height && data.height > 0;
+    }
+    return true;
+}, {
+    message: "Largura e altura são obrigatórias para retângulos.",
+    path: ["width"],
+}).refine(data => {
+    if (data.shape === 'circle') {
+        return data.diameter && data.diameter > 0;
+    }
+    return true;
+}, {
+    message: "Diâmetro é obrigatório para círculos.",
+    path: ["diameter"],
 });
+
 
 type GlassCreatorFormValues = z.infer<typeof glassCreatorSchema>;
 
@@ -67,9 +87,11 @@ export function GlassCreatorModal({ isOpen, onClose, onSave, glassToEdit, client
   const form = useForm<GlassCreatorFormValues>({
     resolver: zodResolver(glassCreatorSchema),
     defaultValues: {
+      shape: 'rectangle',
       type: glassTypes[0],
       width: 500,
       height: 700,
+      diameter: 500,
       quantity: 1,
       cornerRadius: 0,
       frostedStripTop: 0,
@@ -85,6 +107,7 @@ export function GlassCreatorModal({ isOpen, onClose, onSave, glassToEdit, client
       if (isEditMode && glassToEdit) {
         form.reset({
           ...glassToEdit,
+          shape: glassToEdit.shape || 'rectangle',
           frostedStripTop: glassToEdit.frostedStripTop || 0,
           frostedStripBottom: glassToEdit.frostedStripBottom || 0,
           frostedStripLeft: glassToEdit.frostedStripLeft || 0,
@@ -93,9 +116,11 @@ export function GlassCreatorModal({ isOpen, onClose, onSave, glassToEdit, client
         });
       } else {
         form.reset({
+          shape: 'rectangle',
           type: glassTypes[0],
           width: 500,
           height: 700,
+          diameter: 500,
           quantity: 1,
           cornerRadius: 0,
           frostedStripTop: 0,
@@ -116,6 +141,7 @@ export function GlassCreatorModal({ isOpen, onClose, onSave, glassToEdit, client
 
   const glassData = form.watch();
   const hasFrostedStrips = (glassData.frostedStripTop || 0) > 0 || (glassData.frostedStripBottom || 0) > 0 || (glassData.frostedStripLeft || 0) > 0 || (glassData.frostedStripRight || 0) > 0;
+  const shape = form.watch('shape');
 
   const generatePDF = () => {
     const doc = new jsPDF({ orientation: 'landscape', unit: 'mm' });
@@ -133,7 +159,7 @@ export function GlassCreatorModal({ isOpen, onClose, onSave, glassToEdit, client
     doc.text('Folha de Produção - Vidro / Espelho', margin, 20);
     doc.setFontSize(12);
     let currentY = 30;
-    const writeSpec = (label: string, value: string | number) => {
+    const writeSpec = (label: string, value: string | number | undefined) => {
       if(value){
         doc.text(`${label}: ${value}`, margin, currentY);
         currentY += 6;
@@ -141,10 +167,16 @@ export function GlassCreatorModal({ isOpen, onClose, onSave, glassToEdit, client
     };
     
     writeSpec('Cliente', clientName || 'N/A');
+    writeSpec('Formato', data.shape === 'circle' ? 'Círculo' : 'Retângulo');
     writeSpec('Tipo', data.type);
     writeSpec('Qtd', data.quantity);
-    writeSpec('Dimensões', `${data.width} x ${data.height} mm`);
-    writeSpec('Raio do Canto', `${data.cornerRadius || 0} mm`);
+    if(data.shape === 'circle') {
+        writeSpec('Diâmetro', `${data.diameter} mm`);
+    } else {
+        writeSpec('Dimensões', `${data.width} x ${data.height} mm`);
+        writeSpec('Raio do Canto', `${data.cornerRadius || 0} mm`);
+    }
+
 
     const hasStrips = (data.frostedStripTop || 0) > 0 || (data.frostedStripBottom || 0) > 0 || (data.frostedStripLeft || 0) > 0 || (data.frostedStripRight || 0) > 0;
 
@@ -162,8 +194,8 @@ export function GlassCreatorModal({ isOpen, onClose, onSave, glassToEdit, client
     
 
     // --- Drawing ---
-    const drawWidth = data.width * scale;
-    const drawHeight = data.height * scale;
+    const drawWidth = (data.shape === 'circle' ? data.diameter! : data.width!) * scale;
+    const drawHeight = (data.shape === 'circle' ? data.diameter! : data.height!) * scale;
     const drawRadius = (data.cornerRadius || 0) * scale;
     
     const startX = drawingColumnX + ((pageWidth - drawingColumnX - margin) / 2) - (drawWidth / 2);
@@ -171,9 +203,14 @@ export function GlassCreatorModal({ isOpen, onClose, onSave, glassToEdit, client
 
     doc.setDrawColor(0);
     doc.setFillColor(230, 230, 230);
-    doc.roundedRect(startX, startY, drawWidth, drawHeight, drawRadius, drawRadius, 'FD');
+    if(data.shape === 'circle'){
+        doc.ellipse(startX + drawWidth / 2, startY + drawHeight / 2, drawWidth / 2, drawHeight / 2, 'FD');
+    } else {
+        doc.roundedRect(startX, startY, drawWidth, drawHeight, drawRadius, drawRadius, 'FD');
+    }
 
     // Frosted strips in PDF
+    // This part remains complex for circles, for now it will draw a square inside
     doc.setFillColor(255, 255, 0); // Yellow fill for strips
 
     const topOffset = (data.frostedStripTop || 0) * scale;
@@ -206,85 +243,50 @@ export function GlassCreatorModal({ isOpen, onClose, onSave, glassToEdit, client
 
 
   const GlassVisualizer = () => {
-    const { width, height, cornerRadius, type } = glassData;
+    const { shape, width = 0, height = 0, diameter = 0, cornerRadius = 0, type } = glassData;
 
     const glassColorClass = type === 'Espelho' ? 'bg-gray-300' : 'bg-blue-200/50';
-    const maxRadius = Math.min(width, height) / 2;
-    const clampedRadius = Math.min(cornerRadius || 0, maxRadius);
     
-    const FrostedRectangle = () => {
-      const top = glassData.frostedStripTop || 0;
-      const bottom = glassData.frostedStripBottom || 0;
-      const left = glassData.frostedStripLeft || 0;
-      const right = glassData.frostedStripRight || 0;
-      const stripWidth = glassData.frostedStripWidth || 0;
+    const isCircle = shape === 'circle';
+    const displayWidth = isCircle ? diameter : width;
+    const displayHeight = isCircle ? diameter : height;
 
-      if (!top && !bottom && !left && !right) {
-        return null;
-      }
-      
-      if(stripWidth <= 0) return null;
+    const maxRadius = Math.min(displayWidth, displayHeight) / 2;
+    const clampedRadius = Math.min(cornerRadius, maxRadius);
+    
+    const frostedStripWidth = glassData.frostedStripWidth || 0;
+    const hasStrips = frostedStripWidth > 0 && ((glassData.frostedStripTop || 0) > 0 || (glassData.frostedStripBottom || 0) > 0 || (glassData.frostedStripLeft || 0) > 0 || (glassData.frostedStripRight || 0) > 0);
 
-      return (
-        <>
-          {/* Top */}
-          {top > 0 && <div style={{
-            position: 'absolute',
-            backgroundColor: 'yellow',
-            boxShadow: '0 0 2px yellow',
-            height: `${(stripWidth / height) * 100}%`,
-            top: `${(top / height) * 100}%`,
-            left: `${(left / width) * 100}%`,
-            right: `${(right / width) * 100}%`,
-          }}></div>}
-          {/* Bottom */}
-           {bottom > 0 && <div style={{
-            position: 'absolute',
-            backgroundColor: 'yellow',
-            boxShadow: '0 0 2px yellow',
-            height: `${(stripWidth / height) * 100}%`,
-            bottom: `${(bottom / height) * 100}%`,
-            left: `${(left / width) * 100}%`,
-            right: `${(right / width) * 100}%`,
-          }}></div>}
-          {/* Left */}
-          {left > 0 && <div style={{
-            position: 'absolute',
-            backgroundColor: 'yellow',
-            boxShadow: '0 0 2px yellow',
-            width: `${(stripWidth / width) * 100}%`,
-            left: `${(left / width) * 100}%`,
-            top: `${(top / height) * 100}%`,
-            bottom: `${(bottom / height) * 100}%`,
-          }}></div>}
-          {/* Right */}
-          {right > 0 && <div style={{
-            position: 'absolute',
-            backgroundColor: 'yellow',
-            boxShadow: '0 0 2px yellow',
-            width: `${(stripWidth / width) * 100}%`,
-            right: `${(right / width) * 100}%`,
-            top: `${(top / height) * 100}%`,
-            bottom: `${(bottom / height) * 100}%`,
-          }}></div>}
-        </>
-      )
+    const frostedBorderStyle = {
+        borderStyle: 'solid',
+        borderColor: 'yellow',
+        borderTopWidth: `${glassData.frostedStripTop ? frostedStripWidth : 0}px`,
+        borderBottomWidth: `${glassData.frostedStripBottom ? frostedStripWidth : 0}px`,
+        borderLeftWidth: `${glassData.frostedStripLeft ? frostedStripWidth : 0}px`,
+        borderRightWidth: `${glassData.frostedStripRight ? frostedStripWidth : 0}px`,
+        borderRadius: isCircle ? '50%' : `${(clampedRadius / displayWidth) * 100}% / ${(clampedRadius / displayHeight) * 100}%`,
+        boxSizing: 'border-box'
     };
 
     return (
       <div
         className={cn("relative flex items-center justify-center transition-all duration-300 border-2 border-gray-500 overflow-hidden", glassColorClass)}
         style={{
-          aspectRatio: `${width} / ${height}`,
-          width: (width / height) > 1 ? '100%' : 'auto',
-          height: (width / height) <= 1 ? '100%' : 'auto',
+          aspectRatio: `${displayWidth} / ${displayHeight}`,
+          width: isCircle ? 'min(100%, 100%)' : ((displayWidth / displayHeight) > 1 ? '100%' : 'auto'),
+          height: isCircle ? 'auto' : ((displayWidth / displayHeight) <= 1 ? '100%' : 'auto'),
           maxHeight: '100%',
           maxWidth: '100%',
-          borderRadius: `${(clampedRadius / width) * 100}% / ${(clampedRadius / height) * 100}%`,
+          borderRadius: isCircle ? '50%' : `${(clampedRadius / displayWidth) * 100}% / ${(clampedRadius / displayHeight) * 100}%`,
         }}
       >
         <span className="text-sm text-muted-foreground text-center p-2 break-all">{type}</span>
-        <FrostedRectangle />
+         {hasStrips && (
+            <div
+                className="absolute inset-0"
+                style={frostedBorderStyle}
+            ></div>
+        )}
       </div>
     );
   };
@@ -302,6 +304,33 @@ export function GlassCreatorModal({ isOpen, onClose, onSave, glassToEdit, client
           <form onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-1 md:grid-cols-2 gap-8 flex-grow overflow-hidden">
             {/* Left Column: Form */}
             <fieldset disabled={viewOnly} className="flex flex-col space-y-4 overflow-y-auto pr-4 -mr-4">
+              <FormField
+                control={form.control}
+                name="shape"
+                render={({ field }) => (
+                  <FormItem className="space-y-3">
+                    <FormLabel>Formato</FormLabel>
+                    <FormControl>
+                      <RadioGroup
+                        onValueChange={field.onChange}
+                        value={field.value}
+                        className="flex space-x-4"
+                      >
+                        <FormItem className="flex items-center space-x-2 space-y-0">
+                          <FormControl><RadioGroupItem value="rectangle" /></FormControl>
+                          <FormLabel className="font-normal">Retângulo</FormLabel>
+                        </FormItem>
+                        <FormItem className="flex items-center space-x-2 space-y-0">
+                          <FormControl><RadioGroupItem value="circle" /></FormControl>
+                          <FormLabel className="font-normal">Círculo</FormLabel>
+                        </FormItem>
+                      </RadioGroup>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
               <FormField
                 control={form.control}
                 name="type"
@@ -322,29 +351,37 @@ export function GlassCreatorModal({ isOpen, onClose, onSave, glassToEdit, client
                   </FormItem>
                 )}
               />
-
-              <div className="grid grid-cols-2 gap-4">
-                <FormField control={form.control} name="width" render={({ field }) => ( <FormItem><FormLabel>Largura (mm)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                <FormField control={form.control} name="height" render={({ field }) => ( <FormItem><FormLabel>Altura (mm)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )}/>
-              </div>
-               <div className="grid grid-cols-2 gap-4">
-                <FormField control={form.control} name="quantity" render={({ field }) => ( <FormItem><FormLabel>Quantidade</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                <FormField control={form.control} name="cornerRadius" render={({ field }) => ( <FormItem><FormLabel>Raio do Canto (mm)</FormLabel><FormControl><Input type="number" placeholder='0' {...field} /></FormControl><FormMessage /></FormItem> )}/>
-               </div>
+              {shape === 'rectangle' ? (
+                <>
+                    <div className="grid grid-cols-2 gap-4">
+                        <FormField control={form.control} name="width" render={({ field }) => ( <FormItem><FormLabel>Largura (mm)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                        <FormField control={form.control} name="height" render={({ field }) => ( <FormItem><FormLabel>Altura (mm)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                    </div>
+                     <div className="grid grid-cols-2 gap-4">
+                        <FormField control={form.control} name="quantity" render={({ field }) => ( <FormItem><FormLabel>Quantidade</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                        <FormField control={form.control} name="cornerRadius" render={({ field }) => ( <FormItem><FormLabel>Raio do Canto (mm)</FormLabel><FormControl><Input type="number" placeholder='0' {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                     </div>
+                </>
+              ) : (
+                <div className="grid grid-cols-2 gap-4">
+                    <FormField control={form.control} name="diameter" render={({ field }) => ( <FormItem><FormLabel>Diâmetro (mm)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                    <FormField control={form.control} name="quantity" render={({ field }) => ( <FormItem><FormLabel>Quantidade</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                </div>
+              )}
 
                 <Separator />
 
                 <div>
                     <h4 className="font-medium mb-2">Faixa Jateada</h4>
-                    <p className='text-xs text-muted-foreground mb-3'>Defina o recuo da faixa a partir de cada borda. Deixe `0` para não adicionar.</p>
+                    <p className='text-xs text-muted-foreground mb-3'>Defina quais bordas terão a faixa. A largura será aplicada a todas as bordas selecionadas.</p>
                     {hasFrostedStrips && (
                       <FormField control={form.control} name="frostedStripWidth" render={({ field }) => ( <FormItem className="mb-4"><FormLabel>Largura da Faixa (mm)</FormLabel><FormControl><Input type="number" placeholder='Ex: 50' {...field} /></FormControl><FormMessage /></FormItem> )}/>
                     )}
                     <div className="grid grid-cols-2 gap-4">
-                        <FormField control={form.control} name="frostedStripTop" render={({ field }) => ( <FormItem><FormLabel>Recuo Superior (mm)</FormLabel><FormControl><Input type="number" placeholder='0' {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                        <FormField control={form.control} name="frostedStripBottom" render={({ field }) => ( <FormItem><FormLabel>Recuo Inferior (mm)</FormLabel><FormControl><Input type="number" placeholder='0' {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                        <FormField control={form.control} name="frostedStripLeft" render={({ field }) => ( <FormItem><FormLabel>Recuo Esquerda (mm)</FormLabel><FormControl><Input type="number" placeholder='0' {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                        <FormField control={form.control} name="frostedStripRight" render={({ field }) => ( <FormItem><FormLabel>Recuo Direita (mm)</FormLabel><FormControl><Input type="number" placeholder='0' {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                        <FormField control={form.control} name="frostedStripTop" render={({ field }) => ( <FormItem><FormLabel>Faixa Superior</FormLabel><FormControl><Input type="number" placeholder='Insira largura para aplicar' {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                        <FormField control={form.control} name="frostedStripBottom" render={({ field }) => ( <FormItem><FormLabel>Faixa Inferior</FormLabel><FormControl><Input type="number" placeholder='Insira largura para aplicar' {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                        <FormField control={form.control} name="frostedStripLeft" render={({ field }) => ( <FormItem><FormLabel>Faixa Esquerda</FormLabel><FormControl><Input type="number" placeholder='Insira largura para aplicar' {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                        <FormField control={form.control} name="frostedStripRight" render={({ field }) => ( <FormItem><FormLabel>Faixa Direita</FormLabel><FormControl><Input type="number" placeholder='Insira largura para aplicar' {...field} /></FormControl><FormMessage /></FormItem> )}/>
                     </div>
                 </div>
 
@@ -358,15 +395,22 @@ export function GlassCreatorModal({ isOpen, onClose, onSave, glassToEdit, client
                 <div className="w-full p-4 border rounded-lg bg-background text-sm">
                     <h4 className="font-bold mb-2">Especificações</h4>
                     {clientName && <p><strong>Cliente:</strong> {clientName}</p>}
+                    <p><strong>Formato:</strong> {glassData.shape === 'circle' ? 'Círculo' : 'Retângulo'}</p>
                     <p><strong>Tipo:</strong> {glassData.type}</p>
-                    <p><strong>Dimensões:</strong> {glassData.width}mm x {glassData.height}mm</p>
-                    <p><strong>Raio do Canto:</strong> {glassData.cornerRadius || 0}mm</p>
+                    {glassData.shape === 'circle' ? (
+                        <p><strong>Diâmetro:</strong> {glassData.diameter || 0}mm</p>
+                    ) : (
+                        <>
+                         <p><strong>Dimensões:</strong> {glassData.width || 0}mm x {glassData.height || 0}mm</p>
+                         <p><strong>Raio do Canto:</strong> {glassData.cornerRadius || 0}mm</p>
+                        </>
+                    )}
                     <p><strong>Quantidade:</strong> {glassData.quantity}</p>
                     {hasFrostedStrips && (glassData.frostedStripWidth || 0) > 0 && <p className='text-xs'><strong>Largura Faixa:</strong> {glassData.frostedStripWidth}mm</p>}
-                    {(glassData.frostedStripTop || 0) > 0 && <p className='text-xs'><strong>Recuo Superior:</strong> {glassData.frostedStripTop}mm</p>}
-                    {(glassData.frostedStripBottom || 0) > 0 && <p className='text-xs'><strong>Recuo Inferior:</strong> {glassData.frostedStripBottom}mm</p>}
-                    {(glassData.frostedStripLeft || 0) > 0 && <p className='text-xs'><strong>Recuo Esquerda:</strong> {glassData.frostedStripLeft}mm</p>}
-                    {(glassData.frostedStripRight || 0) > 0 && <p className='text-xs'><strong>Recuo Direita:</strong> {glassData.frostedStripRight}mm</p>}
+                    {(glassData.frostedStripTop || 0) > 0 && <p className='text-xs'><strong>Faixa Superior</strong></p>}
+                    {(glassData.frostedStripBottom || 0) > 0 && <p className='text-xs'><strong>Faixa Inferior</strong></p>}
+                    {(glassData.frostedStripLeft || 0) > 0 && <p className='text-xs'><strong>Faixa Esquerda</strong></p>}
+                    {(glassData.frostedStripRight || 0) > 0 && <p className='text-xs'><strong>Faixa Direita</strong></p>}
                 </div>
             </div>
             
@@ -380,7 +424,7 @@ export function GlassCreatorModal({ isOpen, onClose, onSave, glassToEdit, client
               </Button>
               {!viewOnly && (
                  <Button type="submit">
-                    <Square className="mr-2 h-4 w-4" />
+                    {shape === 'circle' ? <Circle className="mr-2 h-4 w-4" /> : <Square className="mr-2 h-4 w-4" />}
                     {isEditMode ? 'Salvar Alterações' : 'Adicionar Item'}
                  </Button>
               )}
