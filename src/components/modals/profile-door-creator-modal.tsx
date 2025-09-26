@@ -123,43 +123,45 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName }:
   const doorVisualizerRef = useRef(null);
 
   const generatePDF = () => {
-    const doc = new jsPDF();
+    const doc = new jsPDF({ orientation: 'landscape' });
     const doorData = form.getValues();
-    const scale = 0.2; // Escala para desenhar
+    const scale = 0.25; // Adjusted scale for landscape
     const pageHeight = doc.internal.pageSize.getHeight();
     const pageWidth = doc.internal.pageSize.getWidth();
 
     const profileWidthMM = 45;
     const hingeDiameterMM = 35;
-    const marginLeft = 10;
+    const marginLeft = 15;
     const textBlockWidth = 90;
-    const drawingAreaX = marginLeft + textBlockWidth;
+    const drawingAreaX = marginLeft + textBlockWidth + 10;
     const drawingAreaWidth = pageWidth - drawingAreaX - marginLeft;
 
-    // --- Desenho da(s) porta(s) ---
+    // --- Draw Door Function ---
     const drawDoor = (startX: number, startY: number, mirrored: boolean) => {
         const doorWidthPx = doorData.width * scale;
         const doorHeightPx = doorData.height * scale;
         const profileWidthPx = profileWidthMM * scale;
 
         doc.setDrawColor(0);
-        // Borda externa
+        // Outer border
         doc.rect(startX, startY, doorWidthPx, doorHeightPx);
-        // Borda interna (vidro)
+        // Inner border (glass)
         doc.rect(startX + profileWidthPx, startY + profileWidthPx, doorWidthPx - (2 * profileWidthPx), doorHeightPx - (2 * profileWidthPx));
 
-        // Dobradiças no desenho
-        doc.setFillColor(255, 0, 0);
-        doorData.hinges?.forEach(hinge => {
-            const hingeY = startY + doorHeightPx - (hinge.position * scale);
-            const hingeCenterInProfilePx = (profileWidthMM / 2) * scale;
-            const hingeX = mirrored
-                ? startX + doorWidthPx - hingeCenterInProfilePx
-                : startX + hingeCenterInProfilePx;
-            doc.circle(hingeX, hingeY, (hingeDiameterMM / 2) * scale, 'F');
-        });
+        // Hinges in the drawing
+        if (doorData.doorType === 'Giro' && doorData.hinges) {
+            doc.setFillColor(255, 0, 0);
+            doorData.hinges.forEach(hinge => {
+                const hingeY = startY + doorHeightPx - (hinge.position * scale);
+                const hingeCenterInProfilePx = (profileWidthMM / 2) * scale;
+                const hingeX = mirrored
+                    ? startX + doorWidthPx - hingeCenterInProfilePx
+                    : startX + hingeCenterInProfilePx;
+                doc.circle(hingeX, hingeY, (hingeDiameterMM / 2) * scale, 'F');
+            });
+        }
 
-        // Puxador no desenho
+        // Handle in the drawing
         if (doorData.handleType !== 'Sem Puxador') {
             doc.setFillColor(255, 0, 0);
             const handleThicknessPx = 4 * scale;
@@ -173,7 +175,7 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName }:
                 case 'top':
                 case 'bottom':
                     handleH = handleThicknessPx;
-                    handleY = position === 'top' ? startY : startY + doorHeightPx - handleThicknessPx;
+                    handleY = position === 'top' ? startY : startY + doorHeightPx - handleH;
                     if (doorData.handleType === 'Linear inteiro') {
                         handleW = doorWidthPx;
                         handleX = startX;
@@ -185,7 +187,7 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName }:
                 case 'left':
                 case 'right':
                     handleW = handleThicknessPx;
-                    handleX = position === 'left' ? startX : startX + doorWidthPx - handleThicknessPx;
+                    handleX = position === 'left' ? startX : startX + doorWidthPx - handleW;
                     if (doorData.handleType === 'Linear inteiro') {
                         handleH = doorHeightPx;
                         handleY = startY;
@@ -199,73 +201,61 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName }:
         }
     };
     
-    // Título
+    // --- PDF Content ---
     doc.setFontSize(18);
     doc.text('Folha de Produção - Porta de Perfil', marginLeft, 20);
-
-    // Especificações
-    let currentY = 30;
+    
     doc.setFontSize(12);
-    doc.text(`Cliente: ${clientName || 'N/A'}`, marginLeft, currentY);
-    
-    currentY += 6;
-    doc.text(`Tipo de Porta: ${doorData.doorType}`, marginLeft, currentY);
-
-    if (doorData.doorType === 'Correr' && doorData.slidingSystem) {
+    let currentY = 30;
+    const writeSpec = (text: string) => {
+        doc.text(text, marginLeft, currentY);
         currentY += 6;
-        doc.text(`Sistema de Correr: ${doorData.slidingSystem}`, marginLeft, currentY);
+    };
+    
+    writeSpec(`Cliente: ${clientName || 'N/A'}`);
+    writeSpec(`Tipo de Porta: ${doorData.doorType}`);
+    if (doorData.doorType === 'Correr' && doorData.slidingSystem) {
+        writeSpec(`Sistema de Correr: ${doorData.slidingSystem}`);
     }
-    
-    currentY += 6;
-    doc.text(`Quantidade: ${doorData.quantity}${doorData.isPair ? ' (par)' : ''}`, marginLeft, currentY);
-    
-    currentY += 6;
-    doc.text(`Dimensões (por porta): ${doorData.width}mm x ${doorData.height}mm`, marginLeft, currentY);
-    
-    currentY += 6;
-    doc.text(`Cor do Perfil: ${doorData.profileColor}`, marginLeft, currentY);
-    
-    currentY += 6;
-    doc.text(`Tipo de Vidro: ${doorData.glassType}`, marginLeft, currentY);
-    
-    currentY += 6;
-    doc.text(`Tipo de Puxador: ${doorData.handleType}`, marginLeft, currentY);
+    writeSpec(`Quantidade: ${doorData.quantity}${doorData.isPair ? ' (par)' : ''}`);
+    writeSpec(`Dimensões (por porta): ${doorData.width}mm x ${doorData.height}mm`);
+    writeSpec(`Cor do Perfil: ${doorData.profileColor}`);
+    writeSpec(`Tipo de Vidro: ${doorData.glassType}`);
+    writeSpec(`Tipo de Puxador: ${doorData.handleType}`);
 
     if (doorData.handleType !== 'Sem Puxador') {
-        currentY += 6;
         const handlePosLabel = handlePositions[doorData.handlePosition];
         const mirrorPosLabel = doorData.isPair ? ` / ${handlePositions[{left: 'right', right: 'left', top: 'top', bottom: 'bottom'}[doorData.handlePosition]]}` : '';
-        doc.text(`Posição do Puxador: ${handlePosLabel}${mirrorPosLabel}`, marginLeft, currentY);
+        writeSpec(`Posição do Puxador: ${handlePosLabel}${mirrorPosLabel}`);
         
         if (doorData.handleType === 'Aba Usinada') {
-            currentY += 6;
-            doc.text(`Largura do Puxador: ${doorData.handleWidth}mm`, marginLeft, currentY);
-            currentY += 6;
-            doc.text(`Distância do Canto: ${doorData.handleOffset}mm`, marginLeft, currentY);
+            writeSpec(`Largura do Puxador: ${doorData.handleWidth}mm`);
+            writeSpec(`Distância do Canto: ${doorData.handleOffset}mm`);
         }
     }
 
-    // Dobradiças
-    currentY += 10;
-    doc.text('Dobradiças (a partir da base):', marginLeft, currentY);
-    doorData.hinges?.forEach((hinge, index) => {
-      doc.text(`- Furo ${index + 1}: ${hinge.position}mm`, marginLeft + 5, (currentY + 6) + (index * 6));
-    });
+    if (doorData.doorType === 'Giro' && doorData.hinges && doorData.hinges.length > 0) {
+        currentY += 4;
+        writeSpec('Dobradiças (a partir da base):');
+        doorData.hinges.forEach((hinge, index) => {
+          doc.text(`- Furo ${index + 1}: ${hinge.position}mm`, marginLeft + 5, currentY + (index * 6));
+        });
+    }
 
-    const totalDrawingWidth = (doorData.width * scale) * (doorData.isPair ? 2 : 1) + (doorData.isPair ? 5 : 0);
+    // --- Drawing Logic ---
+    const totalDrawingWidth = (doorData.width * scale) * (doorData.isPair ? 2 : 1) + (doorData.isPair ? 10 : 0);
     const totalDrawingHeight = doorData.height * scale;
     
     const drawingStartY = (pageHeight - totalDrawingHeight) / 2;
-    let drawingStartX = drawingAreaX + (drawingAreaWidth - totalDrawingWidth) / 2;
+    const drawingStartX = drawingAreaX + (drawingAreaWidth - totalDrawingWidth) / 2;
     
     if (doorData.isPair) {
-        const spacing = 5;
+        const spacing = 10;
         drawDoor(drawingStartX, drawingStartY, false);
         drawDoor(drawingStartX + (doorData.width * scale) + spacing, drawingStartY, true);
     } else {
         drawDoor(drawingStartX, drawingStartY, false);
     }
-
 
     doc.save(`Porta_${clientName || 'especificacao'}.pdf`);
   };
@@ -342,7 +332,7 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName }:
       <div className='absolute inset-0 bg-gray-300/30 backdrop-blur-sm flex items-center justify-center' style={{ margin: `${(PROFILE_WIDTH_MM / doorWidth) * 100}%`}}>
         <span className="text-sm text-muted-foreground text-center p-2 break-all">{doorData.glassType}</span>
       </div>
-      {hinges?.map((hinge, index) => {
+      {doorType === 'Giro' && hinges?.map((hinge, index) => {
         const hingeDiameter = 35;
         const hingeStyle: React.CSSProperties = {
             bottom: `calc(${(hinge.position - (hingeDiameter/2)) / doorHeight * 100}%)`,
@@ -425,24 +415,26 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName }:
 
               <Separator />
 
-              <div>
-                <FormLabel>Dobradiças (distância da base em mm)</FormLabel>
-                <div className='space-y-2 mt-2'>
-                  {hingeFields.map((field, index) => (
-                    <div key={field.id} className="flex items-center gap-2">
-                      <FormField control={form.control} name={`hinges.${index}.position`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input type="number" placeholder={`Altura furo ${index + 1}`} {...field} /></FormControl><FormMessage /></FormItem> )} />
-                      <Button type="button" variant="ghost" size="icon" onClick={() => removeHinge(index)} className="text-destructive h-9 w-9"><Trash2 className="h-4 w-4" /></Button>
-                    </div>
-                  ))}
-                  <Button type="button" variant="outline" size="sm" onClick={() => appendHinge({ position: 0 })}><PlusCircle className="mr-2 h-4 w-4" /> Adicionar Dobradiça</Button>
+              {doorType === 'Giro' && (
+                <div>
+                  <FormLabel>Dobradiças (distância da base em mm)</FormLabel>
+                  <div className='space-y-2 mt-2'>
+                    {hingeFields.map((field, index) => (
+                      <div key={field.id} className="flex items-center gap-2">
+                        <FormField control={form.control} name={`hinges.${index}.position`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input type="number" placeholder={`Altura furo ${index + 1}`} {...field} /></FormControl><FormMessage /></FormItem> )} />
+                        <Button type="button" variant="ghost" size="icon" onClick={() => removeHinge(index)} className="text-destructive h-9 w-9"><Trash2 className="h-4 w-4" /></Button>
+                      </div>
+                    ))}
+                    <Button type="button" variant="outline" size="sm" onClick={() => appendHinge({ position: 0 })}><PlusCircle className="mr-2 h-4 w-4" /> Adicionar Dobradiça</Button>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
 
             {/* Right Column: Visualizer */}
             <div ref={doorVisualizerRef} className="flex flex-col items-center justify-center bg-muted/30 rounded-lg relative h-full border p-4 gap-4">
                 <div className="w-full h-full flex items-center justify-center p-8">
-                    <div className="flex w-full h-full items-center justify-center gap-1">
+                    <div className="flex w-full h-full items-center justify-center gap-2">
                       <DoorVisualizer />
                       {isPair && <DoorVisualizer mirrored />}
                     </div>
@@ -460,7 +452,7 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName }:
                      {doorData.handleType === 'Aba Usinada' && (
                         <p className="pl-4 text-xs">Largura: {doorData.handleWidth}mm, Dist. Canto: {doorData.handleOffset}mm</p>
                     )}
-                    <p><strong>Dobradiças (da base):</strong> {hinges?.map(h => `${h.position}mm`).join(', ')}</p>
+                    {doorData.doorType === 'Giro' && <p><strong>Dobradiças (da base):</strong> {hinges?.map(h => `${h.position}mm`).join(', ')}</p>}
                 </div>
             </div>
             
