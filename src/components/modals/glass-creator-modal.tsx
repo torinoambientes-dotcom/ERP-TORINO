@@ -34,6 +34,7 @@ import { useEffect } from 'react';
 import jsPDF from 'jspdf';
 import { Separator } from '../ui/separator';
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
+import { Switch } from '../ui/switch';
 
 
 interface GlassCreatorModalProps {
@@ -55,6 +56,7 @@ const glassCreatorSchema = z.object({
   diameter: z.coerce.number().optional(),
   quantity: z.coerce.number().min(1, 'A quantidade mínima é 1.'),
   cornerRadius: z.coerce.number().min(0, 'O raio não pode ser negativo.').optional(),
+  hasFrostedStrips: z.boolean().default(false),
   frostedStripTop: z.coerce.number().min(0, 'Offset não pode ser negativo.').optional(),
   frostedStripBottom: z.coerce.number().min(0, 'Offset não pode ser negativo.').optional(),
   frostedStripLeft: z.coerce.number().min(0, 'Offset não pode ser negativo.').optional(),
@@ -76,6 +78,14 @@ const glassCreatorSchema = z.object({
 }, {
     message: "Diâmetro é obrigatório para círculos.",
     path: ["diameter"],
+}).refine(data => {
+    if (data.hasFrostedStrips) {
+        return data.frostedStripWidth && data.frostedStripWidth > 0;
+    }
+    return true;
+}, {
+    message: "A largura da faixa é obrigatória.",
+    path: ["frostedStripWidth"],
 });
 
 
@@ -94,11 +104,12 @@ export function GlassCreatorModal({ isOpen, onClose, onSave, glassToEdit, client
       diameter: 500,
       quantity: 1,
       cornerRadius: 0,
+      hasFrostedStrips: false,
       frostedStripTop: 0,
       frostedStripBottom: 0,
       frostedStripLeft: 0,
       frostedStripRight: 0,
-      frostedStripWidth: 0,
+      frostedStripWidth: 50,
     },
   });
 
@@ -108,11 +119,12 @@ export function GlassCreatorModal({ isOpen, onClose, onSave, glassToEdit, client
         form.reset({
           ...glassToEdit,
           shape: glassToEdit.shape || 'rectangle',
+          hasFrostedStrips: glassToEdit.hasFrostedStrips || false,
           frostedStripTop: glassToEdit.frostedStripTop || 0,
           frostedStripBottom: glassToEdit.frostedStripBottom || 0,
           frostedStripLeft: glassToEdit.frostedStripLeft || 0,
           frostedStripRight: glassToEdit.frostedStripRight || 0,
-          frostedStripWidth: glassToEdit.frostedStripWidth || 0,
+          frostedStripWidth: glassToEdit.frostedStripWidth || 50,
         });
       } else {
         form.reset({
@@ -123,11 +135,12 @@ export function GlassCreatorModal({ isOpen, onClose, onSave, glassToEdit, client
           diameter: 500,
           quantity: 1,
           cornerRadius: 0,
+          hasFrostedStrips: false,
           frostedStripTop: 0,
           frostedStripBottom: 0,
           frostedStripLeft: 0,
           frostedStripRight: 0,
-          frostedStripWidth: 0,
+          frostedStripWidth: 50,
         });
       }
     }
@@ -140,7 +153,7 @@ export function GlassCreatorModal({ isOpen, onClose, onSave, glassToEdit, client
   };
 
   const glassData = form.watch();
-  const hasFrostedStrips = (glassData.frostedStripWidth || 0) > 0 && ((glassData.frostedStripTop || 0) > 0 || (glassData.frostedStripBottom || 0) > 0 || (glassData.frostedStripLeft || 0) > 0 || (glassData.frostedStripRight || 0) > 0);
+  const hasFrostedStripsFeature = form.watch('hasFrostedStrips');
   const shape = form.watch('shape');
 
   const generatePDF = () => {
@@ -177,10 +190,7 @@ export function GlassCreatorModal({ isOpen, onClose, onSave, glassToEdit, client
         writeSpec('Raio do Canto', `${data.cornerRadius || 0} mm`);
     }
 
-
-    const hasStrips = (data.frostedStripTop || 0) > 0 || (data.frostedStripBottom || 0) > 0 || (data.frostedStripLeft || 0) > 0 || (data.frostedStripRight || 0) > 0;
-
-    if (hasStrips) {
+    if (data.hasFrostedStrips) {
         currentY += 2;
         doc.setFontSize(11);
         doc.text('Faixa Jateada (offset em mm):', margin, currentY);
@@ -209,32 +219,26 @@ export function GlassCreatorModal({ isOpen, onClose, onSave, glassToEdit, client
         doc.roundedRect(startX, startY, drawWidth, drawHeight, drawRadius, drawRadius, 'FD');
     }
 
-    // Frosted strips in PDF
-    // This part remains complex for circles, for now it will draw a square inside
-    doc.setFillColor(255, 255, 0); // Yellow fill for strips
+    if (data.hasFrostedStrips) {
+      doc.setFillColor(255, 255, 0); // Yellow fill for strips
 
-    const topOffset = (data.frostedStripTop || 0) * scale;
-    const bottomOffset = (data.frostedStripBottom || 0) * scale;
-    const leftOffset = (data.frostedStripLeft || 0) * scale;
-    const rightOffset = (data.frostedStripRight || 0) * scale;
-    const stripWidth = (data.frostedStripWidth || 0) * scale;
+      const topOffset = (data.frostedStripTop || 0) * scale;
+      const bottomOffset = (data.frostedStripBottom || 0) * scale;
+      const leftOffset = (data.frostedStripLeft || 0) * scale;
+      const rightOffset = (data.frostedStripRight || 0) * scale;
+      const stripWidth = (data.frostedStripWidth || 0) * scale;
 
-    if(stripWidth > 0) {
-      // Top strip
-      if (topOffset > 0) {
-        doc.rect(startX + leftOffset, startY + topOffset, drawWidth - leftOffset - rightOffset, stripWidth, 'F');
-      }
-      // Bottom strip
-      if (bottomOffset > 0) {
-        doc.rect(startX + leftOffset, startY + drawHeight - bottomOffset - stripWidth, drawWidth - leftOffset - rightOffset, stripWidth, 'F');
-      }
-      // Left strip
-      if (leftOffset > 0) {
-        doc.rect(startX + leftOffset, startY + topOffset, stripWidth, drawHeight - topOffset - bottomOffset, 'F');
-      }
-      // Right strip
-      if (rightOffset > 0) {
-        doc.rect(startX + drawWidth - rightOffset - stripWidth, startY + topOffset, stripWidth, drawHeight - topOffset - bottomOffset, 'F');
+      if(stripWidth > 0) {
+        if (data.shape === 'rectangle') {
+            // Top strip
+            if (topOffset > 0) doc.rect(startX + leftOffset, startY + topOffset, drawWidth - leftOffset - rightOffset, stripWidth, 'F');
+            // Bottom strip
+            if (bottomOffset > 0) doc.rect(startX + leftOffset, startY + drawHeight - bottomOffset - stripWidth, drawWidth - leftOffset - rightOffset, stripWidth, 'F');
+            // Left strip
+            if (leftOffset > 0) doc.rect(startX + leftOffset, startY + topOffset, stripWidth, drawHeight - topOffset - bottomOffset, 'F');
+            // Right strip
+            if (rightOffset > 0) doc.rect(startX + drawWidth - rightOffset - stripWidth, startY + topOffset, stripWidth, drawHeight - topOffset - bottomOffset, 'F');
+        }
       }
     }
 
@@ -260,7 +264,7 @@ export function GlassCreatorModal({ isOpen, onClose, onSave, glassToEdit, client
     const leftOffset = glassData.frostedStripLeft || 0;
     const rightOffset = glassData.frostedStripRight || 0;
 
-    const scaleFactor = 300 / Math.max(displayWidth, displayHeight); // Example scaling
+    const scaleFactor = 300 / Math.max(displayWidth, displayHeight);
 
     return (
       <div
@@ -272,7 +276,7 @@ export function GlassCreatorModal({ isOpen, onClose, onSave, glassToEdit, client
         }}
       >
         <span className="text-sm text-muted-foreground text-center p-2 break-all">{type}</span>
-         {stripWidth > 0 && (
+         {hasFrostedStripsFeature && stripWidth > 0 && (
             <>
               {topOffset > 0 && <div className="absolute bg-yellow-400" style={{ top: `${topOffset * scaleFactor}px`, left: `${leftOffset*scaleFactor}px`, right: `${rightOffset*scaleFactor}px`, height: `${stripWidth * scaleFactor}px` }}></div>}
               {bottomOffset > 0 && <div className="absolute bg-yellow-400" style={{ bottom: `${bottomOffset * scaleFactor}px`, left: `${leftOffset*scaleFactor}px`, right: `${rightOffset*scaleFactor}px`, height: `${stripWidth * scaleFactor}px` }}></div>}
@@ -365,17 +369,39 @@ export function GlassCreatorModal({ isOpen, onClose, onSave, glassToEdit, client
                 <Separator />
 
                 <div>
-                    <h4 className="font-medium mb-2">Faixa Jateada</h4>
-                    <p className='text-xs text-muted-foreground mb-3'>Defina o recuo e a largura da faixa. Deixe o recuo em 0 para não aplicar em uma borda.</p>
-                    {hasFrostedStrips && (
-                      <FormField control={form.control} name="frostedStripWidth" render={({ field }) => ( <FormItem className="mb-4"><FormLabel>Largura da Faixa (mm)</FormLabel><FormControl><Input type="number" placeholder='Ex: 50' {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                    <FormField
+                      control={form.control}
+                      name="hasFrostedStrips"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm bg-muted/50">
+                          <div className="space-y-0.5">
+                            <FormLabel>Ativar Faixa Jateada</FormLabel>
+                            <FormDescription className="text-xs">
+                              Habilita os campos para configurar a faixa.
+                            </FormDescription>
+                          </div>
+                          <FormControl>
+                            <Switch
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    
+                    {hasFrostedStripsFeature && (
+                        <div className="space-y-4 mt-4 p-4 border rounded-lg">
+                             <FormField control={form.control} name="frostedStripWidth" render={({ field }) => ( <FormItem><FormLabel>Largura da Faixa (mm)</FormLabel><FormControl><Input type="number" placeholder='Ex: 50' {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                            <p className='text-xs text-muted-foreground -mt-2'>Defina o recuo da faixa. Deixe em 0 para não aplicar em uma borda.</p>
+                            <div className="grid grid-cols-2 gap-4">
+                                <FormField control={form.control} name="frostedStripTop" render={({ field }) => ( <FormItem><FormLabel>Recuo Superior (mm)</FormLabel><FormControl><Input type="number" placeholder='0' {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                                <FormField control={form.control} name="frostedStripBottom" render={({ field }) => ( <FormItem><FormLabel>Recuo Inferior (mm)</FormLabel><FormControl><Input type="number" placeholder='0' {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                                <FormField control={form.control} name="frostedStripLeft" render={({ field }) => ( <FormItem><FormLabel>Recuo Esquerdo (mm)</FormLabel><FormControl><Input type="number" placeholder='0' {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                                <FormField control={form.control} name="frostedStripRight" render={({ field }) => ( <FormItem><FormLabel>Recuo Direito (mm)</FormLabel><FormControl><Input type="number" placeholder='0' {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                            </div>
+                        </div>
                     )}
-                    <div className="grid grid-cols-2 gap-4">
-                        <FormField control={form.control} name="frostedStripTop" render={({ field }) => ( <FormItem><FormLabel>Recuo Superior (mm)</FormLabel><FormControl><Input type="number" placeholder='0' {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                        <FormField control={form.control} name="frostedStripBottom" render={({ field }) => ( <FormItem><FormLabel>Recuo Inferior (mm)</FormLabel><FormControl><Input type="number" placeholder='0' {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                        <FormField control={form.control} name="frostedStripLeft" render={({ field }) => ( <FormItem><FormLabel>Recuo Esquerdo (mm)</FormLabel><FormControl><Input type="number" placeholder='0' {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                        <FormField control={form.control} name="frostedStripRight" render={({ field }) => ( <FormItem><FormLabel>Recuo Direito (mm)</FormLabel><FormControl><Input type="number" placeholder='0' {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                    </div>
                 </div>
 
             </fieldset>
@@ -399,11 +425,11 @@ export function GlassCreatorModal({ isOpen, onClose, onSave, glassToEdit, client
                         </>
                     )}
                     <p><strong>Quantidade:</strong> {glassData.quantity}</p>
-                    {hasFrostedStrips && (glassData.frostedStripWidth || 0) > 0 && <p className='text-xs'><strong>Largura Faixa:</strong> {glassData.frostedStripWidth}mm</p>}
-                    {(glassData.frostedStripTop || 0) > 0 && <p className='text-xs'><strong>Recuo Superior: {glassData.frostedStripTop}mm</strong></p>}
-                    {(glassData.frostedStripBottom || 0) > 0 && <p className='text-xs'><strong>Recuo Inferior: {glassData.frostedStripBottom}mm</strong></p>}
-                    {(glassData.frostedStripLeft || 0) > 0 && <p className='text-xs'><strong>Recuo Esquerdo: {glassData.frostedStripLeft}mm</strong></p>}
-                    {(glassData.frostedStripRight || 0) > 0 && <p className='text-xs'><strong>Recuo Direito: {glassData.frostedStripRight}mm</strong></p>}
+                    {hasFrostedStripsFeature && (glassData.frostedStripWidth || 0) > 0 && <p className='text-xs'><strong>Largura Faixa:</strong> {glassData.frostedStripWidth}mm</p>}
+                    {hasFrostedStripsFeature && (glassData.frostedStripTop || 0) > 0 && <p className='text-xs'><strong>Recuo Superior: {glassData.frostedStripTop}mm</strong></p>}
+                    {hasFrostedStripsFeature && (glassData.frostedStripBottom || 0) > 0 && <p className='text-xs'><strong>Recuo Inferior: {glassData.frostedStripBottom}mm</strong></p>}
+                    {hasFrostedStripsFeature && (glassData.frostedStripLeft || 0) > 0 && <p className='text-xs'><strong>Recuo Esquerdo: {glassData.frostedStripLeft}mm</strong></p>}
+                    {hasFrostedStripsFeature && (glassData.frostedStripRight || 0) > 0 && <p className='text-xs'><strong>Recuo Direito: {glassData.frostedStripRight}mm</strong></p>}
                 </div>
             </div>
             

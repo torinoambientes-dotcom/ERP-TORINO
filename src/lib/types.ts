@@ -47,6 +47,7 @@ export interface GlassItem {
   quantity: number;
   cornerRadius?: number;
   purchased?: boolean;
+  hasFrostedStrips?: boolean;
   frostedStripTop?: number;
   frostedStripBottom?: number;
   frostedStripLeft?: number;
