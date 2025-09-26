@@ -33,6 +33,7 @@ import { DoorOpen, FileDown, PlusCircle, Trash2 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import { useRef } from 'react';
 import { Separator } from '../ui/separator';
+import { Switch } from '../ui/switch';
 
 interface ProfileDoorCreatorModalProps {
   isOpen: boolean;
@@ -53,6 +54,7 @@ const doorCreatorSchema = z.object({
   height: z.coerce.number().min(300, 'Altura mínima de 300mm'),
   quantity: z.coerce.number().min(1, 'Quantidade mínima de 1.'),
   hinges: z.array(hingeSchema).optional(),
+  isPair: z.boolean().optional(),
 });
 
 type DoorCreatorFormValues = z.infer<typeof doorCreatorSchema>;
@@ -72,7 +74,8 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName }:
       profileColor: profileColors[0],
       glassType: profileGlassTypes[0],
       handleType: handleTypes[0],
-      hinges: [{position: 100}, {position: 600}]
+      hinges: [{position: 100}, {position: 600}],
+      isPair: false,
     },
   });
 
@@ -101,7 +104,7 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName }:
     // Especificações
     doc.setFontSize(12);
     doc.text(`Cliente: ${clientName || 'N/A'}`, 10, 30);
-    doc.text(`Quantidade: ${doorData.quantity}`, 10, 36);
+    doc.text(`Quantidade: ${doorData.quantity}${doorData.isPair ? ' par(es)' : ''}`, 10, 36);
     doc.text(`Dimensões: ${doorData.width}mm x ${doorData.height}mm`, 10, 42);
     doc.text(`Cor do Perfil: ${doorData.profileColor}`, 10, 48);
     doc.text(`Tipo de Vidro: ${doorData.glassType}`, 10, 54);
@@ -137,7 +140,7 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName }:
   };
 
   const doorData = form.watch();
-  const { width: doorWidth, height: doorHeight, hinges } = doorData;
+  const { width: doorWidth, height: doorHeight, hinges, isPair } = doorData;
 
   const profileColorClass = {
     'Preto': 'bg-gray-800',
@@ -146,6 +149,36 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName }:
   }[doorData.profileColor] || 'bg-gray-700';
 
   const PROFILE_WIDTH_MM = 45;
+
+  const DoorVisualizer = ({ mirrored = false }) => (
+    <div
+      className={cn("relative flex items-center justify-center transition-all duration-300", profileColorClass)}
+      style={{
+        aspectRatio: `${doorWidth} / ${doorHeight}`,
+        width: (doorWidth / doorHeight) > 1 ? '100%' : 'auto',
+        height: (doorWidth / doorHeight) <= 1 ? '100%' : 'auto',
+        maxHeight: '100%',
+        maxWidth: '100%',
+      }}
+    >
+      <div className='absolute inset-0 bg-gray-300/30 backdrop-blur-sm flex items-center justify-center' style={{ margin: `${(PROFILE_WIDTH_MM / doorWidth) * 100}%`}}>
+        <span className="text-sm text-muted-foreground text-center p-2 break-all">{doorData.glassType}</span>
+      </div>
+      {hinges?.map((hinge, index) => {
+        const hingeStyle: React.CSSProperties = {
+            bottom: `calc(${(hinge.position - (35/2)) / doorHeight * 100}%)`,
+            width: `${35 / doorWidth * 100}%`,
+            aspectRatio: '1/1',
+        };
+        if (mirrored) {
+            hingeStyle.right = `calc(${(PROFILE_WIDTH_MM / 2 - 35 / 2) / doorWidth * 100}%)`;
+        } else {
+            hingeStyle.left = `calc(${(PROFILE_WIDTH_MM / 2 - 35 / 2) / doorWidth * 100}%)`;
+        }
+        return <div key={index} className="absolute bg-red-500 rounded-full" style={hingeStyle}></div>;
+      })}
+    </div>
+  );
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -164,7 +197,23 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName }:
                 <FormField control={form.control} name="width" render={({ field }) => ( <FormItem><FormLabel>Largura (mm)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )}/>
                 <FormField control={form.control} name="height" render={({ field }) => ( <FormItem><FormLabel>Altura (mm)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )}/>
               </div>
-              <FormField control={form.control} name="quantity" render={({ field }) => ( <FormItem><FormLabel>Quantidade</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )}/>
+              <div className="flex items-center gap-4">
+                <FormField control={form.control} name="quantity" render={({ field }) => ( <FormItem className="flex-1"><FormLabel>Quantidade</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                <FormField
+                  control={form.control}
+                  name="isPair"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-col pt-7">
+                      <div className="flex items-center space-x-2">
+                        <Switch id="is-pair-switch" checked={field.value} onCheckedChange={field.onChange} />
+                        <Label htmlFor="is-pair-switch">Par de Portas</Label>
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
               <FormField control={form.control} name="profileColor" render={({ field }) => ( <FormItem><FormLabel>Cor do Perfil</FormLabel><FormControl><Input placeholder="Ex: Preto" {...field} /></FormControl><FormMessage /></FormItem> )}/>
               <FormField control={form.control} name="glassType" render={({ field }) => ( <FormItem><FormLabel>Tipo de Vidro</FormLabel><FormControl><Input placeholder="Ex: Incolor" {...field} /></FormControl><FormMessage /></FormItem> )}/>
               <FormField control={form.control} name="handleType" render={({ field }) => ( <FormItem><FormLabel>Tipo de Puxador</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{handleTypes.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem> )}/>
@@ -188,27 +237,9 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName }:
             {/* Right Column: Visualizer */}
             <div ref={doorVisualizerRef} className="flex flex-col items-center justify-center bg-muted/30 rounded-lg relative h-full border p-4 gap-4">
                 <div className="w-full h-full flex items-center justify-center p-8">
-                    <div
-                      className={cn("relative bg-transparent flex items-center justify-center transition-all duration-300", profileColorClass)}
-                      style={{
-                        aspectRatio: `${doorWidth} / ${doorHeight}`,
-                        width: (doorWidth / doorHeight) > 1 ? '100%' : 'auto',
-                        height: (doorWidth / doorHeight) <= 1 ? '100%' : 'auto',
-                        maxHeight: '100%',
-                        maxWidth: '100%',
-                      }}
-                    >
-                      <div className='absolute inset-0 bg-gray-300/30 backdrop-blur-sm flex items-center justify-center' style={{ margin: `${(PROFILE_WIDTH_MM / doorWidth) * 100}%`}}>
-                        <span className="text-sm text-muted-foreground text-center p-2 break-all">{doorData.glassType}</span>
-                      </div>
-                      {hinges?.map((hinge, index) => (
-                          <div key={index} className="absolute bg-red-500 rounded-full" style={{
-                              left: `calc(${(PROFILE_WIDTH_MM / 2 - 35 / 2) / doorWidth * 100}%)`,
-                              bottom: `calc(${(hinge.position - (35/2)) / doorHeight * 100}%)`,
-                              width: `${35 / doorWidth * 100}%`,
-                              aspectRatio: '1/1',
-                          }}></div>
-                      ))}
+                    <div className="flex w-full h-full items-center justify-center gap-1">
+                      <DoorVisualizer />
+                      {isPair && <DoorVisualizer mirrored />}
                     </div>
                 </div>
                 <div className="w-full p-4 border rounded-lg bg-background text-sm">
