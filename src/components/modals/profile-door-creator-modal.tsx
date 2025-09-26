@@ -42,6 +42,7 @@ interface ProfileDoorCreatorModalProps {
   onSave: (door: Omit<ProfileDoorItem, 'id'>) => void;
   clientName?: string;
   doorToEdit?: ProfileDoorItem | null;
+  viewOnly?: boolean;
 }
 
 const hingeSchema = z.object({
@@ -76,7 +77,7 @@ const handlePositions = {
     right: 'Direita',
 };
 
-export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, doorToEdit }: ProfileDoorCreatorModalProps) {
+export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, doorToEdit, viewOnly = false }: ProfileDoorCreatorModalProps) {
   const isEditMode = !!doorToEdit;
   
   const form = useForm<DoorCreatorFormValues>({
@@ -148,6 +149,7 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
   }, [isPair, form]);
 
   const onSubmit = (data: DoorCreatorFormValues) => {
+    if (viewOnly) return;
     onSave(data as Omit<ProfileDoorItem, 'id'>);
     onClose();
   };
@@ -395,15 +397,15 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="w-[95vw] max-w-6xl h-[90vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle className="font-headline">{isEditMode ? 'Editar Porta de Perfil' : 'Criador de Porta de Perfil'}</DialogTitle>
+          <DialogTitle className="font-headline">{viewOnly ? "Visualizar Porta de Perfil" : (isEditMode ? 'Editar Porta de Perfil' : 'Criador de Porta de Perfil')}</DialogTitle>
           <DialogDescription>
-             {isEditMode ? 'Edite os detalhes da porta.' : 'Configure os detalhes da nova porta para adicioná-la à lista de materiais do móvel.'}
+             {viewOnly ? "Visualize os detalhes da porta." : (isEditMode ? 'Edite os detalhes da porta.' : 'Configure os detalhes da nova porta para adicioná-la à lista de materiais do móvel.')}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-1 md:grid-cols-2 gap-8 flex-grow overflow-hidden">
             {/* Left Column: Form */}
-            <div className="flex flex-col space-y-4 overflow-y-auto pr-4 -mr-4">
+            <fieldset disabled={viewOnly} className="flex flex-col space-y-4 overflow-y-auto pr-4 -mr-4">
               <FormField control={form.control} name="doorType" render={({ field }) => ( <FormItem><FormLabel>Tipo de Porta</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{doorTypes.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem> )}/>
 
               {doorType === 'Correr' && (
@@ -415,7 +417,7 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
                 <FormField control={form.control} name="height" render={({ field }) => ( <FormItem><FormLabel>Altura (mm)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )}/>
               </div>
               <div className="flex items-center gap-4">
-                <FormField control={form.control} name="quantity" render={({ field }) => ( <FormItem className="flex-1"><FormLabel>Quantidade</FormLabel><FormControl><Input type="number" {...field} disabled={isPair} /></FormControl><FormMessage /></FormItem> )}/>
+                <FormField control={form.control} name="quantity" render={({ field }) => ( <FormItem className="flex-1"><FormLabel>Quantidade</FormLabel><FormControl><Input type="number" {...field} disabled={isPair || viewOnly} /></FormControl><FormMessage /></FormItem> )}/>
                 <FormField
                   control={form.control}
                   name="isPair"
@@ -469,7 +471,7 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
                   </div>
                 </div>
               )}
-            </div>
+            </fieldset>
 
             {/* Right Column: Visualizer */}
             <div ref={doorVisualizerRef} className="flex flex-col items-center justify-center bg-muted/30 rounded-lg relative h-full border p-4 gap-4">
@@ -497,17 +499,19 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
             </div>
             
             <DialogFooter className="md:col-span-2 mt-auto pt-6 border-t">
-              <Button type="button" variant="ghost" onClick={onClose}>
-                Cancelar
+              <Button type="button" variant={viewOnly ? "default" : "ghost"} onClick={onClose}>
+                {viewOnly ? "Fechar" : "Cancelar"}
               </Button>
               <Button type="button" variant="outline" onClick={generatePDF}>
                 <FileDown className="mr-2 h-4 w-4" />
                 Gerar PDF
               </Button>
-              <Button type="submit">
-                <DoorOpen className="mr-2 h-4 w-4" />
-                 {isEditMode ? 'Salvar Alterações' : 'Adicionar Porta'}
-              </Button>
+              {!viewOnly && (
+                 <Button type="submit">
+                    <DoorOpen className="mr-2 h-4 w-4" />
+                    {isEditMode ? 'Salvar Alterações' : 'Adicionar Porta'}
+                 </Button>
+              )}
             </DialogFooter>
           </form>
         </Form>

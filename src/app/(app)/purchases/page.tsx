@@ -16,7 +16,7 @@ import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/layout/page-header';
 import { AppContext } from '@/context/app-context';
 import type { StockItem, MaterialItem, GlassItem, ProfileDoorItem } from '@/lib/types';
-import { AlertTriangle, ChevronsUpDown, CheckCircle, Copy, ShoppingCart } from 'lucide-react';
+import { AlertTriangle, ChevronsUpDown, CheckCircle, Copy, ShoppingCart, Eye } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
   Accordion,
@@ -25,6 +25,7 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ProfileDoorCreatorModal } from '@/components/modals/profile-door-creator-modal';
 
 interface ShoppingList {
   [projectName: string]: {
@@ -87,6 +88,9 @@ export default function PurchasesPage() {
   const { toast } = useToast();
 
   const [isStockAlertOpen, setIsStockAlertOpen] = useState(true);
+  const [isDoorViewerOpen, setIsDoorViewerOpen] = useState(false);
+  const [doorToView, setDoorToView] = useState<ProfileDoorItem | null>(null);
+  const [clientNameToView, setClientNameToView] = useState<string | undefined>(undefined);
 
   const lowStockItems = useMemo((): StockItem[] => {
     return stockItems.filter(item => 
@@ -357,8 +361,15 @@ export default function PurchasesPage() {
     });
   };
 
+    const handleOpenDoorViewer = (door: ProfileDoorItem, clientName: string) => {
+        setDoorToView(door);
+        setClientNameToView(clientName);
+        setIsDoorViewerOpen(true);
+    };
+
 
   return (
+    <>
     <div className="space-y-8">
       <PageHeader
         title="Compras"
@@ -582,8 +593,14 @@ export default function PurchasesPage() {
                                         <p className="font-semibold text-sm">{furnitureName}</p>
                                         <ul className='space-y-1 text-sm list-disc pl-5 text-muted-foreground'>
                                             {furnitureData.profileDoors.map((item, index) => (
-                                            <li key={index}>
-                                                <span className="font-medium text-foreground/90">Perfil {item.profileColor} com Vidro {item.glassType} ({item.handleType}):</span> {item.quantity} pç(s) - {item.width}mm x {item.height}mm
+                                            <li key={index} className='flex justify-between items-center'>
+                                                <div>
+                                                    <span className="font-medium text-foreground/90">Perfil {item.profileColor} com Vidro {item.glassType} ({item.handleType}):</span> {item.quantity} pç(s) - {item.width}mm x {item.height}mm
+                                                </div>
+                                                 <Button variant="ghost" size="sm" onClick={() => handleOpenDoorViewer(item, projectName)}>
+                                                    <Eye className="mr-2 h-4 w-4" />
+                                                    Visualizar
+                                                </Button>
                                             </li>
                                             ))}
                                         </ul>
@@ -608,5 +625,16 @@ export default function PurchasesPage() {
         </TabsContent>
       </Tabs>
     </div>
+    {isDoorViewerOpen && (
+        <ProfileDoorCreatorModal
+            isOpen={isDoorViewerOpen}
+            onClose={() => setIsDoorViewerOpen(false)}
+            onSave={() => {}} // Dummy onSave for view-only mode
+            clientName={clientNameToView}
+            doorToEdit={doorToView}
+            viewOnly={true}
+        />
+    )}
+    </>
   );
 }
