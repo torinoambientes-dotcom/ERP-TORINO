@@ -143,7 +143,7 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName }:
     'Preto': 'border-gray-800',
     'Aluminio': 'border-gray-400',
     'Inox': 'border-gray-500'
-  }[doorData.profileColor] || 'border-gray-400';
+  }[doorData.profileColor] || 'border-gray-700';
 
   const PROFILE_WIDTH_MM = 45;
 
@@ -189,14 +189,13 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName }:
             <div ref={doorVisualizerRef} className="flex flex-col items-center justify-center bg-muted/30 rounded-lg relative h-full border p-4 gap-4">
                 <div className="w-full h-full flex items-center justify-center p-8">
                     <div
-                      className={cn("relative bg-background/50 flex items-center justify-center transition-all duration-300 border-gray-400")}
+                      className={cn("relative bg-background/50 flex items-center justify-center transition-all duration-300")}
                       style={{
                         aspectRatio: `${doorWidth} / ${doorHeight}`,
                         width: (doorWidth / doorHeight) > 1 ? '100%' : 'auto',
                         height: (doorWidth / doorHeight) <= 1 ? '100%' : 'auto',
                         maxHeight: '100%',
                         maxWidth: '100%',
-                        borderWidth: `${(PROFILE_WIDTH_MM / doorWidth) * 100}%`
                       }}
                     >
                       <div className={cn('absolute inset-0', profileColorClass)} style={{borderWidth: `${(PROFILE_WIDTH_MM / doorWidth) * 100}%`}}></div>
