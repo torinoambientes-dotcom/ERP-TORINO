@@ -42,6 +42,7 @@ export interface GlassItem {
   height: number;
   width: number;
   quantity: number;
+  purchased?: boolean;
 }
 
 export interface ProfileDoorItem {
@@ -59,6 +60,7 @@ export interface ProfileDoorItem {
   handlePosition?: 'top' | 'bottom' | 'left' | 'right';
   handleWidth?: number;
   handleOffset?: number;
+  purchased?: boolean;
 }
 
 export interface Furniture {

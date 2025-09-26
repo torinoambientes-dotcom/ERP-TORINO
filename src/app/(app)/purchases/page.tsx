@@ -16,7 +16,7 @@ import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/layout/page-header';
 import { AppContext } from '@/context/app-context';
 import type { StockItem, MaterialItem, GlassItem, ProfileDoorItem } from '@/lib/types';
-import { AlertTriangle, ChevronsUpDown, CheckCircle, Copy, ShoppingCart, Eye } from 'lucide-react';
+import { AlertTriangle, ChevronsUpDown, CheckCircle, Copy, ShoppingCart, Eye, History } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
   Accordion,
@@ -53,7 +53,7 @@ interface GlasswareList {
         furnitures: {
           [furnitureName: string]: {
             id: string;
-            glassItems: GlassItem[];
+            glassItems: (GlassItem & { projectId: string; envId: string; furId: string })[];
           };
         };
       };
@@ -70,7 +70,7 @@ interface ProfileDoorList {
         furnitures: {
           [furnitureName: string]: {
             id: string;
-            profileDoors: ProfileDoorItem[];
+            profileDoors: (ProfileDoorItem & { projectId: string; envId: string; furId: string })[];
           };
         };
       };
@@ -84,13 +84,16 @@ export default function PurchasesPage() {
   if (!context) {
     throw new Error('PurchasesPage must be used within an AppProvider');
   }
-  const { projects, stockItems, handleStockAlert, markMaterialsAsPurchased } = context;
+  const { projects, stockItems, handleStockAlert, markMaterialsAsPurchased, toggleItemPurchasedStatus } = context;
   const { toast } = useToast();
 
   const [isStockAlertOpen, setIsStockAlertOpen] = useState(true);
   const [isDoorViewerOpen, setIsDoorViewerOpen] = useState(false);
   const [doorToView, setDoorToView] = useState<ProfileDoorItem | null>(null);
   const [clientNameToView, setClientNameToView] = useState<string | undefined>(undefined);
+
+  const [showPurchasedGlass, setShowPurchasedGlass] = useState(false);
+  const [showPurchasedDoors, setShowPurchasedDoors] = useState(false);
 
   const lowStockItems = useMemo((): StockItem[] => {
     return stockItems.filter(item => 
@@ -149,10 +152,14 @@ export default function PurchasesPage() {
         const environmentFurnitures: GlasswareList[string]['environments'][string]['furnitures'] = {};
 
         environment.furniture.forEach(furniture => {
-          if (furniture.glassItems && furniture.glassItems.length > 0) {
+          const items = (furniture.glassItems || [])
+            .filter(item => item.purchased === showPurchasedGlass)
+            .map(item => ({...item, projectId: project.id, envId: environment.id, furId: furniture.id }));
+
+          if (items.length > 0) {
             environmentFurnitures[furniture.name] = {
               id: furniture.id,
-              glassItems: furniture.glassItems.sort((a,b) => a.type.localeCompare(b.type)),
+              glassItems: items.sort((a, b) => a.type.localeCompare(b.type)),
             };
           }
         });
@@ -174,7 +181,7 @@ export default function PurchasesPage() {
     });
 
     return list;
-  }, [projects]);
+  }, [projects, showPurchasedGlass]);
 
   const profileDoorList = useMemo((): ProfileDoorList => {
     const list: ProfileDoorList = {};
@@ -187,10 +194,14 @@ export default function PurchasesPage() {
         const environmentFurnitures: ProfileDoorList[string]['environments'][string]['furnitures'] = {};
 
         environment.furniture.forEach(furniture => {
-          if (furniture.profileDoors && furniture.profileDoors.length > 0) {
+          const items = (furniture.profileDoors || [])
+            .filter(item => item.purchased === showPurchasedDoors)
+            .map(item => ({...item, projectId: project.id, envId: environment.id, furId: furniture.id }));
+
+          if (items.length > 0) {
             environmentFurnitures[furniture.name] = {
               id: furniture.id,
-              profileDoors: furniture.profileDoors.sort((a,b) => a.profileColor.localeCompare(b.profileColor)),
+              profileDoors: items.sort((a,b) => a.profileColor.localeCompare(b.profileColor)),
             };
           }
         });
@@ -212,7 +223,7 @@ export default function PurchasesPage() {
     });
 
     return list;
-  }, [projects]);
+  }, [projects, showPurchasedDoors]);
 
 
     const copyShoppingListToClipboard = () => {
@@ -292,7 +303,7 @@ export default function PurchasesPage() {
   };
   
   const copyFullGlassListToClipboard = () => {
-    let listText = "Lista de Vidraçaria Centralizada:\n\n";
+    let listText = `Lista de Vidraçaria (${showPurchasedGlass ? 'Comprados' : 'A Comprar'}):\n\n`;
 
     Object.entries(glasswareList).forEach(([projectName, projectData]) => {
       listText += `Projeto: ${projectName}\n`;
@@ -309,7 +320,7 @@ export default function PurchasesPage() {
     });
     
     if (Object.keys(glasswareList).length === 0) {
-      listText = "Nenhum item de vidraçaria necessário para os projetos ativos."
+      listText = `Nenhum item de vidraçaria na lista de ${showPurchasedGlass ? 'comprados' : 'a comprar'}.`
     }
     
     navigator.clipboard.writeText(listText).then(() => {
@@ -327,7 +338,7 @@ export default function PurchasesPage() {
   };
 
   const copyFullProfileDoorListToClipboard = () => {
-    let listText = "Lista de Portas de Perfil Centralizada:\n\n";
+    let listText = `Lista de Portas de Perfil (${showPurchasedDoors ? 'Comprados' : 'A Comprar'}):\n\n`;
 
     Object.entries(profileDoorList).forEach(([projectName, projectData]) => {
       listText += `Projeto: ${projectName}\n`;
@@ -344,7 +355,7 @@ export default function PurchasesPage() {
     });
     
     if (Object.keys(profileDoorList).length === 0) {
-      listText = "Nenhuma porta de perfil necessária para os projetos ativos."
+      listText = `Nenhuma porta de perfil na lista de ${showPurchasedDoors ? 'comprados' : 'a comprar'}.`
     }
     
     navigator.clipboard.writeText(listText).then(() => {
@@ -365,6 +376,13 @@ export default function PurchasesPage() {
         setDoorToView(door);
         setClientNameToView(clientName);
         setIsDoorViewerOpen(true);
+    };
+
+    const handleToggleItemPurchased = (itemType: 'glass' | 'door', itemId: string, projectId: string, envId: string, furId: string) => {
+      toggleItemPurchasedStatus(itemType, itemId, projectId, envId, furId);
+      toast({
+        title: "Status de compra atualizado!",
+      })
     };
 
 
@@ -504,16 +522,22 @@ export default function PurchasesPage() {
         <TabsContent value="glass" className="mt-6 space-y-6">
             <Card>
                 <CardHeader>
-                <div className="flex items-center justify-between">
-                    <div className='space-y-1.5'>
-                    <CardTitle className="font-headline">Lista de Vidraçaria ({Object.keys(glasswareList).length} projetos)</CardTitle>
-                    <CardDescription>Vidros e espelhos de todos os projetos ativos, prontos para encomenda.</CardDescription>
-                    </div>
-                    <Button onClick={copyFullGlassListToClipboard} size="sm" disabled={Object.keys(glasswareList).length === 0}>
-                    <Copy className="mr-2 h-4 w-4" />
-                    Copiar Lista Completa
-                    </Button>
-                </div>
+                  <div className="flex items-center justify-between">
+                      <div className='space-y-1.5'>
+                      <CardTitle className="font-headline">Lista de Vidraçaria ({showPurchasedGlass ? "Comprados" : "A Comprar"})</CardTitle>
+                      <CardDescription>Vidros e espelhos de todos os projetos ativos.</CardDescription>
+                      </div>
+                      <div className="flex items-center gap-2">
+                          <Button onClick={() => setShowPurchasedGlass(!showPurchasedGlass)} size="sm" variant="outline">
+                              <History className="mr-2 h-4 w-4" />
+                              {showPurchasedGlass ? "Ver itens a comprar" : "Ver itens comprados"}
+                          </Button>
+                          <Button onClick={copyFullGlassListToClipboard} size="sm" disabled={Object.keys(glasswareList).length === 0}>
+                              <Copy className="mr-2 h-4 w-4" />
+                              Copiar Lista
+                          </Button>
+                      </div>
+                  </div>
                 </CardHeader>
                 <CardContent>
                 <div className="space-y-3 max-h-[70vh] overflow-y-auto pr-2">
@@ -535,8 +559,14 @@ export default function PurchasesPage() {
                                         <p className="font-semibold text-sm">{furnitureName}</p>
                                         <ul className='space-y-1 text-sm list-disc pl-5 text-muted-foreground'>
                                             {furnitureData.glassItems.map((item, index) => (
-                                            <li key={index}>
-                                                <span className="font-medium text-foreground/90">{item.type}:</span> {item.quantity} pç(s) - {item.width}mm x {item.height}mm
+                                            <li key={index} className='flex justify-between items-center'>
+                                                <div>
+                                                  <span className="font-medium text-foreground/90">{item.type}:</span> {item.quantity} pç(s) - {item.width}mm x {item.height}mm
+                                                </div>
+                                                <Button variant={showPurchasedGlass ? 'secondary': 'outline'} size="sm" onClick={() => handleToggleItemPurchased('glass', item.id, item.projectId, item.envId, item.furId)}>
+                                                    {showPurchasedGlass ? <History className="mr-2 h-4 w-4" /> : <ShoppingCart className="mr-2 h-4 w-4" />}
+                                                    {showPurchasedGlass ? 'Mover para "A comprar"' : 'Marcar como comprado'}
+                                                </Button>
                                             </li>
                                             ))}
                                         </ul>
@@ -552,7 +582,7 @@ export default function PurchasesPage() {
                     </Accordion>
                     ) : (
                     <div className="flex h-48 items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/20">
-                        <p className="text-sm text-muted-foreground text-center">Nenhum item de vidraçaria necessário para os projetos ativos.</p>
+                        <p className="text-sm text-muted-foreground text-center">Nenhum item de vidraçaria na lista de {showPurchasedGlass ? 'comprados' : 'a comprar'}.</p>
                     </div>
                     )}
                 </div>
@@ -562,16 +592,22 @@ export default function PurchasesPage() {
         <TabsContent value="profileDoors" className="mt-6 space-y-6">
             <Card>
                 <CardHeader>
-                <div className="flex items-center justify-between">
-                    <div className='space-y-1.5'>
-                    <CardTitle className="font-headline">Lista de Portas de Perfil ({Object.keys(profileDoorList).length} projetos)</CardTitle>
-                    <CardDescription>Portas de perfil de todos os projetos ativos, prontas para encomenda.</CardDescription>
-                    </div>
-                    <Button onClick={copyFullProfileDoorListToClipboard} size="sm" disabled={Object.keys(profileDoorList).length === 0}>
-                    <Copy className="mr-2 h-4 w-4" />
-                    Copiar Lista Completa
-                    </Button>
-                </div>
+                  <div className="flex items-center justify-between">
+                      <div className='space-y-1.5'>
+                      <CardTitle className="font-headline">Lista de Portas de Perfil ({showPurchasedDoors ? 'Compradas' : 'A Comprar'})</CardTitle>
+                      <CardDescription>Portas de perfil de todos os projetos ativos.</CardDescription>
+                      </div>
+                      <div className="flex items-center gap-2">
+                          <Button onClick={() => setShowPurchasedDoors(!showPurchasedDoors)} size="sm" variant="outline">
+                              <History className="mr-2 h-4 w-4" />
+                              {showPurchasedDoors ? "Ver portas a comprar" : "Ver portas compradas"}
+                          </Button>
+                          <Button onClick={copyFullProfileDoorListToClipboard} size="sm" disabled={Object.keys(profileDoorList).length === 0}>
+                              <Copy className="mr-2 h-4 w-4" />
+                              Copiar Lista
+                          </Button>
+                      </div>
+                  </div>
                 </CardHeader>
                 <CardContent>
                 <div className="space-y-3 max-h-[70vh] overflow-y-auto pr-2">
@@ -593,14 +629,20 @@ export default function PurchasesPage() {
                                         <p className="font-semibold text-sm">{furnitureName}</p>
                                         <ul className='space-y-1 text-sm list-disc pl-5 text-muted-foreground'>
                                             {furnitureData.profileDoors.map((item, index) => (
-                                            <li key={index} className='flex justify-between items-center'>
+                                            <li key={index} className='flex justify-between items-center gap-2'>
                                                 <div>
                                                     <span className="font-medium text-foreground/90">Perfil {item.profileColor} com Vidro {item.glassType} ({item.handleType}):</span> {item.quantity} pç(s) - {item.width}mm x {item.height}mm
                                                 </div>
-                                                 <Button variant="ghost" size="sm" onClick={() => handleOpenDoorViewer(item, projectName)}>
-                                                    <Eye className="mr-2 h-4 w-4" />
-                                                    Visualizar
-                                                </Button>
+                                                <div className='flex gap-1 flex-shrink-0'>
+                                                  <Button variant="ghost" size="sm" onClick={() => handleOpenDoorViewer(item, projectName)}>
+                                                      <Eye className="mr-2 h-4 w-4" />
+                                                      Visualizar
+                                                  </Button>
+                                                  <Button variant={showPurchasedDoors ? 'secondary' : 'outline'} size="sm" onClick={() => handleToggleItemPurchased('door', item.id, item.projectId, item.envId, item.furId)}>
+                                                      {showPurchasedDoors ? <History className="mr-2 h-4 w-4" /> : <ShoppingCart className="mr-2 h-4 w-4" />}
+                                                      {showPurchasedDoors ? 'Mover para "A comprar"' : 'Comprado'}
+                                                  </Button>
+                                                </div>
                                             </li>
                                             ))}
                                         </ul>
@@ -616,7 +658,7 @@ export default function PurchasesPage() {
                     </Accordion>
                     ) : (
                     <div className="flex h-48 items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/20">
-                        <p className="text-sm text-muted-foreground text-center">Nenhuma porta de perfil necessária para os projetos ativos.</p>
+                        <p className="text-sm text-muted-foreground text-center">Nenhuma porta de perfil na lista de {showPurchasedDoors ? 'compradas' : 'a comprar'}.</p>
                     </div>
                     )}
                 </div>

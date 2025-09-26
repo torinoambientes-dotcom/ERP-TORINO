@@ -31,6 +31,7 @@ interface AppContextType {
   addStockCategory: (categoryData: Omit<StockCategory, 'id'>) => void;
   deleteStockCategory: (categoryId: string) => void;
   handleStockAlert: (itemId: string, markAsHandled: boolean) => void;
+  toggleItemPurchasedStatus: (itemType: 'glass' | 'door', itemId: string, projectId: string, envId: string, furId: string) => void;
 }
 
 export const AppContext = createContext<AppContextType>({
@@ -54,6 +55,7 @@ export const AppContext = createContext<AppContextType>({
   addStockCategory: () => {},
   deleteStockCategory: () => {},
   handleStockAlert: () => {},
+  toggleItemPurchasedStatus: () => {},
 });
 
 const isProjectComplete = (project: Project): boolean => {
@@ -322,6 +324,37 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setDocumentNonBlocking(itemRef, update, { merge: true });
   }, [firestore]);
 
+  const toggleItemPurchasedStatus = useCallback((itemType: 'glass' | 'door', itemId: string, projectId: string, envId: string, furId: string) => {
+    if (!projects) return;
+    const project = projects.find(p => p.id === projectId);
+    if (!project) return;
+
+    const newEnvironments = project.environments.map(env => {
+      if (env.id === envId) {
+        const newFurniture = env.furniture.map(fur => {
+          if (fur.id === furId) {
+            if (itemType === 'glass') {
+              const newGlassItems = (fur.glassItems || []).map(item =>
+                item.id === itemId ? { ...item, purchased: !item.purchased } : item
+              );
+              return { ...fur, glassItems: newGlassItems };
+            } else if (itemType === 'door') {
+              const newProfileDoors = (fur.profileDoors || []).map(item =>
+                item.id === itemId ? { ...item, purchased: !item.purchased } : item
+              );
+              return { ...fur, profileDoors: newProfileDoors };
+            }
+          }
+          return fur;
+        });
+        return { ...env, furniture: newFurniture };
+      }
+      return env;
+    });
+    
+    updateProject({ ...project, environments: newEnvironments });
+  }, [projects, updateProject]);
+
 
   const value = useMemo(() => ({
     projects: projects || [],
@@ -344,6 +377,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addStockCategory,
     deleteStockCategory,
     handleStockAlert,
+    toggleItemPurchasedStatus,
   }), [
     projects, 
     teamMembers, 
@@ -368,6 +402,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addStockCategory,
     deleteStockCategory,
     handleStockAlert,
+    toggleItemPurchasedStatus,
   ]);
 
 
