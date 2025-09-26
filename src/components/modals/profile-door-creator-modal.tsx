@@ -31,7 +31,7 @@ import type { ProfileDoorItem } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { DoorOpen, FileDown, PlusCircle, Trash2 } from 'lucide-react';
 import jsPDF from 'jspdf';
-import { useRef } from 'react';
+import { useRef, useEffect } from 'react';
 import { Separator } from '../ui/separator';
 import { Switch } from '../ui/switch';
 import { Label } from '../ui/label';
@@ -84,6 +84,18 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName }:
     control: form.control,
     name: 'hinges',
   });
+  
+  const isPair = form.watch('isPair');
+
+  useEffect(() => {
+    if (isPair) {
+      form.setValue('quantity', 2);
+    } else {
+      if (form.getValues('quantity') === 2) {
+          form.setValue('quantity', 1);
+      }
+    }
+  }, [isPair, form]);
 
   const onSubmit = (data: DoorCreatorFormValues) => {
     onSave(data as Omit<ProfileDoorItem, 'id'>);
@@ -141,7 +153,7 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName }:
   };
 
   const doorData = form.watch();
-  const { width: doorWidth, height: doorHeight, hinges, isPair } = doorData;
+  const { width: doorWidth, height: doorHeight, hinges } = doorData;
 
   const profileColorClass = {
     'Preto': 'bg-gray-800',
@@ -199,7 +211,7 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName }:
                 <FormField control={form.control} name="height" render={({ field }) => ( <FormItem><FormLabel>Altura (mm)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )}/>
               </div>
               <div className="flex items-center gap-4">
-                <FormField control={form.control} name="quantity" render={({ field }) => ( <FormItem className="flex-1"><FormLabel>Quantidade</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                <FormField control={form.control} name="quantity" render={({ field }) => ( <FormItem className="flex-1"><FormLabel>Quantidade</FormLabel><FormControl><Input type="number" {...field} disabled={isPair} /></FormControl><FormMessage /></FormItem> )}/>
                 <FormField
                   control={form.control}
                   name="isPair"
