@@ -183,7 +183,7 @@ export function FurnitureMaterialsModal({
       updateProfileDoor(doorIndexToEdit, { ...existingDoor, ...newDoorData });
       toast({ title: "Porta atualizada!" });
     } else {
-      appendProfileDoor(newDoorData);
+      appendProfileDoor(newDoorData as ProfileDoorItem);
       toast({ title: "Porta adicionada!" });
     }
   };
@@ -215,7 +215,7 @@ export function FurnitureMaterialsModal({
       updateGlass(glassIndexToEdit, { ...existingGlass, ...newGlassData });
       toast({ title: "Vidro atualizado!" });
     } else {
-      appendGlass(newGlassData);
+      appendGlass(newGlassData as GlassItem);
       toast({ title: "Vidro adicionado!" });
     }
   };
