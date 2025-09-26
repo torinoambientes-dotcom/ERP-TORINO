@@ -60,17 +60,22 @@ const glassSchema = z.object({
     id: z.string().optional(),
     type: z.string().min(1, "Tipo de vidro é obrigatório."),
     quantity: z.coerce.number().min(1, "Quantidade deve ser pelo menos 1."),
-    width: z.coerce.number().min(1, "Largura é obrigatória."),
-    height: z.coerce.number().min(1, "Altura é obrigatória."),
+    width: z.coerce.number().min(1, "Largura é obrigatória.").optional(),
+    height: z.coerce.number().min(1, "Altura é obrigatória.").optional(),
     cornerRadius: z.coerce.number().optional(),
     addedAt: z.string().optional(),
     purchased: z.boolean().optional(),
+    shape: z.enum(['rectangle', 'circle']).optional(),
+    diameter: z.coerce.number().min(1, "Diâmetro é obrigatório").optional(),
+    hasFrostedStrips: z.boolean().optional(),
     frostedStripTop: z.coerce.number().optional(),
     frostedStripBottom: z.coerce.number().optional(),
     frostedStripLeft: z.coerce.number().optional(),
     frostedStripRight: z.coerce.number().optional(),
     frostedStripWidth: z.coerce.number().optional(),
+    frostedStripCircularOffset: z.coerce.number().optional(),
 });
+
 
 const profileDoorSchema = z.object({
     id: z.string().optional(),
@@ -205,20 +210,28 @@ export function FurnitureMaterialsModal({
     setDoorCreatorOpen(false);
   }
 
-  const handleSaveGlass = (glassData: Omit<GlassItem, 'id' | 'addedAt'>) => {
-    const newGlassData = {
-      ...glassData,
-      addedAt: new Date().toISOString(),
-    };
-    if (glassIndexToEdit !== null) {
-      const existingGlass = glassFields[glassIndexToEdit];
-      updateGlass(glassIndexToEdit, { ...existingGlass, ...newGlassData });
-      toast({ title: "Vidro atualizado!" });
-    } else {
-      appendGlass(newGlassData as GlassItem);
-      toast({ title: "Vidro adicionado!" });
-    }
+  const handleSaveGlass = (glassData: Omit<GlassItem, 'id' | 'addedAt' | 'purchased'>) => {
+      if (glassIndexToEdit !== null) {
+          const existingGlass = glassFields[glassIndexToEdit];
+          const updatedGlass = {
+              ...glassData, // All new data from the form
+              id: existingGlass.id, // Keep original ID
+              addedAt: existingGlass.addedAt, // Keep original add date
+              purchased: existingGlass.purchased, // Keep original purchase status
+          };
+          updateGlass(glassIndexToEdit, updatedGlass);
+          toast({ title: "Vidro atualizado!" });
+      } else {
+          const newGlassData = {
+              ...glassData,
+              addedAt: new Date().toISOString(),
+              purchased: false,
+          };
+          appendGlass(newGlassData as GlassItem);
+          toast({ title: "Vidro adicionado!" });
+      }
   };
+
 
   const handleOpenGlassEditor = (index: number | null) => {
     if (index !== null) {
@@ -344,10 +357,10 @@ export function FurnitureMaterialsModal({
                        <div key={field.id} className={cn("flex items-center justify-between rounded-lg border p-3 gap-2 text-sm", isPurchased ? "bg-green-100/60 border-green-200" : "bg-muted/50")}>
                           <div className='flex-grow'>
                             <p className="font-medium">
-                                {field.quantity}x {field.type}
+                                {field.quantity}x {field.type} {field.shape === 'circle' ? '(Círculo)' : ''}
                             </p>
                             <p className="text-muted-foreground">
-                                {field.width}mm x {field.height}mm {field.cornerRadius ? `(Raio ${field.cornerRadius}mm)` : ''}
+                                {field.shape === 'circle' ? `Ø ${field.diameter}mm` : `${field.width}mm x ${field.height}mm`} {field.cornerRadius ? `(Raio ${field.cornerRadius}mm)` : ''}
                             </p>
                           </div>
                          <div className='flex items-center'>
