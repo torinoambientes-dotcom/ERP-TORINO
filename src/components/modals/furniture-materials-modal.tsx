@@ -54,6 +54,7 @@ const materialSchema = z.object({
   quantity: z.coerce.number().min(0.01, 'Quantidade deve ser positiva.'),
   unit: z.string().min(1, 'Unidade é obrigatória.'),
   addedAt: z.string().optional(),
+  purchased: z.boolean().optional(),
 });
 
 const glassSchema = z.object({
@@ -163,7 +164,7 @@ export function FurnitureMaterialsModal({
   const onSubmit = (data: MaterialFormValues) => {
     const updatedFurniture: Furniture = {
       ...furniture,
-      materials: data.materials.map(m => (m.id ? m : { ...m, id: generateId('mat'), addedAt: new Date().toISOString() })),
+      materials: data.materials.map(m => (m.id ? { ...m, purchased: m.purchased ?? false } : { ...m, id: generateId('mat'), addedAt: new Date().toISOString(), purchased: false })),
       glassItems: data.glassItems.map(g => (g.id ? { ...g, purchased: g.purchased ?? false } : { ...g, id: generateId('gla'), addedAt: new Date().toISOString(), purchased: false })) as GlassItem[],
       profileDoors: data.profileDoors.map(p => (p.id ? { ...p, purchased: p.purchased ?? false } : { ...p, id: generateId('pfd'), addedAt: new Date().toISOString(), purchased: false })) as ProfileDoorItem[],
     };
@@ -176,7 +177,7 @@ export function FurnitureMaterialsModal({
   };
   
   const handleAddNewMaterial = () => {
-    appendMaterial({ name: '', quantity: 1, unit: 'unidade', addedAt: new Date().toISOString() });
+    appendMaterial({ name: '', quantity: 1, unit: 'unidade', addedAt: new Date().toISOString(), purchased: false });
   };
   
   const handleSaveProfileDoor = (doorData: Omit<ProfileDoorItem, 'id' | 'addedAt'>) => {
@@ -292,14 +293,14 @@ export function FurnitureMaterialsModal({
                   <div className="space-y-2">
                     {profileDoorFields.length > 0 ? (
                       profileDoorFields.map((field, index) => {
-                       const isPurchased = isOriginalItem(field.addedAt);
+                       const isPurchased = field.purchased || isOriginalItem(field.addedAt);
                        return (
                        <div key={field.id} className={cn("flex items-center justify-between rounded-lg border p-3 gap-2 text-sm", isPurchased ? "bg-green-100/60 border-green-200" : "bg-muted/50")}>
-                          <div className='flex-grow'>
-                            <p className="font-medium">
+                          <div className={cn('flex-grow', isPurchased && 'line-through text-muted-foreground')}>
+                            <p className="font-medium text-foreground">
                                 {field.quantity}x Porta {field.profileColor} / Vidro {field.glassType}
                             </p>
-                            <p className="text-muted-foreground">
+                            <p>
                                 {field.width}mm x {field.height}mm - Puxador: {field.handleType}
                             </p>
                           </div>
@@ -354,14 +355,14 @@ export function FurnitureMaterialsModal({
                    <div className="space-y-2">
                     {glassFields.length > 0 ? (
                       glassFields.map((field, index) => {
-                        const isPurchased = isOriginalItem(field.addedAt);
+                        const isPurchased = field.purchased || isOriginalItem(field.addedAt);
                         return (
                        <div key={field.id} className={cn("flex items-center justify-between rounded-lg border p-3 gap-2 text-sm", isPurchased ? "bg-green-100/60 border-green-200" : "bg-muted/50")}>
-                          <div className='flex-grow'>
-                            <p className="font-medium">
+                          <div className={cn('flex-grow', isPurchased && 'line-through text-muted-foreground')}>
+                            <p className="font-medium text-foreground">
                                 {field.quantity}x {field.type} {field.shape === 'circle' ? '(Círculo)' : ''}
                             </p>
-                            <p className="text-muted-foreground">
+                            <p>
                                 {field.shape === 'circle' ? `Ø ${field.diameter}mm` : `${field.width}mm x ${field.height}mm`} {field.cornerRadius ? `(Raio ${field.cornerRadius}mm)` : ''}
                             </p>
                           </div>
@@ -416,7 +417,7 @@ export function FurnitureMaterialsModal({
                    <div className="space-y-4">
                     {materialFields.length > 0 ? (
                       materialFields.map((field, index) => {
-                        const isPurchased = isOriginalItem(field.addedAt);
+                        const isPurchased = field.purchased || isOriginalItem(field.addedAt);
                         return (
                         <div
                           key={field.id}
@@ -427,11 +428,11 @@ export function FurnitureMaterialsModal({
                             <FormField
                               control={form.control}
                               name={`materials.${index}.name`}
-                              render={({ field }) => (
+                              render={({ field: formField }) => (
                                 <FormItem className="flex-grow">
-                                  <FormLabel>Material</FormLabel>
+                                  <FormLabel className={cn(isPurchased && 'text-muted-foreground')}>Material</FormLabel>
                                   <FormControl>
-                                    <Input placeholder="Ex: MDF Branco 18mm" {...field} disabled={isPurchased} />
+                                    <Input placeholder="Ex: MDF Branco 18mm" {...formField} value={formField.value || ''} disabled={isPurchased} className={cn(isPurchased && 'line-through')} />
                                   </FormControl>
                                   <FormMessage />
                                 </FormItem>
@@ -440,11 +441,11 @@ export function FurnitureMaterialsModal({
                             <FormField
                               control={form.control}
                               name={`materials.${index}.quantity`}
-                              render={({ field }) => (
+                              render={({ field: formField }) => (
                                 <FormItem className="w-24">
-                                  <FormLabel>Qtd.</FormLabel>
+                                  <FormLabel className={cn(isPurchased && 'text-muted-foreground')}>Qtd.</FormLabel>
                                   <FormControl>
-                                    <Input type="number" {...field} disabled={isPurchased} />
+                                    <Input type="number" {...formField} value={formField.value || 0} disabled={isPurchased} className={cn(isPurchased && 'line-through')} />
                                   </FormControl>
                                   <FormMessage />
                                 </FormItem>
@@ -453,12 +454,12 @@ export function FurnitureMaterialsModal({
                             <FormField
                               control={form.control}
                               name={`materials.${index}.unit`}
-                              render={({ field }) => (
+                              render={({ field: formField }) => (
                                 <FormItem className="w-32">
-                                  <FormLabel>Unidade</FormLabel>
-                                  <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isPurchased}>
+                                  <FormLabel className={cn(isPurchased && 'text-muted-foreground')}>Unidade</FormLabel>
+                                  <Select onValueChange={formField.onChange} defaultValue={formField.value} value={formField.value} disabled={isPurchased}>
                                     <FormControl>
-                                      <SelectTrigger>
+                                      <SelectTrigger className={cn(isPurchased && 'line-through')}>
                                         <SelectValue placeholder="Unid." />
                                       </SelectTrigger>
                                     </FormControl>
@@ -521,7 +522,7 @@ export function FurnitureMaterialsModal({
             onSave={handleSaveProfileDoor}
             clientName={clientName}
             doorToEdit={doorToEdit}
-            viewOnly={isOriginalItem(doorToEdit?.addedAt)}
+            viewOnly={doorToEdit?.purchased || isOriginalItem(doorToEdit?.addedAt)}
         />
     )}
     {isOpen && (
@@ -531,11 +532,9 @@ export function FurnitureMaterialsModal({
         onSave={handleSaveGlass}
         glassToEdit={glassToEdit}
         clientName={clientName}
-        viewOnly={isOriginalItem(glassToEdit?.addedAt)}
+        viewOnly={glassToEdit?.purchased || isOriginalItem(glassToEdit?.addedAt)}
       />
     )}
     </>
   );
 }
-
-    
