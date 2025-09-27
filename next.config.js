@@ -35,6 +35,7 @@ const nextConfig = {
     allowedDevOrigins: [
       'https://*.cloudworkstations.dev',
       'https://identitytoolkit.googleapis.com',
+      'https://studio-9055172080-bc4a0.firebaseapp.com',
     ],
   },
 };
