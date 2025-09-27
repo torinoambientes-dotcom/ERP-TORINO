@@ -23,7 +23,6 @@ interface AppContextType {
   updateTeamMember: (updatedMember: TeamMember) => void;
   deleteTeamMember: (memberId: string) => void;
   completeProjectStages: (projectId: string) => void;
-  markMaterialsAsPurchased: (projectId: string, environmentId: string) => void;
   addStockItem: (itemData: Omit<StockItem, 'id'>) => void;
   updateStockItem: (updatedItem: StockItem) => void;
   deleteStockItem: (itemId: string) => void;
@@ -32,6 +31,7 @@ interface AppContextType {
   deleteStockCategory: (categoryId: string) => void;
   handleStockAlert: (itemId: string, markAsHandled: boolean) => void;
   toggleItemPurchasedStatus: (itemType: 'glass' | 'door', itemId: string, projectId: string, envId: string, furId: string) => void;
+  toggleMaterialPurchased: (projectId: string, envId: string, furId: string, materialId: string, purchased: boolean) => void;
 }
 
 export const AppContext = createContext<AppContextType>({
@@ -47,7 +47,6 @@ export const AppContext = createContext<AppContextType>({
   updateTeamMember: () => {},
   deleteTeamMember: () => {},
   completeProjectStages: () => {},
-  markMaterialsAsPurchased: () => {},
   addStockItem: () => {},
   updateStockItem: () => {},
   deleteStockItem: () => {},
@@ -56,6 +55,7 @@ export const AppContext = createContext<AppContextType>({
   deleteStockCategory: () => {},
   handleStockAlert: () => {},
   toggleItemPurchasedStatus: () => {},
+  toggleMaterialPurchased: () => {},
 });
 
 const isProjectComplete = (project: Project): boolean => {
@@ -230,26 +230,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [projects, updateProject]);
 
-  const markMaterialsAsPurchased = useCallback((projectId: string, environmentId: string) => {
-      if (!projects) return;
-      const project = projects.find(p => p.id === projectId);
-      if (!project) return;
-      
-      const newEnvironments = project.environments.map(env => {
-          if (env.id === environmentId) {
-              const newFurniture = env.furniture.map(fur => ({
-                  ...fur,
-                  purchase: { ...fur.purchase, status: 'done' as StageStatus, completedAt: new Date().toISOString() }
-              }));
-              return { ...env, furniture: newFurniture };
-          }
-          return env;
-      });
-
-      const updatedProject = { ...project, environments: newEnvironments };
-      updateProject(updatedProject);
-  }, [projects, updateProject]);
-
   const addStockItem = useCallback((itemData: Omit<StockItem, 'id'>) => {
     if (!firestore) return;
     const itemId = generateId('stock');
@@ -355,6 +335,33 @@ export function AppProvider({ children }: { children: ReactNode }) {
     updateProject({ ...project, environments: newEnvironments });
   }, [projects, updateProject]);
 
+  const toggleMaterialPurchased = useCallback((projectId: string, envId: string, furId: string, materialId: string, purchased: boolean) => {
+    if (!projects) return;
+    const project = projects.find(p => p.id === projectId);
+    if (!project) return;
+
+    const newEnvironments = project.environments.map(env => {
+        if (env.id === envId) {
+            const newFurniture = env.furniture.map(fur => {
+                if (fur.id === furId) {
+                    const newMaterials = (fur.materials || []).map(mat => {
+                        if (mat.id === materialId) {
+                            return { ...mat, purchased };
+                        }
+                        return mat;
+                    });
+                    return { ...fur, materials: newMaterials };
+                }
+                return fur;
+            });
+            return { ...env, furniture: newFurniture };
+        }
+        return env;
+    });
+
+    updateProject({ ...project, environments: newEnvironments });
+  }, [projects, updateProject]);
+
 
   const value = useMemo(() => ({
     projects: projects || [],
@@ -369,7 +376,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     updateTeamMember,
     deleteTeamMember,
     completeProjectStages,
-    markMaterialsAsPurchased,
     addStockItem,
     updateStockItem,
     deleteStockItem,
@@ -378,6 +384,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     deleteStockCategory,
     handleStockAlert,
     toggleItemPurchasedStatus,
+    toggleMaterialPurchased,
   }), [
     projects, 
     teamMembers, 
@@ -394,7 +401,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     updateTeamMember, 
     deleteTeamMember, 
     completeProjectStages,
-    markMaterialsAsPurchased,
     addStockItem,
     updateStockItem,
     deleteStockItem,
@@ -403,6 +409,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     deleteStockCategory,
     handleStockAlert,
     toggleItemPurchasedStatus,
+    toggleMaterialPurchased,
   ]);
 
 

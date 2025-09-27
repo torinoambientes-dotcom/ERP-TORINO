@@ -1,5 +1,5 @@
 'use client';
-import { useContext, useMemo, useState } from 'react';
+import { useContext, useMemo, useState, useCallback } from 'react';
 import {
   Card,
   CardContent,
@@ -27,6 +27,9 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ProfileDoorCreatorModal } from '@/components/modals/profile-door-creator-modal';
 import { GlassCreatorModal } from '@/components/modals/glass-creator-modal';
+import { Checkbox } from '@/components/ui/checkbox';
+import { cn } from '@/lib/utils';
+
 
 interface ShoppingList {
   [projectName: string]: {
@@ -37,7 +40,7 @@ interface ShoppingList {
         furnitures: {
           [furnitureName: string]: {
             id: string;
-            materials: MaterialItem[];
+            materials: (MaterialItem & { projectId: string; envId: string; furId: string })[];
           };
         };
       };
@@ -85,7 +88,7 @@ export default function PurchasesPage() {
   if (!context) {
     throw new Error('PurchasesPage must be used within an AppProvider');
   }
-  const { projects, stockItems, handleStockAlert, markMaterialsAsPurchased, toggleItemPurchasedStatus } = context;
+  const { projects, stockItems, handleStockAlert, toggleItemPurchasedStatus, toggleMaterialPurchased } = context;
   const { toast } = useToast();
 
   const [isStockAlertOpen, setIsStockAlertOpen] = useState(true);
@@ -120,20 +123,24 @@ export default function PurchasesPage() {
             const environmentFurnitures: ShoppingList[string]['environments'][string]['furnitures'] = {};
 
             environment.furniture.forEach(furniture => {
-                const materialsToPurchase = (furniture.materials || []).filter(material => {
-                    if (furniture.purchase?.status !== 'done') {
-                        return true;
-                    }
-                    if (furniture.purchase.completedAt && material.addedAt) {
-                        return new Date(material.addedAt) > new Date(furniture.purchase.completedAt);
-                    }
-                    return false;
-                });
+                 const materialsWithContext = (furniture.materials || []).map(material => ({
+                    ...material,
+                    projectId: project.id,
+                    envId: environment.id,
+                    furId: furniture.id
+                }));
+                
+                if (materialsWithContext.length > 0) {
+                    // Ordena: itens não comprados primeiro, depois por nome.
+                    materialsWithContext.sort((a, b) => {
+                        if (a.purchased && !b.purchased) return 1;
+                        if (!a.purchased && b.purchased) return -1;
+                        return a.name.localeCompare(b.name);
+                    });
 
-                if (materialsToPurchase.length > 0) {
                     environmentFurnitures[furniture.name] = {
                         id: furniture.id,
-                        materials: materialsToPurchase.sort((a, b) => a.name.localeCompare(b.name)),
+                        materials: materialsWithContext,
                     };
                 }
             });
@@ -156,6 +163,7 @@ export default function PurchasesPage() {
 
     return list;
   }, [projects]);
+
   
   const glasswareList = useMemo((): GlasswareList => {
     const list: GlasswareList = {};
@@ -249,30 +257,49 @@ export default function PurchasesPage() {
 
 
     const copyShoppingListToClipboard = () => {
-        let listText = "Lista de Compras Centralizada:\n\n";
+        let listText = "Lista de Compras Centralizada (Itens a Comprar):\n\n";
+        let hasItemsToBuy = false;
 
         Object.entries(shoppingList).forEach(([projectName, projectData]) => {
-            listText += `Projeto: ${projectName}\n`;
+            let projectHasItems = false;
+            let projectText = `Projeto: ${projectName}\n`;
+            
             Object.entries(projectData.environments).forEach(([environmentName, environmentData]) => {
-                listText += `  Ambiente: ${environmentName}\n`;
+                let envHasItems = false;
+                let envText = `  Ambiente: ${environmentName}\n`;
+                
                 Object.entries(environmentData.furnitures).forEach(([furnitureName, furnitureData]) => {
-                  listText += `    Móvel: ${furnitureName}\n`;
-                  furnitureData.materials.forEach(item => {
-                      listText += `      - ${item.name}: ${item.quantity} ${item.unit}\n`;
-                  });
+                    const itemsToBuy = furnitureData.materials.filter(item => !item.purchased);
+                    if (itemsToBuy.length > 0) {
+                        envHasItems = true;
+                        let furText = `    Móvel: ${furnitureName}\n`;
+                        itemsToBuy.forEach(item => {
+                            furText += `      - ${item.name}: ${item.quantity} ${item.unit}\n`;
+                        });
+                        envText += furText;
+                    }
                 });
+
+                if (envHasItems) {
+                    projectText += envText;
+                    projectHasItems = true;
+                }
             });
-            listText += `\n`;
+
+             if (projectHasItems) {
+                listText += projectText + '\n';
+                hasItemsToBuy = true;
+            }
         });
         
-        if (Object.keys(shoppingList).length === 0) {
-            listText = "Nenhum material necessário para os projetos ativos."
+        if (!hasItemsToBuy) {
+            listText = "Nenhum material a comprar nos projetos ativos."
         }
         
         navigator.clipboard.writeText(listText).then(() => {
             toast({
                 title: "Lista de compras copiada!",
-                description: "A lista de materiais foi copiada para a área de transferência.",
+                description: "A lista de materiais a comprar foi copiada para a área de transferência.",
             });
         }).catch(err => {
             toast({
@@ -284,20 +311,29 @@ export default function PurchasesPage() {
     };
     
     const copyEnvironmentListToClipboard = (projectName: string, environmentName: string, furnitures: ShoppingList[string]['environments'][string]['furnitures']) => {
-        let listText = `Lista de Compras - Projeto: ${projectName}\n`;
+        let listText = `Lista de Compras (A Comprar) - Projeto: ${projectName}\n`;
         listText += `Ambiente: ${environmentName}\n\n`;
+        let hasItemsToBuy = false;
 
         Object.entries(furnitures).forEach(([furnitureName, furnitureData]) => {
-          listText += `  Móvel: ${furnitureName}\n`;
-          furnitureData.materials.forEach(item => {
-              listText += `    - ${item.name}: ${item.quantity} ${item.unit}\n`;
-          });
+            const itemsToBuy = furnitureData.materials.filter(item => !item.purchased);
+            if (itemsToBuy.length > 0) {
+                hasItemsToBuy = true;
+                listText += `  Móvel: ${furnitureName}\n`;
+                itemsToBuy.forEach(item => {
+                    listText += `    - ${item.name}: ${item.quantity} ${item.unit}\n`;
+                });
+            }
         });
+
+        if (!hasItemsToBuy) {
+            listText = `Nenhum item a comprar para o ambiente "${environmentName}".`;
+        }
         
         navigator.clipboard.writeText(listText).then(() => {
             toast({
                 title: `Lista do ambiente "${environmentName}" copiada!`,
-                description: "Os materiais foram copiados para a área de transferência.",
+                description: "Os materiais a comprar foram copiados para a área de transferência.",
             });
         }).catch(err => {
             toast({
@@ -308,13 +344,10 @@ export default function PurchasesPage() {
         });
     };
     
-    const handleMarkAsPurchased = (projectId: string, environmentId: string, environmentName: string) => {
-        markMaterialsAsPurchased(projectId, environmentId);
-        toast({
-            title: "Materiais marcados como comprados!",
-            description: `A etapa de compra para o ambiente "${environmentName}" foi concluída.`,
-        });
-    };
+    const handleToggleMaterial = useCallback((projectId: string, envId: string, furId: string, materialId: string, currentStatus: boolean) => {
+        toggleMaterialPurchased(projectId, envId, furId, materialId, !currentStatus);
+    }, [toggleMaterialPurchased]);
+
 
   const handleMarkAlertAsHandled = (itemId: string, itemName: string) => {
     handleStockAlert(itemId, true);
@@ -484,13 +517,13 @@ export default function PurchasesPage() {
             <CardHeader>
                 <div className="flex items-center justify-between">
                 <div className='space-y-1.5'>
-                    <CardTitle className="font-headline">Lista de Compras de Materiais ({Object.keys(shoppingList).length})</CardTitle>
+                    <CardTitle className="font-headline">Lista de Compras de Materiais</CardTitle>
                     <CardDescription>Materiais de todos os projetos ativos, prontos para a compra.</CardDescription>
                 </div>
                 <div className="flex items-center gap-2">
                     <Button onClick={copyShoppingListToClipboard} size="sm" disabled={Object.keys(shoppingList).length === 0}>
                         <Copy className="mr-2 h-4 w-4" />
-                        Copiar Lista Completa
+                        Copiar Lista (A Comprar)
                     </Button>
                 </div>
                 </div>
@@ -515,22 +548,28 @@ export default function PurchasesPage() {
                                                                 <Copy className="mr-2 h-3 w-3" />
                                                                 Copiar
                                                             </Button>
-                                                            <Button variant="outline" size="sm" onClick={() => handleMarkAsPurchased(projectData.id, envData.id, environmentName)}>
-                                                                <ShoppingCart className="mr-2 h-3 w-3" />
-                                                                Marcar como Comprado
-                                                            </Button>
                                                         </div>
                                                     </div>
                                                     <div className="space-y-2">
                                                     {Object.entries(envData.furnitures).map(([furnitureName, furnitureData]) => (
                                                         <div key={furnitureData.id}>
                                                         <p className="font-semibold text-sm">{furnitureName}</p>
-                                                        <ul className='space-y-1 text-sm list-disc pl-5 text-muted-foreground'>
-                                                        {furnitureData.materials.map((item, index) => (
-                                                            <li key={index}>
-                                                                <span className="font-medium text-foreground/90">{item.name}:</span> {item.quantity} {item.unit}
-                                                            </li>
-                                                        ))}
+                                                        <ul className='space-y-2 text-sm pl-1'>
+                                                            {furnitureData.materials.map((item, index) => (
+                                                                <li key={index} className="flex items-center gap-3">
+                                                                     <Checkbox
+                                                                        id={`mat-${item.id}`}
+                                                                        checked={!!item.purchased}
+                                                                        onCheckedChange={() => handleToggleMaterial(item.projectId, item.envId, item.furId, item.id, !!item.purchased)}
+                                                                    />
+                                                                    <label
+                                                                        htmlFor={`mat-${item.id}`}
+                                                                        className={cn("flex-grow cursor-pointer", item.purchased && "line-through text-muted-foreground")}
+                                                                    >
+                                                                        <span className="font-medium text-foreground/90">{item.name}:</span> {item.quantity} {item.unit}
+                                                                    </label>
+                                                                </li>
+                                                            ))}
                                                         </ul>
                                                         </div>
                                                     ))}

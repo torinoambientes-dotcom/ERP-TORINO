@@ -35,6 +35,7 @@ export interface MaterialItem {
   quantity: number;
   unit: string;
   addedAt?: string; // ISO date string
+  purchased?: boolean;
 }
 
 export interface GlassItem {
