@@ -1,2 +1,7 @@
 runConfig:
   maxInstances: 1
+hosting:
+  main: server.js
+  commands:
+    build: next build
+    start: next start -p $PORT
