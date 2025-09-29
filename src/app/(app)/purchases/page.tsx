@@ -16,7 +16,7 @@ import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/layout/page-header';
 import { AppContext } from '@/context/app-context';
 import type { StockItem, MaterialItem, GlassItem, ProfileDoorItem } from '@/lib/types';
-import { AlertTriangle, ChevronsUpDown, CheckCircle, Copy, ShoppingCart, Eye, History } from 'lucide-react';
+import { AlertTriangle, ChevronsUpDown, CheckCircle, Copy, ShoppingCart, Eye, History, MessageCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
   Accordion,
@@ -256,23 +256,23 @@ export default function PurchasesPage() {
   }, [projects, showPurchasedDoors]);
 
 
-    const copyShoppingListToClipboard = () => {
-        let listText = "Lista de Compras Centralizada (Itens a Comprar):\n\n";
+    const generateShoppingListText = () => {
+        let listText = "*Lista de Compras Centralizada (Itens a Comprar):*\n\n";
         let hasItemsToBuy = false;
 
         Object.entries(shoppingList).forEach(([projectName, projectData]) => {
             let projectHasItems = false;
-            let projectText = `Projeto: ${projectName}\n`;
+            let projectText = `*Projeto:* ${projectName}\n`;
             
             Object.entries(projectData.environments).forEach(([environmentName, environmentData]) => {
                 let envHasItems = false;
-                let envText = `  Ambiente: ${environmentName}\n`;
+                let envText = `  *Ambiente:* ${environmentName}\n`;
                 
                 Object.entries(environmentData.furnitures).forEach(([furnitureName, furnitureData]) => {
                     const itemsToBuy = furnitureData.materials.filter(item => !item.purchased);
                     if (itemsToBuy.length > 0) {
                         envHasItems = true;
-                        let furText = `    Móvel: ${furnitureName}\n`;
+                        let furText = `    *Móvel:* ${furnitureName}\n`;
                         itemsToBuy.forEach(item => {
                             furText += `      - ${item.name}: ${item.quantity} ${item.unit}\n`;
                         });
@@ -293,8 +293,14 @@ export default function PurchasesPage() {
         });
         
         if (!hasItemsToBuy) {
-            listText = "Nenhum material a comprar nos projetos ativos."
+            return "Nenhum material a comprar nos projetos ativos."
         }
+
+        return listText;
+    }
+
+    const copyShoppingListToClipboard = () => {
+        const listText = generateShoppingListText();
         
         navigator.clipboard.writeText(listText).then(() => {
             toast({
@@ -308,6 +314,13 @@ export default function PurchasesPage() {
                 description: "Não foi possível copiar a lista.",
             });
         });
+    };
+
+    const sendShoppingListViaWhatsApp = () => {
+        const listText = generateShoppingListText();
+        const encodedText = encodeURIComponent(listText);
+        const whatsappUrl = `https://wa.me/?text=${encodedText}`;
+        window.open(whatsappUrl, '_blank');
     };
     
     const copyEnvironmentListToClipboard = (projectName: string, environmentName: string, furnitures: ShoppingList[string]['environments'][string]['furnitures']) => {
@@ -515,12 +528,16 @@ export default function PurchasesPage() {
             
             <Card>
             <CardHeader>
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between flex-wrap gap-2">
                 <div className='space-y-1.5'>
                     <CardTitle className="font-headline">Lista de Compras de Materiais</CardTitle>
                     <CardDescription>Materiais de todos os projetos ativos, prontos para a compra.</CardDescription>
                 </div>
                 <div className="flex items-center gap-2">
+                    <Button onClick={sendShoppingListViaWhatsApp} size="sm" variant="outline" disabled={Object.keys(shoppingList).length === 0}>
+                        <MessageCircle className="mr-2 h-4 w-4" />
+                        Enviar via WhatsApp
+                    </Button>
                     <Button onClick={copyShoppingListToClipboard} size="sm" disabled={Object.keys(shoppingList).length === 0}>
                         <Copy className="mr-2 h-4 w-4" />
                         Copiar Lista (A Comprar)
@@ -704,7 +721,7 @@ export default function PurchasesPage() {
                                             {furnitureData.profileDoors.map((item, index) => (
                                             <li key={index} className='flex justify-between items-center gap-2'>
                                                 <div>
-                                                    <span className="font-medium text-foreground/90">Perfil {item.profileColor} com Vidro {item.glassType} ({item.handleType}):</span> {item.quantity} pç(s) - {item.width}mm x {item.height}mm
+                                                    <span className="font-medium text-foreground/90">Perfil ${item.profileColor} com Vidro ${item.glassType} (${item.handleType}):</span> ${item.quantity} pç(s) - ${item.width}mm x ${item.height}mm
                                                 </div>
                                                 <div className='flex gap-1 flex-shrink-0'>
                                                   <Button variant="ghost" size="sm" onClick={() => handleOpenDoorViewer(item, projectName)}>
@@ -731,7 +748,7 @@ export default function PurchasesPage() {
                     </Accordion>
                     ) : (
                     <div className="flex h-48 items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/20">
-                        <p className="text-sm text-muted-foreground text-center">Nenhuma porta de perfil na lista de {showPurchasedDoors ? 'compradas' : 'a comprar'}.</p>
+                        <p className="text-sm text-muted-foreground text-center">Nenhuma porta de perfil na lista de ${showPurchasedDoors ? 'compradas' : 'a comprar'}.</p>
                     </div>
                     )}
                 </div>
@@ -763,3 +780,5 @@ export default function PurchasesPage() {
     </>
   );
 }
+
+    
