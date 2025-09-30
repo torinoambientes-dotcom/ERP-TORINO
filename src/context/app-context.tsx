@@ -332,7 +332,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 ...fur,
                 measurement: { ...fur.measurement, status: 'done' as StageStatus },
                 cutting: { ...fur.cutting, status: 'done' as StageStatus },
-                purchase: { ...fur.purchase, status: 'done' as StageStatus, completedAt: new Date().toISOString() },
+                purchase: { ...fur.purchase, status: 'done' as StageStatus, completedAt: fur.purchase?.completedAt || new Date().toISOString() },
                 assembly: { ...fur.assembly, status: 'done' as StageStatus },
             })),
         }));
