@@ -16,7 +16,7 @@ import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/layout/page-header';
 import { AppContext } from '@/context/app-context';
 import type { StockItem, MaterialItem, GlassItem, ProfileDoorItem } from '@/lib/types';
-import { AlertTriangle, ChevronsUpDown, CheckCircle, Copy, ShoppingCart, Eye, History, MessageCircle } from 'lucide-react';
+import { AlertTriangle, ChevronsUpDown, CheckCircle, Copy, ShoppingCart, Eye, History, MessageCircle, Truck } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
   Accordion,
@@ -29,6 +29,7 @@ import { ProfileDoorCreatorModal } from '@/components/modals/profile-door-creato
 import { GlassCreatorModal } from '@/components/modals/glass-creator-modal';
 import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
+import { RegisterPurchaseModal } from '@/components/modals/register-purchase-modal';
 
 
 interface ShoppingList {
@@ -92,7 +93,7 @@ export default function PurchasesPage() {
   if (!context) {
     throw new Error('PurchasesPage must be used within an AppProvider');
   }
-  const { projects, stockItems, handleStockAlert, toggleItemPurchasedStatus, toggleMaterialPurchased } = context;
+  const { projects, stockItems, registerPurchase, toggleItemPurchasedStatus, toggleMaterialPurchased } = context;
   const { toast } = useToast();
 
   const [isStockAlertOpen, setIsStockAlertOpen] = useState(true);
@@ -107,6 +108,9 @@ export default function PurchasesPage() {
 
   const [showPurchasedGlass, setShowPurchasedGlass] = useState(false);
   const [showPurchasedDoors, setShowPurchasedDoors] = useState(false);
+  
+  const [isRegisterPurchaseModalOpen, setRegisterPurchaseModalOpen] = useState(false);
+  const [itemToPurchase, setItemToPurchase] = useState<LowStockInfo | null>(null);
 
   const lowStockItems = useMemo((): LowStockInfo[] => {
     return stockItems
@@ -115,7 +119,8 @@ export default function PurchasesPage() {
         const hasMinStockAlert = typeof item.minStock === 'number' && item.quantity < item.minStock;
         const hasDemandAlert = totalReserved > item.quantity;
         
-        if (!item.alertHandledAt && (hasMinStockAlert || hasDemandAlert)) {
+        // Show item if it has an alert and it's not already awaiting receipt
+        if (!item.alertHandledAt && (hasMinStockAlert || hasDemandAlert) && !item.awaitingReceipt) {
           return { ...item, demand: totalReserved };
         }
         return null;
@@ -379,13 +384,18 @@ export default function PurchasesPage() {
     }, [toggleMaterialPurchased]);
 
 
-  const handleMarkAlertAsHandled = (itemId: string, itemName: string) => {
-    handleStockAlert(itemId, true);
-    toast({
-        title: "Alerta Resolvido",
-        description: `O alerta para o item "${itemName}" foi marcado como resolvido.`,
-    });
-  };
+    const handleOpenPurchaseModal = (item: LowStockInfo) => {
+        setItemToPurchase(item);
+        setRegisterPurchaseModalOpen(true);
+    };
+
+    const handleConfirmPurchase = (itemId: string, quantity: number, supplier: string) => {
+        registerPurchase(itemId, quantity, supplier);
+        toast({
+            title: "Compra Registrada!",
+            description: `O item foi movido para "Aguardando Recebimento" na página de Estoque.`,
+        });
+    };
   
   const copyFullGlassListToClipboard = () => {
     let listText = `Lista de Vidraçaria (${showPurchasedGlass ? 'Comprados' : 'A Comprar'}):\n\n`;
@@ -534,13 +544,13 @@ export default function PurchasesPage() {
                                     </div>
                                 </div>
                                 <Button
-                                size="sm"
-                                variant="outline"
-                                className="bg-background hover:bg-muted w-full sm:w-auto"
-                                onClick={() => handleMarkAlertAsHandled(item.id, item.name)}
+                                  size="sm"
+                                  variant="outline"
+                                  className="bg-background hover:bg-muted w-full sm:w-auto"
+                                  onClick={() => handleOpenPurchaseModal(item)}
                                 >
-                                <CheckCircle className="mr-2 h-4 w-4 text-green-600" />
-                                Marcar como Resolvido
+                                  <Truck className="mr-2 h-4 w-4 text-blue-600" />
+                                  Registrar Compra
                                 </Button>
                             </div>
                           )
@@ -810,6 +820,14 @@ export default function PurchasesPage() {
             glassToEdit={glassToView}
             viewOnly={true}
         />
+    )}
+    {itemToPurchase && (
+      <RegisterPurchaseModal
+        isOpen={isRegisterPurchaseModalOpen}
+        onClose={() => setRegisterPurchaseModalOpen(false)}
+        item={itemToPurchase}
+        onConfirm={handleConfirmPurchase}
+      />
     )}
     </>
   );

@@ -1,3 +1,5 @@
+'use client';
+
 export interface TeamMember {
   id: string; // This is the Firebase Auth UID
   name: string;
@@ -133,6 +135,11 @@ export interface StockItem {
   minStock?: number;
   alertHandledAt?: string; // ISO date string for when the low stock alert was handled
   reservations?: StockReservation[];
+  awaitingReceipt?: {
+    quantity: number;
+    supplier: string;
+    registeredAt: string;
+  };
 }
 
 export interface StockMovement {

@@ -35,6 +35,8 @@ interface AppContextType {
   clearAllReservations: () => void;
   markItemAsSeparated: (stockItemId: string, reservation: StockReservation) => void;
   dispatchItemToProduction: (stockItemId: string, reservation: StockReservation, memberId: string) => void;
+  registerPurchase: (itemId: string, quantity: number, supplier: string) => void;
+  confirmStockReceipt: (item: StockItem) => void;
 }
 
 export const AppContext = createContext<AppContextType>({
@@ -62,6 +64,8 @@ export const AppContext = createContext<AppContextType>({
   clearAllReservations: () => {},
   markItemAsSeparated: () => {},
   dispatchItemToProduction: () => {},
+  registerPurchase: () => {},
+  confirmStockReceipt: () => {},
 });
 
 const isProjectComplete = (project: Project): boolean => {
@@ -520,8 +524,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   }, [firestore, stockItems]);
   
-  const dispatchItemToProduction = useCallback((stockItemId: string, reservation: StockReservation, memberId: string) => {
-      if (!firestore || !stockItems) return;
+  const dispatchItemToProduction = useCallback(async (stockItemId: string, reservation: StockReservation, memberId: string) => {
+      if (!firestore || !stockItems || !projects) return;
       const stockItem = stockItems.find(i => i.id === stockItemId);
       if (!stockItem) return;
 
@@ -549,8 +553,74 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const movementRef = doc(collection(firestore, 'stock_items', stockItemId, 'movements'), movementId);
       batch.set(movementRef, newMovement);
 
-      batch.commit();
-  }, [firestore, stockItems]);
+      // Find project and mark material as purchased
+      const projectToUpdate = projects.find(p => p.id === reservation.projectId);
+      if(projectToUpdate){
+          const newEnvironments = projectToUpdate.environments.map(env => {
+            if (env.id === reservation.environmentId) {
+                const newFurniture = env.furniture.map(fur => {
+                    if (fur.id === reservation.furnitureId) {
+                        const newMaterials = (fur.materials || []).map(mat => 
+                            mat.id === reservation.materialId ? { ...mat, purchased: true } : mat
+                        );
+                        return { ...fur, materials: newMaterials };
+                    }
+                    return fur;
+                });
+                return { ...env, furniture: newFurniture };
+            }
+            return env;
+          });
+          const projectRef = doc(firestore, 'projects', projectToUpdate.id);
+          batch.set(projectRef, { ...projectToUpdate, environments: newEnvironments }, { merge: true });
+      }
+
+      await batch.commit();
+  }, [firestore, stockItems, projects]);
+
+  const registerPurchase = useCallback((itemId: string, quantity: number, supplier: string) => {
+    if (!firestore) return;
+    const itemRef = doc(firestore, 'stock_items', itemId);
+    const update = {
+      alertHandledAt: new Date().toISOString(), // Mark alert as "in progress"
+      awaitingReceipt: {
+        quantity: quantity,
+        supplier: supplier,
+        registeredAt: new Date().toISOString(),
+      }
+    };
+    updateDocumentNonBlocking(itemRef, update);
+  }, [firestore]);
+
+  const confirmStockReceipt = useCallback((item: StockItem) => {
+    if (!firestore || !item.awaitingReceipt) return;
+
+    const batch = writeBatch(firestore);
+    const itemRef = doc(firestore, 'stock_items', item.id);
+
+    // Update quantity and remove awaitingReceipt field
+    const newQuantity = item.quantity + item.awaitingReceipt.quantity;
+    batch.update(itemRef, {
+      quantity: newQuantity,
+      awaitingReceipt: deleteField(),
+    });
+
+    // Add movement record
+    const movementId = generateId('move');
+    const newMovement: Omit<StockMovement, 'id' | 'memberId'> = {
+      type: 'entry',
+      quantity: item.awaitingReceipt.quantity,
+      reason: `Recebimento de compra do fornecedor ${item.awaitingReceipt.supplier}`,
+      timestamp: new Date().toISOString(),
+    };
+    // This part is tricky without a logged-in user, we'll leave memberId out for now
+    // Or assume a system user. For now, let's omit it.
+    const movementRef = doc(collection(firestore, 'stock_items', item.id, 'movements'), movementId);
+    batch.set(movementRef, newMovement);
+
+    batch.commit();
+
+  }, [firestore]);
 
 
   const value = useMemo(() => ({
@@ -578,6 +648,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     clearAllReservations,
     markItemAsSeparated,
     dispatchItemToProduction,
+    registerPurchase,
+    confirmStockReceipt,
   }), [
     projects, 
     teamMembers, 
@@ -606,6 +678,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     clearAllReservations,
     markItemAsSeparated,
     dispatchItemToProduction,
+    registerPurchase,
+    confirmStockReceipt,
   ]);
 
 

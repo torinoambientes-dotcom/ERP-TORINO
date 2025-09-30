@@ -7,10 +7,15 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import { Button } from '@/components/ui/button';
 import { AppContext } from '@/context/app-context';
 import { PageHeader } from '@/components/layout/page-header';
-import { PlusCircle, Edit, Trash2, ArrowRightLeft, History, AlertTriangle, ListOrdered, ShieldAlert, CheckCircle, PackageCheck, SendToBack } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, ArrowRightLeft, History, AlertTriangle, ListOrdered, ShieldAlert, CheckCircle, PackageCheck, SendToBack, ChevronsUpDown, PackagePlus } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -32,9 +37,11 @@ import { RegisterCategoryModal } from '@/components/modals/register-category-mod
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import Link from 'next/link';
 import { useUser } from '@/firebase';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 export default function StockPage() {
-  const { stockItems, stockCategories, deleteStockItem, deleteStockCategory, isLoading, clearAllReservations, markItemAsSeparated, dispatchItemToProduction } = useContext(AppContext);
+  const { stockItems, stockCategories, deleteStockItem, deleteStockCategory, isLoading, clearAllReservations, markItemAsSeparated, dispatchItemToProduction, confirmStockReceipt } = useContext(AppContext);
   const { toast } = useToast();
   const { user } = useUser();
 
@@ -58,6 +65,8 @@ export default function StockPage() {
   const [isResetAlertOpen, setResetAlertOpen] = useState(false);
   
   const [popoverOpenState, setPopoverOpenState] = useState<Record<string, boolean>>({});
+  
+  const [isAwaitingReceiptOpen, setAwaitingReceiptOpen] = useState(true);
 
   const togglePopover = (itemId: string) => {
     setPopoverOpenState(prev => ({ ...prev, [itemId]: !prev[itemId] }));
@@ -72,6 +81,11 @@ export default function StockPage() {
     }
     return sorted;
   }, [stockCategories, activeTab]);
+
+  const itemsAwaitingReceipt = useMemo(() => {
+    return stockItems.filter(item => !!item.awaitingReceipt);
+  }, [stockItems]);
+
 
   const itemsInCategory = useMemo(() => {
     if (!categoryToDelete) return 0;
@@ -191,6 +205,14 @@ export default function StockPage() {
     toast({
         title: 'Item Despachado para Produção!',
         description: `Foi dada a baixa no estoque para a reserva do projeto ${reservation.projectName}.`
+    });
+  };
+  
+  const handleConfirmReceipt = (item: StockItem) => {
+    confirmStockReceipt(item);
+    toast({
+      title: 'Entrada Confirmada!',
+      description: `A quantidade de ${item.awaitingReceipt?.quantity} de ${item.name} foi adicionada ao estoque.`,
     });
   };
 
@@ -362,6 +384,52 @@ export default function StockPage() {
             </Button>
           </div>
         </div>
+
+        {itemsAwaitingReceipt.length > 0 && (
+          <Collapsible open={isAwaitingReceiptOpen} onOpenChange={setAwaitingReceiptOpen} className="w-full">
+            <Card className='border-blue-500'>
+              <CardHeader>
+                  <div className="flex items-center justify-between">
+                  <div className='space-y-1.5'>
+                      <CardTitle className="font-headline text-blue-700">Aguardando Recebimento ({itemsAwaitingReceipt.length})</CardTitle>
+                      <CardDescription>Materiais que foram comprados e aguardam a chegada e conferência.</CardDescription>
+                  </div>
+                  <CollapsibleTrigger asChild>
+                      <Button variant="ghost" size="icon">
+                      <ChevronsUpDown className="h-4 w-4" />
+                      <span className="sr-only">Toggle</span>
+                      </Button>
+                  </CollapsibleTrigger>
+                  </div>
+              </CardHeader>
+              <CollapsibleContent>
+                  <CardContent>
+                  <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
+                      {itemsAwaitingReceipt.map((item) => (
+                        <div key={item.id} className="p-3 rounded-md bg-blue-100/60 border-l-4 border-blue-500 flex items-start sm:items-center justify-between flex-col sm:flex-row gap-4">
+                            <div className="flex items-start gap-3">
+                                <PackagePlus className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                                <div>
+                                    <p className="font-semibold">{item.name}</p>
+                                    <p className="text-sm text-blue-700/90 font-medium">
+                                      Aguardando entrada de {item.awaitingReceipt?.quantity} {item.unit}(s).
+                                    </p>
+                                    <p className='text-xs text-muted-foreground'>Fornecedor: {item.awaitingReceipt?.supplier} | Pedido em: {format(new Date(item.awaitingReceipt!.registeredAt), "dd/MM/yy 'às' HH:mm", { locale: ptBR })}</p>
+                                </div>
+                            </div>
+                            <Button size="sm" variant="default" onClick={() => handleConfirmReceipt(item)}>
+                              <CheckCircle className="mr-2 h-4 w-4" />
+                              Confirmar Entrada
+                            </Button>
+                        </div>
+                      ))}
+                  </div>
+                  </CardContent>
+              </CollapsibleContent>
+            </Card>
+          </Collapsible>
+        )}
+
 
         {sortedCategories.length > 0 && activeTab ? (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
