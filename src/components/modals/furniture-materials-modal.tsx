@@ -120,13 +120,27 @@ const MaterialRow = ({ index, control, field, remove, update, stockItems, purcha
   
   const isPurchased = field.purchased || isOriginalItem(field.addedAt);
   const isFromStock = !!field.stockItemId;
+  
+  let labelText = "Material";
+  let containerClasses = "bg-muted/50";
+
+  if (isFromStock) {
+      if (isPurchased) {
+          labelText = "Material (Despachado da Produção)";
+          containerClasses = "bg-green-100/60 border-green-200";
+      } else {
+          labelText = "Item do Estoque (Reservado)";
+          containerClasses = "bg-blue-100/60 border-blue-200";
+      }
+  } else if (isPurchased) {
+      labelText = "Material (Comprado)";
+      containerClasses = "bg-green-100/60 border-green-200";
+  }
+
 
   return (
     <div
-      className={cn("flex items-end gap-2 p-3 rounded-lg border", 
-        isPurchased ? "bg-green-100/60 border-green-200" : "bg-muted/50",
-        isFromStock && !isPurchased && "bg-blue-100/60 border-blue-200"
-      )}
+      className={cn("flex items-end gap-2 p-3 rounded-lg border", containerClasses)}
     >
       <Controller
         control={control}
@@ -134,7 +148,7 @@ const MaterialRow = ({ index, control, field, remove, update, stockItems, purcha
         render={({ field: controllerField }) => (
           <FormItem className="flex-grow">
             <FormLabel className={cn((isPurchased || isFromStock) && 'text-muted-foreground')}>
-              {isFromStock && !isPurchased ? "Item do Estoque (Reservado)" : "Material"}
+              {labelText}
             </FormLabel>
             <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
               <PopoverTrigger asChild>
@@ -146,7 +160,7 @@ const MaterialRow = ({ index, control, field, remove, update, stockItems, purcha
                     className={cn(
                       "w-full justify-between",
                       !controllerField.value.name && "text-muted-foreground",
-                      isPurchased ? "text-opacity-70" : "",
+                      isPurchased && "text-opacity-70 line-through",
                       isFromStock && !isPurchased ? "bg-white/50" : ""
                     )}
                   >
@@ -197,7 +211,7 @@ const MaterialRow = ({ index, control, field, remove, update, stockItems, purcha
             <FormLabel className={cn((isPurchased || isFromStock) && 'text-muted-foreground')}>Qtd.</FormLabel>
             <FormControl>
               <Input type="number" {...formField} value={formField.value || 0} disabled={isPurchased} className={cn(
-                  isPurchased ? "text-opacity-70" : "",
+                  isPurchased && "text-opacity-70 line-through",
                   isFromStock && !isPurchased ? "bg-white/50" : ""
               )} />
             </FormControl>
@@ -213,7 +227,7 @@ const MaterialRow = ({ index, control, field, remove, update, stockItems, purcha
             <FormLabel className={cn((isPurchased || isFromStock) && 'text-muted-foreground')}>Unidade</FormLabel>
             <FormControl>
               <Input placeholder="Unid." {...formField} value={formField.value || ''} disabled={isFromStock || isPurchased} className={cn(
-                  isPurchased || isFromStock ? "text-opacity-70" : "",
+                  isPurchased || isFromStock && "text-opacity-70 line-through",
                    isFromStock && !isPurchased ? "bg-white/50" : ""
               )} />
             </FormControl>
@@ -614,3 +628,5 @@ export function FurnitureMaterialsModal({
     </>
   );
 }
+
+    

@@ -610,7 +610,14 @@ export default function PurchasesPage() {
                                                                         className={cn("flex-grow cursor-pointer", item.purchased && "line-through text-muted-foreground", !!item.stockItemId && "cursor-default")}
                                                                     >
                                                                         <span className="font-medium text-foreground/90">{item.name}:</span> {item.quantity} {item.unit}
-                                                                        {item.stockItemId && <span className="text-xs text-blue-600 font-medium ml-2 rounded-md bg-blue-100/60 px-1.5 py-0.5">(Reservado do Estoque)</span>}
+                                                                        {item.stockItemId && (
+                                                                            <span className={cn(
+                                                                                "text-xs font-medium ml-2 rounded-md px-1.5 py-0.5",
+                                                                                item.purchased ? "bg-green-100/60 text-green-700" : "bg-blue-100/60 text-blue-600"
+                                                                            )}>
+                                                                                {item.purchased ? "(Despachado da Produção)" : "(Reservado do Estoque)"}
+                                                                            </span>
+                                                                        )}
                                                                     </label>
                                                                 </li>
                                                             ))}
@@ -807,5 +814,7 @@ export default function PurchasesPage() {
     </>
   );
 }
+
+    
 
     
