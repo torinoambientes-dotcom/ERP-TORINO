@@ -1,5 +1,5 @@
 'use client';
-import { useContext, useState, useMemo } from 'react';
+import { useContext, useState, useMemo, useCallback } from 'react';
 import {
   Card,
   CardContent,
@@ -10,7 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { AppContext } from '@/context/app-context';
 import { PageHeader } from '@/components/layout/page-header';
-import { PlusCircle, Edit, Trash2, ArrowRightLeft, History, AlertTriangle, ListOrdered, ShieldAlert } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, ArrowRightLeft, History, AlertTriangle, ListOrdered, ShieldAlert, CheckCircle } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -31,10 +31,12 @@ import { cn } from '@/lib/utils';
 import { RegisterCategoryModal } from '@/components/modals/register-category-modal';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import Link from 'next/link';
+import { useUser } from '@/firebase';
 
 export default function StockPage() {
-  const { stockItems, stockCategories, deleteStockItem, deleteStockCategory, isLoading, clearAllReservations } = useContext(AppContext);
+  const { stockItems, stockCategories, deleteStockItem, deleteStockCategory, isLoading, clearAllReservations, dispatchReservedItem } = useContext(AppContext);
   const { toast } = useToast();
+  const { user } = useUser();
 
   const [isRegisterModalOpen, setRegisterModalOpen] = useState(false);
   const [itemToEdit, setItemToEdit] = useState<StockItem | null>(null);
@@ -54,6 +56,12 @@ export default function StockPage() {
   const [activeTab, setActiveTab] = useState<string | undefined>(undefined);
 
   const [isResetAlertOpen, setResetAlertOpen] = useState(false);
+  
+  const [popoverOpenState, setPopoverOpenState] = useState<Record<string, boolean>>({});
+
+  const togglePopover = (itemId: string) => {
+    setPopoverOpenState(prev => ({ ...prev, [itemId]: !prev[itemId] }));
+  };
 
   const sortedCategories = useMemo(() => {
     const sorted = [...stockCategories].sort((a, b) => a.name.localeCompare(b.name));
@@ -166,6 +174,21 @@ export default function StockPage() {
     setResetAlertOpen(false);
   };
 
+  const handleDispatch = (stockItemId: string, reservation: StockReservation) => {
+    if(!user?.uid) {
+        toast({ variant: 'destructive', title: 'Erro', description: 'Usuário não autenticado.' });
+        return;
+    }
+    dispatchReservedItem(stockItemId, reservation, user.uid);
+    toast({
+        title: 'Baixa realizada com sucesso!',
+        description: `${reservation.quantity} ${stockItems.find(i => i.id === stockItemId)?.unit} de ${stockItems.find(i => i.id === stockItemId)?.name} foram despachados para o projeto ${reservation.projectName}.`
+    });
+     // Close the popover after dispatching
+    setPopoverOpenState(prev => ({ ...prev, [stockItemId]: false }));
+  };
+
+
   const renderStockList = (categoryName: string) => {
     const items = stockItems.filter(
       (item) => item.category === categoryName
@@ -202,13 +225,13 @@ export default function StockPage() {
                     Disponível: {availableQuantity} {item.unit}
                   </p>
                    {totalReserved > 0 && (
-                      <Popover>
+                      <Popover open={popoverOpenState[item.id] || false} onOpenChange={() => togglePopover(item.id)}>
                         <PopoverTrigger asChild>
                           <Button variant="link" size="sm" className="h-auto p-0 text-xs text-blue-600">
                              ({totalReserved} {item.unit} reservados)
                           </Button>
                         </PopoverTrigger>
-                        <PopoverContent className="w-80">
+                        <PopoverContent className="w-96">
                           <div className="grid gap-4">
                             <div className="space-y-2">
                               <h4 className="font-medium leading-none">Reservas para {item.name}</h4>
@@ -216,14 +239,22 @@ export default function StockPage() {
                                 Itens do estoque alocados para projetos.
                               </p>
                             </div>
-                             <div className="grid gap-2 text-sm max-h-48 overflow-y-auto">
+                             <div className="grid gap-2 text-sm max-h-60 overflow-y-auto">
                               {(item.reservations || []).map(res => (
-                                <div key={res.materialId} className="grid grid-cols-3 items-center gap-2">
-                                  <Link href={`/projects/${res.projectId}`} className="truncate col-span-2 hover:underline">
-                                    <p className="font-medium truncate">{res.projectName}</p>
-                                    <p className="text-xs text-muted-foreground truncate">{res.furnitureName}</p>
-                                  </Link>
-                                  <p className="font-mono text-right">{res.quantity} {item.unit}</p>
+                                <div key={res.materialId} className="flex items-center justify-between gap-2 p-2 rounded-md border bg-muted/30">
+                                  <div className="truncate">
+                                      <Link href={`/projects/${res.projectId}`} className="truncate hover:underline">
+                                        <p className="font-medium truncate">{res.projectName}</p>
+                                        <p className="text-xs text-muted-foreground truncate">{res.furnitureName}</p>
+                                      </Link>
+                                  </div>
+                                  <div className="flex items-center gap-2 flex-shrink-0">
+                                    <p className="font-mono">{res.quantity} {item.unit}</p>
+                                    <Button size="sm" variant="outline" onClick={() => handleDispatch(item.id, res)}>
+                                        <CheckCircle className="mr-2 h-4 w-4" />
+                                        Dar Baixa
+                                    </Button>
+                                  </div>
                                 </div>
                               ))}
                             </div>

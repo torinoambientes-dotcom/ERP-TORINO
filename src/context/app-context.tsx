@@ -33,6 +33,7 @@ interface AppContextType {
   toggleItemPurchasedStatus: (itemType: 'glass' | 'door', itemId: string, projectId: string, envId: string, furId: string) => void;
   toggleMaterialPurchased: (projectId: string, envId: string, furId: string, materialId: string, purchased: boolean) => void;
   clearAllReservations: () => void;
+  dispatchReservedItem: (stockItemId: string, reservation: StockReservation, memberId: string) => void;
 }
 
 export const AppContext = createContext<AppContextType>({
@@ -58,6 +59,7 @@ export const AppContext = createContext<AppContextType>({
   toggleItemPurchasedStatus: () => {},
   toggleMaterialPurchased: () => {},
   clearAllReservations: () => {},
+  dispatchReservedItem: () => {},
 });
 
 const isProjectComplete = (project: Project): boolean => {
@@ -488,6 +490,32 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await batch.commit();
   }, [firestore, stockItems]);
 
+  const dispatchReservedItem = useCallback((stockItemId: string, reservation: StockReservation, memberId: string) => {
+    if (!firestore || !stockItems) return;
+
+    const stockItem = stockItems.find(i => i.id === stockItemId);
+    if (!stockItem) return;
+
+    const newQuantity = stockItem.quantity - reservation.quantity;
+    const newReservations = (stockItem.reservations || []).filter(r => r.materialId !== reservation.materialId);
+
+    const stockItemRef = doc(firestore, 'stock_items', stockItemId);
+    updateDocumentNonBlocking(stockItemRef, {
+        quantity: newQuantity,
+        reservations: newReservations
+    });
+
+    const movementData: Omit<StockMovement, 'id' | 'timestamp'> = {
+        type: 'exit',
+        quantity: reservation.quantity,
+        reason: `Saída para projeto: ${reservation.projectName} (${reservation.furnitureName})`,
+        memberId: memberId,
+    };
+    
+    addStockMovement(stockItemId, movementData);
+
+  }, [firestore, stockItems, addStockMovement]);
+
 
   const value = useMemo(() => ({
     projects: projects || [],
@@ -512,6 +540,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     toggleItemPurchasedStatus,
     toggleMaterialPurchased,
     clearAllReservations,
+    dispatchReservedItem,
   }), [
     projects, 
     teamMembers, 
@@ -538,6 +567,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     toggleItemPurchasedStatus,
     toggleMaterialPurchased,
     clearAllReservations,
+    dispatchReservedItem,
   ]);
 
 
