@@ -10,7 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { AppContext } from '@/context/app-context';
 import { PageHeader } from '@/components/layout/page-header';
-import { PlusCircle, Edit, Trash2, ArrowRightLeft, History, AlertTriangle, ListOrdered, ShieldAlert, CheckCircle, PackageCheck } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, ArrowRightLeft, History, AlertTriangle, ListOrdered, ShieldAlert, CheckCircle, PackageCheck, SendToBack } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -34,7 +34,7 @@ import Link from 'next/link';
 import { useUser } from '@/firebase';
 
 export default function StockPage() {
-  const { stockItems, stockCategories, deleteStockItem, deleteStockCategory, isLoading, clearAllReservations, dispatchReservedItem } = useContext(AppContext);
+  const { stockItems, stockCategories, deleteStockItem, deleteStockCategory, isLoading, clearAllReservations, markItemAsSeparated, dispatchItemToProduction } = useContext(AppContext);
   const { toast } = useToast();
   const { user } = useUser();
 
@@ -174,15 +174,23 @@ export default function StockPage() {
     setResetAlertOpen(false);
   };
 
+  const handleMarkAsSeparated = (stockItemId: string, reservation: StockReservation) => {
+    markItemAsSeparated(stockItemId, reservation);
+    toast({
+        title: 'Item marcado como Separado!',
+        description: `A reserva para ${reservation.projectName} foi marcada como 'Separado'.`
+    });
+  };
+
   const handleDispatch = (stockItemId: string, reservation: StockReservation) => {
     if(!user?.uid) {
         toast({ variant: 'destructive', title: 'Erro', description: 'Usuário não autenticado.' });
         return;
     }
-    dispatchReservedItem(stockItemId, reservation, user.uid);
+    dispatchItemToProduction(stockItemId, reservation, user.uid);
     toast({
-        title: 'Item separado com sucesso!',
-        description: `A reserva para ${reservation.projectName} foi marcada como 'Separado'.`
+        title: 'Item Despachado para Produção!',
+        description: `Foi dada a baixa no estoque para a reserva do projeto ${reservation.projectName}.`
     });
   };
 
@@ -248,17 +256,17 @@ export default function StockPage() {
                                   </div>
                                   <div className="flex items-center gap-2 flex-shrink-0">
                                     <p className="font-mono">{res.quantity} {item.unit}</p>
-                                    {res.status === 'separado' ? (
-                                        <div className='flex items-center gap-1.5 text-green-700 font-medium text-xs border border-green-200 bg-white/50 px-2 py-1 rounded-md'>
-                                            <PackageCheck className="h-4 w-4" />
-                                            <span>Separado</span>
-                                        </div>
-                                    ) : (
-                                        <Button size="sm" variant="outline" onClick={() => handleDispatch(item.id, res)}>
-                                            <CheckCircle className="mr-2 h-4 w-4" />
+                                    {res.status === 'reservado' ? (
+                                        <Button size="sm" variant="outline" onClick={() => handleMarkAsSeparated(item.id, res)}>
+                                            <PackageCheck className="mr-2 h-4 w-4" />
                                             Marcar Separado
                                         </Button>
-                                    )}
+                                    ) : res.status === 'separado' ? (
+                                        <Button size="sm" variant="default" onClick={() => handleDispatch(item.id, res)}>
+                                            <SendToBack className="mr-2 h-4 w-4" />
+                                            Despachar
+                                        </Button>
+                                    ): null}
                                   </div>
                                 </div>
                               ))}

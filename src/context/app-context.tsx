@@ -33,7 +33,8 @@ interface AppContextType {
   toggleItemPurchasedStatus: (itemType: 'glass' | 'door', itemId: string, projectId: string, envId: string, furId: string) => void;
   toggleMaterialPurchased: (projectId: string, envId: string, furId: string, materialId: string, purchased: boolean) => void;
   clearAllReservations: () => void;
-  dispatchReservedItem: (stockItemId: string, reservation: StockReservation, memberId: string) => void;
+  markItemAsSeparated: (stockItemId: string, reservation: StockReservation) => void;
+  dispatchItemToProduction: (stockItemId: string, reservation: StockReservation, memberId: string) => void;
 }
 
 export const AppContext = createContext<AppContextType>({
@@ -59,7 +60,8 @@ export const AppContext = createContext<AppContextType>({
   toggleItemPurchasedStatus: () => {},
   toggleMaterialPurchased: () => {},
   clearAllReservations: () => {},
-  dispatchReservedItem: () => {},
+  markItemAsSeparated: () => {},
+  dispatchItemToProduction: () => {},
 });
 
 const isProjectComplete = (project: Project): boolean => {
@@ -503,7 +505,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await batch.commit();
   }, [firestore, stockItems]);
 
-    const dispatchReservedItem = useCallback((stockItemId: string, reservation: StockReservation, memberId: string) => {
+    const markItemAsSeparated = useCallback((stockItemId: string, reservation: StockReservation) => {
     if (!firestore || !stockItems) return;
 
     const stockItem = stockItems.find(i => i.id === stockItemId);
@@ -516,6 +518,38 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     updateDocumentNonBlocking(stockItemRef, { reservations: updatedReservations });
 
+  }, [firestore, stockItems]);
+  
+  const dispatchItemToProduction = useCallback((stockItemId: string, reservation: StockReservation, memberId: string) => {
+      if (!firestore || !stockItems) return;
+      const stockItem = stockItems.find(i => i.id === stockItemId);
+      if (!stockItem) return;
+
+      const batch = writeBatch(firestore);
+      
+      // Update stock item: remove reservation and decrease quantity
+      const stockItemRef = doc(firestore, 'stock_items', stockItemId);
+      const updatedReservations = (stockItem.reservations || []).filter(r => r.materialId !== reservation.materialId);
+      const newQuantity = stockItem.quantity - reservation.quantity;
+      batch.update(stockItemRef, { 
+          reservations: updatedReservations,
+          quantity: newQuantity,
+      });
+
+      // Add movement record
+      const movementId = generateId('move');
+      const newMovement: StockMovement = {
+          id: movementId,
+          type: 'exit',
+          quantity: reservation.quantity,
+          reason: `Despachado para produção do projeto ${reservation.projectName}`,
+          timestamp: new Date().toISOString(),
+          memberId: memberId,
+      };
+      const movementRef = doc(collection(firestore, 'stock_items', stockItemId, 'movements'), movementId);
+      batch.set(movementRef, newMovement);
+
+      batch.commit();
   }, [firestore, stockItems]);
 
 
@@ -542,7 +576,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     toggleItemPurchasedStatus,
     toggleMaterialPurchased,
     clearAllReservations,
-    dispatchReservedItem,
+    markItemAsSeparated,
+    dispatchItemToProduction,
   }), [
     projects, 
     teamMembers, 
@@ -569,7 +604,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     toggleItemPurchasedStatus,
     toggleMaterialPurchased,
     clearAllReservations,
-    dispatchReservedItem,
+    markItemAsSeparated,
+    dispatchItemToProduction,
   ]);
 
 
