@@ -120,6 +120,7 @@ export interface StockReservation {
   furnitureName: string;
   materialId: string;
   quantity: number;
+  status: 'reservado' | 'separado';
 }
 
 

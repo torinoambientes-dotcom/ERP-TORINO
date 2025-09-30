@@ -148,9 +148,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     let projectWithCompletion = { ...updatedProject };
 
-    if (isProjectComplete(projectWithCompletion) && !projectWithCompletion.completedAt) {
+    // This logic handles marking a project as complete if all stages are 'done'
+    // and setting the completion timestamp.
+    const allStagesDone = (updatedProject.environments || []).every(env =>
+        (env.furniture || []).every(fur =>
+            fur.measurement.status === 'done' &&
+            fur.cutting.status === 'done' &&
+            fur.purchase.status === 'done' &&
+            fur.assembly.status === 'done'
+        )
+    );
+
+    if (allStagesDone && !updatedProject.completedAt) {
       projectWithCompletion.completedAt = new Date().toISOString();
     }
+
 
     projectWithCompletion = cleanupUndefinedFields(projectWithCompletion);
     
@@ -159,10 +171,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const projectRef = doc(firestore, 'projects', projectWithCompletion.id);
     batch.set(projectRef, projectWithCompletion, { merge: true });
 
-    // Handle stock reservations
+    // --- Handle stock reservations ---
     const originalMaterials = originalProject?.environments.flatMap(e => e.furniture.flatMap(f => (f.materials || []).map(m => ({ ...m, projectId: originalProject.id })))) || [];
     const updatedMaterials = projectWithCompletion.environments.flatMap(e => e.furniture.flatMap(f => (f.materials || []).map(m => ({...m, projectId: projectWithCompletion.id}))));
-
+    
     const materialToDetails = new Map<string, { projName: string, envName: string, furName: string }>();
     projectWithCompletion.environments.forEach(env => {
         env.furniture.forEach(fur => {
@@ -181,7 +193,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     originalMaterials.forEach(origMat => {
         if (origMat.stockItemId) {
             const updatedMat = updatedMaterials.find(updMat => updMat.id === origMat.id);
-            // If material was removed OR is no longer a stock item
+            // If material was removed OR is no longer a stock item, remove reservation
             if (!updatedMat || !updatedMat.stockItemId) {
                  const stockItem = stockItems.find(si => si.id === origMat.stockItemId);
                  if (stockItem) {
@@ -214,6 +226,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
                             furnitureName: details.furName,
                             materialId: updMat.id,
                             quantity: updMat.quantity,
+                            status: 'reservado', // Default status for new reservations
                         };
                         const finalReservations = [...otherReservations, newReservation];
 
@@ -490,69 +503,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await batch.commit();
   }, [firestore, stockItems]);
 
-  const dispatchReservedItem = useCallback((stockItemId: string, reservation: StockReservation, memberId: string) => {
-    if (!firestore || !stockItems || !projects) return;
+    const dispatchReservedItem = useCallback((stockItemId: string, reservation: StockReservation, memberId: string) => {
+    if (!firestore || !stockItems) return;
 
     const stockItem = stockItems.find(i => i.id === stockItemId);
     if (!stockItem) return;
-    
-    const projectToUpdate = projects.find(p => p.id === reservation.projectId);
-    if (!projectToUpdate) return;
-    
-    const batch = writeBatch(firestore);
 
-    // 1. Update stock item: quantity and reservations
-    const newQuantity = stockItem.quantity - reservation.quantity;
-    const newReservations = (stockItem.reservations || []).filter(r => r.materialId !== reservation.materialId);
     const stockItemRef = doc(firestore, 'stock_items', stockItemId);
-    batch.update(stockItemRef, {
-        quantity: newQuantity,
-        reservations: newReservations
-    });
+    const updatedReservations = (stockItem.reservations || []).map(r => 
+        r.materialId === reservation.materialId ? { ...r, status: 'separado' as const } : r
+    );
 
-    // 2. Create stock movement history
-    const movementId = generateId('move');
-    const newMovement: StockMovement = {
-        id: movementId,
-        type: 'exit',
-        quantity: reservation.quantity,
-        reason: `Saída para projeto: ${reservation.projectName} (${reservation.furnitureName})`,
-        memberId: memberId,
-        timestamp: new Date().toISOString(),
-    };
-    const movementRef = doc(collection(firestore, 'stock_items', stockItemId, 'movements'));
-    batch.set(movementRef, newMovement);
+    updateDocumentNonBlocking(stockItemRef, { reservations: updatedReservations });
 
-    // 3. Mark the material item as 'purchased' in the project
-    const updatedProject = JSON.parse(JSON.stringify(projectToUpdate));
-    let materialFoundAndUpdated = false;
-    for (const env of updatedProject.environments) {
-        if (env.id === reservation.environmentId) {
-            for (const fur of env.furniture) {
-                if (fur.id === reservation.furnitureId) {
-                    if (fur.materials) {
-                        const matIndex = fur.materials.findIndex((m: MaterialItem) => m.id === reservation.materialId);
-                        if (matIndex !== -1) {
-                            fur.materials[matIndex].purchased = true;
-                            materialFoundAndUpdated = true;
-                            break; 
-                        }
-                    }
-                }
-            }
-        }
-        if (materialFoundAndUpdated) break;
-    }
-    
-    if (materialFoundAndUpdated) {
-        const projectRef = doc(firestore, 'projects', updatedProject.id);
-        batch.set(projectRef, updatedProject);
-    }
-    
-    // Commit all changes in a single batch
-    batch.commit().catch(console.error);
-
-  }, [firestore, stockItems, projects, updateProject]);
+  }, [firestore, stockItems]);
 
 
   const value = useMemo(() => ({

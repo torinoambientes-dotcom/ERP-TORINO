@@ -10,7 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { AppContext } from '@/context/app-context';
 import { PageHeader } from '@/components/layout/page-header';
-import { PlusCircle, Edit, Trash2, ArrowRightLeft, History, AlertTriangle, ListOrdered, ShieldAlert, CheckCircle } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, ArrowRightLeft, History, AlertTriangle, ListOrdered, ShieldAlert, CheckCircle, PackageCheck } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -181,11 +181,9 @@ export default function StockPage() {
     }
     dispatchReservedItem(stockItemId, reservation, user.uid);
     toast({
-        title: 'Baixa realizada com sucesso!',
-        description: `${reservation.quantity} ${stockItems.find(i => i.id === stockItemId)?.unit} de ${stockItems.find(i => i.id === stockItemId)?.name} foram despachados para o projeto ${reservation.projectName}.`
+        title: 'Item separado com sucesso!',
+        description: `A reserva para ${reservation.projectName} foi marcada como 'Separado'.`
     });
-     // Close the popover after dispatching
-    setPopoverOpenState(prev => ({ ...prev, [stockItemId]: false }));
   };
 
 
@@ -241,7 +239,7 @@ export default function StockPage() {
                             </div>
                              <div className="grid gap-2 text-sm max-h-60 overflow-y-auto">
                               {(item.reservations || []).map(res => (
-                                <div key={res.materialId} className="flex items-center justify-between gap-2 p-2 rounded-md border bg-muted/30">
+                                <div key={res.materialId} className={cn("flex items-center justify-between gap-2 p-2 rounded-md border", res.status === 'separado' ? 'bg-green-100/70 border-green-200' : 'bg-muted/30')}>
                                   <div className="truncate">
                                       <Link href={`/projects/${res.projectId}`} className="truncate hover:underline">
                                         <p className="font-medium truncate">{res.projectName}</p>
@@ -250,10 +248,17 @@ export default function StockPage() {
                                   </div>
                                   <div className="flex items-center gap-2 flex-shrink-0">
                                     <p className="font-mono">{res.quantity} {item.unit}</p>
-                                    <Button size="sm" variant="outline" onClick={() => handleDispatch(item.id, res)}>
-                                        <CheckCircle className="mr-2 h-4 w-4" />
-                                        Dar Baixa
-                                    </Button>
+                                    {res.status === 'separado' ? (
+                                        <div className='flex items-center gap-1.5 text-green-700 font-medium text-xs border border-green-200 bg-white/50 px-2 py-1 rounded-md'>
+                                            <PackageCheck className="h-4 w-4" />
+                                            <span>Separado</span>
+                                        </div>
+                                    ) : (
+                                        <Button size="sm" variant="outline" onClick={() => handleDispatch(item.id, res)}>
+                                            <CheckCircle className="mr-2 h-4 w-4" />
+                                            Marcar Separado
+                                        </Button>
+                                    )}
                                   </div>
                                 </div>
                               ))}
