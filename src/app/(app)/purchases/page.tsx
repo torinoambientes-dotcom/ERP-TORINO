@@ -82,6 +82,10 @@ interface ProfileDoorList {
   };
 }
 
+interface LowStockInfo extends StockItem {
+  demand?: number;
+}
+
 
 export default function PurchasesPage() {
   const context = useContext(AppContext);
@@ -104,13 +108,21 @@ export default function PurchasesPage() {
   const [showPurchasedGlass, setShowPurchasedGlass] = useState(false);
   const [showPurchasedDoors, setShowPurchasedDoors] = useState(false);
 
-  const lowStockItems = useMemo((): StockItem[] => {
-    return stockItems.filter(item => 
-        typeof item.minStock === 'number' && 
-        item.quantity < item.minStock &&
-        !item.alertHandledAt
-    );
+  const lowStockItems = useMemo((): LowStockInfo[] => {
+    return stockItems
+      .map(item => {
+        const totalReserved = (item.reservations || []).reduce((acc, res) => acc + res.quantity, 0);
+        const hasMinStockAlert = typeof item.minStock === 'number' && item.quantity < item.minStock;
+        const hasDemandAlert = totalReserved > item.quantity;
+        
+        if (!item.alertHandledAt && (hasMinStockAlert || hasDemandAlert)) {
+          return { ...item, demand: totalReserved };
+        }
+        return null;
+      })
+      .filter((item): item is LowStockInfo => item !== null);
   }, [stockItems]);
+
 
   const shoppingList = useMemo((): ShoppingList => {
     const list: ShoppingList = {};
@@ -484,8 +496,8 @@ export default function PurchasesPage() {
                 <CardHeader>
                     <div className="flex items-center justify-between">
                     <div className='space-y-1.5'>
-                        <CardTitle className="font-headline">Alerta de Estoque Mínimo ({lowStockItems.length})</CardTitle>
-                        <CardDescription>Lista de materiais que atingiram o nível mínimo de estoque.</CardDescription>
+                        <CardTitle className="font-headline">Alerta de Estoque ({lowStockItems.length})</CardTitle>
+                        <CardDescription>Materiais com estoque baixo ou com demanda de projetos maior que o estoque.</CardDescription>
                     </div>
                     <CollapsibleTrigger asChild>
                         <Button variant="ghost" size="icon">
@@ -498,28 +510,36 @@ export default function PurchasesPage() {
                 <CollapsibleContent>
                     <CardContent>
                     <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
-                        {lowStockItems.length > 0 ? lowStockItems.map((item) => (
-                        <div key={item.id} className="p-3 rounded-md bg-destructive/10 border-l-4 border-destructive flex items-start sm:items-center justify-between flex-col sm:flex-row gap-4">
-                            <div className="flex items-start gap-3">
-                                <AlertTriangle className="h-5 w-5 text-destructive mt-0.5 flex-shrink-0" />
-                                <div>
-                                    <p className="font-semibold">{item.name}</p>
-                                    <p className="text-sm text-destructive/80 font-medium">
-                                        Atual: {item.quantity} | Mínimo: {item.minStock} ({item.unit})
-                                    </p>
+                        {lowStockItems.length > 0 ? lowStockItems.map((item) => {
+                          const isDemandAlert = (item.demand || 0) > item.quantity;
+                          const isMinStockAlert = typeof item.minStock === 'number' && item.quantity < item.minStock;
+
+                          return (
+                            <div key={item.id} className="p-3 rounded-md bg-destructive/10 border-l-4 border-destructive flex items-start sm:items-center justify-between flex-col sm:flex-row gap-4">
+                                <div className="flex items-start gap-3">
+                                    <AlertTriangle className="h-5 w-5 text-destructive mt-0.5 flex-shrink-0" />
+                                    <div>
+                                        <p className="font-semibold">{item.name}</p>
+                                        <p className="text-sm text-destructive/80 font-medium">
+                                          {isDemandAlert 
+                                            ? `Demanda (${item.demand}) excede o estoque (${item.quantity})`
+                                            : `Estoque atual (${item.quantity}) abaixo do mínimo (${item.minStock})`
+                                          }
+                                        </p>
+                                    </div>
                                 </div>
+                                <Button
+                                size="sm"
+                                variant="outline"
+                                className="bg-background hover:bg-muted w-full sm:w-auto"
+                                onClick={() => handleMarkAlertAsHandled(item.id, item.name)}
+                                >
+                                <CheckCircle className="mr-2 h-4 w-4 text-green-600" />
+                                Marcar como Resolvido
+                                </Button>
                             </div>
-                            <Button
-                            size="sm"
-                            variant="outline"
-                            className="bg-background hover:bg-muted w-full sm:w-auto"
-                            onClick={() => handleMarkAlertAsHandled(item.id, item.name)}
-                            >
-                            <CheckCircle className="mr-2 h-4 w-4 text-green-600" />
-                            Marcar como Resolvido
-                            </Button>
-                        </div>
-                        )) : <p className="text-sm text-muted-foreground text-center py-4">Nenhum item com estoque baixo.</p>}
+                          )
+                        }) : <p className="text-sm text-muted-foreground text-center py-4">Nenhum item com estoque baixo.</p>}
                     </div>
                     </CardContent>
                 </CollapsibleContent>

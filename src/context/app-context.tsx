@@ -209,7 +209,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
                             materialId: updMat.id,
                             quantity: updMat.quantity,
                         };
-                        batch.update(stockItemRef, { reservations: [...otherReservations, newReservation] });
+                        const finalReservations = [...otherReservations, newReservation];
+
+                        // Logic to check if demand exceeds stock and trigger alert
+                        const totalReserved = finalReservations.reduce((acc, res) => acc + res.quantity, 0);
+                        if (totalReserved > stockItem.quantity) {
+                            batch.update(stockItemRef, { 
+                                reservations: finalReservations,
+                                alertHandledAt: deleteField() // Reset the alert
+                            });
+                        } else {
+                            batch.update(stockItemRef, { reservations: finalReservations });
+                        }
                     }
                 }
             }
