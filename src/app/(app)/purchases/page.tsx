@@ -30,6 +30,7 @@ import { GlassCreatorModal } from '@/components/modals/glass-creator-modal';
 import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
 import { RegisterPurchaseModal } from '@/components/modals/register-purchase-modal';
+import { Badge } from '@/components/ui/badge';
 
 
 interface ShoppingList {
@@ -272,6 +273,25 @@ export default function PurchasesPage() {
     return list;
   }, [projects, showPurchasedDoors]);
 
+  const pendingCounts = useMemo(() => {
+    const activeProjects = projects.filter(p => !p.completedAt);
+    let materials = lowStockItems.length;
+    let glass = 0;
+    let doors = 0;
+
+    activeProjects.forEach(p => {
+        p.environments.forEach(e => {
+            e.furniture.forEach(f => {
+                materials += (f.materials || []).filter(m => !m.stockItemId && !m.purchased).length;
+                glass += (f.glassItems || []).filter(g => !g.purchased).length;
+                doors += (f.profileDoors || []).filter(d => !d.purchased).length;
+            });
+        });
+    });
+
+    return { materials, glass, doors };
+  }, [projects, lowStockItems]);
+
 
     const generateShoppingListText = (forWhatsApp: boolean = false) => {
         let listText = "*Lista de Compras Centralizada (Itens a Comprar):*\n\n";
@@ -497,9 +517,18 @@ export default function PurchasesPage() {
 
       <Tabs defaultValue="materials" className="w-full">
         <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="materials">Materiais</TabsTrigger>
-            <TabsTrigger value="glass">Vidraçaria</TabsTrigger>
-            <TabsTrigger value="profileDoors">Portas de Perfil</TabsTrigger>
+            <TabsTrigger value="materials" className="relative">
+              Materiais
+              {pendingCounts.materials > 0 && <Badge className="absolute -right-2 -top-2 h-5 min-w-[20px] justify-center px-1.5">{pendingCounts.materials}</Badge>}
+            </TabsTrigger>
+            <TabsTrigger value="glass" className="relative">
+              Vidraçaria
+              {pendingCounts.glass > 0 && <Badge className="absolute -right-2 -top-2 h-5 min-w-[20px] justify-center px-1.5">{pendingCounts.glass}</Badge>}
+            </TabsTrigger>
+            <TabsTrigger value="profileDoors" className="relative">
+              Portas de Perfil
+              {pendingCounts.doors > 0 && <Badge className="absolute -right-2 -top-2 h-5 min-w-[20px] justify-center px-1.5">{pendingCounts.doors}</Badge>}
+            </TabsTrigger>
         </TabsList>
         <TabsContent value="materials" className="mt-6 space-y-6">
             <Collapsible
