@@ -34,6 +34,7 @@ export interface MaterialItem {
   name: string;
   quantity: number;
   unit: string;
+  stockItemId?: string; // Link to the stock item
   addedAt?: string; // ISO date string
   purchased?: boolean;
 }
@@ -110,6 +111,18 @@ export interface StockCategory {
   name: string;
 }
 
+export interface StockReservation {
+  projectId: string;
+  projectName: string;
+  environmentId: string;
+  environmentName: string;
+  furnitureId: string;
+  furnitureName: string;
+  materialId: string;
+  quantity: number;
+}
+
+
 export interface StockItem {
   id: string;
   name: string;
@@ -118,6 +131,7 @@ export interface StockItem {
   category: string;
   minStock?: number;
   alertHandledAt?: string; // ISO date string for when the low stock alert was handled
+  reservations?: StockReservation[];
 }
 
 export interface StockMovement {

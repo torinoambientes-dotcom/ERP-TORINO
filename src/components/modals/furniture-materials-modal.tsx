@@ -1,5 +1,5 @@
 'use client';
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useContext } from 'react';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -28,7 +28,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import type { Furniture, MaterialItem, GlassItem, ProfileDoorItem } from '@/lib/types';
+import type { Furniture, MaterialItem, GlassItem, ProfileDoorItem, StockItem } from '@/lib/types';
 import { ScrollArea } from '../ui/scroll-area';
 import { generateId, cn } from '@/lib/utils';
 import { Separator } from '../ui/separator';
@@ -39,26 +39,30 @@ import { GlassCreatorModal } from './glass-creator-modal';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
+import { AppContext } from '@/context/app-context';
 
 interface FurnitureMaterialsModalProps {
   isOpen: boolean;
   onClose: () => void;
   furniture: Furniture;
-  onUpdate: (furniture: Furniture) => void;
+  onUpdate: (updatedFurniture: Furniture, originalFurniture: Furniture) => void;
   clientName?: string;
 }
 
 const materialSchema = z.object({
-  id: z.string().optional(),
+  id: z.string(),
   name: z.string().min(1, 'Nome do material é obrigatório.'),
   quantity: z.coerce.number().min(0.01, 'Quantidade deve ser positiva.'),
   unit: z.string().min(1, 'Unidade é obrigatória.'),
+  stockItemId: z.string().optional(),
   addedAt: z.string().optional(),
   purchased: z.boolean().optional(),
 });
 
 const glassSchema = z.object({
-    id: z.string().optional(),
+    id: z.string(),
     type: z.string().min(1, "Tipo de vidro é obrigatório."),
     quantity: z.coerce.number().min(1, "Quantidade deve ser pelo menos 1."),
     width: z.coerce.number().min(1, "Largura é obrigatória.").optional(),
@@ -80,7 +84,7 @@ const glassSchema = z.object({
 
 
 const profileDoorSchema = z.object({
-    id: z.string().optional(),
+    id: z.string(),
     doorType: z.enum(['Giro', 'Correr', 'Escamoteavel']).optional(),
     slidingSystem: z.string().optional(),
     isPair: z.boolean().optional(),
@@ -106,8 +110,6 @@ const formSchema = z.object({
 
 type MaterialFormValues = z.infer<typeof formSchema>;
 
-const units = ['m²', 'm linear', 'unidade', 'chapa', 'litro', 'kg'];
-
 export function FurnitureMaterialsModal({
   isOpen,
   onClose,
@@ -116,6 +118,8 @@ export function FurnitureMaterialsModal({
   clientName
 }: FurnitureMaterialsModalProps) {
   const { toast } = useToast();
+  const { stockItems } = useContext(AppContext);
+  const originalFurniture = useMemo(() => JSON.parse(JSON.stringify(furniture)), [furniture]);
   
   const [isDoorCreatorOpen, setDoorCreatorOpen] = useState(false);
   const [doorToEdit, setDoorToEdit] = useState<ProfileDoorItem | null>(null);
@@ -124,6 +128,9 @@ export function FurnitureMaterialsModal({
   const [isGlassCreatorOpen, setGlassCreatorOpen] = useState(false);
   const [glassToEdit, setGlassToEdit] = useState<GlassItem | null>(null);
   const [glassIndexToEdit, setGlassIndexToEdit] = useState<number | null>(null);
+
+  const [popoverOpen, setPopoverOpen] = useState(false);
+
 
   const form = useForm<MaterialFormValues>({
     resolver: zodResolver(formSchema),
@@ -136,7 +143,7 @@ export function FurnitureMaterialsModal({
 
   const purchaseTimestamp = useMemo(() => furniture.purchase?.completedAt, [furniture.purchase]);
 
-  const { fields: materialFields, append: appendMaterial, remove: removeMaterial } = useFieldArray({
+  const { fields: materialFields, append: appendMaterial, remove: removeMaterial, update: updateMaterial } = useFieldArray({
     control: form.control,
     name: 'materials',
   });
@@ -164,11 +171,11 @@ export function FurnitureMaterialsModal({
   const onSubmit = (data: MaterialFormValues) => {
     const updatedFurniture: Furniture = {
       ...furniture,
-      materials: data.materials.map(m => (m.id ? { ...m, purchased: m.purchased ?? false } : { ...m, id: generateId('mat'), addedAt: new Date().toISOString(), purchased: false })),
-      glassItems: data.glassItems.map(g => (g.id ? { ...g, purchased: g.purchased ?? false } : { ...g, id: generateId('gla'), addedAt: new Date().toISOString(), purchased: false })) as GlassItem[],
-      profileDoors: data.profileDoors.map(p => (p.id ? { ...p, purchased: p.purchased ?? false } : { ...p, id: generateId('pfd'), addedAt: new Date().toISOString(), purchased: false })) as ProfileDoorItem[],
+      materials: data.materials.map(m => ({ ...m, purchased: m.stockItemId ? false : (m.purchased ?? false) })),
+      glassItems: data.glassItems.map(g => g as GlassItem),
+      profileDoors: data.profileDoors.map(p => p as ProfileDoorItem),
     };
-    onUpdate(updatedFurniture);
+    onUpdate(updatedFurniture, originalFurniture);
     toast({
       title: 'Lista de materiais atualizada!',
       description: `Os materiais para ${furniture.name} foram salvos.`,
@@ -177,20 +184,21 @@ export function FurnitureMaterialsModal({
   };
   
   const handleAddNewMaterial = () => {
-    appendMaterial({ name: '', quantity: 1, unit: 'unidade', addedAt: new Date().toISOString(), purchased: false });
+    appendMaterial({ id: generateId('mat'), name: '', quantity: 1, unit: 'unidade', addedAt: new Date().toISOString(), purchased: false });
   };
   
   const handleSaveProfileDoor = (doorData: Omit<ProfileDoorItem, 'id' | 'addedAt'>) => {
-    const newDoorData = {
-      ...doorData,
-      addedAt: new Date().toISOString(),
-    };
     if (doorIndexToEdit !== null) {
       const existingDoor = profileDoorFields[doorIndexToEdit];
-      updateProfileDoor(doorIndexToEdit, { ...existingDoor, ...newDoorData });
+      updateProfileDoor(doorIndexToEdit, { ...existingDoor, ...doorData });
       toast({ title: "Porta atualizada!" });
     } else {
-      appendProfileDoor(newDoorData as ProfileDoorItem);
+      appendProfileDoor({
+        ...doorData,
+        id: generateId('pfd'),
+        addedAt: new Date().toISOString(),
+        purchased: false,
+      } as ProfileDoorItem);
       toast({ title: "Porta adicionada!" });
     }
   };
@@ -418,34 +426,85 @@ export function FurnitureMaterialsModal({
                     {materialFields.length > 0 ? (
                       materialFields.map((field, index) => {
                         const isPurchased = field.purchased || isOriginalItem(field.addedAt);
+                        const isFromStock = !!field.stockItemId;
                         return (
                         <div
                           key={field.id}
                           className={cn("flex items-end gap-2 p-3 rounded-lg border", 
-                            isPurchased ? "bg-green-100/60 border-green-200" : "bg-muted/50"
+                            isPurchased ? "bg-green-100/60 border-green-200" : "bg-muted/50",
+                            isFromStock && !isPurchased && "bg-blue-100/60 border-blue-200"
                           )}
                         >
-                            <FormField
-                              control={form.control}
-                              name={`materials.${index}.name`}
-                              render={({ field: formField }) => (
-                                <FormItem className="flex-grow">
-                                  <FormLabel className={cn(isPurchased && 'text-muted-foreground')}>Material</FormLabel>
-                                  <FormControl>
-                                    <Input placeholder="Ex: MDF Branco 18mm" {...formField} value={formField.value || ''} disabled={isPurchased} className={cn(isPurchased && 'line-through')} />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
+                            <Controller
+                                control={form.control}
+                                name={`materials.${index}`}
+                                render={({ field: controllerField }) => (
+                                    <FormItem className="flex-grow">
+                                    <FormLabel className={cn((isPurchased || isFromStock) && 'text-muted-foreground')}>
+                                        {isFromStock ? "Item do Estoque" : "Material"}
+                                    </FormLabel>
+                                    <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+                                        <PopoverTrigger asChild>
+                                        <FormControl>
+                                            <Button
+                                            variant="outline"
+                                            role="combobox"
+                                            disabled={isPurchased}
+                                            className={cn("w-full justify-between", !controllerField.value.name && "text-muted-foreground", (isPurchased || isFromStock) && "line-through")}
+                                            >
+                                            {controllerField.value.name || "Selecione ou digite um material"}
+                                            </Button>
+                                        </FormControl>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-[400px] p-0">
+                                        <Command>
+                                            <CommandInput placeholder="Buscar no estoque ou digitar novo..." />
+                                            <CommandList>
+                                                <CommandEmpty
+                                                    onSelect={() => {
+                                                        const inputValue = (document.querySelector(`[cmdk-input]`) as HTMLInputElement).value;
+                                                        updateMaterial(index, {...field, name: inputValue, stockItemId: undefined });
+                                                        setPopoverOpen(false);
+                                                    }}
+                                                >
+                                                   <div className="p-2 cursor-pointer hover:bg-accent" onClick={() => {
+                                                        const inputValue = (document.querySelector(`[cmdk-input]`) as HTMLInputElement).value;
+                                                        updateMaterial(index, {...field, name: inputValue, stockItemId: undefined, unit: 'unidade' });
+                                                        setPopoverOpen(false);
+                                                   }}>
+                                                        Adicionar novo material: "{ (document.querySelector(`[cmdk-input]`) as HTMLInputElement)?.value }"
+                                                   </div>
+                                                </CommandEmpty>
+                                                <CommandGroup heading="Itens do Estoque">
+                                                {stockItems.map((item) => (
+                                                    <CommandItem
+                                                    key={item.id}
+                                                    value={item.name}
+                                                    onSelect={() => {
+                                                        updateMaterial(index, {...field, name: item.name, stockItemId: item.id, unit: item.unit });
+                                                        setPopoverOpen(false);
+                                                    }}
+                                                    >
+                                                    {item.name}
+                                                    </CommandItem>
+                                                ))}
+                                                </CommandGroup>
+                                            </CommandList>
+                                        </Command>
+                                        </PopoverContent>
+                                    </Popover>
+                                    <FormMessage />
+                                    </FormItem>
+                                )}
                             />
                             <FormField
                               control={form.control}
                               name={`materials.${index}.quantity`}
                               render={({ field: formField }) => (
                                 <FormItem className="w-24">
-                                  <FormLabel className={cn(isPurchased && 'text-muted-foreground')}>Qtd.</FormLabel>
+                                  <FormLabel className={cn((isPurchased || isFromStock) && 'text-muted-foreground')}>Qtd.</FormLabel>
                                   <FormControl>
-                                    <Input type="number" {...formField} value={formField.value || 0} disabled={isPurchased} className={cn(isPurchased && 'line-through')} />
+                                    <Input type="number" {...formField} value={formField.value || 0} disabled={isPurchased} className={cn((isPurchased || isFromStock) && 'line-through')} />
                                   </FormControl>
                                   <FormMessage />
                                 </FormItem>
@@ -456,17 +515,10 @@ export function FurnitureMaterialsModal({
                               name={`materials.${index}.unit`}
                               render={({ field: formField }) => (
                                 <FormItem className="w-32">
-                                  <FormLabel className={cn(isPurchased && 'text-muted-foreground')}>Unidade</FormLabel>
-                                  <Select onValueChange={formField.onChange} defaultValue={formField.value} value={formField.value} disabled={isPurchased}>
+                                  <FormLabel className={cn((isPurchased || isFromStock) && 'text-muted-foreground')}>Unidade</FormLabel>
                                     <FormControl>
-                                      <SelectTrigger className={cn(isPurchased && 'line-through')}>
-                                        <SelectValue placeholder="Unid." />
-                                      </SelectTrigger>
+                                      <Input placeholder="Unid." {...formField} value={formField.value || ''} disabled={isFromStock || isPurchased} className={cn((isPurchased || isFromStock) && 'line-through')} />
                                     </FormControl>
-                                    <SelectContent>
-                                      {units.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
-                                    </SelectContent>
-                                  </Select>
                                   <FormMessage />
                                 </FormItem>
                               )}

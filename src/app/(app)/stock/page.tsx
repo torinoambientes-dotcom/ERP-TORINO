@@ -10,7 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { AppContext } from '@/context/app-context';
 import { PageHeader } from '@/components/layout/page-header';
-import { PlusCircle, Edit, Trash2, ArrowRightLeft, History, AlertTriangle } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, ArrowRightLeft, History, AlertTriangle, ListOrdered } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,7 +21,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import type { StockCategory, StockItem } from '@/lib/types';
+import type { StockCategory, StockItem, StockReservation } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { RegisterStockItemModal } from '@/components/modals/register-stock-item-modal';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -29,6 +29,8 @@ import { StockMovementModal } from '@/components/modals/stock-movement-modal';
 import { StockMovementHistoryModal } from '@/components/modals/stock-movement-history-modal';
 import { cn } from '@/lib/utils';
 import { RegisterCategoryModal } from '@/components/modals/register-category-modal';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import Link from 'next/link';
 
 export default function StockPage() {
   const { stockItems, stockCategories, deleteStockItem, deleteStockCategory, isLoading } = useContext(AppContext);
@@ -171,7 +173,10 @@ export default function StockPage() {
     return (
       <div className="space-y-4">
         {items.map((item) => {
-          const isLowStock = typeof item.minStock === 'number' && item.quantity < item.minStock;
+          const totalReserved = (item.reservations || []).reduce((acc, res) => acc + res.quantity, 0);
+          const availableQuantity = item.quantity - totalReserved;
+          const isLowStock = typeof item.minStock === 'number' && availableQuantity < item.minStock;
+
           return (
           <div
             key={item.id}
@@ -180,11 +185,41 @@ export default function StockPage() {
             <div className="flex items-center gap-4">
               <div>
                 <p className="font-medium">{item.name}</p>
-                 <div className="flex items-center gap-2">
+                 <div className="flex items-center gap-2 flex-wrap">
                   {isLowStock && <AlertTriangle className="h-4 w-4 text-destructive" />}
                   <p className={cn("text-sm", isLowStock ? "text-destructive font-semibold" : "text-muted-foreground")}>
-                    {item.quantity} {item.unit}
+                    Disponível: {availableQuantity} {item.unit}
                   </p>
+                   {totalReserved > 0 && (
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="link" size="sm" className="h-auto p-0 text-xs text-blue-600">
+                             ({totalReserved} {item.unit} reservados)
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-80">
+                          <div className="grid gap-4">
+                            <div className="space-y-2">
+                              <h4 className="font-medium leading-none">Reservas para {item.name}</h4>
+                              <p className="text-sm text-muted-foreground">
+                                Itens do estoque alocados para projetos.
+                              </p>
+                            </div>
+                             <div className="grid gap-2 text-sm max-h-48 overflow-y-auto">
+                              {(item.reservations || []).map(res => (
+                                <div key={res.materialId} className="grid grid-cols-3 items-center gap-2">
+                                  <Link href={`/projects/${res.projectId}`} className="truncate col-span-2 hover:underline">
+                                    <p className="font-medium truncate">{res.projectName}</p>
+                                    <p className="text-xs text-muted-foreground truncate">{res.furnitureName}</p>
+                                  </Link>
+                                  <p className="font-mono text-right">{res.quantity} {item.unit}</p>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </PopoverContent>
+                      </Popover>
+                    )}
                 </div>
               </div>
             </div>

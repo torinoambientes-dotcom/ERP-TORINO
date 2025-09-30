@@ -1,11 +1,11 @@
 'use client';
 
 import { createContext, type ReactNode, useCallback, useMemo } from 'react';
-import { collection, doc, serverTimestamp, deleteField } from 'firebase/firestore';
+import { collection, doc, serverTimestamp, deleteField, writeBatch } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import type { Project, TeamMember, StageStatus, StockItem, StockMovement, StockCategory, Furniture, Environment } from '@/lib/types';
+import type { Project, TeamMember, StageStatus, StockItem, StockMovement, StockCategory, Furniture, Environment, MaterialItem, StockReservation } from '@/lib/types';
 import { generateId } from '@/lib/utils';
-import { setDocumentNonBlocking, deleteDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { setDocumentNonBlocking, deleteDocumentNonBlocking, addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { useAuth } from '@/firebase';
 
@@ -17,7 +17,7 @@ interface AppContextType {
   stockCategories: StockCategory[];
   isLoading: boolean;
   addProject: (projectData: any) => void;
-  updateProject: (updatedProject: Project) => void;
+  updateProject: (updatedProject: Project, originalProject?: Project) => void;
   deleteProject: (projectId: string) => void;
   addTeamMember: (memberData: Omit<TeamMember, 'id' | 'userId'> & { password?: string, email: string }) => Promise<void>;
   updateTeamMember: (updatedMember: TeamMember) => void;
@@ -138,29 +138,123 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const projectRef = doc(firestore, 'projects', projectId);
     setDocumentNonBlocking(projectRef, newProject, { merge: false });
   }, [firestore]);
+  
+    const updateProject = useCallback(async (updatedProject: Project, originalProject?: Project) => {
+    if (!firestore || !stockItems) return;
 
-  const updateProject = useCallback((updatedProject: Project) => {
-    if (!firestore) return;
-    
     let projectWithCompletion = { ...updatedProject };
-    
+
     if (isProjectComplete(projectWithCompletion) && !projectWithCompletion.completedAt) {
       projectWithCompletion.completedAt = new Date().toISOString();
     }
-    
-    // Clean up undefined values before sending to Firestore
+
     projectWithCompletion = cleanupUndefinedFields(projectWithCompletion);
     
+    const batch = writeBatch(firestore);
+    
     const projectRef = doc(firestore, 'projects', projectWithCompletion.id);
-    setDocumentNonBlocking(projectRef, projectWithCompletion, { merge: true });
-  }, [firestore]);
+    batch.set(projectRef, projectWithCompletion, { merge: true });
+
+    // Handle stock reservations
+    const originalMaterials = originalProject?.environments.flatMap(e => e.furniture.flatMap(f => f.materials || [])) || [];
+    const updatedMaterials = projectWithCompletion.environments.flatMap(e => e.furniture.flatMap(f => f.materials || []));
+
+    const materialToDetails = new Map<string, { projName: string, envName: string, furName: string }>();
+    projectWithCompletion.environments.forEach(env => {
+        env.furniture.forEach(fur => {
+            (fur.materials || []).forEach(mat => {
+                materialToDetails.set(mat.id, {
+                    projName: projectWithCompletion.clientName,
+                    envName: env.name,
+                    furName: fur.name,
+                });
+            });
+        });
+    });
 
 
-  const deleteProject = useCallback((projectId: string) => {
-    if (!firestore) return;
+    // Find removed/modified materials to remove reservations
+    originalMaterials.forEach(origMat => {
+        if (origMat.stockItemId) {
+            const updatedMat = updatedMaterials.find(updMat => updMat.id === origMat.id);
+            if (!updatedMat || updatedMat.stockItemId !== origMat.stockItemId || updatedMat.quantity !== origMat.quantity) {
+                 const stockItem = stockItems.find(si => si.id === origMat.stockItemId);
+                 if (stockItem) {
+                     const stockItemRef = doc(firestore, 'stock_items', stockItem.id);
+                     const newReservations = (stockItem.reservations || []).filter(res => res.materialId !== origMat.id);
+                     batch.update(stockItemRef, { reservations: newReservations });
+                 }
+            }
+        }
+    });
+
+    // Find added/modified materials to add/update reservations
+    updatedMaterials.forEach(updMat => {
+        if (updMat.stockItemId) {
+            const origMat = originalMaterials.find(om => om.id === updMat.id);
+            if (!origMat || origMat.stockItemId !== updMat.stockItemId || origMat.quantity !== updMat.quantity) {
+                const stockItem = stockItems.find(si => si.id === updMat.stockItemId);
+                if (stockItem) {
+                    const details = materialToDetails.get(updMat.id);
+                    if (details) {
+                        const stockItemRef = doc(firestore, 'stock_items', stockItem.id);
+                        const otherReservations = (stockItem.reservations || []).filter(res => res.materialId !== updMat.id);
+                        const newReservation: StockReservation = {
+                            projectId: projectWithCompletion.id,
+                            projectName: details.projName,
+                            environmentId: projectWithCompletion.environments.find(e => e.name === details.envName)!.id,
+                            environmentName: details.envName,
+                            furnitureId: projectWithCompletion.environments.find(e => e.name === details.envName)!.furniture.find(f => f.name === details.furName)!.id,
+                            furnitureName: details.furName,
+                            materialId: updMat.id,
+                            quantity: updMat.quantity,
+                        };
+                        batch.update(stockItemRef, { reservations: [...otherReservations, newReservation] });
+                    }
+                }
+            }
+        }
+    });
+
+
+    await batch.commit();
+
+  }, [firestore, stockItems]);
+
+  const deleteProject = useCallback(async (projectId: string) => {
+    if (!firestore || !projects || !stockItems) return;
+
+    const projectToDelete = projects.find(p => p.id === projectId);
+    if (!projectToDelete) return;
+
+    const batch = writeBatch(firestore);
+
+    // Remove reservations associated with this project
+    const materialsInProject = projectToDelete.environments.flatMap(e => e.furniture.flatMap(f => f.materials || []));
+    const stockItemsToUpdate = new Map<string, StockReservation[]>();
+
+    materialsInProject.forEach(mat => {
+        if (mat.stockItemId) {
+            const stockItem = stockItems.find(si => si.id === mat.stockItemId);
+            if (stockItem) {
+                const updatedReservations = (stockItem.reservations || []).filter(res => res.projectId !== projectId);
+                stockItemsToUpdate.set(stockItem.id, updatedReservations);
+            }
+        }
+    });
+
+    stockItemsToUpdate.forEach((reservations, stockItemId) => {
+        const stockItemRef = doc(firestore, 'stock_items', stockItemId);
+        batch.update(stockItemRef, { reservations });
+    });
+
+    // Delete the project document
     const projectRef = doc(firestore, 'projects', projectId);
-    deleteDocumentNonBlocking(projectRef);
-  }, [firestore]);
+    batch.delete(projectRef);
+
+    await batch.commit();
+  }, [firestore, projects, stockItems]);
+
 
   const addTeamMember = useCallback(async (memberData: Omit<TeamMember, 'id'> & { password?: string }) => {
     if (!firestore || !auth) {
@@ -226,14 +320,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
             })),
         }));
         const updatedProject = { ...projectToUpdate, environments: newEnvironments };
-        updateProject(updatedProject);
+        updateProject(updatedProject, projectToUpdate);
     }
   }, [projects, updateProject]);
 
   const addStockItem = useCallback((itemData: Omit<StockItem, 'id'>) => {
     if (!firestore) return;
     const itemId = generateId('stock');
-    const newItem = { ...itemData, id: itemId };
+    const newItem = { ...itemData, id: itemId, reservations: [] };
     const itemRef = doc(firestore, 'stock_items', itemId);
     setDocumentNonBlocking(itemRef, newItem, { merge: false });
   }, [firestore]);
@@ -241,7 +335,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const updateStockItem = useCallback((updatedItem: StockItem) => {
     if (!firestore) return;
     const itemRef = doc(firestore, 'stock_items', updatedItem.id);
-    setDocumentNonBlocking(itemRef, updatedItem, { merge: true });
+    const cleanItem = { ...updatedItem };
+    if (!cleanItem.reservations) {
+        cleanItem.reservations = [];
+    }
+    setDocumentNonBlocking(itemRef, cleanItem, { merge: true });
   }, [firestore]);
 
   const deleteStockItem = useCallback((itemId: string) => {
@@ -332,7 +430,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return env;
     });
     
-    updateProject({ ...project, environments: newEnvironments });
+    updateProject({ ...project, environments: newEnvironments }, project);
   }, [projects, updateProject]);
 
   const toggleMaterialPurchased = useCallback((projectId: string, envId: string, furId: string, materialId: string, purchased: boolean) => {
@@ -359,7 +457,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return env;
     });
 
-    updateProject({ ...project, environments: newEnvironments });
+    updateProject({ ...project, environments: newEnvironments }, project);
   }, [projects, updateProject]);
 
 
