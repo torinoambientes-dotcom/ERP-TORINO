@@ -110,8 +110,10 @@ const formSchema = z.object({
 
 type MaterialFormValues = z.infer<typeof formSchema>;
 
-const MaterialRow = ({ index, control, field, remove, update, stockItems, isPurchased, isFromStock }: any) => {
+const MaterialRow = ({ index, control, field, remove, update, stockItems }: any) => {
   const [popoverOpen, setPopoverOpen] = useState(false);
+  const isPurchased = field.purchased;
+  const isFromStock = !!field.stockItemId;
 
   return (
     <div
@@ -126,7 +128,7 @@ const MaterialRow = ({ index, control, field, remove, update, stockItems, isPurc
         render={({ field: controllerField }) => (
           <FormItem className="flex-grow">
             <FormLabel className={cn((isPurchased || isFromStock) && 'text-muted-foreground')}>
-              {isFromStock ? "Item do Estoque" : "Material"}
+              {isFromStock && !isPurchased ? "Item do Estoque (Reservado)" : "Material"}
             </FormLabel>
             <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
               <PopoverTrigger asChild>
@@ -135,7 +137,12 @@ const MaterialRow = ({ index, control, field, remove, update, stockItems, isPurc
                     variant="outline"
                     role="combobox"
                     disabled={isPurchased}
-                    className={cn("w-full justify-between", !controllerField.value.name && "text-muted-foreground", (isPurchased || isFromStock) && 'text-opacity-50')}
+                    className={cn(
+                      "w-full justify-between",
+                      !controllerField.value.name && "text-muted-foreground",
+                      isPurchased ? "text-opacity-70" : "",
+                      isFromStock && !isPurchased ? "bg-white/50" : ""
+                    )}
                   >
                     {controllerField.value.name || "Selecione ou digite um material"}
                   </Button>
@@ -183,7 +190,10 @@ const MaterialRow = ({ index, control, field, remove, update, stockItems, isPurc
           <FormItem className="w-24">
             <FormLabel className={cn((isPurchased || isFromStock) && 'text-muted-foreground')}>Qtd.</FormLabel>
             <FormControl>
-              <Input type="number" {...formField} value={formField.value || 0} disabled={isPurchased} className={cn((isPurchased || isFromStock) && 'text-opacity-50')} />
+              <Input type="number" {...formField} value={formField.value || 0} disabled={isPurchased} className={cn(
+                  isPurchased ? "text-opacity-70" : "",
+                  isFromStock && !isPurchased ? "bg-white/50" : ""
+              )} />
             </FormControl>
             <FormMessage />
           </FormItem>
@@ -196,7 +206,10 @@ const MaterialRow = ({ index, control, field, remove, update, stockItems, isPurc
           <FormItem className="w-32">
             <FormLabel className={cn((isPurchased || isFromStock) && 'text-muted-foreground')}>Unidade</FormLabel>
             <FormControl>
-              <Input placeholder="Unid." {...formField} value={formField.value || ''} disabled={isFromStock || isPurchased} className={cn((isPurchased || isFromStock) && 'text-opacity-50')} />
+              <Input placeholder="Unid." {...formField} value={formField.value || ''} disabled={isFromStock || isPurchased} className={cn(
+                  isPurchased || isFromStock ? "text-opacity-70" : "",
+                   isFromStock && !isPurchased ? "bg-white/50" : ""
+              )} />
             </FormControl>
             <FormMessage />
           </FormItem>
@@ -528,10 +541,7 @@ export function FurnitureMaterialsModal({
                   <h3 className="text-lg font-semibold mb-2">Materiais Gerais</h3>
                    <div className="space-y-4">
                     {materialFields.length > 0 ? (
-                      materialFields.map((field, index) => {
-                        const isPurchased = field.purchased || isOriginalItem(field.addedAt);
-                        const isFromStock = !!field.stockItemId;
-                        return (
+                      materialFields.map((field, index) => (
                           <MaterialRow 
                             key={field.id}
                             index={index}
@@ -540,11 +550,9 @@ export function FurnitureMaterialsModal({
                             remove={removeMaterial}
                             update={updateMaterial}
                             stockItems={stockItems}
-                            isPurchased={isPurchased}
-                            isFromStock={isFromStock}
                           />
-                        );
-                      })
+                        )
+                      )
                     ) : (
                       <p className="text-sm text-muted-foreground text-center py-4">
                         Nenhum material geral adicionado.

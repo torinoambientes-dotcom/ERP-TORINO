@@ -268,7 +268,7 @@ export default function PurchasesPage() {
   }, [projects, showPurchasedDoors]);
 
 
-    const generateShoppingListText = () => {
+    const generateShoppingListText = (forWhatsApp: boolean = false) => {
         let listText = "*Lista de Compras Centralizada (Itens a Comprar):*\n\n";
         let hasItemsToBuy = false;
 
@@ -281,7 +281,11 @@ export default function PurchasesPage() {
                 let envText = `  *Ambiente:* ${environmentName}\n`;
                 
                 Object.entries(environmentData.furnitures).forEach(([furnitureName, furnitureData]) => {
-                    const itemsToBuy = furnitureData.materials.filter(item => !item.purchased);
+                    const itemsToBuy = furnitureData.materials.filter(item => {
+                        const isForPurchase = !item.purchased;
+                        return forWhatsApp ? isForPurchase && !item.stockItemId : isForPurchase;
+                    });
+
                     if (itemsToBuy.length > 0) {
                         envHasItems = true;
                         let furText = `    *Móvel:* ${furnitureName}\n`;
@@ -305,14 +309,14 @@ export default function PurchasesPage() {
         });
         
         if (!hasItemsToBuy) {
-            return "Nenhum material a comprar nos projetos ativos."
+            return `Nenhum material a comprar${forWhatsApp ? ' (externamente)' : ''} nos projetos ativos.`;
         }
 
         return listText;
     }
 
     const copyShoppingListToClipboard = () => {
-        const listText = generateShoppingListText();
+        const listText = generateShoppingListText(false);
         
         navigator.clipboard.writeText(listText).then(() => {
             toast({
@@ -329,7 +333,7 @@ export default function PurchasesPage() {
     };
 
     const sendShoppingListViaWhatsApp = () => {
-        const listText = generateShoppingListText();
+        const listText = generateShoppingListText(true);
         const encodedText = encodeURIComponent(listText);
         const whatsappUrl = `https://wa.me/?text=${encodedText}`;
         window.open(whatsappUrl, '_blank');
@@ -604,6 +608,7 @@ export default function PurchasesPage() {
                                                                         className={cn("flex-grow cursor-pointer", item.purchased && "line-through text-muted-foreground")}
                                                                     >
                                                                         <span className="font-medium text-foreground/90">{item.name}:</span> {item.quantity} {item.unit}
+                                                                        {item.stockItemId && <span className="text-xs text-blue-600 ml-2">(Do Estoque)</span>}
                                                                     </label>
                                                                 </li>
                                                             ))}
