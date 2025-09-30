@@ -89,6 +89,10 @@ export default function ProjectDetailsPage() {
             }
           } else {
             fur[stage].status = value;
+            // Add completedAt timestamp when purchase is marked as done
+            if (stage === 'purchase' && value === 'done' && !fur.purchase.completedAt) {
+              fur.purchase.completedAt = new Date().toISOString();
+            }
           }
         }
       }

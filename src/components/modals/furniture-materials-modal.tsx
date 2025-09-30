@@ -110,9 +110,14 @@ const formSchema = z.object({
 
 type MaterialFormValues = z.infer<typeof formSchema>;
 
-const MaterialRow = ({ index, control, field, remove, update, stockItems }: any) => {
+const MaterialRow = ({ index, control, field, remove, update, stockItems, purchaseTimestamp }: any) => {
   const [popoverOpen, setPopoverOpen] = useState(false);
-  const isPurchased = field.purchased;
+  const isOriginalItem = (itemAddedAt?: string) => {
+      if (!purchaseTimestamp || !itemAddedAt) return false;
+      return new Date(itemAddedAt) <= new Date(purchaseTimestamp);
+  };
+  
+  const isPurchased = field.purchased || isOriginalItem(field.addedAt);
   const isFromStock = !!field.stockItemId;
 
   return (
@@ -550,6 +555,7 @@ export function FurnitureMaterialsModal({
                             remove={removeMaterial}
                             update={updateMaterial}
                             stockItems={stockItems}
+                            purchaseTimestamp={purchaseTimestamp}
                           />
                         )
                       )
