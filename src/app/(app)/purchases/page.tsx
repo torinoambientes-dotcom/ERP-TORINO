@@ -282,8 +282,8 @@ export default function PurchasesPage() {
                 
                 Object.entries(environmentData.furnitures).forEach(([furnitureName, furnitureData]) => {
                     const itemsToBuy = furnitureData.materials.filter(item => {
-                        const isForPurchase = !item.purchased;
-                        return forWhatsApp ? isForPurchase && !item.stockItemId : isForPurchase;
+                        // Include only items that are NOT from stock and NOT yet purchased.
+                        return !item.stockItemId && !item.purchased;
                     });
 
                     if (itemsToBuy.length > 0) {
@@ -309,7 +309,7 @@ export default function PurchasesPage() {
         });
         
         if (!hasItemsToBuy) {
-            return `Nenhum material a comprar${forWhatsApp ? ' (externamente)' : ''} nos projetos ativos.`;
+            return "Nenhum material a comprar (externamente) nos projetos ativos.";
         }
 
         return listText;
@@ -345,7 +345,8 @@ export default function PurchasesPage() {
         let hasItemsToBuy = false;
 
         Object.entries(furnitures).forEach(([furnitureName, furnitureData]) => {
-            const itemsToBuy = furnitureData.materials.filter(item => !item.purchased);
+            // Exclude stock items and purchased items from the copied list
+            const itemsToBuy = furnitureData.materials.filter(item => !item.stockItemId && !item.purchased);
             if (itemsToBuy.length > 0) {
                 hasItemsToBuy = true;
                 listText += `  Móvel: ${furnitureName}\n`;
@@ -356,7 +357,7 @@ export default function PurchasesPage() {
         });
 
         if (!hasItemsToBuy) {
-            listText = `Nenhum item a comprar para o ambiente "${environmentName}".`;
+            listText = `Nenhum item a comprar (externamente) para o ambiente "${environmentName}".`;
         }
         
         navigator.clipboard.writeText(listText).then(() => {
@@ -602,13 +603,14 @@ export default function PurchasesPage() {
                                                                         id={`mat-${item.id}`}
                                                                         checked={!!item.purchased}
                                                                         onCheckedChange={() => handleToggleMaterial(item.projectId, item.envId, item.furId, item.id, !!item.purchased)}
+                                                                        disabled={!!item.stockItemId}
                                                                     />
                                                                     <label
                                                                         htmlFor={`mat-${item.id}`}
-                                                                        className={cn("flex-grow cursor-pointer", item.purchased && "line-through text-muted-foreground")}
+                                                                        className={cn("flex-grow cursor-pointer", item.purchased && "line-through text-muted-foreground", !!item.stockItemId && "cursor-default")}
                                                                     >
                                                                         <span className="font-medium text-foreground/90">{item.name}:</span> {item.quantity} {item.unit}
-                                                                        {item.stockItemId && <span className="text-xs text-blue-600 ml-2">(Do Estoque)</span>}
+                                                                        {item.stockItemId && <span className="text-xs text-blue-600 font-medium ml-2 rounded-md bg-blue-100/60 px-1.5 py-0.5">(Reservado do Estoque)</span>}
                                                                     </label>
                                                                 </li>
                                                             ))}
