@@ -523,33 +523,36 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const movementRef = doc(collection(firestore, 'stock_items', stockItemId, 'movements'));
     batch.set(movementRef, newMovement);
 
-    // 3. Update the material item in the project to mark it as 'purchased'
-    const updatedEnvironments = projectToUpdate.environments.map(env => {
-      if (env.id === reservation.environmentId) {
-        const updatedFurniture = env.furniture.map(fur => {
-          if (fur.id === reservation.furnitureId) {
-            const updatedMaterials = (fur.materials || []).map(mat => {
-              if (mat.id === reservation.materialId) {
-                return { ...mat, purchased: true };
-              }
-              return mat;
-            });
-            return { ...fur, materials: updatedMaterials };
-          }
-          return fur;
-        });
-        return { ...env, furniture: newFurniture };
-      }
-      return env;
-    });
-
-    const projectRef = doc(firestore, 'projects', projectToUpdate.id);
-    batch.update(projectRef, { environments: updatedEnvironments });
+    // 3. Mark the material item as 'purchased' in the project
+    const updatedProject = JSON.parse(JSON.stringify(projectToUpdate));
+    let materialFoundAndUpdated = false;
+    for (const env of updatedProject.environments) {
+        if (env.id === reservation.environmentId) {
+            for (const fur of env.furniture) {
+                if (fur.id === reservation.furnitureId) {
+                    if (fur.materials) {
+                        const matIndex = fur.materials.findIndex((m: MaterialItem) => m.id === reservation.materialId);
+                        if (matIndex !== -1) {
+                            fur.materials[matIndex].purchased = true;
+                            materialFoundAndUpdated = true;
+                            break; 
+                        }
+                    }
+                }
+            }
+        }
+        if (materialFoundAndUpdated) break;
+    }
+    
+    if (materialFoundAndUpdated) {
+        const projectRef = doc(firestore, 'projects', updatedProject.id);
+        batch.set(projectRef, updatedProject);
+    }
     
     // Commit all changes in a single batch
     batch.commit().catch(console.error);
 
-  }, [firestore, stockItems, projects]);
+  }, [firestore, stockItems, projects, updateProject]);
 
 
   const value = useMemo(() => ({
