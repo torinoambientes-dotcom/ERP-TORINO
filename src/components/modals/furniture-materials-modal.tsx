@@ -135,7 +135,7 @@ const MaterialRow = ({ index, control, field, remove, update, stockItems, isPurc
                     variant="outline"
                     role="combobox"
                     disabled={isPurchased}
-                    className={cn("w-full justify-between", !controllerField.value.name && "text-muted-foreground", (isPurchased || isFromStock) && "line-through")}
+                    className={cn("w-full justify-between", !controllerField.value.name && "text-muted-foreground", (isPurchased || isFromStock) && 'text-opacity-50')}
                   >
                     {controllerField.value.name || "Selecione ou digite um material"}
                   </Button>
@@ -183,7 +183,7 @@ const MaterialRow = ({ index, control, field, remove, update, stockItems, isPurc
           <FormItem className="w-24">
             <FormLabel className={cn((isPurchased || isFromStock) && 'text-muted-foreground')}>Qtd.</FormLabel>
             <FormControl>
-              <Input type="number" {...formField} value={formField.value || 0} disabled={isPurchased} className={cn((isPurchased || isFromStock) && 'line-through')} />
+              <Input type="number" {...formField} value={formField.value || 0} disabled={isPurchased} className={cn((isPurchased || isFromStock) && 'text-opacity-50')} />
             </FormControl>
             <FormMessage />
           </FormItem>
@@ -196,7 +196,7 @@ const MaterialRow = ({ index, control, field, remove, update, stockItems, isPurc
           <FormItem className="w-32">
             <FormLabel className={cn((isPurchased || isFromStock) && 'text-muted-foreground')}>Unidade</FormLabel>
             <FormControl>
-              <Input placeholder="Unid." {...formField} value={formField.value || ''} disabled={isFromStock || isPurchased} className={cn((isPurchased || isFromStock) && 'line-through')} />
+              <Input placeholder="Unid." {...formField} value={formField.value || ''} disabled={isFromStock || isPurchased} className={cn((isPurchased || isFromStock) && 'text-opacity-50')} />
             </FormControl>
             <FormMessage />
           </FormItem>

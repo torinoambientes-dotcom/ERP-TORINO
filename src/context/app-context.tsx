@@ -156,8 +156,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     batch.set(projectRef, projectWithCompletion, { merge: true });
 
     // Handle stock reservations
-    const originalMaterials = originalProject?.environments.flatMap(e => e.furniture.flatMap(f => f.materials || [])) || [];
-    const updatedMaterials = projectWithCompletion.environments.flatMap(e => e.furniture.flatMap(f => f.materials || []));
+    const originalMaterials = originalProject?.environments.flatMap(e => e.furniture.flatMap(f => (f.materials || []).map(m => ({ ...m, projectId: originalProject.id })))) || [];
+    const updatedMaterials = projectWithCompletion.environments.flatMap(e => e.furniture.flatMap(f => (f.materials || []).map(m => ({...m, projectId: projectWithCompletion.id}))));
 
     const materialToDetails = new Map<string, { projName: string, envName: string, furName: string }>();
     projectWithCompletion.environments.forEach(env => {
@@ -173,11 +173,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
 
 
-    // Find removed/modified materials to remove reservations
+    // Find removed/modified materials to remove/update reservations
     originalMaterials.forEach(origMat => {
         if (origMat.stockItemId) {
             const updatedMat = updatedMaterials.find(updMat => updMat.id === origMat.id);
-            if (!updatedMat || updatedMat.stockItemId !== origMat.stockItemId || updatedMat.quantity !== origMat.quantity) {
+            // If material was removed OR is no longer a stock item
+            if (!updatedMat || !updatedMat.stockItemId) {
                  const stockItem = stockItems.find(si => si.id === origMat.stockItemId);
                  if (stockItem) {
                      const stockItemRef = doc(firestore, 'stock_items', stockItem.id);
@@ -192,6 +193,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     updatedMaterials.forEach(updMat => {
         if (updMat.stockItemId) {
             const origMat = originalMaterials.find(om => om.id === updMat.id);
+            // If it's a new stock item OR the quantity/item itself changed
             if (!origMat || origMat.stockItemId !== updMat.stockItemId || origMat.quantity !== updMat.quantity) {
                 const stockItem = stockItems.find(si => si.id === updMat.stockItemId);
                 if (stockItem) {
