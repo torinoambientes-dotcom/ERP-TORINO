@@ -538,7 +538,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           }
           return fur;
         });
-        return { ...env, furniture: updatedFurniture };
+        return { ...env, furniture: newFurniture };
       }
       return env;
     });

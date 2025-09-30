@@ -440,7 +440,7 @@ export default function PurchasesPage() {
     });
     
     if (Object.keys(profileDoorList).length === 0) {
-      listText = `Nenhuma porta de perfil na lista de ${showPurchasedDoors ? 'comprados' : 'a comprar'}.`
+      listText = `Nenhuma porta de perfil na lista de ${showPurchasedDoors ? 'compradas' : 'a comprar'}.`
     }
     
     navigator.clipboard.writeText(listText).then(() => {

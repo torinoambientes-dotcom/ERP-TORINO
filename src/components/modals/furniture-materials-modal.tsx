@@ -112,6 +112,7 @@ type MaterialFormValues = z.infer<typeof formSchema>;
 
 const MaterialRow = ({ index, control, field, remove, update, stockItems, purchaseTimestamp }: any) => {
   const [popoverOpen, setPopoverOpen] = useState(false);
+  
   const isOriginalItem = (itemAddedAt?: string) => {
       if (!purchaseTimestamp || !itemAddedAt) return false;
       return new Date(itemAddedAt) <= new Date(purchaseTimestamp);
@@ -293,7 +294,7 @@ export function FurnitureMaterialsModal({
   const onSubmit = (data: MaterialFormValues) => {
     const updatedFurniture: Furniture = {
       ...furniture,
-      materials: data.materials.map(m => ({ ...m, purchased: m.stockItemId ? false : (m.purchased ?? false) })),
+      materials: data.materials.map(m => ({ ...m, purchased: m.stockItemId ? (m.purchased ?? false) : (m.purchased ?? false) })),
       glassItems: data.glassItems.map(g => g as GlassItem),
       profileDoors: data.profileDoors.map(p => p as ProfileDoorItem),
     };
