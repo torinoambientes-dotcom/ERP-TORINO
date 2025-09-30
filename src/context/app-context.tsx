@@ -491,30 +491,65 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [firestore, stockItems]);
 
   const dispatchReservedItem = useCallback((stockItemId: string, reservation: StockReservation, memberId: string) => {
-    if (!firestore || !stockItems) return;
+    if (!firestore || !stockItems || !projects) return;
 
     const stockItem = stockItems.find(i => i.id === stockItemId);
     if (!stockItem) return;
+    
+    const projectToUpdate = projects.find(p => p.id === reservation.projectId);
+    if (!projectToUpdate) return;
+    
+    const batch = writeBatch(firestore);
 
+    // 1. Update stock item: quantity and reservations
     const newQuantity = stockItem.quantity - reservation.quantity;
     const newReservations = (stockItem.reservations || []).filter(r => r.materialId !== reservation.materialId);
-
     const stockItemRef = doc(firestore, 'stock_items', stockItemId);
-    updateDocumentNonBlocking(stockItemRef, {
+    batch.update(stockItemRef, {
         quantity: newQuantity,
         reservations: newReservations
     });
 
-    const movementData: Omit<StockMovement, 'id' | 'timestamp'> = {
+    // 2. Create stock movement history
+    const movementId = generateId('move');
+    const newMovement: StockMovement = {
+        id: movementId,
         type: 'exit',
         quantity: reservation.quantity,
         reason: `Saída para projeto: ${reservation.projectName} (${reservation.furnitureName})`,
         memberId: memberId,
+        timestamp: new Date().toISOString(),
     };
-    
-    addStockMovement(stockItemId, movementData);
+    const movementRef = doc(collection(firestore, 'stock_items', stockItemId, 'movements'));
+    batch.set(movementRef, newMovement);
 
-  }, [firestore, stockItems, addStockMovement]);
+    // 3. Update the material item in the project to mark it as 'purchased'
+    const updatedEnvironments = projectToUpdate.environments.map(env => {
+      if (env.id === reservation.environmentId) {
+        const updatedFurniture = env.furniture.map(fur => {
+          if (fur.id === reservation.furnitureId) {
+            const updatedMaterials = (fur.materials || []).map(mat => {
+              if (mat.id === reservation.materialId) {
+                return { ...mat, purchased: true };
+              }
+              return mat;
+            });
+            return { ...fur, materials: updatedMaterials };
+          }
+          return fur;
+        });
+        return { ...env, furniture: updatedFurniture };
+      }
+      return env;
+    });
+
+    const projectRef = doc(firestore, 'projects', projectToUpdate.id);
+    batch.update(projectRef, { environments: updatedEnvironments });
+    
+    // Commit all changes in a single batch
+    batch.commit().catch(console.error);
+
+  }, [firestore, stockItems, projects]);
 
 
   const value = useMemo(() => ({
