@@ -32,6 +32,7 @@ interface AppContextType {
   handleStockAlert: (itemId: string, markAsHandled: boolean) => void;
   toggleItemPurchasedStatus: (itemType: 'glass' | 'door', itemId: string, projectId: string, envId: string, furId: string) => void;
   toggleMaterialPurchased: (projectId: string, envId: string, furId: string, materialId: string, purchased: boolean) => void;
+  clearAllReservations: () => void;
 }
 
 export const AppContext = createContext<AppContextType>({
@@ -56,6 +57,7 @@ export const AppContext = createContext<AppContextType>({
   handleStockAlert: () => {},
   toggleItemPurchasedStatus: () => {},
   toggleMaterialPurchased: () => {},
+  clearAllReservations: () => {},
 });
 
 const isProjectComplete = (project: Project): boolean => {
@@ -473,6 +475,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
     updateProject({ ...project, environments: newEnvironments }, project);
   }, [projects, updateProject]);
 
+  const clearAllReservations = useCallback(async () => {
+    if (!firestore || !stockItems) return;
+
+    const batch = writeBatch(firestore);
+    stockItems.forEach(item => {
+        if (item.reservations && item.reservations.length > 0) {
+            const stockItemRef = doc(firestore, 'stock_items', item.id);
+            batch.update(stockItemRef, { reservations: [] });
+        }
+    });
+    await batch.commit();
+  }, [firestore, stockItems]);
+
 
   const value = useMemo(() => ({
     projects: projects || [],
@@ -496,6 +511,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     handleStockAlert,
     toggleItemPurchasedStatus,
     toggleMaterialPurchased,
+    clearAllReservations,
   }), [
     projects, 
     teamMembers, 
@@ -521,6 +537,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     handleStockAlert,
     toggleItemPurchasedStatus,
     toggleMaterialPurchased,
+    clearAllReservations,
   ]);
 
 

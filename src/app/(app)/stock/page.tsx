@@ -10,7 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { AppContext } from '@/context/app-context';
 import { PageHeader } from '@/components/layout/page-header';
-import { PlusCircle, Edit, Trash2, ArrowRightLeft, History, AlertTriangle, ListOrdered } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, ArrowRightLeft, History, AlertTriangle, ListOrdered, ShieldAlert } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -33,7 +33,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import Link from 'next/link';
 
 export default function StockPage() {
-  const { stockItems, stockCategories, deleteStockItem, deleteStockCategory, isLoading } = useContext(AppContext);
+  const { stockItems, stockCategories, deleteStockItem, deleteStockCategory, isLoading, clearAllReservations } = useContext(AppContext);
   const { toast } = useToast();
 
   const [isRegisterModalOpen, setRegisterModalOpen] = useState(false);
@@ -52,6 +52,8 @@ export default function StockPage() {
   const [categoryToDelete, setCategoryToDelete] = useState<StockCategory | null>(null);
   const [isCategoryAlertOpen, setCategoryAlertOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<string | undefined>(undefined);
+
+  const [isResetAlertOpen, setResetAlertOpen] = useState(false);
 
   const sortedCategories = useMemo(() => {
     const sorted = [...stockCategories].sort((a, b) => a.name.localeCompare(b.name));
@@ -153,6 +155,15 @@ export default function StockPage() {
       }
     }
     handleCloseCategoryAlert();
+  };
+
+  const handleConfirmResetReservations = () => {
+    clearAllReservations();
+    toast({
+        title: 'Reservas Anuladas!',
+        description: 'Todas as reservas de estoque foram limpas com sucesso.',
+    });
+    setResetAlertOpen(false);
   };
 
   const renderStockList = (categoryName: string) => {
@@ -282,12 +293,13 @@ export default function StockPage() {
             description="Gerencie os materiais da sua marcenaria."
           />
           <div className="flex gap-2 w-full sm:w-auto">
-            <Button
-              onClick={() => handleOpenRegisterModal()}
+             <Button
+              onClick={() => setResetAlertOpen(true)}
+              variant="destructive"
               className="flex-1 sm:flex-initial"
             >
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Adicionar Item
+              <ShieldAlert className="mr-2 h-4 w-4" />
+              Anular Reservas
             </Button>
             <Button
               onClick={() => setCategoryModalOpen(true)}
@@ -296,6 +308,13 @@ export default function StockPage() {
             >
               <PlusCircle className="mr-2 h-4 w-4" />
               Nova Categoria
+            </Button>
+             <Button
+              onClick={() => handleOpenRegisterModal()}
+              className="flex-1 sm:flex-initial"
+            >
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Adicionar Item
             </Button>
           </div>
         </div>
@@ -388,6 +407,28 @@ export default function StockPage() {
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Sim, remover
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      
+      <AlertDialog open={isResetAlertOpen} onOpenChange={setResetAlertOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Anular Todas as Reservas?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação é irreversível e removerá todas as reservas de todos os itens do estoque. Use isto para corrigir dados inconsistentes. As reservas corretas serão recriadas quando os projetos forem salvos novamente.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setResetAlertOpen(false)}>
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmResetReservations}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Sim, anular todas
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
