@@ -110,6 +110,113 @@ const formSchema = z.object({
 
 type MaterialFormValues = z.infer<typeof formSchema>;
 
+const MaterialRow = ({ index, control, field, remove, update, stockItems, isPurchased, isFromStock }: any) => {
+  const [popoverOpen, setPopoverOpen] = useState(false);
+
+  return (
+    <div
+      className={cn("flex items-end gap-2 p-3 rounded-lg border", 
+        isPurchased ? "bg-green-100/60 border-green-200" : "bg-muted/50",
+        isFromStock && !isPurchased && "bg-blue-100/60 border-blue-200"
+      )}
+    >
+      <Controller
+        control={control}
+        name={`materials.${index}`}
+        render={({ field: controllerField }) => (
+          <FormItem className="flex-grow">
+            <FormLabel className={cn((isPurchased || isFromStock) && 'text-muted-foreground')}>
+              {isFromStock ? "Item do Estoque" : "Material"}
+            </FormLabel>
+            <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+              <PopoverTrigger asChild>
+                <FormControl>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    disabled={isPurchased}
+                    className={cn("w-full justify-between", !controllerField.value.name && "text-muted-foreground", (isPurchased || isFromStock) && "line-through")}
+                  >
+                    {controllerField.value.name || "Selecione ou digite um material"}
+                  </Button>
+                </FormControl>
+              </PopoverTrigger>
+              <PopoverContent className="w-[400px] p-0">
+                <Command>
+                  <CommandInput placeholder="Buscar no estoque ou digitar novo..." />
+                  <CommandList>
+                    <CommandEmpty>
+                       <div className="p-2 cursor-pointer hover:bg-accent" onClick={() => {
+                            const inputValue = (document.querySelector(`[cmdk-input]`) as HTMLInputElement).value;
+                            update(index, {...field, name: inputValue, stockItemId: undefined, unit: 'unidade' });
+                            setPopoverOpen(false);
+                       }}>
+                            Adicionar novo material: "{ (document.querySelector(`[cmdk-input]`) as HTMLInputElement)?.value }"
+                       </div>
+                    </CommandEmpty>
+                    <CommandGroup heading="Itens do Estoque">
+                      {stockItems.map((item: StockItem) => (
+                        <CommandItem
+                          key={item.id}
+                          value={item.name}
+                          onSelect={() => {
+                            update(index, {...field, name: item.name, stockItemId: item.id, unit: item.unit });
+                            setPopoverOpen(false);
+                          }}
+                        >
+                          {item.name}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+      <FormField
+        control={control}
+        name={`materials.${index}.quantity`}
+        render={({ field: formField }) => (
+          <FormItem className="w-24">
+            <FormLabel className={cn((isPurchased || isFromStock) && 'text-muted-foreground')}>Qtd.</FormLabel>
+            <FormControl>
+              <Input type="number" {...formField} value={formField.value || 0} disabled={isPurchased} className={cn((isPurchased || isFromStock) && 'line-through')} />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+      <FormField
+        control={control}
+        name={`materials.${index}.unit`}
+        render={({ field: formField }) => (
+          <FormItem className="w-32">
+            <FormLabel className={cn((isPurchased || isFromStock) && 'text-muted-foreground')}>Unidade</FormLabel>
+            <FormControl>
+              <Input placeholder="Unid." {...formField} value={formField.value || ''} disabled={isFromStock || isPurchased} className={cn((isPurchased || isFromStock) && 'line-through')} />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        className="text-destructive/80 hover:text-destructive h-10 w-10 flex-shrink-0"
+        onClick={() => remove(index)}
+        disabled={isPurchased}
+      >
+        <Trash2 className="h-4 w-4" />
+      </Button>
+    </div>
+  );
+};
+
+
 export function FurnitureMaterialsModal({
   isOpen,
   onClose,
@@ -128,9 +235,6 @@ export function FurnitureMaterialsModal({
   const [isGlassCreatorOpen, setGlassCreatorOpen] = useState(false);
   const [glassToEdit, setGlassToEdit] = useState<GlassItem | null>(null);
   const [glassIndexToEdit, setGlassIndexToEdit] = useState<number | null>(null);
-
-  const [popoverOpen, setPopoverOpen] = useState(false);
-
 
   const form = useForm<MaterialFormValues>({
     resolver: zodResolver(formSchema),
@@ -428,112 +532,17 @@ export function FurnitureMaterialsModal({
                         const isPurchased = field.purchased || isOriginalItem(field.addedAt);
                         const isFromStock = !!field.stockItemId;
                         return (
-                        <div
-                          key={field.id}
-                          className={cn("flex items-end gap-2 p-3 rounded-lg border", 
-                            isPurchased ? "bg-green-100/60 border-green-200" : "bg-muted/50",
-                            isFromStock && !isPurchased && "bg-blue-100/60 border-blue-200"
-                          )}
-                        >
-                            <Controller
-                                control={form.control}
-                                name={`materials.${index}`}
-                                render={({ field: controllerField }) => (
-                                    <FormItem className="flex-grow">
-                                    <FormLabel className={cn((isPurchased || isFromStock) && 'text-muted-foreground')}>
-                                        {isFromStock ? "Item do Estoque" : "Material"}
-                                    </FormLabel>
-                                    <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
-                                        <PopoverTrigger asChild>
-                                        <FormControl>
-                                            <Button
-                                            variant="outline"
-                                            role="combobox"
-                                            disabled={isPurchased}
-                                            className={cn("w-full justify-between", !controllerField.value.name && "text-muted-foreground", (isPurchased || isFromStock) && "line-through")}
-                                            >
-                                            {controllerField.value.name || "Selecione ou digite um material"}
-                                            </Button>
-                                        </FormControl>
-                                        </PopoverTrigger>
-                                        <PopoverContent className="w-[400px] p-0">
-                                        <Command>
-                                            <CommandInput placeholder="Buscar no estoque ou digitar novo..." />
-                                            <CommandList>
-                                                <CommandEmpty
-                                                    onSelect={() => {
-                                                        const inputValue = (document.querySelector(`[cmdk-input]`) as HTMLInputElement).value;
-                                                        updateMaterial(index, {...field, name: inputValue, stockItemId: undefined });
-                                                        setPopoverOpen(false);
-                                                    }}
-                                                >
-                                                   <div className="p-2 cursor-pointer hover:bg-accent" onClick={() => {
-                                                        const inputValue = (document.querySelector(`[cmdk-input]`) as HTMLInputElement).value;
-                                                        updateMaterial(index, {...field, name: inputValue, stockItemId: undefined, unit: 'unidade' });
-                                                        setPopoverOpen(false);
-                                                   }}>
-                                                        Adicionar novo material: "{ (document.querySelector(`[cmdk-input]`) as HTMLInputElement)?.value }"
-                                                   </div>
-                                                </CommandEmpty>
-                                                <CommandGroup heading="Itens do Estoque">
-                                                {stockItems.map((item) => (
-                                                    <CommandItem
-                                                    key={item.id}
-                                                    value={item.name}
-                                                    onSelect={() => {
-                                                        updateMaterial(index, {...field, name: item.name, stockItemId: item.id, unit: item.unit });
-                                                        setPopoverOpen(false);
-                                                    }}
-                                                    >
-                                                    {item.name}
-                                                    </CommandItem>
-                                                ))}
-                                                </CommandGroup>
-                                            </CommandList>
-                                        </Command>
-                                        </PopoverContent>
-                                    </Popover>
-                                    <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                            <FormField
-                              control={form.control}
-                              name={`materials.${index}.quantity`}
-                              render={({ field: formField }) => (
-                                <FormItem className="w-24">
-                                  <FormLabel className={cn((isPurchased || isFromStock) && 'text-muted-foreground')}>Qtd.</FormLabel>
-                                  <FormControl>
-                                    <Input type="number" {...formField} value={formField.value || 0} disabled={isPurchased} className={cn((isPurchased || isFromStock) && 'line-through')} />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                            <FormField
-                              control={form.control}
-                              name={`materials.${index}.unit`}
-                              render={({ field: formField }) => (
-                                <FormItem className="w-32">
-                                  <FormLabel className={cn((isPurchased || isFromStock) && 'text-muted-foreground')}>Unidade</FormLabel>
-                                    <FormControl>
-                                      <Input placeholder="Unid." {...formField} value={formField.value || ''} disabled={isFromStock || isPurchased} className={cn((isPurchased || isFromStock) && 'line-through')} />
-                                    </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="text-destructive/80 hover:text-destructive h-10 w-10 flex-shrink-0"
-                            onClick={() => removeMaterial(index)}
-                            disabled={isPurchased}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
+                          <MaterialRow 
+                            key={field.id}
+                            index={index}
+                            control={form.control}
+                            field={field}
+                            remove={removeMaterial}
+                            update={updateMaterial}
+                            stockItems={stockItems}
+                            isPurchased={isPurchased}
+                            isFromStock={isFromStock}
+                          />
                         );
                       })
                     ) : (
