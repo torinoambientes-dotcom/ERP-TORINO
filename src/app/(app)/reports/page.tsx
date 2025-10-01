@@ -56,28 +56,6 @@ const statusColors = {
   todo: '#f97316', // orange
 };
 
-const SawBladeBar = (props: any) => {
-  const { fill, x, y, width, height } = props;
-  const toothWidth = 8;
-  const toothHeight = 5;
-  const numTeeth = Math.floor(width / toothWidth);
-
-  if (height === 0) return null;
-
-  let pathData = `M${x},${y + height} L${x},${y + toothHeight}`;
-
-  for (let i = 0; i < numTeeth; i++) {
-    const currentX = x + i * toothWidth;
-    pathData += ` L${currentX + toothWidth / 2},${y}`;
-    pathData += ` L${currentX + toothWidth},${y + toothHeight}`;
-  }
-   pathData += ` L${x + width},${y + height} Z`;
-
-
-  return <path d={pathData} fill={fill} />;
-};
-
-
 export default function ReportsPage() {
   const context = useContext(AppContext);
   if (!context) {
@@ -332,15 +310,32 @@ export default function ReportsPage() {
         />
         <Select value={selectedMemberId} onValueChange={setSelectedMemberId}>
           <SelectTrigger className="w-full sm:w-[280px]">
-            <SelectValue placeholder="Filtrar por marceneiro" />
+            <SelectValue placeholder="Filtrar por membro" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">
                 <div className="flex items-center gap-2">
-                    Todos os Marceneiros
+                    Todos os Membros
                 </div>
             </SelectItem>
+            <Separator/>
+            <p className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">Marceneiros</p>
             {marceneiros.map(member => (
+              <SelectItem key={member.id} value={member.id}>
+                <div className="flex items-center gap-2">
+                  <Avatar className="h-6 w-6">
+                    {member.avatarUrl && <AvatarImage src={member.avatarUrl} alt={member.name} />}
+                    <AvatarFallback style={{ backgroundColor: member.color }} className='text-xs'>
+                      {getInitials(member.name)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span>{member.name}</span>
+                </div>
+              </SelectItem>
+            ))}
+             <Separator/>
+            <p className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">Outros Membros</p>
+             {(teamMembers.filter(m => m.role !== 'Marceneiro')).map(member => (
               <SelectItem key={member.id} value={member.id}>
                 <div className="flex items-center gap-2">
                   <Avatar className="h-6 w-6">
@@ -492,9 +487,9 @@ export default function ReportsPage() {
                         }}
                      />
                      <Legend />
-                     <Bar dataKey="A_Fazer" stackId="a" fill={statusColors.todo} name="A Fazer" shape={<SawBladeBar />} />
-                     <Bar dataKey="Em_Andamento" stackId="a" fill={statusColors.in_progress} name="Em Andamento" shape={<SawBladeBar />} />
-                     <Bar dataKey="Concluido" stackId="a" fill={statusColors.done} name="Concluído" shape={<SawBladeBar />} />
+                     <Bar dataKey="A_Fazer" stackId="a" fill={statusColors.todo} name="A Fazer" />
+                     <Bar dataKey="Em_Andamento" stackId="a" fill={statusColors.in_progress} name="Em Andamento" />
+                     <Bar dataKey="Concluido" stackId="a" fill={statusColors.done} name="Concluído" />
                    </BarChart>
                  </ResponsiveContainer>
               </div>

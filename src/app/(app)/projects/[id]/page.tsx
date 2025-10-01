@@ -88,12 +88,22 @@ export default function ProjectDetailsPage() {
               fur[stage].responsibleId = value;
             }
           } else if (key === 'status') {
-            fur[stage].status = value as StageStatus;
-            if (value === 'done' && !fur[stage].completedAt) {
-              fur[stage].completedAt = new Date().toISOString();
-            } else if (value !== 'done') {
-              delete fur[stage].completedAt;
-            }
+             const previousStatus = fur[stage].status;
+             const newStatus = value as StageStatus;
+             fur[stage].status = newStatus;
+
+             if (newStatus === 'in_progress' && previousStatus === 'todo') {
+                 fur[stage].startedAt = new Date().toISOString();
+             } else if (newStatus === 'done' && !fur[stage].completedAt) {
+                 fur[stage].completedAt = new Date().toISOString();
+                 // If it's being marked done, ensure it has a start date
+                 if (!fur[stage].startedAt) {
+                    fur[stage].startedAt = fur[stage].completedAt;
+                 }
+             } else if (newStatus !== 'done') {
+                 // If status is reverted from 'done', clear completion date
+                 delete fur[stage].completedAt;
+             }
           }
         }
       }
