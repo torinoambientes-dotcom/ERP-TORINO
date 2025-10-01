@@ -1,4 +1,3 @@
-
 'use client';
 import { useContext, useMemo, useState } from 'react';
 import Link from 'next/link';
@@ -26,7 +25,8 @@ import { PageHeader } from '@/components/layout/page-header';
 import { AppContext } from '@/context/app-context';
 import type { Pendency, Project, StageStatus, TeamMember } from '@/lib/types';
 import { ChevronsUpDown, ExternalLink } from 'lucide-react';
-import { isThisWeek, isThisMonth, isThisYear, parseISO } from 'date-fns';
+import { isThisWeek, isThisMonth, isThisYear, parseISO, format, subMonths, getYear, getMonth } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import {
   BarChart,
   Bar,
@@ -89,6 +89,19 @@ export default function ReportsPage() {
   const [isProductivityOpen, setIsProductivityOpen] = useState(true);
   const [isProjectsStatusOpen, setIsProjectsStatusOpen] = useState(true);
   const [selectedMemberId, setSelectedMemberId] = useState('all');
+
+  const { marceneiros } = useMemo(() => {
+    const marceneiros: TeamMember[] = [];
+    const outrosMembros: TeamMember[] = [];
+    teamMembers.forEach(member => {
+      if (member.role === 'Marceneiro') {
+        marceneiros.push(member);
+      } else {
+        outrosMembros.push(member);
+      }
+    });
+    return { marceneiros, outrosMembros };
+  }, [teamMembers]);
 
 
   const projectStats = useMemo(() => {
@@ -174,6 +187,45 @@ export default function ReportsPage() {
       };
     });
   }, [projects, teamMembers, selectedMemberId]);
+
+  const monthlyCarpenterData = useMemo(() => {
+    const months = Array.from({ length: 12 }).map((_, i) => {
+        const date = subMonths(new Date(), i);
+        return {
+            name: format(date, 'MMM/yy', { locale: ptBR }),
+            month: getMonth(date),
+            year: getYear(date),
+            Projetos: 0,
+        };
+    }).reverse();
+
+    const memberIdsToFilter = selectedMemberId === 'all' 
+      ? marceneiros.map(m => m.id)
+      : [selectedMemberId];
+
+    const completedProjects = projects.filter(p => p.completedAt);
+
+    completedProjects.forEach(project => {
+        const completedDate = parseISO(project.completedAt!);
+        const projectMonth = getMonth(completedDate);
+        const projectYear = getYear(completedDate);
+
+        const wasExecutedByCarpenter = project.environments.some(env => 
+            env.furniture.some(fur => 
+                fur.assembly.responsibleId && memberIdsToFilter.includes(fur.assembly.responsibleId)
+            )
+        );
+
+        if (wasExecutedByCarpenter) {
+            const monthData = months.find(m => m.month === projectMonth && m.year === projectYear);
+            if (monthData) {
+                monthData.Projetos++;
+            }
+        }
+    });
+
+    return months;
+  }, [projects, marceneiros, selectedMemberId]);
 
 
   const unresolvedPendencies = useMemo((): GeneralPendency[] => {
@@ -278,15 +330,15 @@ export default function ReportsPage() {
         />
         <Select value={selectedMemberId} onValueChange={setSelectedMemberId}>
           <SelectTrigger className="w-full sm:w-[280px]">
-            <SelectValue placeholder="Filtrar por membro" />
+            <SelectValue placeholder="Filtrar por marceneiro" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">
                 <div className="flex items-center gap-2">
-                    Equipe Completa
+                    Todos os Marceneiros
                 </div>
             </SelectItem>
-            {teamMembers.map(member => (
+            {marceneiros.map(member => (
               <SelectItem key={member.id} value={member.id}>
                 <div className="flex items-center gap-2">
                   <Avatar className="h-6 w-6">
@@ -369,6 +421,35 @@ export default function ReportsPage() {
             </div>
         </CardContent>
       </Card>
+
+      <Card>
+          <CardHeader>
+              <CardTitle className="font-headline">Projetos Concluídos por Marceneiro (Mensal)</CardTitle>
+              <CardDescription>Número de projetos finalizados onde o marceneiro selecionado foi responsável pela montagem.</CardDescription>
+          </CardHeader>
+          <CardContent>
+             <div style={{ width: '100%', height: 300 }}>
+               <ResponsiveContainer>
+                 <BarChart
+                   data={monthlyCarpenterData}
+                   margin={{ top: 5, right: 20, left: -10, bottom: 5 }}
+                 >
+                   <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                   <XAxis dataKey="name" />
+                   <YAxis allowDecimals={false}/>
+                   <Tooltip 
+                      contentStyle={{
+                        background: 'hsl(var(--background))',
+                        borderColor: 'hsl(var(--border))',
+                        borderRadius: 'var(--radius)',
+                      }}
+                   />
+                   <Bar dataKey="Projetos" fill={statusColors.done} name="Projetos Concluídos"/>
+                 </BarChart>
+               </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
       
       <Collapsible
         open={isProductivityOpen}
