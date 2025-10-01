@@ -152,8 +152,10 @@ export default function PurchasesPage() {
                     furId: furniture.id
                 }));
                 
-                if (materialsWithContext.length > 0) {
-                    // Ordena: itens não comprados primeiro, depois por nome.
+                // Only add furniture if it has at least one material that needs to be purchased.
+                const hasPendingPurchases = materialsWithContext.some(m => !m.purchased);
+
+                if (materialsWithContext.length > 0 && hasPendingPurchases) {
                     materialsWithContext.sort((a, b) => {
                         if (a.purchased && !b.purchased) return 1;
                         if (!a.purchased && b.purchased) return -1;
@@ -184,7 +186,7 @@ export default function PurchasesPage() {
     });
 
     return list;
-  }, [projects]);
+}, [projects]);
 
   
   const glasswareList = useMemo((): GlasswareList => {
@@ -870,4 +872,5 @@ export default function PurchasesPage() {
     
 
     
+
 
