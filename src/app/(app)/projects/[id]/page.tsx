@@ -78,7 +78,7 @@ export default function ProjectDetailsPage() {
         const fur = env.furniture.find((f: any) => f.id === furId);
         if (fur) {
           if (!fur[stage]) {
-            fur[stage] = {};
+            fur[stage] = { status: 'todo' };
           }
           if (key === 'responsibleId') {
             if (value === 'unassigned') {
