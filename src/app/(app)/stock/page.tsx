@@ -32,7 +32,7 @@ import { RegisterStockItemModal } from '@/components/modals/register-stock-item-
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { StockMovementModal } from '@/components/modals/stock-movement-modal';
 import { StockMovementHistoryModal } from '@/components/modals/stock-movement-history-modal';
-import { cn } from '@/lib/utils';
+import { cn, generateId } from '@/lib/utils';
 import { RegisterCategoryModal } from '@/components/modals/register-category-modal';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import Link from 'next/link';
@@ -188,11 +188,11 @@ export default function StockPage() {
     setResetAlertOpen(false);
   };
 
-  const handleMarkAsSeparated = (stockItemId: string, reservation: StockReservation) => {
-    markItemAsSeparated(stockItemId, reservation);
+  const handleMarkAsSeparated = (stockItem: StockItem, reservation: StockReservation) => {
+    markItemAsSeparated(stockItem, reservation);
     toast({
         title: 'Item marcado como Separado!',
-        description: `A reserva para ${reservation.projectName} foi marcada como 'Separado'.`
+        description: `A reserva para ${reservation.projectName} foi atualizada.`
     });
   };
 
@@ -238,6 +238,7 @@ export default function StockPage() {
           const totalReserved = (item.reservations || []).reduce((acc, res) => acc + res.quantity, 0);
           const availableQuantity = item.quantity - totalReserved;
           const isLowStock = typeof item.minStock === 'number' && availableQuantity < item.minStock;
+          const sortedReservations = [...(item.reservations || [])].sort((a, b) => a.projectName.localeCompare(b.projectName) || a.furnitureName.localeCompare(b.furnitureName));
 
           return (
           <div
@@ -268,7 +269,7 @@ export default function StockPage() {
                               </p>
                             </div>
                              <div className="grid gap-2 text-sm max-h-60 overflow-y-auto">
-                              {(item.reservations || []).map(res => (
+                              {sortedReservations.map(res => (
                                 <div key={res.materialId} className={cn("flex items-center justify-between gap-2 p-2 rounded-md border", res.status === 'separado' ? 'bg-green-100/70 border-green-200' : 'bg-muted/30')}>
                                   <div className="truncate">
                                       <Link href={`/projects/${res.projectId}`} className="truncate hover:underline">
@@ -279,7 +280,7 @@ export default function StockPage() {
                                   <div className="flex items-center gap-2 flex-shrink-0">
                                     <p className="font-mono">{res.quantity} {item.unit}</p>
                                     {res.status === 'reservado' ? (
-                                        <Button size="sm" variant="outline" onClick={() => handleMarkAsSeparated(item.id, res)}>
+                                        <Button size="sm" variant="outline" onClick={() => handleMarkAsSeparated(item, res)}>
                                             <PackageCheck className="mr-2 h-4 w-4" />
                                             Marcar Separado
                                         </Button>

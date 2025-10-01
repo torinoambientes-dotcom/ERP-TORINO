@@ -33,7 +33,7 @@ interface AppContextType {
   toggleItemPurchasedStatus: (itemType: 'glass' | 'door', itemId: string, projectId: string, envId: string, furId: string) => void;
   toggleMaterialPurchased: (projectId: string, envId: string, furId: string, materialId: string, purchased: boolean) => void;
   clearAllReservations: () => void;
-  markItemAsSeparated: (stockItemId: string, reservation: StockReservation) => void;
+  markItemAsSeparated: (stockItem: StockItem, reservation: StockReservation) => void;
   dispatchItemToProduction: (stockItemId: string, reservation: StockReservation, memberId: string) => void;
   registerPurchase: (itemId: string, quantity: number, supplier: string) => void;
   confirmStockReceipt: (item: StockItem) => void;
@@ -509,20 +509,56 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await batch.commit();
   }, [firestore, stockItems]);
 
-    const markItemAsSeparated = useCallback((stockItemId: string, reservation: StockReservation) => {
-    if (!firestore || !stockItems) return;
-
-    const stockItem = stockItems.find(i => i.id === stockItemId);
-    if (!stockItem) return;
-
-    const stockItemRef = doc(firestore, 'stock_items', stockItemId);
-    const updatedReservations = (stockItem.reservations || []).map(r => 
+  const markItemAsSeparated = useCallback(async (stockItem: StockItem, reservation: StockReservation) => {
+    if (!firestore) return;
+  
+    const stockItemRef = doc(firestore, 'stock_items', stockItem.id);
+    const existingReservations = stockItem.reservations || [];
+    
+    const availableQuantity = stockItem.quantity - existingReservations
+        .filter(r => r.materialId !== reservation.materialId)
+        .reduce((acc, r) => acc + r.quantity, 0);
+  
+    const batch = writeBatch(firestore);
+  
+    if (availableQuantity >= reservation.quantity) {
+      // Full separation
+      const updatedReservations = existingReservations.map(r =>
         r.materialId === reservation.materialId ? { ...r, status: 'separado' as const } : r
-    );
-
-    updateDocumentNonBlocking(stockItemRef, { reservations: updatedReservations });
-
-  }, [firestore, stockItems]);
+      );
+      batch.update(stockItemRef, { reservations: updatedReservations });
+    } else if (availableQuantity > 0) {
+      // Partial separation
+      const remainingReservations = existingReservations.filter(r => r.materialId !== reservation.materialId);
+      
+      // Separated part
+      const separatedReservation: StockReservation = {
+        ...reservation,
+        materialId: generateId('res'), // New ID for the separated part
+        quantity: availableQuantity,
+        status: 'separado',
+      };
+      
+      // Remaining part to be reserved
+      const pendingReservation: StockReservation = {
+        ...reservation,
+        quantity: reservation.quantity - availableQuantity,
+        status: 'reservado',
+      };
+      
+      batch.update(stockItemRef, {
+        reservations: [...remainingReservations, separatedReservation, pendingReservation]
+      });
+    } else {
+      // No stock available, do nothing (or show a toast)
+      console.warn(`Cannot separate ${reservation.quantity} of ${stockItem.name}, only ${availableQuantity} available.`);
+      // Optionally, add a toast message here.
+      return;
+    }
+    
+    await batch.commit();
+  
+  }, [firestore]);
   
   const dispatchItemToProduction = useCallback(async (stockItemId: string, reservation: StockReservation, memberId: string) => {
       if (!firestore || !stockItems || !projects) return;
@@ -582,7 +618,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!firestore) return;
     const itemRef = doc(firestore, 'stock_items', itemId);
     const update = {
-      alertHandledAt: new Date().toISOString(), // Mark alert as "in progress"
+      // alertHandledAt is no longer set here, the alert logic will resolve itself
       awaitingReceipt: {
         quantity: quantity,
         supplier: supplier,

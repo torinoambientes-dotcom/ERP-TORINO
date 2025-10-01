@@ -117,12 +117,16 @@ export default function PurchasesPage() {
     return stockItems
       .map(item => {
         const totalReserved = (item.reservations || []).reduce((acc, res) => acc + res.quantity, 0);
-        const hasMinStockAlert = typeof item.minStock === 'number' && item.quantity < item.minStock;
-        const hasDemandAlert = totalReserved > item.quantity;
-        
-        // Show item if it has an alert and it's not already awaiting receipt
-        if (!item.alertHandledAt && (hasMinStockAlert || hasDemandAlert) && !item.awaitingReceipt) {
-          return { ...item, demand: totalReserved };
+        const quantityAwaitingReceipt = item.awaitingReceipt?.quantity || 0;
+        const potentialStock = item.quantity + quantityAwaitingReceipt;
+
+        const hasMinStockAlert = typeof item.minStock === 'number' && item.quantity < item.minStock && !item.awaitingReceipt;
+        const hasDemandAlert = totalReserved > potentialStock;
+
+        // An item is in low stock if it has a minimum stock alert (and no pending receipt) 
+        // or if total demand exceeds current + incoming stock.
+        if (hasMinStockAlert || hasDemandAlert) {
+            return { ...item, demand: totalReserved };
         }
         return null;
       })
@@ -555,8 +559,9 @@ export default function PurchasesPage() {
                     <CardContent>
                     <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
                         {lowStockItems.length > 0 ? lowStockItems.map((item) => {
-                          const isDemandAlert = (item.demand || 0) > item.quantity;
-                          const isMinStockAlert = typeof item.minStock === 'number' && item.quantity < item.minStock;
+                          const potentialStock = item.quantity + (item.awaitingReceipt?.quantity || 0);
+                          const isDemandAlert = (item.demand || 0) > potentialStock;
+                          const isMinStockAlert = typeof item.minStock === 'number' && item.quantity < item.minStock && !item.awaitingReceipt;
 
                           return (
                             <div key={item.id} className="p-3 rounded-md bg-destructive/10 border-l-4 border-destructive flex items-start sm:items-center justify-between flex-col sm:flex-row gap-4">
@@ -566,7 +571,7 @@ export default function PurchasesPage() {
                                         <p className="font-semibold">{item.name}</p>
                                         <p className="text-sm text-destructive/80 font-medium">
                                           {isDemandAlert 
-                                            ? `Demanda (${item.demand}) excede o estoque (${item.quantity})`
+                                            ? `Demanda (${item.demand}) excede o estoque atual + pendente (${potentialStock})`
                                             : `Estoque atual (${item.quantity}) abaixo do mínimo (${item.minStock})`
                                           }
                                         </p>
@@ -865,3 +870,4 @@ export default function PurchasesPage() {
     
 
     
+
