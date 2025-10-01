@@ -3,7 +3,7 @@
 import { createContext, type ReactNode, useCallback, useMemo } from 'react';
 import { collection, doc, serverTimestamp, deleteField, writeBatch } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import type { Project, TeamMember, StageStatus, StockItem, StockMovement, StockCategory, Furniture, Environment, MaterialItem, StockReservation } from '@/lib/types';
+import type { Project, TeamMember, StageStatus, StockItem, StockMovement, StockCategory, Furniture, Environment, MaterialItem, StockReservation, ProductionStage } from '@/lib/types';
 import { generateId } from '@/lib/utils';
 import { setDocumentNonBlocking, deleteDocumentNonBlocking, addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
@@ -345,15 +345,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     const projectToUpdate = projects.find(p => p.id === projectId);
     if (projectToUpdate) {
+        const now = new Date().toISOString();
         const newEnvironments = projectToUpdate.environments.map((env) => ({
             ...env,
-            furniture: env.furniture.map((fur) => ({
-                ...fur,
-                measurement: { ...fur.measurement, status: 'done' as StageStatus },
-                cutting: { ...fur.cutting, status: 'done' as StageStatus },
-                purchase: { ...fur.purchase, status: 'done' as StageStatus, completedAt: fur.purchase?.completedAt || new Date().toISOString() },
-                assembly: { ...fur.assembly, status: 'done' as StageStatus },
-            })),
+            furniture: env.furniture.map((fur) => {
+                const updatedFur = { ...fur };
+                (['measurement', 'cutting', 'purchase', 'assembly'] as const).forEach(stage => {
+                    if (updatedFur[stage].status !== 'done') {
+                        updatedFur[stage] = { ...updatedFur[stage], status: 'done' as StageStatus, completedAt: updatedFur[stage].completedAt || now };
+                    }
+                });
+                return updatedFur;
+            }),
         }));
         const updatedProject = { ...projectToUpdate, environments: newEnvironments };
         updateProject(updatedProject, projectToUpdate);
@@ -563,7 +566,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const dispatchItemToProduction = useCallback(async (stockItemId: string, reservation: StockReservation, memberId: string) => {
       if (!firestore || !stockItems || !projects) return;
       const stockItem = stockItems.find(i => i.id === stockItemId);
-      if (!stockItem) return;
+      const projectToUpdate = projects.find(p => p.id === reservation.projectId);
+  
+      if (!stockItem || !projectToUpdate) {
+        console.error("Stock item or project not found for dispatch");
+        return;
+      }
 
       const batch = writeBatch(firestore);
       
@@ -589,27 +597,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const movementRef = doc(collection(firestore, 'stock_items', stockItemId, 'movements'), movementId);
       batch.set(movementRef, newMovement);
 
-      // Find project and mark material as purchased
-      const projectToUpdate = projects.find(p => p.id === reservation.projectId);
-      if(projectToUpdate){
-          const newEnvironments = projectToUpdate.environments.map(env => {
-            if (env.id === reservation.environmentId) {
-                const newFurniture = env.furniture.map(fur => {
-                    if (fur.id === reservation.furnitureId) {
-                        const newMaterials = (fur.materials || []).map(mat => 
-                            mat.id === reservation.materialId ? { ...mat, purchased: true } : mat
-                        );
-                        return { ...fur, materials: newMaterials };
-                    }
-                    return fur;
-                });
-                return { ...env, furniture: newFurniture };
-            }
-            return env;
-          });
-          const projectRef = doc(firestore, 'projects', projectToUpdate.id);
-          batch.set(projectRef, { ...projectToUpdate, environments: newEnvironments }, { merge: true });
+      // Mark material as purchased in the project
+      const newProject = JSON.parse(JSON.stringify(projectToUpdate));
+      const env = newProject.environments.find((e: Environment) => e.id === reservation.environmentId);
+      if (env) {
+        const fur = env.furniture.find((f: Furniture) => f.id === reservation.furnitureId);
+        if (fur && fur.materials) {
+          const mat = fur.materials.find((m: MaterialItem) => m.id === reservation.materialId);
+          if (mat) {
+            mat.purchased = true;
+          }
+        }
       }
+      
+      const projectRef = doc(firestore, 'projects', newProject.id);
+      batch.set(projectRef, newProject, { merge: true });
 
       await batch.commit();
   }, [firestore, stockItems, projects]);

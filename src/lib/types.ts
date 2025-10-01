@@ -17,6 +17,13 @@ export const STAGE_STATUSES = {
 
 export type StageStatus = keyof typeof STAGE_STATUSES;
 
+export interface ProductionStage {
+  status: StageStatus;
+  responsibleId?: string;
+  completedAt?: string; // ISO date string when the stage was marked as 'done'
+}
+
+
 export interface Comment {
   id: string;
   memberId: string;
@@ -84,10 +91,10 @@ export interface ProfileDoorItem {
 export interface Furniture {
   id: string;
   name: string;
-  measurement: { status: StageStatus; responsibleId?: string };
-  cutting: { status: StageStatus; responsibleId?: string };
-  purchase: { status: StageStatus; responsibleId?: string; completedAt?: string };
-  assembly: { status: StageStatus; responsibleId?: string };
+  measurement: ProductionStage;
+  cutting: ProductionStage;
+  purchase: ProductionStage;
+  assembly: ProductionStage;
   comments?: Comment[];
   pendencies?: Pendency[];
   materials?: MaterialItem[];

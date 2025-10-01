@@ -93,7 +93,7 @@ export default function ReportsPage() {
   const { marceneiros } = useMemo(() => {
     const marceneiros: TeamMember[] = [];
     const outrosMembros: TeamMember[] = [];
-    teamMembers.forEach(member => {
+    (teamMembers || []).forEach(member => {
       if (member.role === 'Marceneiro') {
         marceneiros.push(member);
       } else {
@@ -195,7 +195,7 @@ export default function ReportsPage() {
             name: format(date, 'MMM/yy', { locale: ptBR }),
             month: getMonth(date),
             year: getYear(date),
-            Projetos: 0,
+            Móveis_Finalizados: 0,
         };
     }).reverse();
 
@@ -203,25 +203,27 @@ export default function ReportsPage() {
       ? marceneiros.map(m => m.id)
       : [selectedMemberId];
 
-    const completedProjects = projects.filter(p => p.completedAt);
+    projects.forEach(project => {
+        project.environments.forEach(env => 
+            env.furniture.forEach(fur => {
+                const assemblyStage = fur.assembly;
+                if (
+                    assemblyStage.status === 'done' && 
+                    assemblyStage.completedAt && 
+                    assemblyStage.responsibleId && 
+                    memberIdsToFilter.includes(assemblyStage.responsibleId)
+                ) {
+                    const completedDate = parseISO(assemblyStage.completedAt);
+                    const completedMonth = getMonth(completedDate);
+                    const completedYear = getYear(completedDate);
 
-    completedProjects.forEach(project => {
-        const completedDate = parseISO(project.completedAt!);
-        const projectMonth = getMonth(completedDate);
-        const projectYear = getYear(completedDate);
-
-        const wasExecutedByCarpenter = project.environments.some(env => 
-            env.furniture.some(fur => 
-                fur.assembly.responsibleId && memberIdsToFilter.includes(fur.assembly.responsibleId)
-            )
+                    const monthData = months.find(m => m.month === completedMonth && m.year === completedYear);
+                    if (monthData) {
+                        monthData.Móveis_Finalizados++;
+                    }
+                }
+            })
         );
-
-        if (wasExecutedByCarpenter) {
-            const monthData = months.find(m => m.month === projectMonth && m.year === projectYear);
-            if (monthData) {
-                monthData.Projetos++;
-            }
-        }
     });
 
     return months;
@@ -424,8 +426,8 @@ export default function ReportsPage() {
 
       <Card>
           <CardHeader>
-              <CardTitle className="font-headline">Projetos Concluídos por Marceneiro (Mensal)</CardTitle>
-              <CardDescription>Número de projetos finalizados onde o marceneiro selecionado foi responsável pela montagem.</CardDescription>
+              <CardTitle className="font-headline">Móveis Finalizados por Marceneiro (Mensal)</CardTitle>
+              <CardDescription>Número de móveis onde a "Pré Montagem" foi concluída pelo marceneiro selecionado.</CardDescription>
           </CardHeader>
           <CardContent>
              <div style={{ width: '100%', height: 300 }}>
@@ -444,7 +446,7 @@ export default function ReportsPage() {
                         borderRadius: 'var(--radius)',
                       }}
                    />
-                   <Bar dataKey="Projetos" fill={statusColors.done} name="Projetos Concluídos"/>
+                   <Bar dataKey="Móveis_Finalizados" fill={statusColors.done} name="Móveis Finalizados"/>
                  </BarChart>
                </ResponsiveContainer>
             </div>

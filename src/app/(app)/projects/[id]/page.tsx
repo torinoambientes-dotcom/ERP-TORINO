@@ -19,7 +19,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/layout/page-header';
 import { AppContext } from '@/context/app-context';
-import type { Project, Furniture, StageStatus, TeamMember } from '@/lib/types';
+import type { Project, Furniture, StageStatus, TeamMember, ProductionStage } from '@/lib/types';
 import { STAGE_STATUSES } from '@/lib/types';
 import { FurnitureChatModal } from '@/components/modals/furniture-chat-modal';
 import { FurnitureMaterialsModal } from '@/components/modals/furniture-materials-modal';
@@ -80,18 +80,19 @@ export default function ProjectDetailsPage() {
           if (!fur[stage]) {
             fur[stage] = { status: 'todo' };
           }
+          
           if (key === 'responsibleId') {
             if (value === 'unassigned') {
-              // Use delete operator to remove the field
               delete fur[stage].responsibleId;
             } else {
               fur[stage].responsibleId = value;
             }
-          } else {
-            fur[stage].status = value;
-            // Add completedAt timestamp when purchase is marked as done
-            if (stage === 'purchase' && value === 'done' && !fur.purchase.completedAt) {
-              fur.purchase.completedAt = new Date().toISOString();
+          } else if (key === 'status') {
+            fur[stage].status = value as StageStatus;
+            if (value === 'done' && !fur[stage].completedAt) {
+              fur[stage].completedAt = new Date().toISOString();
+            } else if (value !== 'done') {
+              delete fur[stage].completedAt;
             }
           }
         }
@@ -144,7 +145,7 @@ export default function ProjectDetailsPage() {
   const { marceneiros, outrosMembros } = useMemo(() => {
     const marceneiros: TeamMember[] = [];
     const outrosMembros: TeamMember[] = [];
-    teamMembers.forEach(member => {
+    (teamMembers || []).forEach(member => {
       if (member.role === 'Marceneiro') {
         marceneiros.push(member);
       } else {
