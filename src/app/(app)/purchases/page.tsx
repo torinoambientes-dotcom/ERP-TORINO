@@ -107,6 +107,7 @@ export default function PurchasesPage() {
 
   const [clientNameToView, setClientNameToView] = useState<string | undefined>(undefined);
 
+  const [showPurchasedMaterials, setShowPurchasedMaterials] = useState(false);
   const [showPurchasedGlass, setShowPurchasedGlass] = useState(false);
   const [showPurchasedDoors, setShowPurchasedDoors] = useState(false);
   
@@ -145,17 +146,16 @@ export default function PurchasesPage() {
             const environmentFurnitures: ShoppingList[string]['environments'][string]['furnitures'] = {};
 
             environment.furniture.forEach(furniture => {
-                 const materialsWithContext = (furniture.materials || []).map(material => ({
-                    ...material,
-                    projectId: project.id,
-                    envId: environment.id,
-                    furId: furniture.id
-                }));
-                
-                // Only add furniture if it has at least one material that needs to be purchased.
-                const hasPendingPurchases = materialsWithContext.some(m => !m.purchased);
+                const materialsWithContext = (furniture.materials || [])
+                    .filter(m => showPurchasedMaterials ? m.purchased : !m.purchased)
+                    .map(material => ({
+                        ...material,
+                        projectId: project.id,
+                        envId: environment.id,
+                        furId: furniture.id
+                    }));
 
-                if (materialsWithContext.length > 0 && hasPendingPurchases) {
+                if (materialsWithContext.length > 0) {
                     materialsWithContext.sort((a, b) => {
                         if (a.purchased && !b.purchased) return 1;
                         if (!a.purchased && b.purchased) return -1;
@@ -186,7 +186,7 @@ export default function PurchasesPage() {
     });
 
     return list;
-}, [projects]);
+}, [projects, showPurchasedMaterials]);
 
   
   const glasswareList = useMemo((): GlasswareList => {
@@ -537,89 +537,102 @@ export default function PurchasesPage() {
             </TabsTrigger>
         </TabsList>
         <TabsContent value="materials" className="mt-6 space-y-6">
-            <Collapsible
-                open={isStockAlertOpen}
-                onOpenChange={setIsStockAlertOpen}
-                className="w-full"
-            >
-                <Card>
-                <CardHeader>
-                    <div className="flex items-center justify-between">
-                    <div className='space-y-1.5'>
-                        <CardTitle className="font-headline">Alerta de Estoque ({lowStockItems.length})</CardTitle>
-                        <CardDescription>Materiais com estoque baixo ou com demanda de projetos maior que o estoque.</CardDescription>
-                    </div>
-                    <CollapsibleTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                        <ChevronsUpDown className="h-4 w-4" />
-                        <span className="sr-only">Toggle</span>
-                        </Button>
-                    </CollapsibleTrigger>
-                    </div>
-                </CardHeader>
-                <CollapsibleContent>
-                    <CardContent>
-                    <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
-                        {lowStockItems.length > 0 ? lowStockItems.map((item) => {
-                          const potentialStock = item.quantity + (item.awaitingReceipt?.quantity || 0);
-                          const isDemandAlert = (item.demand || 0) > potentialStock;
-                          const isMinStockAlert = typeof item.minStock === 'number' && item.quantity < item.minStock && !item.awaitingReceipt;
-
-                          return (
-                            <div key={item.id} className="p-3 rounded-md bg-destructive/10 border-l-4 border-destructive flex items-start sm:items-center justify-between flex-col sm:flex-row gap-4">
-                                <div className="flex items-start gap-3">
-                                    <AlertTriangle className="h-5 w-5 text-destructive mt-0.5 flex-shrink-0" />
-                                    <div>
-                                        <p className="font-semibold">{item.name}</p>
-                                        <p className="text-sm text-destructive/80 font-medium">
-                                          {isDemandAlert 
-                                            ? `Demanda (${item.demand}) excede o estoque atual + pendente (${potentialStock})`
-                                            : `Estoque atual (${item.quantity}) abaixo do mínimo (${item.minStock})`
-                                          }
-                                        </p>
+            {!showPurchasedMaterials &&
+                <Collapsible
+                    open={isStockAlertOpen}
+                    onOpenChange={setIsStockAlertOpen}
+                    className="w-full"
+                >
+                    <Card>
+                    <CardHeader>
+                        <div className="flex items-center justify-between">
+                        <div className='space-y-1.5'>
+                            <CardTitle className="font-headline">Alerta de Estoque ({lowStockItems.length})</CardTitle>
+                            <CardDescription>Materiais com estoque baixo ou com demanda de projetos maior que o estoque.</CardDescription>
+                        </div>
+                        <CollapsibleTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                            <ChevronsUpDown className="h-4 w-4" />
+                            <span className="sr-only">Toggle</span>
+                            </Button>
+                        </CollapsibleTrigger>
+                        </div>
+                    </CardHeader>
+                    <CollapsibleContent>
+                        <CardContent>
+                        <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
+                            {lowStockItems.length > 0 ? lowStockItems.map((item) => {
+                            const potentialStock = item.quantity + (item.awaitingReceipt?.quantity || 0);
+                            const isDemandAlert = (item.demand || 0) > potentialStock;
+                            
+                            return (
+                                <div key={item.id} className="p-3 rounded-md bg-destructive/10 border-l-4 border-destructive flex items-start sm:items-center justify-between flex-col sm:flex-row gap-4">
+                                    <div className="flex items-start gap-3">
+                                        <AlertTriangle className="h-5 w-5 text-destructive mt-0.5 flex-shrink-0" />
+                                        <div>
+                                            <p className="font-semibold">{item.name}</p>
+                                            <p className="text-sm text-destructive/80 font-medium">
+                                            {isDemandAlert 
+                                                ? `Demanda (${item.demand}) excede o estoque atual + pendente (${potentialStock})`
+                                                : `Estoque atual (${item.quantity}) abaixo do mínimo (${item.minStock})`
+                                            }
+                                            </p>
+                                        </div>
                                     </div>
+                                    <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="bg-background hover:bg-muted w-full sm:w-auto"
+                                    onClick={() => handleOpenPurchaseModal(item)}
+                                    >
+                                    <Truck className="mr-2 h-4 w-4 text-blue-600" />
+                                    Registrar Compra
+                                    </Button>
                                 </div>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="bg-background hover:bg-muted w-full sm:w-auto"
-                                  onClick={() => handleOpenPurchaseModal(item)}
-                                >
-                                  <Truck className="mr-2 h-4 w-4 text-blue-600" />
-                                  Registrar Compra
-                                </Button>
-                            </div>
-                          )
-                        }) : <p className="text-sm text-muted-foreground text-center py-4">Nenhum item com estoque baixo.</p>}
-                    </div>
-                    </CardContent>
-                </CollapsibleContent>
-                </Card>
-            </Collapsible>
+                            )
+                            }) : <p className="text-sm text-muted-foreground text-center py-4">Nenhum item com estoque baixo.</p>}
+                        </div>
+                        </CardContent>
+                    </CollapsibleContent>
+                    </Card>
+                </Collapsible>
+            }
             
             <Card>
             <CardHeader>
                 <div className="flex items-center justify-between flex-wrap gap-2">
                 <div className='space-y-1.5'>
-                    <CardTitle className="font-headline">Lista de Compras de Materiais</CardTitle>
-                    <CardDescription>Materiais de todos os projetos ativos, prontos para a compra.</CardDescription>
+                    <CardTitle className="font-headline">
+                        {showPurchasedMaterials ? 'Histórico de Compras de Materiais' : 'Lista de Compras de Materiais'}
+                    </CardTitle>
+                    <CardDescription>
+                        {showPurchasedMaterials ? 'Materiais de projetos que já foram comprados ou despachados do estoque.' : 'Materiais de todos os projetos ativos, prontos para a compra.'}
+                    </CardDescription>
                 </div>
                 <div className="flex items-center gap-2">
-                    <Button onClick={sendShoppingListViaWhatsApp} size="sm" variant="outline" disabled={Object.keys(shoppingList).length === 0}>
-                        <MessageCircle className="mr-2 h-4 w-4" />
-                        Enviar via WhatsApp
+                    <Button onClick={() => setShowPurchasedMaterials(!showPurchasedMaterials)} size="sm" variant="outline">
+                        <History className="mr-2 h-4 w-4" />
+                        {showPurchasedMaterials ? "Ver Itens a Comprar" : "Ver Histórico"}
                     </Button>
-                    <Button onClick={copyShoppingListToClipboard} size="sm" disabled={Object.keys(shoppingList).length === 0}>
-                        <Copy className="mr-2 h-4 w-4" />
-                        Copiar Lista (A Comprar)
-                    </Button>
+                    {!showPurchasedMaterials && (
+                        <>
+                            <Button onClick={sendShoppingListViaWhatsApp} size="sm" variant="outline" disabled={Object.keys(shoppingList).length === 0}>
+                                <MessageCircle className="mr-2 h-4 w-4" />
+                                Enviar via WhatsApp
+                            </Button>
+                            <Button onClick={copyShoppingListToClipboard} size="sm" disabled={Object.keys(shoppingList).length === 0}>
+                                <Copy className="mr-2 h-4 w-4" />
+                                Copiar Lista (A Comprar)
+                            </Button>
+                        </>
+                    )}
                 </div>
                 </div>
             </CardHeader>
             <CardContent>
                 <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2">
                     {Object.keys(shoppingList).length > 0 ? (
-                        <Accordion type="multiple" className="w-full space-y-4">
+                        <Accordion type="multiple" className="w-full space-y-4" defaultValue={Object.keys(shoppingList)}>
                             {Object.entries(shoppingList).map(([projectName, projectData]) => (
                                 <AccordionItem value={projectName} key={projectName} className='border rounded-lg bg-muted/30'>
                                     <AccordionTrigger className="p-4 font-semibold text-base hover:no-underline">
@@ -631,12 +644,14 @@ export default function PurchasesPage() {
                                                 <div key={envData.id} className="p-3 rounded-md bg-background border">
                                                     <div className="flex justify-between items-center mb-3 flex-wrap gap-2">
                                                         <h4 className='font-medium'>{environmentName}</h4>
-                                                        <div className='flex gap-1.5'>
-                                                            <Button variant="ghost" size="sm" onClick={() => copyEnvironmentListToClipboard(projectName, environmentName, envData.furnitures)}>
-                                                                <Copy className="mr-2 h-3 w-3" />
-                                                                Copiar
-                                                            </Button>
-                                                        </div>
+                                                        {!showPurchasedMaterials &&
+                                                            <div className='flex gap-1.5'>
+                                                                <Button variant="ghost" size="sm" onClick={() => copyEnvironmentListToClipboard(projectName, environmentName, envData.furnitures)}>
+                                                                    <Copy className="mr-2 h-3 w-3" />
+                                                                    Copiar
+                                                                </Button>
+                                                            </div>
+                                                        }
                                                     </div>
                                                     <div className="space-y-2">
                                                     {Object.entries(envData.furnitures).map(([furnitureName, furnitureData]) => (
@@ -649,11 +664,11 @@ export default function PurchasesPage() {
                                                                         id={`mat-${item.id}`}
                                                                         checked={!!item.purchased}
                                                                         onCheckedChange={() => handleToggleMaterial(item.projectId, item.envId, item.furId, item.id, !!item.purchased)}
-                                                                        disabled={!!item.stockItemId}
+                                                                        disabled={!!item.stockItemId || showPurchasedMaterials}
                                                                     />
                                                                     <label
                                                                         htmlFor={`mat-${item.id}`}
-                                                                        className={cn("flex-grow cursor-pointer", item.purchased && "line-through text-muted-foreground", !!item.stockItemId && "cursor-default")}
+                                                                        className={cn("flex-grow", (!!item.stockItemId || showPurchasedMaterials) ? "cursor-default" : "cursor-pointer", item.purchased && "line-through text-muted-foreground")}
                                                                     >
                                                                         <span className="font-medium text-foreground/90">{item.name}:</span> {item.quantity} {item.unit}
                                                                         {item.stockItemId && (
@@ -678,7 +693,13 @@ export default function PurchasesPage() {
                                 </AccordionItem>
                             ))}
                         </Accordion>
-                    ) : <p className="text-sm text-muted-foreground text-center py-4">Nenhum material necessário para os projetos ativos.</p>}
+                    ) : (
+                      <div className="flex h-48 items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/20">
+                          <p className="text-sm text-muted-foreground text-center">
+                              {showPurchasedMaterials ? 'Nenhum material foi comprado ou despachado ainda.' : 'Nenhum material necessário para os projetos ativos.'}
+                          </p>
+                      </div>
+                    )}
                 </div>
             </CardContent>
             </Card>
@@ -706,7 +727,7 @@ export default function PurchasesPage() {
                 <CardContent>
                 <div className="space-y-3 max-h-[70vh] overflow-y-auto pr-2">
                     {Object.keys(glasswareList).length > 0 ? (
-                    <Accordion type="multiple" className="w-full space-y-4">
+                    <Accordion type="multiple" className="w-full space-y-4" defaultValue={Object.keys(glasswareList)}>
                         {Object.entries(glasswareList).map(([projectName, projectData]) => (
                         <AccordionItem value={projectName} key={projectName} className='border rounded-lg bg-muted/30'>
                             <AccordionTrigger className="p-4 font-semibold text-base hover:no-underline">
@@ -782,7 +803,7 @@ export default function PurchasesPage() {
                 <CardContent>
                 <div className="space-y-3 max-h-[70vh] overflow-y-auto pr-2">
                     {Object.keys(profileDoorList).length > 0 ? (
-                    <Accordion type="multiple" className="w-full space-y-4">
+                    <Accordion type="multiple" className="w-full space-y-4" defaultValue={Object.keys(profileDoorList)}>
                         {Object.entries(profileDoorList).map(([projectName, projectData]) => (
                         <AccordionItem value={projectName} key={projectName} className='border rounded-lg bg-muted/30'>
                             <AccordionTrigger className="p-4 font-semibold text-base hover:no-underline">
@@ -874,3 +895,5 @@ export default function PurchasesPage() {
     
 
 
+
+ 
