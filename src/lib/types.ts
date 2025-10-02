@@ -133,6 +133,18 @@ export interface StockReservation {
   status: 'reservado' | 'separado';
 }
 
+export type StockMovementReason = 'compra' | 'estorno' | 'uso_marceneiro' | 'despacho_producao' | 'outros';
+
+export interface StockMovement {
+  id: string;
+  stockItemId: string; // Add stockItemId to link back to the item
+  type: 'entry' | 'exit';
+  quantity: number;
+  reason: StockMovementReason;
+  details?: string; // For 'outros' reason, or storing marceneiro ID
+  timestamp: string; // ISO date string
+  memberId: string;
+}
 
 export interface StockItem {
   id: string;
@@ -148,16 +160,5 @@ export interface StockItem {
     supplier: string;
     registeredAt: string;
   };
-}
-
-export type StockMovementReason = 'compra' | 'estorno' | 'uso_marceneiro' | 'despacho_producao' | 'outros';
-
-export interface StockMovement {
-  id: string;
-  type: 'entry' | 'exit';
-  quantity: number;
-  reason: StockMovementReason;
-  details?: string; // For 'outros' reason, or storing marceneiro ID
-  timestamp: string; // ISO date string
-  memberId: string;
+  movements?: StockMovement[];
 }

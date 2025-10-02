@@ -59,6 +59,7 @@ interface StockMovementModalProps {
 const entryReasons = [
   { value: 'compra', label: 'Compra de Reposição' },
   { value: 'estorno', label: 'Estorno / Devolução' },
+  { value: 'outros', label: 'Outros' },
 ];
 
 const exitReasons = [
@@ -103,7 +104,7 @@ export function StockMovementModal({ isOpen, onClose, item }: StockMovementModal
     }
 
     const movementData = { ...data, memberId: user.uid };
-    addStockMovement(item.id, movementData as Omit<StockMovement, 'id' | 'timestamp'>);
+    addStockMovement(item.id, movementData as Omit<StockMovement, 'id' | 'timestamp' | 'stockItemId'>);
 
     toast({
       title: 'Movimentação registrada!',

@@ -23,9 +23,9 @@ import {
 } from '@/components/ui/select';
 import { PageHeader } from '@/components/layout/page-header';
 import { AppContext } from '@/context/app-context';
-import type { Pendency, Project, StageStatus, TeamMember } from '@/lib/types';
+import type { Pendency, Project, StageStatus, TeamMember, StockMovement } from '@/lib/types';
 import { ChevronsUpDown, ExternalLink } from 'lucide-react';
-import { isThisWeek, isThisMonth, isThisYear, parseISO, format, subMonths, getYear, getMonth, intervalToDuration } from 'date-fns';
+import { isThisWeek, isThisMonth, isThisYear, parseISO, format, subMonths, getYear, getMonth, intervalToDuration, startOfMonth, endOfMonth, subDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
   BarChart,
@@ -71,18 +71,30 @@ const statusColors = {
   todo: '#f97316', // orange
 };
 
+type TimePeriod = 'this_month' | 'last_30_days' | 'last_month';
+
+interface ConsumptionRecord {
+    itemId: string;
+    itemName: string;
+    unit: string;
+    quantity: number;
+}
+
 export default function ReportsPage() {
   const context = useContext(AppContext);
   if (!context) {
     throw new Error('ReportsPage must be used within an AppProvider');
   }
-  const { projects, teamMembers } = context;
+  const { projects, teamMembers, stockMovements, stockItems } = context;
 
   const [isPendenciesOpen, setIsPendenciesOpen] = useState(true);
   const [isProductivityOpen, setIsProductivityOpen] = useState(true);
   const [isProjectsStatusOpen, setIsProjectsStatusOpen] = useState(true);
   const [isExecutionTimeOpen, setIsExecutionTimeOpen] = useState(true);
   const [selectedMemberId, setSelectedMemberId] = useState('all');
+
+  const [consumptionPeriod, setConsumptionPeriod] = useState<TimePeriod>('this_month');
+  const [consumptionMemberId, setConsumptionMemberId] = useState('all');
 
   const { marceneiros, memberMap } = useMemo(() => {
     const marceneiros: TeamMember[] = [];
@@ -327,6 +339,57 @@ export default function ReportsPage() {
     });
     return records.sort((a,b) => parseISO(b.completedAt).getTime() - parseISO(a.completedAt).getTime());
   }, [projects, selectedMemberId, marceneiros, memberMap]);
+
+  const consumptionData = useMemo((): ConsumptionRecord[] => {
+        const now = new Date();
+        let startDate: Date;
+
+        switch (consumptionPeriod) {
+            case 'last_30_days':
+                startDate = subDays(now, 30);
+                break;
+            case 'last_month':
+                const lastMonth = subMonths(now, 1);
+                startDate = startOfMonth(lastMonth);
+                break;
+            case 'this_month':
+            default:
+                startDate = startOfMonth(now);
+                break;
+        }
+
+        const filteredMovements = stockMovements.filter(mov => {
+            const movDate = parseISO(mov.timestamp);
+            const isWithinPeriod = movDate >= startDate;
+            const isExitByCarpenter = mov.reason === 'uso_marceneiro';
+            const matchesMember = consumptionMemberId === 'all' || mov.details === consumptionMemberId;
+            return isWithinPeriod && isExitByCarpenter && matchesMember;
+        });
+
+        const consumptionMap = new Map<string, { itemName: string; unit: string; quantity: number }>();
+
+        filteredMovements.forEach(mov => {
+            const item = stockItems.find(si => si.id === mov.stockItemId);
+            if (!item) return;
+
+            const existing = consumptionMap.get(item.id);
+            if (existing) {
+                existing.quantity += mov.quantity;
+            } else {
+                consumptionMap.set(item.id, {
+                    itemName: item.name,
+                    unit: item.unit,
+                    quantity: mov.quantity,
+                });
+            }
+        });
+
+        return Array.from(consumptionMap.entries()).map(([itemId, data]) => ({
+            itemId,
+            ...data,
+        })).sort((a, b) => a.itemName.localeCompare(b.itemName));
+
+  }, [stockMovements, stockItems, consumptionPeriod, consumptionMemberId]);
   
   const ProjectStatusList = ({ title, projectsWithStatus }: { title: string, projectsWithStatus: { project: Project, statusInfo: ProjectStatusInfo }[] }) => {
     if (projectsWithStatus.length === 0) return null;
@@ -713,16 +776,73 @@ export default function ReportsPage() {
           </TabsContent>
 
           <TabsContent value="stock" className="mt-6 space-y-6">
-              <div className="flex h-64 items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/20 bg-muted/30">
-                  <div className="text-center p-4">
-                      <h3 className="font-headline text-xl font-semibold text-muted-foreground/80">
-                          Relatórios de Estoque
-                      </h3>
-                      <p className="mt-2 text-sm text-muted-foreground">
-                          Esta seção está em desenvolvimento. Em breve, você poderá visualizar relatórios de consumo, valor de estoque e muito mais.
-                      </p>
-                  </div>
-              </div>
+              <Card>
+                <CardHeader>
+                    <CardTitle className="font-headline">Relatório de Consumo por Marceneiro</CardTitle>
+                    <CardDescription>Analise o consumo de materiais por marceneiro em um período específico.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="flex flex-col sm:flex-row gap-4">
+                        <Select value={consumptionPeriod} onValueChange={(v) => setConsumptionPeriod(v as TimePeriod)}>
+                            <SelectTrigger className="w-full sm:w-[200px]">
+                                <SelectValue placeholder="Filtrar por período" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="this_month">Este Mês</SelectItem>
+                                <SelectItem value="last_30_days">Últimos 30 Dias</SelectItem>
+                                <SelectItem value="last_month">Mês Passado</SelectItem>
+                            </SelectContent>
+                        </Select>
+                        <Select value={consumptionMemberId} onValueChange={setConsumptionMemberId}>
+                            <SelectTrigger className="w-full sm:w-[280px]">
+                                <SelectValue placeholder="Filtrar por marceneiro" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">Todos os Marceneiros</SelectItem>
+                                {marceneiros.map(member => (
+                                    <SelectItem key={member.id} value={member.id}>
+                                        <div className="flex items-center gap-2">
+                                            <Avatar className="h-6 w-6">
+                                                {member.avatarUrl && <AvatarImage src={member.avatarUrl} alt={member.name} />}
+                                                <AvatarFallback style={{ backgroundColor: member.color }} className='text-xs'>
+                                                    {getInitials(member.name)}
+                                                </AvatarFallback>
+                                            </Avatar>
+                                            <span>{member.name}</span>
+                                        </div>
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="border rounded-md">
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Item do Estoque</TableHead>
+                                    <TableHead className="text-right">Quantidade Consumida</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {consumptionData.length > 0 ? (
+                                    consumptionData.map(record => (
+                                        <TableRow key={record.itemId}>
+                                            <TableCell className="font-medium">{record.itemName}</TableCell>
+                                            <TableCell className="text-right">{record.quantity} {record.unit}</TableCell>
+                                        </TableRow>
+                                    ))
+                                ) : (
+                                    <TableRow>
+                                        <TableCell colSpan={2} className="h-24 text-center">
+                                            Nenhum consumo registrado para os filtros selecionados.
+                                        </TableCell>
+                                    </TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
+                    </div>
+                </CardContent>
+              </Card>
           </TabsContent>
         </Tabs>
     </div>

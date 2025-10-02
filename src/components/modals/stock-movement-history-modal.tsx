@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useContext } from 'react';
-import { collection } from 'firebase/firestore';
+import { collection, query, where } from 'firebase/firestore';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { ArrowDownLeft, ArrowUpRight } from 'lucide-react';
@@ -40,24 +40,17 @@ export function StockMovementHistoryModal({
   onClose,
   item,
 }: StockMovementHistoryModalProps) {
-  const firestore = useFirestore();
-  const { teamMembers } = useContext(AppContext);
+  const { stockMovements, teamMembers, isLoading } = useContext(AppContext);
 
-  const movementsQuery = useMemoFirebase(
-    () => collection(firestore, 'stock_items', item.id, 'movements'),
-    [firestore, item.id]
-  );
-  
-  const { data: movements, isLoading } = useCollection<StockMovement>(movementsQuery);
-
-  const sortedMovements = useMemo(() => {
-    if (!movements) return [];
-    return movements.sort(
-      (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-    );
-  }, [movements]);
+  const movementsForItem = useMemo(() => {
+    if (!stockMovements) return [];
+    return stockMovements
+      .filter(mov => mov.stockItemId === item.id)
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  }, [stockMovements, item.id]);
 
   const memberMap = useMemo(() => {
+    if (!teamMembers) return new Map();
     return new Map(teamMembers.map((m: TeamMember) => [m.id, m]));
   }, [teamMembers]);
 
@@ -90,13 +83,13 @@ export function StockMovementHistoryModal({
         <ScrollArea className="flex-grow pr-4 -mr-4">
           <div className="space-y-4">
             {isLoading && <p>Carregando histórico...</p>}
-            {!isLoading && sortedMovements.length === 0 && (
+            {!isLoading && movementsForItem.length === 0 && (
               <div className="flex flex-col items-center justify-center text-center h-48">
                 <p className="text-muted-foreground">Nenhuma movimentação registrada.</p>
               </div>
             )}
             {!isLoading &&
-              sortedMovements.map((movement) => {
+              movementsForItem.map((movement) => {
                 const member = memberMap.get(movement.memberId);
                 const isEntry = movement.type === 'entry';
                 const detailsText = getDetailsText(movement);
