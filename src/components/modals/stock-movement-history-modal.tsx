@@ -1,18 +1,13 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useContext } from 'react';
 import { collection } from 'firebase/firestore';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { ArrowDownLeft, ArrowUpRight } from 'lucide-react';
-
-import {
-  useCollection,
-  useFirestore,
-  useMemoFirebase,
-} from '@/firebase';
+import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { AppContext } from '@/context/app-context';
-import type { StockItem, StockMovement } from '@/lib/types';
+import type { StockItem, StockMovement, TeamMember } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import {
   Dialog,
@@ -25,13 +20,20 @@ import {
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '../ui/scroll-area';
 import { Separator } from '../ui/separator';
-import { useContext } from 'react';
 
 interface StockMovementHistoryModalProps {
   isOpen: boolean;
   onClose: () => void;
   item: StockItem;
 }
+
+const reasonLabels: { [key: string]: string } = {
+  compra: 'Compra de Reposição',
+  estorno: 'Estorno / Devolução',
+  uso_marceneiro: 'Uso por Marceneiro',
+  despacho_producao: 'Despacho para Produção',
+  outros: 'Outros',
+};
 
 export function StockMovementHistoryModal({
   isOpen,
@@ -56,8 +58,19 @@ export function StockMovementHistoryModal({
   }, [movements]);
 
   const memberMap = useMemo(() => {
-    return new Map(teamMembers.map((m) => [m.id, m]));
+    return new Map(teamMembers.map((m: TeamMember) => [m.id, m]));
   }, [teamMembers]);
+
+  const getDetailsText = (movement: StockMovement) => {
+    if (movement.reason === 'uso_marceneiro' && movement.details) {
+      const marceneiro = memberMap.get(movement.details);
+      return `Marceneiro: ${marceneiro?.name || 'ID ' + movement.details}`;
+    }
+    if ((movement.reason === 'outros' || movement.reason === 'despacho_producao' || movement.reason === 'compra') && movement.details) {
+      return `"${movement.details}"`;
+    }
+    return null;
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -86,6 +99,7 @@ export function StockMovementHistoryModal({
               sortedMovements.map((movement) => {
                 const member = memberMap.get(movement.memberId);
                 const isEntry = movement.type === 'entry';
+                const detailsText = getDetailsText(movement);
 
                 return (
                   <div key={movement.id} className="flex items-start gap-4 p-3 rounded-lg bg-muted/50">
@@ -107,9 +121,12 @@ export function StockMovementHistoryModal({
                           {format(new Date(movement.timestamp), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                         </p>
                       </div>
-                      <p className="text-sm text-muted-foreground italic">"{movement.reason}"</p>
+                      <p className="text-sm text-muted-foreground">
+                        {reasonLabels[movement.reason] || 'Motivo desconhecido'}
+                      </p>
+                      {detailsText && <p className="text-sm text-muted-foreground italic">{detailsText}</p>}
                        <div className="text-xs text-muted-foreground mt-1 flex items-center gap-2">
-                        <span>Responsável:</span>
+                        <span>Registrado por:</span>
                         {member && <span className="h-3 w-3 rounded-full" style={{ backgroundColor: member.color }} />}
                         <span>{member?.name || 'Desconhecido'}</span>
                       </div>

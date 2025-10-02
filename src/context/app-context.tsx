@@ -590,7 +590,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
           id: movementId,
           type: 'exit',
           quantity: reservation.quantity,
-          reason: `Despachado para produção do projeto ${reservation.projectName}`,
+          reason: 'despacho_producao',
+          details: `Projeto: ${reservation.projectName}`,
           timestamp: new Date().toISOString(),
           memberId: memberId,
       };
@@ -645,14 +646,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     // Add movement record
     const movementId = generateId('move');
-    const newMovement: Omit<StockMovement, 'id' | 'memberId'> = {
+    const newMovement: Omit<StockMovement, 'id' | 'memberId'> & { memberId?: string } = {
       type: 'entry',
       quantity: item.awaitingReceipt.quantity,
-      reason: `Recebimento de compra do fornecedor ${item.awaitingReceipt.supplier}`,
+      reason: 'compra',
+      details: `Fornecedor: ${item.awaitingReceipt.supplier}`,
       timestamp: new Date().toISOString(),
     };
-    // This part is tricky without a logged-in user, we'll leave memberId out for now
-    // Or assume a system user. For now, let's omit it.
     const movementRef = doc(collection(firestore, 'stock_items', item.id, 'movements'), movementId);
     batch.set(movementRef, newMovement);
 

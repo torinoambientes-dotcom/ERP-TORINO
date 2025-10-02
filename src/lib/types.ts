@@ -150,11 +150,14 @@ export interface StockItem {
   };
 }
 
+export type StockMovementReason = 'compra' | 'estorno' | 'uso_marceneiro' | 'despacho_producao' | 'outros';
+
 export interface StockMovement {
   id: string;
   type: 'entry' | 'exit';
   quantity: number;
-  reason: string;
+  reason: StockMovementReason;
+  details?: string; // For 'outros' reason, or storing marceneiro ID
   timestamp: string; // ISO date string
   memberId: string;
 }
