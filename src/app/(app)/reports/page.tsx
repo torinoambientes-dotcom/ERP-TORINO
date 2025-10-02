@@ -42,6 +42,7 @@ import { getInitials } from '@/lib/utils';
 import { getProjectStatus, ProjectStatusInfo } from '@/lib/projects';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface GeneralPendency extends Pendency {
   projectName: string;
@@ -250,16 +251,7 @@ export default function ReportsPage() {
       'Concluído': []
     };
     
-    const memberProjects = projects.filter(project => {
-      if (selectedMemberId === 'all') return true;
-      return project.environments.some(env => 
-        env.furniture.some(fur => 
-          Object.values(fur).some(stage => (stage as any)?.responsibleId === selectedMemberId)
-        )
-      );
-    });
-
-    memberProjects.forEach(project => {
+    projects.forEach(project => {
       const statusInfo = getProjectStatus(project);
       if (statuses[statusInfo.status]) {
         statuses[statusInfo.status].push({ project, statusInfo });
@@ -268,7 +260,7 @@ export default function ReportsPage() {
 
     return statuses;
 
-  }, [projects, selectedMemberId]);
+  }, [projects]);
   
   const ProjectStatusList = ({ title, projectsWithStatus }: { title: string, projectsWithStatus: { project: Project, statusInfo: ProjectStatusInfo }[] }) => {
     if (projectsWithStatus.length === 0) return null;
@@ -303,290 +295,301 @@ export default function ReportsPage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <PageHeader
           title="Relatórios"
           description="Acompanhe a produtividade e o andamento dos projetos."
         />
-        <Select value={selectedMemberId} onValueChange={setSelectedMemberId}>
-          <SelectTrigger className="w-full sm:w-[280px]">
-            <SelectValue placeholder="Filtrar por membro" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">
-                <div className="flex items-center gap-2">
-                    Todos os Membros
-                </div>
-            </SelectItem>
-            <Separator/>
-            <p className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">Marceneiros</p>
-            {marceneiros.map(member => (
-              <SelectItem key={member.id} value={member.id}>
-                <div className="flex items-center gap-2">
-                  <Avatar className="h-6 w-6">
-                    {member.avatarUrl && <AvatarImage src={member.avatarUrl} alt={member.name} />}
-                    <AvatarFallback style={{ backgroundColor: member.color }} className='text-xs'>
-                      {getInitials(member.name)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span>{member.name}</span>
-                </div>
-              </SelectItem>
-            ))}
-             <Separator/>
-            <p className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">Outros Membros</p>
-             {(teamMembers.filter(m => m.role !== 'Marceneiro')).map(member => (
-              <SelectItem key={member.id} value={member.id}>
-                <div className="flex items-center gap-2">
-                  <Avatar className="h-6 w-6">
-                    {member.avatarUrl && <AvatarImage src={member.avatarUrl} alt={member.name} />}
-                    <AvatarFallback style={{ backgroundColor: member.color }} className='text-xs'>
-                      {getInitials(member.name)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span>{member.name}</span>
-                </div>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
 
-
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Total de Projetos
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{projectStats.totalProjects}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Em Andamento
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{projectStats.ongoingProjects}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Concluídos
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{projectStats.completedProjects}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Projetos Pendentes
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{projectStats.pendingProjects}</div>
-          </CardContent>
-        </Card>
-      </div>
-
-       <Card>
-        <CardHeader>
-            <CardTitle className="font-headline">Projetos Concluídos ao Longo do Tempo</CardTitle>
-            <CardDescription>Resumo de projetos finalizados na semana, mês e ano.</CardDescription>
-        </CardHeader>
-        <CardContent>
-            <div className="grid gap-6 grid-cols-1 sm:grid-cols-3">
-                <div className="p-4 rounded-lg bg-muted/50 flex flex-col items-center justify-center text-center">
-                    <p className="text-3xl font-bold">{completedStats.week}</p>
-                    <p className="text-sm text-muted-foreground">nesta semana</p>
-                </div>
-                <div className="p-4 rounded-lg bg-muted/50 flex flex-col items-center justify-center text-center">
-                    <p className="text-3xl font-bold">{completedStats.month}</p>
-                    <p className="text-sm text-muted-foreground">neste mês</p>
-                </div>
-                <div className="p-4 rounded-lg bg-muted/50 flex flex-col items-center justify-center text-center">
-                    <p className="text-3xl font-bold">{completedStats.year}</p>
-                    <p className="text-sm text-muted-foreground">neste ano</p>
-                </div>
-            </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-          <CardHeader>
-              <CardTitle className="font-headline">Móveis Finalizados por Marceneiro (Mensal)</CardTitle>
-              <CardDescription>Número de móveis onde a "Pré Montagem" foi concluída pelo marceneiro selecionado.</CardDescription>
-          </CardHeader>
-          <CardContent>
-             <div style={{ width: '100%', height: 300 }}>
-               <ResponsiveContainer>
-                 <BarChart
-                   data={monthlyCarpenterData}
-                   margin={{ top: 5, right: 20, left: -10, bottom: 5 }}
-                 >
-                   <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                   <XAxis dataKey="name" />
-                   <YAxis allowDecimals={false}/>
-                   <Tooltip 
-                      contentStyle={{
-                        background: 'hsl(var(--background))',
-                        borderColor: 'hsl(var(--border))',
-                        borderRadius: 'var(--radius)',
-                      }}
-                   />
-                   <Bar dataKey="Móveis_Finalizados" fill={statusColors.done} name="Móveis Finalizados"/>
-                 </BarChart>
-               </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-      
-      <Collapsible
-        open={isProductivityOpen}
-        onOpenChange={setIsProductivityOpen}
-        className="w-full"
-      >
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-                <div className='space-y-1.5'>
-                    <CardTitle className="font-headline">Produtividade da Equipe</CardTitle>
-                    <CardDescription>Distribuição de tarefas por membro da equipe.</CardDescription>
-                </div>
-                <CollapsibleTrigger asChild>
-                    <Button variant="ghost" size="icon">
-                    <ChevronsUpDown className="h-4 w-4" />
-                    <span className="sr-only">Toggle</span>
-                    </Button>
-                </CollapsibleTrigger>
-            </div>
-          </CardHeader>
-          <CollapsibleContent>
-            <CardContent>
-               <div style={{ width: '100%', height: 300 }}>
-                 <ResponsiveContainer>
-                   <BarChart
-                     data={productivityData}
-                     margin={{ top: 5, right: 20, left: -10, bottom: 5 }}
-                   >
-                     <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                     <XAxis dataKey="name" />
-                     <YAxis allowDecimals={false}/>
-                     <Tooltip 
-                        contentStyle={{
-                          background: 'hsl(var(--background))',
-                          borderColor: 'hsl(var(--border))',
-                          borderRadius: 'var(--radius)',
-                        }}
-                     />
-                     <Legend />
-                     <Bar dataKey="A_Fazer" stackId="a" fill={statusColors.todo} name="A Fazer" />
-                     <Bar dataKey="Em_Andamento" stackId="a" fill={statusColors.in_progress} name="Em Andamento" />
-                     <Bar dataKey="Concluido" stackId="a" fill={statusColors.done} name="Concluído" />
-                   </BarChart>
-                 </ResponsiveContainer>
+        <Tabs defaultValue="projects" className="w-full">
+          <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="projects">Projetos</TabsTrigger>
+              <TabsTrigger value="production">Produção</TabsTrigger>
+              <TabsTrigger value="stock">Estoque</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="projects" className="mt-6 space-y-6">
+              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Total de Projetos</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{projectStats.totalProjects}</div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Em Andamento</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{projectStats.ongoingProjects}</div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Concluídos</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{projectStats.completedProjects}</div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Projetos Pendentes</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{projectStats.pendingProjects}</div>
+                  </CardContent>
+                </Card>
               </div>
-            </CardContent>
-          </CollapsibleContent>
-        </Card>
-      </Collapsible>
 
-      <Collapsible
-        open={isProjectsStatusOpen}
-        onOpenChange={setIsProjectsStatusOpen}
-        className="w-full"
-      >
-        <Card>
-          <CardHeader>
-             <div className="flex items-center justify-between">
-              <div className='space-y-1.5'>
-                <CardTitle className="font-headline">Status dos Projetos</CardTitle>
-                <CardDescription>
-                  {selectedMemberId === 'all' 
-                    ? 'Lista de todos os projetos por status.'
-                    : `Projetos associados a ${teamMembers.find(m => m.id === selectedMemberId)?.name || ''}.`
-                  }
-                </CardDescription>
-              </div>
-              <CollapsibleTrigger asChild>
-                <Button variant="ghost" size="icon">
-                  <ChevronsUpDown className="h-4 w-4" />
-                  <span className="sr-only">Toggle</span>
-                </Button>
-              </CollapsibleTrigger>
-            </div>
-          </CardHeader>
-          <CollapsibleContent>
-            <CardContent>
-              <div className="space-y-6">
-                <ProjectStatusList title="Em Andamento" projectsWithStatus={projectsByStatus['Em Andamento']} />
-                <Separator />
-                <ProjectStatusList title="Novos" projectsWithStatus={projectsByStatus['Novo']} />
-                <Separator />
-                <ProjectStatusList title="Concluídos" projectsWithStatus={projectsByStatus['Concluído']} />
+              <Card>
+                <CardHeader>
+                    <CardTitle className="font-headline">Projetos Concluídos ao Longo do Tempo</CardTitle>
+                    <CardDescription>Resumo de projetos finalizados na semana, mês e ano.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <div className="grid gap-6 grid-cols-1 sm:grid-cols-3">
+                        <div className="p-4 rounded-lg bg-muted/50 flex flex-col items-center justify-center text-center">
+                            <p className="text-3xl font-bold">{completedStats.week}</p>
+                            <p className="text-sm text-muted-foreground">nesta semana</p>
+                        </div>
+                        <div className="p-4 rounded-lg bg-muted/50 flex flex-col items-center justify-center text-center">
+                            <p className="text-3xl font-bold">{completedStats.month}</p>
+                            <p className="text-sm text-muted-foreground">neste mês</p>
+                        </div>
+                        <div className="p-4 rounded-lg bg-muted/50 flex flex-col items-center justify-center text-center">
+                            <p className="text-3xl font-bold">{completedStats.year}</p>
+                            <p className="text-sm text-muted-foreground">neste ano</p>
+                        </div>
+                    </div>
+                </CardContent>
+              </Card>
 
-                {Object.values(projectsByStatus).every(arr => arr.length === 0) && (
-                  <p className="text-sm text-muted-foreground text-center py-4">
-                    Nenhum projeto encontrado para o filtro selecionado.
-                  </p>
-                )}
-              </div>
-            </CardContent>
-          </CollapsibleContent>
-        </Card>
-      </Collapsible>
+              <Collapsible
+                open={isProjectsStatusOpen}
+                onOpenChange={setIsProjectsStatusOpen}
+                className="w-full"
+              >
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div className='space-y-1.5'>
+                        <CardTitle className="font-headline">Status dos Projetos</CardTitle>
+                        <CardDescription>Lista de todos os projetos por status.</CardDescription>
+                      </div>
+                      <CollapsibleTrigger asChild>
+                        <Button variant="ghost" size="icon">
+                          <ChevronsUpDown className="h-4 w-4" />
+                          <span className="sr-only">Toggle</span>
+                        </Button>
+                      </CollapsibleTrigger>
+                    </div>
+                  </CardHeader>
+                  <CollapsibleContent>
+                    <CardContent>
+                      <div className="space-y-6">
+                        <ProjectStatusList title="Em Andamento" projectsWithStatus={projectsByStatus['Em Andamento']} />
+                        <Separator />
+                        <ProjectStatusList title="Novos" projectsWithStatus={projectsByStatus['Novo']} />
+                        <Separator />
+                        <ProjectStatusList title="Concluídos" projectsWithStatus={projectsByStatus['Concluído']} />
 
-      <Collapsible
-        open={isPendenciesOpen}
-        onOpenChange={setIsPendenciesOpen}
-        className="w-full"
-      >
-        <Card>
-          <CardHeader>
-             <div className="flex items-center justify-between">
-              <div className='space-y-1.5'>
-                <CardTitle className="font-headline">Pendências Gerais ({unresolvedPendencies.length})</CardTitle>
-                <CardDescription>Lista de todas as pendências que ainda não foram resolvidas em todos os projetos.</CardDescription>
+                        {Object.values(projectsByStatus).every(arr => arr.length === 0) && (
+                          <p className="text-sm text-muted-foreground text-center py-4">
+                            Nenhum projeto encontrado.
+                          </p>
+                        )}
+                      </div>
+                    </CardContent>
+                  </CollapsibleContent>
+                </Card>
+              </Collapsible>
+          </TabsContent>
+
+          <TabsContent value="production" className="mt-6 space-y-6">
+              <div className="flex justify-end">
+                <Select value={selectedMemberId} onValueChange={setSelectedMemberId}>
+                  <SelectTrigger className="w-full sm:w-[280px]">
+                    <SelectValue placeholder="Filtrar por membro" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">
+                        <div className="flex items-center gap-2">
+                            Todos os Membros
+                        </div>
+                    </SelectItem>
+                    <Separator/>
+                    <p className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">Marceneiros</p>
+                    {marceneiros.map(member => (
+                      <SelectItem key={member.id} value={member.id}>
+                        <div className="flex items-center gap-2">
+                          <Avatar className="h-6 w-6">
+                            {member.avatarUrl && <AvatarImage src={member.avatarUrl} alt={member.name} />}
+                            <AvatarFallback style={{ backgroundColor: member.color }} className='text-xs'>
+                              {getInitials(member.name)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span>{member.name}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                    <Separator/>
+                    <p className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">Outros Membros</p>
+                    {(teamMembers.filter(m => m.role !== 'Marceneiro')).map(member => (
+                      <SelectItem key={member.id} value={member.id}>
+                        <div className="flex items-center gap-2">
+                          <Avatar className="h-6 w-6">
+                            {member.avatarUrl && <AvatarImage src={member.avatarUrl} alt={member.name} />}
+                            <AvatarFallback style={{ backgroundColor: member.color }} className='text-xs'>
+                              {getInitials(member.name)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span>{member.name}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-              <CollapsibleTrigger asChild>
-                <Button variant="ghost" size="icon">
-                  <ChevronsUpDown className="h-4 w-4" />
-                  <span className="sr-only">Toggle</span>
-                </Button>
-              </CollapsibleTrigger>
-            </div>
-          </CardHeader>
-          <CollapsibleContent>
-            <CardContent>
-              <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
-                {unresolvedPendencies.length > 0 ? unresolvedPendencies.map((pendency) => (
-                  <div key={pendency.id} className="p-3 rounded-md bg-muted/50 border-l-4 border-destructive">
-                    <p className="font-semibold">{pendency.text}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {pendency.projectName} / {pendency.environmentName} / {pendency.furnitureName}
-                    </p>
+
+               <Card>
+                  <CardHeader>
+                      <CardTitle className="font-headline">Móveis Finalizados por Marceneiro (Mensal)</CardTitle>
+                      <CardDescription>Número de móveis onde a "Pré Montagem" foi concluída pelo marceneiro selecionado.</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div style={{ width: '100%', height: 300 }}>
+                      <ResponsiveContainer>
+                        <BarChart
+                          data={monthlyCarpenterData}
+                          margin={{ top: 5, right: 20, left: -10, bottom: 5 }}
+                        >
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                          <XAxis dataKey="name" />
+                          <YAxis allowDecimals={false}/>
+                          <Tooltip 
+                              contentStyle={{
+                                background: 'hsl(var(--background))',
+                                borderColor: 'hsl(var(--border))',
+                                borderRadius: 'var(--radius)',
+                              }}
+                          />
+                          <Bar dataKey="Móveis_Finalizados" fill={statusColors.done} name="Móveis Finalizados"/>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </CardContent>
+                </Card>
+              
+              <Collapsible
+                open={isProductivityOpen}
+                onOpenChange={setIsProductivityOpen}
+                className="w-full"
+              >
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                        <div className='space-y-1.5'>
+                            <CardTitle className="font-headline">Produtividade da Equipe</CardTitle>
+                            <CardDescription>Distribuição de tarefas por membro da equipe.</CardDescription>
+                        </div>
+                        <CollapsibleTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                            <ChevronsUpDown className="h-4 w-4" />
+                            <span className="sr-only">Toggle</span>
+                            </Button>
+                        </CollapsibleTrigger>
+                    </div>
+                  </CardHeader>
+                  <CollapsibleContent>
+                    <CardContent>
+                      <div style={{ width: '100%', height: 300 }}>
+                        <ResponsiveContainer>
+                          <BarChart
+                            data={productivityData}
+                            margin={{ top: 5, right: 20, left: -10, bottom: 5 }}
+                          >
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                            <XAxis dataKey="name" />
+                            <YAxis allowDecimals={false}/>
+                            <Tooltip 
+                                contentStyle={{
+                                  background: 'hsl(var(--background))',
+                                  borderColor: 'hsl(var(--border))',
+                                  borderRadius: 'var(--radius)',
+                                }}
+                            />
+                            <Legend />
+                            <Bar dataKey="A_Fazer" stackId="a" fill={statusColors.todo} name="A Fazer" />
+                            <Bar dataKey="Em_Andamento" stackId="a" fill={statusColors.in_progress} name="Em Andamento" />
+                            <Bar dataKey="Concluido" stackId="a" fill={statusColors.done} name="Concluído" />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </CardContent>
+                  </CollapsibleContent>
+                </Card>
+              </Collapsible>
+
+              <Collapsible
+                open={isPendenciesOpen}
+                onOpenChange={setIsPendenciesOpen}
+                className="w-full"
+              >
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div className='space-y-1.5'>
+                        <CardTitle className="font-headline">Pendências Gerais ({unresolvedPendencies.length})</CardTitle>
+                        <CardDescription>Lista de todas as pendências não resolvidas associadas ao membro selecionado.</CardDescription>
+                      </div>
+                      <CollapsibleTrigger asChild>
+                        <Button variant="ghost" size="icon">
+                          <ChevronsUpDown className="h-4 w-4" />
+                          <span className="sr-only">Toggle</span>
+                        </Button>
+                      </CollapsibleTrigger>
+                    </div>
+                  </CardHeader>
+                  <CollapsibleContent>
+                    <CardContent>
+                      <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
+                        {unresolvedPendencies.length > 0 ? unresolvedPendencies.map((pendency) => (
+                          <div key={pendency.id} className="p-3 rounded-md bg-muted/50 border-l-4 border-destructive">
+                            <p className="font-semibold">{pendency.text}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {pendency.projectName} / {pendency.environmentName} / {pendency.furnitureName}
+                            </p>
+                          </div>
+                        )) : (
+                          <p className="text-sm text-muted-foreground text-center py-4">
+                            {selectedMemberId === 'all'
+                              ? "Nenhuma pendência em aberto."
+                              : "Nenhuma pendência para o membro selecionado."
+                            }
+                          </p>
+                        )}
+                      </div>
+                    </CardContent>
+                  </CollapsibleContent>
+                </Card>
+              </Collapsible>
+          </TabsContent>
+
+          <TabsContent value="stock" className="mt-6 space-y-6">
+              <div className="flex h-64 items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/20 bg-muted/30">
+                  <div className="text-center p-4">
+                      <h3 className="font-headline text-xl font-semibold text-muted-foreground/80">
+                          Relatórios de Estoque
+                      </h3>
+                      <p className="mt-2 text-sm text-muted-foreground">
+                          Esta seção está em desenvolvimento. Em breve, você poderá visualizar relatórios de consumo, valor de estoque e muito mais.
+                      </p>
                   </div>
-                )) : (
-                  <p className="text-sm text-muted-foreground text-center py-4">
-                    {selectedMemberId === 'all'
-                      ? "Nenhuma pendência em aberto."
-                      : "Nenhuma pendência para o membro selecionado."
-                    }
-                  </p>
-                )}
               </div>
-            </CardContent>
-          </CollapsibleContent>
-        </Card>
-      </Collapsible>
-
+          </TabsContent>
+        </Tabs>
     </div>
   );
 }
