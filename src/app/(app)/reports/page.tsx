@@ -25,7 +25,7 @@ import { PageHeader } from '@/components/layout/page-header';
 import { AppContext } from '@/context/app-context';
 import type { Pendency, Project, StageStatus, TeamMember } from '@/lib/types';
 import { ChevronsUpDown, ExternalLink } from 'lucide-react';
-import { isThisWeek, isThisMonth, isThisYear, parseISO, format, subMonths, getYear, getMonth } from 'date-fns';
+import { isThisWeek, isThisMonth, isThisYear, parseISO, format, subMonths, getYear, getMonth, intervalToDuration } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
   BarChart,
@@ -43,12 +43,26 @@ import { getProjectStatus, ProjectStatusInfo } from '@/lib/projects';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+
 
 interface GeneralPendency extends Pendency {
   projectName: string;
   environmentName: string;
   furnitureName: string;
   isAssignedToMember: boolean;
+}
+
+interface ExecutionTimeRecord {
+  id: string;
+  projectName: string;
+  furnitureName: string;
+  memberId: string;
+  memberName: string;
+  memberColor: string;
+  startedAt: string;
+  completedAt: string;
+  duration: string;
 }
 
 const statusColors = {
@@ -67,19 +81,22 @@ export default function ReportsPage() {
   const [isPendenciesOpen, setIsPendenciesOpen] = useState(true);
   const [isProductivityOpen, setIsProductivityOpen] = useState(true);
   const [isProjectsStatusOpen, setIsProjectsStatusOpen] = useState(true);
+  const [isExecutionTimeOpen, setIsExecutionTimeOpen] = useState(true);
   const [selectedMemberId, setSelectedMemberId] = useState('all');
 
-  const { marceneiros } = useMemo(() => {
+  const { marceneiros, memberMap } = useMemo(() => {
     const marceneiros: TeamMember[] = [];
     const outrosMembros: TeamMember[] = [];
+    const memberMap = new Map<string, TeamMember>();
     (teamMembers || []).forEach(member => {
+      memberMap.set(member.id, member);
       if (member.role === 'Marceneiro') {
         marceneiros.push(member);
       } else {
         outrosMembros.push(member);
       }
     });
-    return { marceneiros, outrosMembros };
+    return { marceneiros, outrosMembros, memberMap };
   }, [teamMembers]);
 
 
@@ -261,6 +278,55 @@ export default function ReportsPage() {
     return statuses;
 
   }, [projects]);
+
+  const executionTimeData = useMemo((): ExecutionTimeRecord[] => {
+    const records: ExecutionTimeRecord[] = [];
+    const memberIdsToFilter = selectedMemberId === 'all' 
+      ? marceneiros.map(m => m.id)
+      : [selectedMemberId];
+    
+    projects.forEach(project => {
+      project.environments.forEach(env => {
+        env.furniture.forEach(fur => {
+          const stage = fur.assembly;
+          if (
+            stage.status === 'done' &&
+            stage.startedAt &&
+            stage.completedAt &&
+            stage.responsibleId &&
+            memberIdsToFilter.includes(stage.responsibleId)
+          ) {
+            const member = memberMap.get(stage.responsibleId);
+            if(member) {
+              const duration = intervalToDuration({
+                start: parseISO(stage.startedAt),
+                end: parseISO(stage.completedAt),
+              });
+              
+              const durationString = [
+                duration.days ? `${duration.days}d` : null,
+                duration.hours ? `${duration.hours}h` : null,
+                duration.minutes ? `${duration.minutes}m` : null,
+              ].filter(Boolean).join(' ') || '0m';
+
+              records.push({
+                id: fur.id,
+                projectName: project.clientName,
+                furnitureName: fur.name,
+                memberId: member.id,
+                memberName: member.name,
+                memberColor: member.color,
+                startedAt: stage.startedAt,
+                completedAt: stage.completedAt,
+                duration: durationString,
+              });
+            }
+          }
+        });
+      });
+    });
+    return records.sort((a,b) => parseISO(b.completedAt).getTime() - parseISO(a.completedAt).getTime());
+  }, [projects, selectedMemberId, marceneiros, memberMap]);
   
   const ProjectStatusList = ({ title, projectsWithStatus }: { title: string, projectsWithStatus: { project: Project, statusInfo: ProjectStatusInfo }[] }) => {
     if (projectsWithStatus.length === 0) return null;
@@ -531,6 +597,75 @@ export default function ReportsPage() {
                   </CollapsibleContent>
                 </Card>
               </Collapsible>
+
+              <Collapsible
+                open={isExecutionTimeOpen}
+                onOpenChange={setIsExecutionTimeOpen}
+                className="w-full"
+              >
+                <Card>
+                   <CardHeader>
+                    <div className="flex items-center justify-between">
+                        <div className='space-y-1.5'>
+                            <CardTitle className="font-headline">Análise de Tempo de Execução (Pré Montagem)</CardTitle>
+                            <CardDescription>Tempo gasto por cada marceneiro para concluir a etapa de pré montagem.</CardDescription>
+                        </div>
+                        <CollapsibleTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                            <ChevronsUpDown className="h-4 w-4" />
+                            <span className="sr-only">Toggle</span>
+                            </Button>
+                        </CollapsibleTrigger>
+                    </div>
+                  </CardHeader>
+                  <CollapsibleContent>
+                    <CardContent>
+                      <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Marceneiro</TableHead>
+                              <TableHead>Projeto</TableHead>
+                              <TableHead>Móvel</TableHead>
+                              <TableHead>Início</TableHead>
+                              <TableHead>Fim</TableHead>
+                              <TableHead className="text-right">Duração</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {executionTimeData.length > 0 ? executionTimeData.map((record) => (
+                              <TableRow key={record.id}>
+                                <TableCell>
+                                    <div className="flex items-center gap-2">
+                                        <Avatar className="h-6 w-6">
+                                            <AvatarFallback style={{ backgroundColor: record.memberColor }} className='text-xs'>
+                                            {getInitials(record.memberName)}
+                                            </AvatarFallback>
+                                        </Avatar>
+                                        <span>{record.memberName}</span>
+                                    </div>
+                                </TableCell>
+                                <TableCell>{record.projectName}</TableCell>
+                                <TableCell>{record.furnitureName}</TableCell>
+                                <TableCell>{format(parseISO(record.startedAt), 'dd/MM/yy HH:mm')}</TableCell>
+                                <TableCell>{format(parseISO(record.completedAt), 'dd/MM/yy HH:mm')}</TableCell>
+                                <TableCell className="text-right font-medium">{record.duration}</TableCell>
+                              </TableRow>
+                            )) : (
+                                <TableRow>
+                                    <TableCell colSpan={6} className="h-24 text-center">
+                                        Nenhum móvel com pré-montagem concluída para o filtro selecionado.
+                                    </TableCell>
+                                </TableRow>
+                            )}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </CardContent>
+                  </CollapsibleContent>
+                </Card>
+              </Collapsible>
+
 
               <Collapsible
                 open={isPendenciesOpen}
