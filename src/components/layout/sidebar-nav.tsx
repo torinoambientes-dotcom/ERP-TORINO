@@ -2,7 +2,7 @@
 import { useState, useContext, useMemo } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BarChart3, LayoutGrid, PlusCircle, Users, Boxes, LogOut, ShoppingCart, User } from 'lucide-react';
+import { BarChart3, LayoutGrid, PlusCircle, Users, Boxes, LogOut, ShoppingCart, User, X } from 'lucide-react';
 import {
   SidebarHeader,
   SidebarContent,
@@ -41,6 +41,12 @@ const menuItems = [
   { href: '/team', label: 'Equipe', icon: Users, adminOnly: true },
   { href: '/stock', label: 'Estoque', icon: Boxes, adminOnly: false },
 ];
+
+const defaultColors = [
+  '#3b82f6', '#16a34a', '#f97316', '#8b5cf6',
+  '#ef4444', '#eab308', '#ec4899', '#14b8a6',
+];
+
 
 export function SidebarNav() {
   const pathname = usePathname();
@@ -106,13 +112,20 @@ export function SidebarNav() {
     }
   };
   
-  const handleAvatarUpdate = (imageUrl: string) => {
+  const handleColorUpdate = (color: string) => {
     if (!loggedInMember) return;
-
-    updateTeamMember({ ...loggedInMember, avatarUrl: imageUrl });
+    updateTeamMember({ ...loggedInMember, color });
     toast({
-      title: 'Avatar atualizado!',
-      description: 'Sua nova foto de perfil foi salva.',
+      title: 'Cor do avatar atualizada!',
+    });
+  };
+  
+  const handleRemoveAvatar = () => {
+    if (!loggedInMember) return;
+    updateTeamMember({ ...loggedInMember, avatarUrl: '' });
+    toast({
+      title: 'Foto de perfil removida!',
+      description: 'Seu avatar agora exibirá suas iniciais.',
     });
     setAvatarPopoverOpen(false);
   };
@@ -180,25 +193,37 @@ export function SidebarNav() {
                 <PopoverContent className="w-80">
                   <div className="grid gap-4">
                     <div className="space-y-2">
-                      <h4 className="font-medium leading-none">Alterar Avatar</h4>
+                      <h4 className="font-medium leading-none">Personalizar Avatar</h4>
                       <p className="text-sm text-muted-foreground">
-                        Escolha um avatar da biblioteca.
+                        Escolha uma cor de fundo para o seu avatar.
                       </p>
                     </div>
-                    <div className="grid grid-cols-4 gap-2">
-                      {PlaceHolderImages.map((image) => (
-                        <button
-                          key={image.id}
-                          onClick={() => handleAvatarUpdate(image.imageUrl)}
-                          className="rounded-full overflow-hidden border-2 hover:border-primary focus:border-primary focus:outline-none transition-all"
-                        >
-                          <Avatar className="h-16 w-16">
-                            <AvatarImage src={image.imageUrl} alt={image.description} />
-                            <AvatarFallback>{image.id}</AvatarFallback>
-                          </Avatar>
-                        </button>
-                      ))}
+                    <div className="flex flex-wrap gap-2">
+                        {defaultColors.map((color) => (
+                          <button
+                            type="button"
+                            key={color}
+                            onClick={() => handleColorUpdate(color)}
+                            className="h-8 w-8 rounded-full border-2 transition-all"
+                            style={{
+                              backgroundColor: color,
+                              borderColor:
+                                loggedInMember.color === color
+                                  ? 'hsl(var(--primary))'
+                                  : 'transparent',
+                            }}
+                          />
+                        ))}
                     </div>
+                    {loggedInMember.avatarUrl && (
+                        <>
+                            <Separator />
+                            <Button variant="outline" size="sm" onClick={handleRemoveAvatar}>
+                                <X className="mr-2 h-4 w-4" />
+                                Remover Foto
+                            </Button>
+                        </>
+                    )}
                   </div>
                 </PopoverContent>
               </Popover>
