@@ -28,6 +28,7 @@ import { Label } from '../ui/label';
 import { Input } from '../ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { PlaceHolderImages, type ImagePlaceholder } from '@/lib/placeholder-images';
+import { Separator } from '../ui/separator';
 
 
 interface LowStockInfo extends StockItem {
