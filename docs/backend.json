@@ -89,6 +89,11 @@
           "type": "string",
           "format": "date-time",
           "description": "Timestamp when the stage was completed."
+        },
+        "scheduledFor": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The date the task is scheduled to be worked on."
         }
       },
       "required": ["status"]

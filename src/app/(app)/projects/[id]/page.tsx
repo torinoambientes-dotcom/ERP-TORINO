@@ -2,7 +2,7 @@
 import { useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import { notFound, useParams } from 'next/navigation';
-import { ChevronLeft, MessageSquare, Package, ListTodo } from 'lucide-react';
+import { ChevronLeft, MessageSquare, Package, ListTodo, CalendarIcon } from 'lucide-react';
 import {
   Accordion,
   AccordionContent,
@@ -28,6 +28,9 @@ import { cn, getInitials } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ProfileDoorCreatorModal } from '@/components/modals/profile-door-creator-modal';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { format } from 'date-fns';
 
 type StageKey = 'measurement' | 'cutting' | 'purchase' | 'assembly';
 const stages: { key: StageKey; label: string }[] = [
@@ -68,8 +71,8 @@ export default function ProjectDetailsPage() {
     envId: string,
     furId: string,
     stage: StageKey,
-    key: 'status' | 'responsibleId',
-    value: string
+    key: 'status' | 'responsibleId' | 'scheduledFor',
+    value: string | Date | undefined
   ) => {
     setProject(currentProject => {
       if (!currentProject) return null;
@@ -89,6 +92,8 @@ export default function ProjectDetailsPage() {
             } else {
               fur[stage].responsibleId = value;
             }
+          } else if (key === 'scheduledFor') {
+            fur[stage].scheduledFor = value instanceof Date ? value.toISOString() : value;
           } else if (key === 'status') {
              const previousStatus = fur[stage].status;
              const newStatus = value as StageStatus;
@@ -277,47 +282,70 @@ export default function ProjectDetailsPage() {
                               </SelectContent>
                             </Select>
                             
-                            <Select
-                              value={stageData.responsibleId || "unassigned"}
-                              onValueChange={(value) =>
-                                handleStageChange(env.id, fur.id, stage.key, 'responsibleId', value)
-                              }
-                            >
-                              <SelectTrigger>
-                                  <div className="flex items-center gap-2 truncate">
-                                    {responsibleMember ? (
-                                      <>
-                                        <Avatar className="h-6 w-6">
-                                            {responsibleMember.avatarUrl && <AvatarImage src={responsibleMember.avatarUrl} alt={responsibleMember.name} />}
-                                            <AvatarFallback style={{ backgroundColor: responsibleMember.color }} className='text-xs'>
-                                            {getInitials(responsibleMember.name)}
-                                            </AvatarFallback>
-                                        </Avatar>
-                                        <span className='truncate'>{responsibleMember.name}</span>
-                                      </>
-                                    ) : (
-                                      <span className='text-muted-foreground'>Não atribuído</span>
-                                    )}
-                                  </div>
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="unassigned">Não atribuído</SelectItem>
-                                <Separator />
-                                {responsibleList?.map((member) => (
-                                  <SelectItem key={member.id} value={member.id}>
-                                    <div className="flex items-center gap-2">
-                                       <Avatar className="h-6 w-6">
-                                            {member.avatarUrl && <AvatarImage src={member.avatarUrl} alt={member.name} />}
-                                            <AvatarFallback style={{ backgroundColor: member.color }} className='text-xs'>
-                                            {getInitials(member.name)}
-                                            </AvatarFallback>
-                                        </Avatar>
-                                      <span>{member.name}</span>
+                            <div className="flex items-center gap-1">
+                              <Select
+                                value={stageData.responsibleId || "unassigned"}
+                                onValueChange={(value) =>
+                                  handleStageChange(env.id, fur.id, stage.key, 'responsibleId', value)
+                                }
+                              >
+                                <SelectTrigger>
+                                    <div className="flex items-center gap-2 truncate">
+                                      {responsibleMember ? (
+                                        <>
+                                          <Avatar className="h-6 w-6">
+                                              {responsibleMember.avatarUrl && <AvatarImage src={responsibleMember.avatarUrl} alt={responsibleMember.name} />}
+                                              <AvatarFallback style={{ backgroundColor: responsibleMember.color }} className='text-xs'>
+                                              {getInitials(responsibleMember.name)}
+                                              </AvatarFallback>
+                                          </Avatar>
+                                          <span className='truncate'>{responsibleMember.name}</span>
+                                        </>
+                                      ) : (
+                                        <span className='text-muted-foreground'>Não atribuído</span>
+                                      )}
                                     </div>
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="unassigned">Não atribuído</SelectItem>
+                                  <Separator />
+                                  {responsibleList?.map((member) => (
+                                    <SelectItem key={member.id} value={member.id}>
+                                      <div className="flex items-center gap-2">
+                                        <Avatar className="h-6 w-6">
+                                              {member.avatarUrl && <AvatarImage src={member.avatarUrl} alt={member.name} />}
+                                              <AvatarFallback style={{ backgroundColor: member.color }} className='text-xs'>
+                                              {getInitials(member.name)}
+                                              </AvatarFallback>
+                                          </Avatar>
+                                        <span>{member.name}</span>
+                                      </div>
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <Button variant={"outline"} size="icon" className={cn("w-10 h-10", !stageData.scheduledFor && "text-muted-foreground")}>
+                                      <CalendarIcon className="h-4 w-4" />
+                                  </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0">
+                                  <Calendar
+                                    mode="single"
+                                    selected={stageData.scheduledFor ? new Date(stageData.scheduledFor) : undefined}
+                                    onSelect={(date) => handleStageChange(env.id, fur.id, stage.key, 'scheduledFor', date)}
+                                    initialFocus
+                                  />
+                                </PopoverContent>
+                              </Popover>
+                            </div>
+                            {stageData.scheduledFor && (
+                              <p className="text-xs text-muted-foreground text-center">
+                                Agendado para: {format(new Date(stageData.scheduledFor), "dd/MM/yyyy")}
+                              </p>
+                            )}
                           </div>
                         )})}
                       </div>

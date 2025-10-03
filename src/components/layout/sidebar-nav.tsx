@@ -2,7 +2,7 @@
 import { useState, useContext, useMemo } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BarChart3, LayoutGrid, PlusCircle, Users, Boxes, LogOut, ShoppingCart, User, X } from 'lucide-react';
+import { BarChart3, LayoutGrid, PlusCircle, Users, Boxes, LogOut, ShoppingCart, User, X, Calendar } from 'lucide-react';
 import {
   SidebarHeader,
   SidebarContent,
@@ -37,6 +37,7 @@ interface LowStockInfo extends StockItem {
 
 const menuItems = [
   { href: '/', label: 'Projetos', icon: LayoutGrid, adminOnly: false },
+  { href: '/calendar', label: 'Calendário', icon: Calendar, adminOnly: false },
   { href: '/purchases', label: 'Compras', icon: ShoppingCart, adminOnly: false },
   { href: '/reports', label: 'Relatórios', icon: BarChart3, adminOnly: false },
   { href: '/team', label: 'Equipe', icon: Users, adminOnly: true },
@@ -132,7 +133,7 @@ export function SidebarNav() {
   };
   
   const visibleMenuItems = menuItems.filter(item => !item.adminOnly || isAdmin).sort((a, b) => {
-    const order = ['Projetos', 'Compras', 'Estoque', 'Relatórios', 'Equipe'];
+    const order = ['Projetos', 'Calendário', 'Compras', 'Estoque', 'Relatórios', 'Equipe'];
     return order.indexOf(a.label) - order.indexOf(b.label);
   });
 
