@@ -25,6 +25,7 @@ interface AppContextType {
   updateTeamMember: (updatedMember: TeamMember) => void;
   deleteTeamMember: (memberId: string) => void;
   addAppointment: (appointmentData: Omit<Appointment, 'id'>) => void;
+  updateAppointmentDate: (appointmentId: string, newDate: Date) => void;
   completeProjectStages: (projectId: string) => void;
   addStockItem: (itemData: Omit<StockItem, 'id'>) => void;
   updateStockItem: (updatedItem: StockItem) => void;
@@ -57,6 +58,7 @@ export const AppContext = createContext<AppContextType>({
   updateTeamMember: () => {},
   deleteTeamMember: () => {},
   addAppointment: () => {},
+  updateAppointmentDate: () => {},
   completeProjectStages: () => {},
   addStockItem: () => {},
   updateStockItem: () => {},
@@ -356,6 +358,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const newAppointment = { ...appointmentData, id: appointmentId };
         const appointmentRef = doc(firestore, 'appointments', appointmentId);
         setDocumentNonBlocking(appointmentRef, newAppointment, { merge: false });
+    }, [firestore]);
+    
+    const updateAppointmentDate = useCallback((appointmentId: string, newDate: Date) => {
+        if (!firestore) return;
+        const appointmentRef = doc(firestore, 'appointments', appointmentId);
+        updateDocumentNonBlocking(appointmentRef, { date: newDate.toISOString() });
     }, [firestore]);
 
   const completeProjectStages = useCallback((projectId: string) => {
@@ -718,6 +726,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     updateTeamMember,
     deleteTeamMember,
     addAppointment,
+    updateAppointmentDate,
     completeProjectStages,
     addStockItem,
     updateStockItem,
@@ -753,6 +762,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     updateTeamMember, 
     deleteTeamMember,
     addAppointment,
+    updateAppointmentDate,
     completeProjectStages,
     addStockItem,
     updateStockItem,

@@ -1,5 +1,5 @@
 'use client';
-import { useMemo, useState, useContext } from 'react';
+import { useMemo, useState, useContext, useCallback } from 'react';
 import {
   Card,
   CardContent,
@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/card';
 import { Calendar } from '@/components/ui/calendar';
 import { AppContext } from '@/context/app-context';
-import type { ProductionStage, TeamMember, Appointment } from '@/lib/types';
+import type { ProductionStage, TeamMember, Appointment, StageStatus } from '@/lib/types';
 import { PageHeader } from '@/components/layout/page-header';
 import { eachDayOfInterval, endOfMonth, format, isSameDay, startOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -22,22 +22,34 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { PlusCircle } from 'lucide-react';
 import { NewAppointmentModal } from '@/components/modals/new-appointment-modal';
+import { AppointmentDetailsModal } from '@/components/modals/appointment-details-modal';
 
-interface CalendarTask {
-  id: string;
+
+export interface CalendarTask {
+  id: string; // Composite ID like `projectId-envId-furId-stageKey` or `appointmentId-memberId`
   type: 'project' | 'appointment';
   title: string;
   subtitle?: string;
   link?: string;
   responsible: TeamMember;
   date: Date;
+  // Raw data for updates
+  rawData: {
+    projectId?: string;
+    envId?: string;
+    furId?: string;
+    stageKey?: keyof typeof STAGE_STATUSES;
+    appointmentId?: string;
+  }
 }
 
 export default function CalendarPage() {
-  const { projects, teamMembers, appointments, isLoading } = useContext(AppContext);
+  const { projects, teamMembers, appointments, updateProject, updateAppointmentDate, isLoading } = useContext(AppContext);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedMemberId, setSelectedMemberId] = useState('all');
   const [isAppointmentModalOpen, setAppointmentModalOpen] = useState(false);
+  const [isDetailsModalOpen, setDetailsModalOpen] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<CalendarTask | null>(null);
 
   const memberMap = useMemo(() => {
     const map = new Map<string, TeamMember>();
@@ -72,6 +84,7 @@ export default function CalendarPage() {
                   link: `/projects/${project.id}`,
                   responsible,
                   date,
+                  rawData: { projectId: project.id, envId: env.id, furId: fur.id, stageKey },
                 });
               }
             }
@@ -98,6 +111,7 @@ export default function CalendarPage() {
                     subtitle: appointment.description,
                     responsible,
                     date,
+                    rawData: { appointmentId: appointment.id },
                 });
             }
         });
@@ -106,6 +120,33 @@ export default function CalendarPage() {
 
     return tasks;
   }, [projects, appointments, isLoading, memberMap, selectedMemberId]);
+
+  const handleTaskClick = (task: CalendarTask) => {
+    setSelectedTask(task);
+    setDetailsModalOpen(true);
+  };
+  
+  const handleReschedule = (task: CalendarTask, newDate: Date) => {
+    if (task.type === 'project' && task.rawData.projectId) {
+        const project = projects.find(p => p.id === task.rawData.projectId);
+        if (!project) return;
+        
+        const newProject = JSON.parse(JSON.stringify(project));
+        const env = newProject.environments.find((e: any) => e.id === task.rawData.envId);
+        if (env) {
+            const fur = env.furniture.find((f: any) => f.id === task.rawData.furId);
+            if (fur && task.rawData.stageKey) {
+                if (!fur[task.rawData.stageKey]) {
+                    fur[task.rawData.stageKey] = { status: 'todo' as StageStatus };
+                }
+                fur[task.rawData.stageKey].scheduledFor = newDate.toISOString();
+            }
+        }
+        updateProject(newProject, project);
+    } else if (task.type === 'appointment' && task.rawData.appointmentId) {
+        updateAppointmentDate(task.rawData.appointmentId, newDate);
+    }
+  };
 
   const DayWithTasks = ({ date }: { date: Date }) => {
     const dayKey = format(date, 'yyyy-MM-dd');
@@ -139,7 +180,7 @@ export default function CalendarPage() {
                   <TaskItem task={task} />
                  </Link>
               ) : (
-                <div className="group block">
+                <div className="group block cursor-pointer" onClick={() => handleTaskClick(task)}>
                   <TaskItem task={task} />
                 </div>
               )}
@@ -230,6 +271,14 @@ export default function CalendarPage() {
         isOpen={isAppointmentModalOpen}
         onClose={() => setAppointmentModalOpen(false)}
       />
+      {selectedTask && (
+        <AppointmentDetailsModal
+            isOpen={isDetailsModalOpen}
+            onClose={() => setDetailsModalOpen(false)}
+            task={selectedTask}
+            onReschedule={handleReschedule}
+        />
+      )}
     </>
   );
 }
