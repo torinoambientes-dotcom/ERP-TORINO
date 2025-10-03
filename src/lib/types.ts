@@ -122,7 +122,7 @@ export interface Appointment {
   title: string;
   description: string;
   date: string; // ISO string
-  memberId: string;
+  memberIds: string[];
 }
 
 

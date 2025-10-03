@@ -82,23 +82,25 @@ export default function CalendarPage() {
 
     // Process general appointments
     appointments.forEach(appointment => {
-      if (appointment.date && appointment.memberId) {
-        const responsible = memberMap.get(appointment.memberId);
-        if (responsible && (selectedMemberId === 'all' || selectedMemberId === responsible.id)) {
-          const date = new Date(appointment.date);
-          const dayKey = format(date, 'yyyy-MM-dd');
-          if (!tasks[dayKey]) {
-            tasks[dayKey] = [];
-          }
-          tasks[dayKey].push({
-            id: appointment.id,
-            type: 'appointment',
-            title: appointment.title,
-            subtitle: appointment.description,
-            responsible,
-            date,
-          });
-        }
+      if (appointment.date && appointment.memberIds) {
+        appointment.memberIds.forEach(memberId => {
+            const responsible = memberMap.get(memberId);
+            if (responsible && (selectedMemberId === 'all' || selectedMemberId === responsible.id)) {
+                const date = new Date(appointment.date);
+                const dayKey = format(date, 'yyyy-MM-dd');
+                if (!tasks[dayKey]) {
+                    tasks[dayKey] = [];
+                }
+                tasks[dayKey].push({
+                    id: `${appointment.id}-${memberId}`, // Unique ID for each member in the appointment
+                    type: 'appointment',
+                    title: appointment.title,
+                    subtitle: appointment.description,
+                    responsible,
+                    date,
+                });
+            }
+        });
       }
     });
 

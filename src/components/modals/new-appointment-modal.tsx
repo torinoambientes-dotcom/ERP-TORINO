@@ -25,11 +25,18 @@ import { Input } from '@/components/ui/input';
 import { AppContext } from '@/context/app-context';
 import { useToast } from '@/hooks/use-toast';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
-import { CalendarIcon } from 'lucide-react';
+import { CalendarIcon, Check } from 'lucide-react';
 import { Calendar } from '../ui/calendar';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuCheckboxItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator
+} from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { getInitials } from '@/lib/utils';
 import { Textarea } from '../ui/textarea';
@@ -38,7 +45,7 @@ const appointmentSchema = z.object({
   title: z.string().min(3, 'O título deve ter pelo menos 3 caracteres.'),
   description: z.string().optional(),
   date: z.date({ required_error: 'A data é obrigatória.' }),
-  memberId: z.string({ required_error: 'Selecione um membro da equipe.' }),
+  memberIds: z.array(z.string()).min(1, 'Selecione pelo menos um membro da equipe.'),
 });
 
 type AppointmentFormValues = z.infer<typeof appointmentSchema>;
@@ -57,6 +64,7 @@ export function NewAppointmentModal({ isOpen, onClose }: NewAppointmentModalProp
     defaultValues: {
       title: '',
       description: '',
+      memberIds: [],
     },
   });
 
@@ -73,13 +81,15 @@ export function NewAppointmentModal({ isOpen, onClose }: NewAppointmentModalProp
     onClose();
   };
 
+  const selectedMemberIds = form.watch('memberIds') || [];
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="font-headline">Novo Compromisso</DialogTitle>
           <DialogDescription>
-            Agende uma tarefa ou evento para um membro da equipe.
+            Agende uma tarefa ou evento para um ou mais membros da equipe.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -147,21 +157,36 @@ export function NewAppointmentModal({ isOpen, onClose }: NewAppointmentModalProp
             />
             <FormField
               control={form.control}
-              name="memberId"
+              name="memberIds"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Membro Responsável</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione um membro" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {teamMembers.map(member => (
-                        <SelectItem key={member.id} value={member.id}>
+                  <FormLabel>Membros Responsáveis</FormLabel>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <FormControl>
+                        <Button variant="outline" className="w-full justify-start text-left font-normal">
+                          {selectedMemberIds.length > 0
+                            ? `${selectedMemberIds.length} membro(s) selecionado(s)`
+                            : "Selecione os membros"}
+                        </Button>
+                      </FormControl>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="w-64" align="start">
+                      <DropdownMenuLabel>Membros da Equipe</DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      {teamMembers.map((member) => (
+                        <DropdownMenuCheckboxItem
+                          key={member.id}
+                          checked={selectedMemberIds.includes(member.id)}
+                          onCheckedChange={(checked) => {
+                            const newMemberIds = checked
+                              ? [...selectedMemberIds, member.id]
+                              : selectedMemberIds.filter((id) => id !== member.id);
+                            field.onChange(newMemberIds);
+                          }}
+                        >
                           <div className="flex items-center gap-2">
-                            <Avatar className="h-6 w-6">
+                             <Avatar className="h-6 w-6">
                               {member.avatarUrl && <AvatarImage src={member.avatarUrl} alt={member.name} />}
                               <AvatarFallback style={{ backgroundColor: member.color }} className="text-xs">
                                 {getInitials(member.name)}
@@ -169,10 +194,10 @@ export function NewAppointmentModal({ isOpen, onClose }: NewAppointmentModalProp
                             </Avatar>
                             <span>{member.name}</span>
                           </div>
-                        </SelectItem>
+                        </DropdownMenuCheckboxItem>
                       ))}
-                    </SelectContent>
-                  </Select>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                   <FormMessage />
                 </FormItem>
               )}

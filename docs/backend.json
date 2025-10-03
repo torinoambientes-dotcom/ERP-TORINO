@@ -187,9 +187,13 @@
         "title": { "type": "string" },
         "description": { "type": "string" },
         "date": { "type": "string", "format": "date-time" },
-        "memberId": { "type": "string" }
+        "memberIds": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "A list of team member IDs assigned to this appointment."
+        }
       },
-      "required": ["id", "title", "date", "memberId"]
+      "required": ["id", "title", "date", "memberIds"]
     },
     "StockItem": {
       "title": "StockItem",
