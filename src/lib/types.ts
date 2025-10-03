@@ -117,6 +117,15 @@ export interface Project {
   completedAt?: string; // ISO date string
 }
 
+export interface Appointment {
+  id: string;
+  title: string;
+  description: string;
+  date: string; // ISO string
+  memberId: string;
+}
+
+
 export interface StockCategory {
   id: string;
   name: string;

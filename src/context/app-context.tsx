@@ -3,7 +3,7 @@
 import { createContext, type ReactNode, useCallback, useMemo, useEffect, useState } from 'react';
 import { collection, doc, serverTimestamp, deleteField, writeBatch, getDocs, runTransaction } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import type { Project, TeamMember, StageStatus, StockItem, StockMovement, StockCategory, Furniture, Environment, MaterialItem, StockReservation, ProductionStage } from '@/lib/types';
+import type { Project, TeamMember, StageStatus, StockItem, StockMovement, StockCategory, Furniture, Environment, MaterialItem, StockReservation, ProductionStage, Appointment } from '@/lib/types';
 import { generateId } from '@/lib/utils';
 import { setDocumentNonBlocking, deleteDocumentNonBlocking, addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
@@ -13,6 +13,7 @@ import { useAuth } from '@/firebase';
 interface AppContextType {
   projects: Project[];
   teamMembers: TeamMember[];
+  appointments: Appointment[];
   stockItems: StockItem[];
   stockCategories: StockCategory[];
   stockMovements: StockMovement[];
@@ -23,6 +24,7 @@ interface AppContextType {
   addTeamMember: (memberData: Omit<TeamMember, 'id' | 'userId'> & { password?: string, email: string }) => Promise<void>;
   updateTeamMember: (updatedMember: TeamMember) => void;
   deleteTeamMember: (memberId: string) => void;
+  addAppointment: (appointmentData: Omit<Appointment, 'id'>) => void;
   completeProjectStages: (projectId: string) => void;
   addStockItem: (itemData: Omit<StockItem, 'id'>) => void;
   updateStockItem: (updatedItem: StockItem) => void;
@@ -43,6 +45,7 @@ interface AppContextType {
 export const AppContext = createContext<AppContextType>({
   projects: [],
   teamMembers: [],
+  appointments: [],
   stockItems: [],
   stockCategories: [],
   stockMovements: [],
@@ -53,6 +56,7 @@ export const AppContext = createContext<AppContextType>({
   addTeamMember: async () => {},
   updateTeamMember: () => {},
   deleteTeamMember: () => {},
+  addAppointment: () => {},
   completeProjectStages: () => {},
   addStockItem: () => {},
   updateStockItem: () => {},
@@ -113,12 +117,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const projectsQuery = useMemoFirebase(() => collection(firestore, 'projects'), [firestore]);
   const teamMembersQuery = useMemoFirebase(() => collection(firestore, 'team_members'), [firestore]);
+  const appointmentsQuery = useMemoFirebase(() => collection(firestore, 'appointments'), [firestore]);
   const stockItemsQuery = useMemoFirebase(() => collection(firestore, 'stock_items'), [firestore]);
   const stockCategoriesQuery = useMemoFirebase(() => collection(firestore, 'stock_categories'), [firestore]);
   const stockMovementsQuery = useMemoFirebase(() => collection(firestore, 'stock_movements'), [firestore]);
 
   const { data: projects, isLoading: isLoadingProjects } = useCollection<Project>(projectsQuery);
   const { data: teamMembers, isLoading: isLoadingTeamMembers } = useCollection<TeamMember>(teamMembersQuery);
+  const { data: appointments, isLoading: isLoadingAppointments } = useCollection<Appointment>(appointmentsQuery);
   const { data: stockItems, isLoading: isLoadingStockItems } = useCollection<StockItem>(stockItemsQuery);
   const { data: stockCategoriesData, isLoading: isLoadingStockCategories } = useCollection<StockCategory>(stockCategoriesQuery);
   const { data: stockMovements, isLoading: isLoadingMovements } = useCollection<StockMovement>(stockMovementsQuery);
@@ -344,6 +350,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     deleteDocumentNonBlocking(memberRef);
   }, [firestore]);
   
+    const addAppointment = useCallback((appointmentData: Omit<Appointment, 'id'>) => {
+        if (!firestore) return;
+        const appointmentId = generateId('apt');
+        const newAppointment = { ...appointmentData, id: appointmentId };
+        const appointmentRef = doc(firestore, 'appointments', appointmentId);
+        setDocumentNonBlocking(appointmentRef, newAppointment, { merge: false });
+    }, [firestore]);
+
   const completeProjectStages = useCallback((projectId: string) => {
     if (!projects) return;
 
@@ -692,16 +706,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const value = useMemo(() => ({
     projects: projects || [],
     teamMembers: teamMembers || [],
+    appointments: appointments || [],
     stockItems: stockItems || [],
     stockCategories: stockCategories,
     stockMovements: stockMovements || [],
-    isLoading: isLoadingProjects || isLoadingTeamMembers || isLoadingStockItems || isLoadingStockCategories || isLoadingMovements,
+    isLoading: isLoadingProjects || isLoadingTeamMembers || isLoadingAppointments || isLoadingStockItems || isLoadingStockCategories || isLoadingMovements,
     addProject,
     updateProject,
     deleteProject,
     addTeamMember,
     updateTeamMember,
     deleteTeamMember,
+    addAppointment,
     completeProjectStages,
     addStockItem,
     updateStockItem,
@@ -720,11 +736,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }), [
     projects, 
     teamMembers, 
+    appointments,
     stockItems,
     stockCategories,
     stockMovements,
     isLoadingProjects, 
     isLoadingTeamMembers, 
+    isLoadingAppointments,
     isLoadingStockItems,
     isLoadingStockCategories,
     isLoadingMovements,
@@ -733,7 +751,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     deleteProject, 
     addTeamMember, 
     updateTeamMember, 
-    deleteTeamMember, 
+    deleteTeamMember,
+    addAppointment,
     completeProjectStages,
     addStockItem,
     updateStockItem,

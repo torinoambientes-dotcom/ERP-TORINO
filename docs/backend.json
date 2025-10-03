@@ -178,6 +178,19 @@
       },
       "required": ["id", "name", "email", "color", "role"]
     },
+    "Appointment": {
+      "title": "Appointment",
+      "type": "object",
+      "description": "Represents a generic calendar event or task not tied to a specific project stage.",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "date": { "type": "string", "format": "date-time" },
+        "memberId": { "type": "string" }
+      },
+      "required": ["id", "title", "date", "memberId"]
+    },
     "StockItem": {
       "title": "StockItem",
       "type": "object",
@@ -236,6 +249,10 @@
     "/team_members/{teamMemberId}": {
       "schema": { "$ref": "#/entities/TeamMember" },
       "description": "Stores information about team members."
+    },
+    "/appointments/{appointmentId}": {
+      "schema": { "$ref": "#/entities/Appointment" },
+      "description": "Stores general appointments and tasks for the calendar."
     },
     "/stock_items/{stockItemId}": {
       "schema": { "$ref": "#/entities/StockItem" },
