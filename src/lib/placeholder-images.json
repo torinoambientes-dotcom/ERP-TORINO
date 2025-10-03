@@ -2,27 +2,27 @@
   "placeholderImages": [
     {
       "id": "user-1",
-      "description": "Team member avatar 1",
-      "imageUrl": "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw2fHxwZXJzb24lMjBwb3J0cmFpdHxlbnwwfHx8fDE3NTg2OTE2MTR8MA&ixlib=rb-4.1.0&q=80&w=1080",
-      "imageHint": "person portrait"
+      "description": "Abstract avatar 1",
+      "imageUrl": "https://images.unsplash.com/photo-1709651669999-57741c9bf085?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMHx8YWJzdHJhY3QlMjBhdmF0YXJ8ZW58MHx8fHwxNzU5NDkxMDI3fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "abstract avatar"
     },
     {
       "id": "user-2",
-      "description": "Team member avatar 2",
-      "imageUrl": "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw2fHxwZXJzb24lMjBwb3J0cmFpdHxlbnwwfHx8fDE3NTg2OTE2MTR8MA&ixlib=rb-4.1.0&q=80&w=1080",
-      "imageHint": "person portrait"
+      "description": "Abstract avatar 2",
+      "imageUrl": "https://images.unsplash.com/photo-1571249104671-f5537fb3e137?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw5fHxhYnN0cmFjdCUyMGF2YXRhcnxlbnwwfHx8fDE3NTk0OTEwMjd8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "abstract avatar"
     },
     {
       "id": "user-3",
-      "description": "Team member avatar 3",
-      "imageUrl": "https://images.unsplash.com/photo-1540569014015-19a7be504e3a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxwZXJzb24lMjBwb3J0cmFpdHxlbnwwfHx8fDE3NTg2OTE2MTR8MA&ixlib=rb-4.1.0&q=80&w=1080",
-      "imageHint": "person portrait"
+      "description": "Abstract avatar 3",
+      "imageUrl": "https://images.unsplash.com/photo-1755614220512-f9ba0684b785?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwzfHxhYnN0cmFjdCUyMGF2YXRhcnxlbnwwfHx8fDE3NTk0OTEwMjd8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "abstract avatar"
     },
     {
       "id": "user-4",
-      "description": "Team member avatar 4",
-      "imageUrl": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHxwZXJzb24lMjBwb3J0cmFpdHxlbnwwfHx8fDE3NTg2OTE2MTR8MA&ixlib=rb-4.1.0&q=80&w=1080",
-      "imageHint": "person portrait"
+      "description": "Abstract avatar 4",
+      "imageUrl": "https://images.unsplash.com/photo-1707912079134-becf5a3598e2?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHxhYnN0cmFjdCUyMGF2YXRhcnxlbnwwfHx8fDE3NTk0OTEwMjd8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "abstract avatar"
     }
   ]
 }
