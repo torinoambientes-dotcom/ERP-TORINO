@@ -27,6 +27,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Label } from '../ui/label';
 import { Input } from '../ui/input';
 import { useToast } from '@/hooks/use-toast';
+import { PlaceHolderImages, type ImagePlaceholder } from '@/lib/placeholder-images';
 
 
 interface LowStockInfo extends StockItem {
@@ -50,7 +51,6 @@ export function SidebarNav() {
   const { teamMembers, projects, stockItems, updateTeamMember } = useContext(AppContext);
   const { toast } = useToast();
   
-  const [newAvatarUrl, setNewAvatarUrl] = useState('');
   const [isAvatarPopoverOpen, setAvatarPopoverOpen] = useState(false);
 
   const loggedInMember = useMemo(() => {
@@ -106,28 +106,15 @@ export function SidebarNav() {
     }
   };
   
-  const handleAvatarUpdate = () => {
-    if (!loggedInMember || !newAvatarUrl) return;
+  const handleAvatarUpdate = (imageUrl: string) => {
+    if (!loggedInMember) return;
 
-    // A simple URL validation
-    try {
-      new URL(newAvatarUrl);
-    } catch (_) {
-      toast({
-        variant: 'destructive',
-        title: 'URL Inválida',
-        description: 'Por favor, insira uma URL de imagem válida.',
-      });
-      return;
-    }
-
-    updateTeamMember({ ...loggedInMember, avatarUrl: newAvatarUrl });
+    updateTeamMember({ ...loggedInMember, avatarUrl: imageUrl });
     toast({
       title: 'Avatar atualizado!',
       description: 'Sua nova foto de perfil foi salva.',
     });
     setAvatarPopoverOpen(false);
-    setNewAvatarUrl('');
   };
   
   const visibleMenuItems = menuItems.filter(item => !item.adminOnly || isAdmin).sort((a, b) => {
@@ -195,22 +182,23 @@ export function SidebarNav() {
                     <div className="space-y-2">
                       <h4 className="font-medium leading-none">Alterar Avatar</h4>
                       <p className="text-sm text-muted-foreground">
-                        Cole a URL de uma nova imagem de perfil.
+                        Escolha um avatar da biblioteca.
                       </p>
                     </div>
-                    <div className="grid gap-2">
-                      <div className="grid grid-cols-3 items-center gap-4">
-                        <Label htmlFor="avatar-url">URL</Label>
-                        <Input
-                          id="avatar-url"
-                          value={newAvatarUrl}
-                          onChange={(e) => setNewAvatarUrl(e.target.value)}
-                          className="col-span-2 h-8"
-                          placeholder="https://exemplo.com/imagem.png"
-                        />
-                      </div>
+                    <div className="grid grid-cols-4 gap-2">
+                      {PlaceHolderImages.map((image) => (
+                        <button
+                          key={image.id}
+                          onClick={() => handleAvatarUpdate(image.imageUrl)}
+                          className="rounded-full overflow-hidden border-2 hover:border-primary focus:border-primary focus:outline-none transition-all"
+                        >
+                          <Avatar className="h-16 w-16">
+                            <AvatarImage src={image.imageUrl} alt={image.description} />
+                            <AvatarFallback>{image.id}</AvatarFallback>
+                          </Avatar>
+                        </button>
+                      ))}
                     </div>
-                     <Button onClick={handleAvatarUpdate}>Salvar</Button>
                   </div>
                 </PopoverContent>
               </Popover>
