@@ -2,7 +2,7 @@
 import { useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import { notFound, useParams } from 'next/navigation';
-import { ChevronLeft, MessageSquare, Package } from 'lucide-react';
+import { ChevronLeft, MessageSquare, Package, ListTodo } from 'lucide-react';
 import {
   Accordion,
   AccordionContent,
@@ -21,7 +21,8 @@ import { PageHeader } from '@/components/layout/page-header';
 import { AppContext } from '@/context/app-context';
 import type { Project, Furniture, StageStatus, TeamMember, ProductionStage } from '@/lib/types';
 import { STAGE_STATUSES } from '@/lib/types';
-import { FurnitureChatModal } from '@/components/modals/furniture-chat-modal';
+import { FurniturePendenciesModal } from '@/components/modals/furniture-pendencies-modal';
+import { FurnitureConversationModal } from '@/components/modals/furniture-conversation-modal';
 import { FurnitureMaterialsModal } from '@/components/modals/furniture-materials-modal';
 import { cn, getInitials } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
@@ -50,7 +51,8 @@ export default function ProjectDetailsPage() {
 
   const [project, setProject] = useState<Project | null | undefined>(undefined);
 
-  const [isChatModalOpen, setChatModalOpen] = useState(false);
+  const [isPendencyModalOpen, setPendencyModalOpen] = useState(false);
+  const [isConversationModalOpen, setConversationModalOpen] = useState(false);
   const [isMaterialsModalOpen, setMaterialsModalOpen] = useState(false);
   const [selectedFurniture, setSelectedFurniture] = useState<Furniture | null>(null);
   const [selectedEnvironmentId, setSelectedEnvironmentId] = useState<string | null>(null);
@@ -135,10 +137,16 @@ export default function ProjectDetailsPage() {
     });
   }, [selectedEnvironmentId, updateProject]);
 
-  const openChatModal = useCallback((furniture: Furniture, envId: string) => {
+  const openPendencyModal = useCallback((furniture: Furniture, envId: string) => {
     setSelectedFurniture(furniture);
     setSelectedEnvironmentId(envId);
-    setChatModalOpen(true);
+    setPendencyModalOpen(true);
+  }, []);
+
+  const openConversationModal = useCallback((furniture: Furniture, envId: string) => {
+    setSelectedFurniture(furniture);
+    setSelectedEnvironmentId(envId);
+    setConversationModalOpen(true);
   }, []);
   
   const openMaterialsModal = useCallback((furniture: Furniture, envId: string) => {
@@ -212,6 +220,7 @@ export default function ProjectDetailsPage() {
                 <div className="space-y-4">
                   {env.furniture?.map((fur) => {
                     const unresolvedPendencies = fur.pendencies?.filter(p => !p.isResolved).length || 0;
+                    const commentsCount = fur.comments?.length || 0;
                     return (
                     <div key={fur.id} className="p-4 rounded-lg border bg-card/80">
                       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
@@ -221,12 +230,21 @@ export default function ProjectDetailsPage() {
                                 <Package className="mr-2 h-4 w-4" />
                                 Materiais
                             </Button>
-                            <Button variant="outline" size="sm" onClick={() => openChatModal(fur, env.id)} className="w-full sm:w-auto relative flex-1">
-                                <MessageSquare className="mr-2 h-4 w-4" />
+                            <Button variant="outline" size="sm" onClick={() => openPendencyModal(fur, env.id)} className="w-full sm:w-auto relative flex-1">
+                                <ListTodo className="mr-2 h-4 w-4" />
                                 Pendências
                                 {unresolvedPendencies > 0 && (
                                     <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-xs font-bold text-destructive-foreground">
                                     {unresolvedPendencies}
+                                    </span>
+                                )}
+                            </Button>
+                             <Button variant="outline" size="sm" onClick={() => openConversationModal(fur, env.id)} className="w-full sm:w-auto relative flex-1">
+                                <MessageSquare className="mr-2 h-4 w-4" />
+                                Conversa
+                                {commentsCount > 0 && (
+                                    <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white">
+                                    {commentsCount}
                                     </span>
                                 )}
                             </Button>
@@ -313,9 +331,18 @@ export default function ProjectDetailsPage() {
       </div>
 
        {getFurnitureForModal() && (
-        <FurnitureChatModal
-          isOpen={isChatModalOpen}
-          onClose={() => setChatModalOpen(false)}
+        <FurniturePendenciesModal
+          isOpen={isPendencyModalOpen}
+          onClose={() => setPendencyModalOpen(false)}
+          furniture={getFurnitureForModal()!}
+          onUpdate={(updatedFurniture) => handleFurnitureUpdateInModal(updatedFurniture)}
+        />
+      )}
+
+      {getFurnitureForModal() && (
+        <FurnitureConversationModal
+          isOpen={isConversationModalOpen}
+          onClose={() => setConversationModalOpen(false)}
           furniture={getFurnitureForModal()!}
           onUpdate={(updatedFurniture) => handleFurnitureUpdateInModal(updatedFurniture)}
         />
