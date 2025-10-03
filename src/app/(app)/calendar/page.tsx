@@ -44,7 +44,7 @@ export interface CalendarTask {
 }
 
 export default function CalendarPage() {
-  const { projects, teamMembers, appointments, updateProject, updateAppointmentDate, isLoading } = useContext(AppContext);
+  const { projects, teamMembers, appointments, updateProject, updateAppointmentDate, deleteAppointment, isLoading } = useContext(AppContext);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedMemberId, setSelectedMemberId] = useState('all');
   const [isAppointmentModalOpen, setAppointmentModalOpen] = useState(false);
@@ -145,6 +145,27 @@ export default function CalendarPage() {
         updateProject(newProject, project);
     } else if (task.type === 'appointment' && task.rawData.appointmentId) {
         updateAppointmentDate(task.rawData.appointmentId, newDate);
+    }
+  };
+
+  const handleCancelTask = (task: CalendarTask) => {
+    if (task.type === 'project' && task.rawData.projectId) {
+        // "Cancel" for a project task means un-scheduling it
+        const project = projects.find(p => p.id === task.rawData.projectId);
+        if (!project) return;
+        
+        const newProject = JSON.parse(JSON.stringify(project));
+        const env = newProject.environments.find((e: any) => e.id === task.rawData.envId);
+        if (env) {
+            const fur = env.furniture.find((f: any) => f.id === task.rawData.furId);
+            if (fur && task.rawData.stageKey && fur[task.rawData.stageKey]) {
+                delete fur[task.rawData.stageKey].scheduledFor;
+            }
+        }
+        updateProject(newProject, project);
+    } else if (task.type === 'appointment' && task.rawData.appointmentId) {
+        // "Cancel" for a generic appointment means deleting it
+        deleteAppointment(task.rawData.appointmentId);
     }
   };
 
@@ -277,6 +298,7 @@ export default function CalendarPage() {
             onClose={() => setDetailsModalOpen(false)}
             task={selectedTask}
             onReschedule={handleReschedule}
+            onCancel={handleCancelTask}
         />
       )}
     </>
