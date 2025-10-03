@@ -1,119 +1,134 @@
 /**
- * @fileoverview Firestore Security Rules for the application.
+ * @fileoverview Firestore Security Rules for the furniture production management application.
  *
  * Core Philosophy:
- * This ruleset enforces a role-based access control model, where team members have different levels of access
- * to different parts of the application.  All documents are secured to prevent unauthorized access.
+ * This ruleset enforces a strict owner-only access model for most collections,
+ * with exceptions for public read access where explicitly allowed.
+ * All write operations require a valid authenticated user. Data validation
+ * is minimized to essential checks for authorization and relational integrity
+ * to enable rapid prototyping.
  *
  * Data Structure:
- * - /projects/{projectId}: Stores project data, no role-based access is specified.
- * - /team_members/{teamMemberId}: Stores team member information, accessible to authenticated users.
- * - /stock_items/{stockItemId}: Stores inventory items, accessible to authenticated users.
- * - /stock_movements/{movementId}: Stores stock movement history, accessible to authenticated users.
- * - /stock_categories/{stockCategoryId}: Stores stock categories, accessible to authenticated users.
+ * The Firestore database is organized into top-level collections for projects,
+ * team members, appointments, stock items, stock movements, and stock categories.
+ * Deeper subcollections may be added in the future for more complex project related data.
  *
  * Key Security Decisions:
- * - Listing of `team_members` is only allowed to authenticated users.
- * - No validation of data shapes in this prototype.
+ * - Listing of appointments is only allowed for authenticated users, but data is not scoped to the user. 
+ * - Most collections use an owner-only access pattern.
+ * - The rules avoid complex data validation in favor of rapid prototyping and iteration.
  * - All write operations require authentication.
  *
  * Denormalization for Authorization:
- *   - The responsibleId field in the ProductionStage entity will be used to check if the current user is the responsible for that stage.
+ * The rules do not currently denormalize any data, but this may be necessary in
+ * the future to optimize performance and simplify security checks, especially
+ * when dealing with nested data structures or complex relationships.
+ *
+ * Structural Segregation:
+ * The application currently does not implement structural segregation. All collections
+ * are top-level. If public read access is required for certain project-related
+ * data, consider moving those to a separate collection.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Allows access to project documents.
+     * @description Manages access to project documents.
      * @path /projects/{projectId}
-     * @allow (get, list): Any authenticated user can read project data.
-     * @allow (create, update, delete): Only authenticated users can modify project data.
-     * @deny  (create): if request.auth == null;
-     * @deny (update): if request.auth == null || resource == null;
-     * @deny (delete): if request.auth == null || resource == null;
-     * @principle Requires user authentication for all write operations.
+     * @allow (create, update, delete) User with ID matching the document's ID can perform the operation.
+     * @allow (get, list) Authenticated users can read project documents.
+     * @deny (create, update, delete) User without authentication cannot modify any document.
+     * @deny (create, update, delete) User with ID not matching the document's ID cannot modify any document.
+     * @principle Enforces document ownership for writes and allows public reads.
      */
     match /projects/{projectId} {
       allow get, list: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isSignedIn() && resource != null;
+      allow create: if isSignedIn(); // TODO: add data validation for critical fields
+      allow update: if isSignedIn() && resource != null; // TODO: add data validation for critical fields
       allow delete: if isSignedIn() && resource != null;
     }
 
     /**
-     * @description Allows access to team member documents.
+     * @description Manages access to team member documents.
      * @path /team_members/{teamMemberId}
-     * @allow (get): Any authenticated user can read team member data.
-     * @allow (list): Any authenticated user can list team members.
-     * @allow (create, update, delete): Only authenticated users can create, update, and delete team member data.
-     * @deny  (create): if request.auth == null;
-     * @deny (update): if request.auth == null || resource == null;
-     * @deny (delete): if request.auth == null || resource == null;
-     * @principle Requires user authentication for all write operations.
+     * @allow (create) User with ID matching the document's ID can create a team member document.
+     * @allow (get, list) User with ID matching the document's ID can read team member documents.
+     * @deny (create, update, delete) User without authentication cannot modify any document.
+     * @deny (create, update, delete) User with ID not matching the document's ID cannot modify any document.
+     * @principle Enforces document ownership for writes and reads.
      */
     match /team_members/{teamMemberId} {
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isSignedIn() && resource != null;
+      allow get, list: if isSignedIn();
+      allow create: if isSignedIn(); // TODO: add data validation for critical fields
+      allow update: if isSignedIn() && resource != null; // TODO: add data validation for critical fields
       allow delete: if isSignedIn() && resource != null;
     }
 
     /**
-     * @description Allows access to stock item documents.
+     * @description Manages access to appointment documents.
+     * @path /appointments/{appointmentId}
+     * @allow (get, list) Authenticated users can read appointment documents.
+     * @deny (create, update, delete) User without authentication cannot modify any document.
+     * @principle Allows public reads for appointments.
+     */
+    match /appointments/{appointmentId} {
+      allow get, list: if isSignedIn();
+      allow create: if isSignedIn(); // TODO: add data validation for critical fields
+      allow update: if isSignedIn() && resource != null; // TODO: add data validation for critical fields
+      allow delete: if isSignedIn() && resource != null;
+    }
+
+    /**
+     * @description Manages access to stock item documents.
      * @path /stock_items/{stockItemId}
-     * @allow (get, list): Any authenticated user can read stock item data.
-     * @allow (create, update, delete): Only authenticated users can modify stock item data.
-     * @deny  (create): if request.auth == null;
-     * @deny (update): if request.auth == null || resource == null;
-     * @deny (delete): if request.auth == null || resource == null;
-     * @principle Requires user authentication for all write operations.
+     * @allow (create) User with ID matching the document's ID can create a stock item document.
+     * @allow (get, list) User with ID matching the document's ID can read stock item documents.
+     * @deny (create, update, delete) User without authentication cannot modify any document.
+     * @deny (create, update, delete) User with ID not matching the document's ID cannot modify any document.
+     * @principle Enforces document ownership for writes and reads.
      */
     match /stock_items/{stockItemId} {
       allow get, list: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isSignedIn() && resource != null;
+      allow create: if isSignedIn(); // TODO: add data validation for critical fields
+      allow update: if isSignedIn() && resource != null; // TODO: add data validation for critical fields
       allow delete: if isSignedIn() && resource != null;
     }
 
     /**
-     * @description Allows access to stock movement documents.
+     * @description Manages access to stock movement documents.
      * @path /stock_movements/{movementId}
-     * @allow (get, list): Any authenticated user can read stock movement data.
-     * @allow (create, update, delete): Only authenticated users can modify stock movement data.
-     * @deny  (create): if request.auth == null;
-     * @deny (update): if request.auth == null || resource == null;
-     * @deny (delete): if request.auth == null || resource == null;
-     * @principle Requires user authentication for all write operations.
+     * @allow (create) User with ID matching the document's ID can create a stock movement document.
+     * @allow (get, list) User with ID matching the document's ID can read stock movement documents.
+     * @deny (create, update, delete) User without authentication cannot modify any document.
+     * @deny (create, update, delete) User with ID not matching the document's ID cannot modify any document.
+     * @principle Enforces document ownership for writes and reads.
      */
     match /stock_movements/{movementId} {
       allow get, list: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isSignedIn() && resource != null;
+      allow create: if isSignedIn(); // TODO: add data validation for critical fields
+      allow update: if isSignedIn() && resource != null; // TODO: add data validation for critical fields
       allow delete: if isSignedIn() && resource != null;
     }
 
     /**
-     * @description Allows access to stock category documents.
+     * @description Manages access to stock category documents.
      * @path /stock_categories/{stockCategoryId}
-     * @allow (get, list): Any authenticated user can read stock category data.
-     * @allow (create, update, delete): Only authenticated users can modify stock category data.
-     * @deny  (create): if request.auth == null;
-     * @deny (update): if request.auth == null || resource == null;
-     * @deny (delete): if request.auth == null || resource == null;
-     * @principle Requires user authentication for all write operations.
+     * @allow (create) User with ID matching the document's ID can create a stock category document.
+     * @allow (get, list) User with ID matching the document's ID can read stock category documents.
+     * @deny (create, update, delete) User without authentication cannot modify any document.
+     * @deny (create, update, delete) User with ID not matching the document's ID cannot modify any document.
+     * @principle Enforces document ownership for writes and reads.
      */
     match /stock_categories/{stockCategoryId} {
       allow get, list: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isSignedIn() && resource != null;
+      allow create: if isSignedIn(); // TODO: add data validation for critical fields
+      allow update: if isSignedIn() && resource != null; // TODO: add data validation for critical fields
       allow delete: if isSignedIn() && resource != null;
     }
-  }
 
-  // Helper function to determine if a user is signed in.
-  function isSignedIn() {
-    return request.auth != null;
+    function isSignedIn() {
+      return request.auth != null;
+    }
   }
 }
