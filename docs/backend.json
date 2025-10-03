@@ -79,6 +79,16 @@
         "responsibleId": {
           "type": "string",
           "description": "The ID of the team member responsible for this stage."
+        },
+        "startedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when the stage started."
+        },
+        "completedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when the stage was completed."
         }
       },
       "required": ["status"]
@@ -188,13 +198,14 @@
       "description": "Represents a single movement (entry or exit) of a stock item.",
       "properties": {
         "id": { "type": "string" },
+        "stockItemId": { "type": "string", "description": "The ID of the stock item this movement belongs to." },
         "type": { "type": "string", "enum": ["entry", "exit"] },
         "quantity": { "type": "number" },
         "reason": { "type": "string" },
         "timestamp": { "type": "string", "format": "date-time" },
         "memberId": { "type": "string" }
       },
-      "required": ["id", "type", "quantity", "timestamp", "memberId"]
+      "required": ["id", "stockItemId", "type", "quantity", "timestamp", "memberId"]
     },
     "StockCategory": {
       "title": "StockCategory",
@@ -225,9 +236,9 @@
       "schema": { "$ref": "#/entities/StockItem" },
       "description": "Stores inventory items."
     },
-    "/stock_items/{stockItemId}/movements/{movementId}": {
+    "/stock_movements/{movementId}": {
       "schema": { "$ref": "#/entities/StockMovement" },
-      "description": "Stores the movement history for a specific stock item."
+      "description": "Stores the movement history for all stock items."
     },
     "/stock_categories/{stockCategoryId}": {
       "schema": { "$ref": "#/entities/StockCategory" },

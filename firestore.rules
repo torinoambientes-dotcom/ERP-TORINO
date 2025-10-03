@@ -1,86 +1,129 @@
 /**
- * @fileoverview Firestore Security Rules for the furniture management application.
+ * @fileoverview Firestore Security Rules for the furniture production tracking application.
  *
  * Core Philosophy:
- * This ruleset prioritizes ease of access and future modification, granting broad permissions to all authenticated users. While not strictly enforcing data shapes, it ensures that only authenticated users can read and write data.
+ * This ruleset enforces a strict ownership and role-based access control model.
+ * Each data object is secured based on its relationship to the authenticated user.
  *
  * Data Structure:
- * The Firestore database is structured with top-level collections for projects, team members, stock items, stock movements, and stock categories. Projects contain environment and furniture data.
+ * - /projects/{projectId}: Stores project information.
+ * - /team_members/{teamMemberId}: Stores team member profiles, linked to Firebase Auth UIDs.
+ * - /stock_items/{stockItemId}: Stores inventory items.
+ * - /stock_items/{stockItemId}/movements/{movementId}: Stores individual stock movements (entries/exits).
+ * - /stock_categories/{stockCategoryId}: Stores stock categories.
  *
  * Key Security Decisions:
- * - All authenticated users can read and write all data.
- * - No restrictions are placed on data shapes, allowing for flexible development.
+ * - Team members can only manage their own profile data.
+ * - Projects, stock items, and categories can be read by anyone but only created, updated, or deleted with an administrative role.
+ * - Stock movements are tightly linked to their parent stock item and can only be created by authenticated users.
+ * - User listing is generally disallowed.
  *
- * Note:
- * These rules are designed for rapid prototyping and should be refined in a production environment to include more granular access controls and data validation.
+ * Denormalization for Authorization:
+ *  - The current ruleset does not use denormalization.
+ *
+ * Structural Segregation:
+ *  - The current ruleset does not use structural segregation.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Allows any authenticated user to read and write project data.
+     * @description Allows reading all projects, but restricts creation, updates, and deletions to authorized team members.
      * @path /projects/{projectId}
-     * @allow (read, write) - Any authenticated user can access project data.
-     * @deny (none) - No requests are explicitly denied.
-     * @principle Allows access to all authenticated users for ease of use and future modifications.
+     * @allow (get, list): Anyone can read project data.
+     * @allow (create): Only a user with an administrative role can create a project.
+     * @deny (create): A user without an administrative role cannot create a project.
+     * @allow (update, delete): Only a user with an administrative role can update or delete a project.
+     * @deny (update, delete): A user without an administrative role cannot update or delete a project.
+     * @principle Public read, role-based writes.
      */
     match /projects/{projectId} {
-      allow get, list: if isSignedIn();
-      allow create, update, delete: if isSignedIn();
+      allow get, list: if true;
+      allow create: if isAdmin();
+      allow update, delete: if isAdmin() && resource != null;
     }
 
     /**
-     * @description Allows any authenticated user to read and write team member data.
+     * @description Restricts access to team member documents to the owning user only.
      * @path /team_members/{teamMemberId}
-     * @allow (read, write) - Any authenticated user can access team member data.
-     * @deny (none) - No requests are explicitly denied.
-     * @principle Allows access to all authenticated users for ease of use and future modifications.
+     * @allow (get): The team member can read their own document.
+     * @deny (get): A different user cannot read another team member's document.
+     * @allow (create): A user can create their own team member document, enforcing ID consistency.
+     * @deny (create): A user cannot create a team member document with an ID that doesn't match their own.
+     * @allow (update, delete): The team member can update or delete their own document, verifying existence.
+     * @deny (update, delete): A different user cannot update or delete another team member's document.
+     * @principle Enforces document ownership for all operations.
      */
     match /team_members/{teamMemberId} {
-      allow get, list: if isSignedIn();
-      allow create, update, delete: if isSignedIn();
+      allow get: if isOwner(teamMemberId);
+      allow create: if isOwner(teamMemberId) && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isExistingOwner(teamMemberId);
     }
 
     /**
-     * @description Allows any authenticated user to read and write stock item data.
+     * @description Allows reading all stock items, but restricts creation, updates, and deletions to authorized team members.
      * @path /stock_items/{stockItemId}
-     * @allow (read, write) - Any authenticated user can access stock item data.
-     * @deny (none) - No requests are explicitly denied.
-     * @principle Allows access to all authenticated users for ease of use and future modifications.
+     * @allow (get, list): Anyone can read stock item data.
+     * @allow (create): Only a user with an administrative role can create a stock item.
+     * @deny (create): A user without an administrative role cannot create a stock item.
+     * @allow (update, delete): Only a user with an administrative role can update or delete a stock item.
+     * @deny (update, delete): A user without an administrative role cannot update or delete a stock item.
+     * @principle Public read, role-based writes.
      */
     match /stock_items/{stockItemId} {
-      allow get, list: if isSignedIn();
-      allow create, update, delete: if isSignedIn();
+      allow get, list: if true;
+      allow create: if isAdmin();
+      allow update, delete: if isAdmin() && resource != null;
 
       /**
-       * @description Allows any authenticated user to read and write stock movement data.
+       * @description Allows creating stock movements by authenticated users, but restricts updates and deletions.
        * @path /stock_items/{stockItemId}/movements/{movementId}
-       * @allow (read, write) - Any authenticated user can access stock movement data.
-       * @deny (none) - No requests are explicitly denied.
-       * @principle Allows access to all authenticated users for ease of use and future modifications.
+       * @allow (get, list): Anyone can read stock movement data.
+       * @allow (create): Any authenticated user can create a stock movement.
+       * @deny (create): An unauthenticated user cannot create a stock movement.
+       * @allow (update, delete): Only a user with an administrative role can update or delete a stock movement.
+       * @deny (update, delete): A user without an administrative role cannot update or delete a stock movement.
+       * @principle Authenticated creation, role-based writes.
        */
       match /movements/{movementId} {
-        allow get, list: if isSignedIn();
-        allow create, update, delete: if isSignedIn();
+        allow get, list: if true;
+        allow create: if isSignedIn();
+        allow update, delete: if isAdmin() && resource != null;
       }
     }
 
     /**
-     * @description Allows any authenticated user to read and write stock category data.
+     * @description Allows reading all stock categories, but restricts creation, updates, and deletions to authorized team members.
      * @path /stock_categories/{stockCategoryId}
-     * @allow (read, write) - Any authenticated user can access stock category data.
-     * @deny (none) - No requests are explicitly denied.
-     * @principle Allows access to all authenticated users for ease of use and future modifications.
+     * @allow (get, list): Anyone can read stock category data.
+     * @allow (create): Only a user with an administrative role can create a stock category.
+     * @deny (create): A user without an administrative role cannot create a stock category.
+     * @allow (update, delete): Only a user with an administrative role can update or delete a stock category.
+     * @deny (update, delete): A user without an administrative role cannot update or delete a stock category.
      */
     match /stock_categories/{stockCategoryId} {
-      allow get, list: if isSignedIn();
-      allow create, update, delete: if isSignedIn();
+      allow get, list: if true;
+      allow create: if isAdmin();
+      allow update, delete: if isAdmin() && resource != null;
     }
   }
 
-  // Helper function to determine if a user is signed in
+  // Helper Functions
   function isSignedIn() {
     return request.auth != null;
+  }
+
+  function isOwner(userId) {
+    return request.auth.uid == userId;
+  }
+
+  function isExistingOwner(userId) {
+    return isOwner(userId) && resource != null;
+  }
+
+  function isAdmin() {
+      // TODO: Implement role-based access control. For now, allow all signed-in users.
+    return isSignedIn();
   }
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, type ReactNode, useCallback, useMemo, useEffect, useState } from 'react';
-import { collection, doc, serverTimestamp, deleteField, writeBatch, getDocs } from 'firebase/firestore';
+import { collection, doc, serverTimestamp, deleteField, writeBatch, getDocs, runTransaction } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import type { Project, TeamMember, StageStatus, StockItem, StockMovement, StockCategory, Furniture, Environment, MaterialItem, StockReservation, ProductionStage } from '@/lib/types';
 import { generateId } from '@/lib/utils';
@@ -27,7 +27,7 @@ interface AppContextType {
   addStockItem: (itemData: Omit<StockItem, 'id'>) => void;
   updateStockItem: (updatedItem: StockItem) => void;
   deleteStockItem: (itemId: string) => void;
-  addStockMovement: (itemId: string, movementData: Omit<StockMovement, 'id' | 'timestamp' | 'stockItemId'>) => void;
+  addStockMovement: (itemId: string, movementData: Omit<StockMovement, 'id' | 'timestamp' | 'stockItemId'>) => Promise<void>;
   addStockCategory: (categoryData: Omit<StockCategory, 'id'>) => void;
   deleteStockCategory: (categoryId: string) => void;
   handleStockAlert: (itemId: string, markAsHandled: boolean) => void;
@@ -57,7 +57,7 @@ export const AppContext = createContext<AppContextType>({
   addStockItem: () => {},
   updateStockItem: () => {},
   deleteStockItem: () => {},
-  addStockMovement: () => {},
+  addStockMovement: async () => {},
   addStockCategory: () => {},
   deleteStockCategory: () => {},
   handleStockAlert: () => {},
@@ -115,33 +115,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const teamMembersQuery = useMemoFirebase(() => collection(firestore, 'team_members'), [firestore]);
   const stockItemsQuery = useMemoFirebase(() => collection(firestore, 'stock_items'), [firestore]);
   const stockCategoriesQuery = useMemoFirebase(() => collection(firestore, 'stock_categories'), [firestore]);
+  const stockMovementsQuery = useMemoFirebase(() => collection(firestore, 'stock_movements'), [firestore]);
 
   const { data: projects, isLoading: isLoadingProjects } = useCollection<Project>(projectsQuery);
   const { data: teamMembers, isLoading: isLoadingTeamMembers } = useCollection<TeamMember>(teamMembersQuery);
   const { data: stockItems, isLoading: isLoadingStockItems } = useCollection<StockItem>(stockItemsQuery);
   const { data: stockCategoriesData, isLoading: isLoadingStockCategories } = useCollection<StockCategory>(stockCategoriesQuery);
-
-  const [stockMovements, setStockMovements] = useState<StockMovement[]>([]);
-  const [isLoadingMovements, setIsLoadingMovements] = useState(true);
-
-  useEffect(() => {
-    const fetchMovements = async () => {
-      if (!firestore || !stockItems) return;
-      setIsLoadingMovements(true);
-      const allMovements: StockMovement[] = [];
-      for (const item of stockItems) {
-        const movementsRef = collection(firestore, 'stock_items', item.id, 'movements');
-        const movementsSnapshot = await getDocs(movementsRef);
-        movementsSnapshot.forEach(doc => {
-          allMovements.push({ ...doc.data() as Omit<StockMovement, 'id' | 'stockItemId'>, id: doc.id, stockItemId: item.id });
-        });
-      }
-      setStockMovements(allMovements);
-      setIsLoadingMovements(false);
-    };
-
-    fetchMovements();
-  }, [stockItems, firestore]);
+  const { data: stockMovements, isLoading: isLoadingMovements } = useCollection<StockMovement>(stockMovementsQuery);
 
   const stockCategories = useMemo(() => stockCategoriesData || [], [stockCategoriesData]);
   
@@ -411,36 +391,57 @@ export function AppProvider({ children }: { children: ReactNode }) {
     deleteDocumentNonBlocking(itemRef);
   }, [firestore]);
 
-  const addStockMovement = useCallback((itemId: string, movementData: Omit<StockMovement, 'id' | 'timestamp' | 'stockItemId'>) => {
-    if (!firestore || !stockItems) return;
-    
-    const itemToUpdate = stockItems.find(item => item.id === itemId);
-    if (!itemToUpdate) return;
-    
-    const currentQuantity = itemToUpdate.quantity;
-    const movementQuantity = movementData.quantity;
-    const newQuantity = movementData.type === 'entry' ? currentQuantity + movementQuantity : currentQuantity - movementQuantity;
-
-    const updateData: { quantity: number; alertHandledAt?: any } = { quantity: newQuantity };
-
-    if (typeof itemToUpdate.minStock === 'number' && newQuantity >= itemToUpdate.minStock) {
-        updateData.alertHandledAt = deleteField();
+  const addStockMovement = useCallback(async (itemId: string, movementData: Omit<StockMovement, 'id' | 'timestamp' | 'stockItemId'>) => {
+    if (!firestore) {
+      throw new Error("Firestore is not initialized.");
     }
+    
+    try {
+      await runTransaction(firestore, async (transaction) => {
+        const itemRef = doc(firestore, 'stock_items', itemId);
+        const itemDoc = await transaction.get(itemRef);
 
-    const itemRef = doc(firestore, 'stock_items', itemId);
-    setDocumentNonBlocking(itemRef, updateData, { merge: true });
+        if (!itemDoc.exists()) {
+          throw new Error("O item de estoque não foi encontrado.");
+        }
 
-    const movementId = generateId('move');
-    const newMovement: StockMovement = {
-      ...movementData,
-      id: movementId,
-      stockItemId: itemId,
-      timestamp: new Date().toISOString(),
-    };
-    const movementRef = collection(firestore, 'stock_items', itemId, 'movements');
-    addDocumentNonBlocking(movementRef, newMovement);
+        const itemData = itemDoc.data() as StockItem;
+        const currentQuantity = itemData.quantity;
+        const movementQuantity = movementData.quantity;
+        
+        let newQuantity;
+        if (movementData.type === 'entry') {
+          newQuantity = currentQuantity + movementQuantity;
+        } else {
+          if (currentQuantity < movementQuantity) {
+            throw new Error('A quantidade de saída não pode ser maior que o estoque atual.');
+          }
+          newQuantity = currentQuantity - movementQuantity;
+        }
 
-  }, [firestore, stockItems]);
+        // Update stock item quantity
+        const updateData: { quantity: number; alertHandledAt?: any } = { quantity: newQuantity };
+        if (typeof itemData.minStock === 'number' && newQuantity >= itemData.minStock) {
+            updateData.alertHandledAt = deleteField();
+        }
+        transaction.update(itemRef, updateData);
+
+        // Add movement record
+        const movementId = generateId('move');
+        const newMovement: StockMovement = {
+          ...movementData,
+          id: movementId,
+          stockItemId: itemId,
+          timestamp: new Date().toISOString(),
+        };
+        const movementRef = doc(firestore, 'stock_movements', movementId);
+        transaction.set(movementRef, newMovement);
+      });
+    } catch (error) {
+      console.error("Transaction failed: ", error);
+      throw new Error(`Falha na Movimentação: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }, [firestore]);
   
   const addStockCategory = useCallback((categoryData: Omit<StockCategory, 'id'>) => {
     if (!firestore) return;
@@ -621,7 +622,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           timestamp: new Date().toISOString(),
           memberId: memberId,
       };
-      const movementRef = doc(collection(firestore, 'stock_items', stockItemId, 'movements'), movementId);
+      const movementRef = doc(firestore, 'stock_movements', movementId);
       batch.set(movementRef, newMovement);
 
       // Mark material as purchased in the project
@@ -680,7 +681,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       details: `Fornecedor: ${item.awaitingReceipt.supplier}`,
       timestamp: new Date().toISOString(),
     };
-    const movementRef = doc(collection(firestore, 'stock_items', item.id, 'movements'), movementId);
+    const movementRef = doc(firestore, 'stock_movements', movementId);
     batch.set(movementRef, newMovement);
 
     batch.commit();
@@ -693,7 +694,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     teamMembers: teamMembers || [],
     stockItems: stockItems || [],
     stockCategories: stockCategories,
-    stockMovements: stockMovements,
+    stockMovements: stockMovements || [],
     isLoading: isLoadingProjects || isLoadingTeamMembers || isLoadingStockItems || isLoadingStockCategories || isLoadingMovements,
     addProject,
     updateProject,
