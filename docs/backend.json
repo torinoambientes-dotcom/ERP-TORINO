@@ -169,9 +169,9 @@
         "email": { "type": "string", "format": "email" },
         "color": { "type": "string", "description": "A hex color code for the member's label." },
         "role": { "type": "string", "description": "The role of the team member (e.g., 'Marceneiro', 'Projetista')." },
-        "avatarUrl": { "type": "string", "format": "uri", "description": "URL of the team member's avatar image." }
+        "avatarUrl": { "type": "string", "format": "uri", "description": "URL of the team member's avatar image. Can be updated by the user." }
       },
-      "required": ["id", "userId", "name", "email", "color", "role"]
+      "required": ["id", "name", "email", "color", "role"]
     },
     "StockItem": {
       "title": "StockItem",

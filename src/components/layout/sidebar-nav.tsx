@@ -23,6 +23,10 @@ import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { cn, getInitials } from '@/lib/utils';
 import { Badge } from '../ui/badge';
 import type { MaterialItem, GlassItem, ProfileDoorItem, StockItem } from '@/lib/types';
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
+import { Label } from '../ui/label';
+import { Input } from '../ui/input';
+import { useToast } from '@/hooks/use-toast';
 
 
 interface LowStockInfo extends StockItem {
@@ -43,13 +47,17 @@ export function SidebarNav() {
   const auth = useAuth();
   const router = useRouter();
   const { user } = useUser();
-  const { teamMembers, projects, stockItems } = useContext(AppContext);
+  const { teamMembers, projects, stockItems, updateTeamMember } = useContext(AppContext);
+  const { toast } = useToast();
   
+  const [newAvatarUrl, setNewAvatarUrl] = useState('');
+  const [isAvatarPopoverOpen, setAvatarPopoverOpen] = useState(false);
+
   const loggedInMember = useMemo(() => {
     if (!user || !teamMembers) return null;
     return teamMembers.find(member => member.id === user.uid);
   }, [user, teamMembers]);
-
+  
   const isAdmin = user?.email === 'carlos.campigotto@gmail.com';
 
   const pendingPurchasesCount = useMemo(() => {
@@ -98,6 +106,30 @@ export function SidebarNav() {
     }
   };
   
+  const handleAvatarUpdate = () => {
+    if (!loggedInMember || !newAvatarUrl) return;
+
+    // A simple URL validation
+    try {
+      new URL(newAvatarUrl);
+    } catch (_) {
+      toast({
+        variant: 'destructive',
+        title: 'URL Inválida',
+        description: 'Por favor, insira uma URL de imagem válida.',
+      });
+      return;
+    }
+
+    updateTeamMember({ ...loggedInMember, avatarUrl: newAvatarUrl });
+    toast({
+      title: 'Avatar atualizado!',
+      description: 'Sua nova foto de perfil foi salva.',
+    });
+    setAvatarPopoverOpen(false);
+    setNewAvatarUrl('');
+  };
+  
   const visibleMenuItems = menuItems.filter(item => !item.adminOnly || isAdmin).sort((a, b) => {
     const order = ['Projetos', 'Compras', 'Estoque', 'Relatórios', 'Equipe'];
     return order.indexOf(a.label) - order.indexOf(b.label);
@@ -143,18 +175,45 @@ export function SidebarNav() {
          <SidebarSeparator />
          <div className="p-2 space-y-2">
             {loggedInMember && (
-                <div className={cn("flex items-center gap-3 p-2 transition-all", "group-data-[collapsible=icon]:-left-full group-data-[collapsible=icon]:absolute group-data-[collapsible=icon]:opacity-0 group-data-[collapsible=icon]:invisible")}>
-                    <Avatar className="h-9 w-9">
-                        {loggedInMember.avatarUrl && <AvatarImage src={loggedInMember.avatarUrl} alt={loggedInMember.name} />}
-                         <AvatarFallback style={{backgroundColor: loggedInMember.color}}>
-                            {getInitials(loggedInMember.name)}
-                        </AvatarFallback>
-                    </Avatar>
-                    <div className="flex flex-col overflow-hidden">
-                        <p className="text-sm font-medium truncate text-sidebar-foreground">{loggedInMember.name}</p>
-                        <p className="text-xs text-sidebar-foreground/70 truncate">{loggedInMember.email}</p>
+              <Popover open={isAvatarPopoverOpen} onOpenChange={setAvatarPopoverOpen}>
+                <PopoverTrigger asChild>
+                    <div className={cn("flex items-center gap-3 p-2 rounded-md transition-all cursor-pointer hover:bg-sidebar-accent", "group-data-[collapsible=icon]:-left-full group-data-[collapsible=icon]:absolute group-data-[collapsible=icon]:opacity-0 group-data-[collapsible=icon]:invisible")}>
+                        <Avatar className="h-9 w-9">
+                            {loggedInMember.avatarUrl && <AvatarImage src={loggedInMember.avatarUrl} alt={loggedInMember.name} />}
+                            <AvatarFallback style={{backgroundColor: loggedInMember.color}}>
+                                {getInitials(loggedInMember.name)}
+                            </AvatarFallback>
+                        </Avatar>
+                        <div className="flex flex-col overflow-hidden">
+                            <p className="text-sm font-medium truncate text-sidebar-foreground">{loggedInMember.name}</p>
+                            <p className="text-xs text-sidebar-foreground/70 truncate">{loggedInMember.email}</p>
+                        </div>
                     </div>
-                </div>
+                </PopoverTrigger>
+                <PopoverContent className="w-80">
+                  <div className="grid gap-4">
+                    <div className="space-y-2">
+                      <h4 className="font-medium leading-none">Alterar Avatar</h4>
+                      <p className="text-sm text-muted-foreground">
+                        Cole a URL de uma nova imagem de perfil.
+                      </p>
+                    </div>
+                    <div className="grid gap-2">
+                      <div className="grid grid-cols-3 items-center gap-4">
+                        <Label htmlFor="avatar-url">URL</Label>
+                        <Input
+                          id="avatar-url"
+                          value={newAvatarUrl}
+                          onChange={(e) => setNewAvatarUrl(e.target.value)}
+                          className="col-span-2 h-8"
+                          placeholder="https://exemplo.com/imagem.png"
+                        />
+                      </div>
+                    </div>
+                     <Button onClick={handleAvatarUpdate}>Salvar</Button>
+                  </div>
+                </PopoverContent>
+              </Popover>
             )}
            <Button
             onClick={() => setProjectModalOpen(true)}
