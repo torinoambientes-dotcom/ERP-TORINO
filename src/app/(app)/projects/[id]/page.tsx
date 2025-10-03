@@ -2,7 +2,7 @@
 import { useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import { notFound, useParams } from 'next/navigation';
-import { ChevronLeft, MessageSquare, Package, ListTodo, CalendarIcon } from 'lucide-react';
+import { ChevronLeft, MessageSquare, Package, ListTodo, CalendarIcon, XCircle } from 'lucide-react';
 import {
   Accordion,
   AccordionContent,
@@ -115,7 +115,7 @@ export default function ProjectDetailsPage() {
         }
       }
       // Trigger update to Firestore non-blockingly
-      updateProject(newProject);
+      updateProject(newProject, currentProject);
       // Return the new state for immediate UI update
       return newProject;
     });
@@ -342,9 +342,17 @@ export default function ProjectDetailsPage() {
                               </Popover>
                             </div>
                             {stageData.scheduledFor && (
-                              <p className="text-xs text-muted-foreground text-center">
-                                Agendado para: {format(new Date(stageData.scheduledFor), "dd/MM/yyyy")}
-                              </p>
+                              <div className="flex items-center justify-center gap-1 text-xs text-muted-foreground">
+                                <span>Agendado: {format(new Date(stageData.scheduledFor), "dd/MM/yy")}</span>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-5 w-5 text-destructive/50 hover:text-destructive"
+                                  onClick={() => handleStageChange(env.id, fur.id, stage.key, 'scheduledFor', undefined)}
+                                >
+                                  <XCircle className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
                             )}
                           </div>
                         )})}
