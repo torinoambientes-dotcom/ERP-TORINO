@@ -22,7 +22,7 @@ import {
 } from '@/components/ui/select';
 import type { Project } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { Archive, CheckCircle, Pencil, Trash2 } from 'lucide-react';
+import { Archive, CheckCircle, Pencil, Trash2, ListTodo, MessageSquare } from 'lucide-react';
 import { DeleteProjectAlert } from '@/components/modals/delete-project-alert';
 import { RegisterProjectModal } from '@/components/modals/register-project-modal';
 import { getProjectStatus } from '@/lib/projects';
@@ -196,7 +196,20 @@ export default function ProjectsPage() {
                       )}
                       </CardContent>
                       <CardFooter>
-                        {/* Footer is inside the Card but outside the main link content area for separate actions */}
+                        <div className="flex items-center gap-2">
+                            {statusInfo.unresolvedPendencies > 0 && (
+                                <div className="relative">
+                                    <ListTodo className="h-4 w-4 text-muted-foreground" />
+                                    <Badge variant="destructive" className="absolute -top-2 -right-3 h-4 w-4 justify-center rounded-full p-0 text-xs">{statusInfo.unresolvedPendencies}</Badge>
+                                </div>
+                            )}
+                             {statusInfo.commentsCount > 0 && (
+                                <div className="relative">
+                                    <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                                    <Badge variant="default" className="bg-blue-600 hover:bg-blue-700 absolute -top-2 -right-3 h-4 w-4 justify-center rounded-full p-0 text-xs">{statusInfo.commentsCount}</Badge>
+                                </div>
+                            )}
+                        </div>
                       </CardFooter>
                     </Card>
                   </Link>

@@ -7,11 +7,15 @@ export interface ProjectStatusInfo {
   progress: number;
   totalTasks: number;
   doneTasks: number;
+  unresolvedPendencies: number;
+  commentsCount: number;
 }
 
 export const getProjectStatus = (project: Project): ProjectStatusInfo => {
   let totalTasks = 0;
   let doneTasks = 0;
+  let unresolvedPendencies = 0;
+  let commentsCount = 0;
   
   if (project.environments) {
     project.environments.forEach((env) => {
@@ -24,6 +28,9 @@ export const getProjectStatus = (project: Project): ProjectStatusInfo => {
               doneTasks++;
             }
           });
+
+          unresolvedPendencies += (fur.pendencies || []).filter(p => !p.isResolved).length;
+          commentsCount += (fur.comments || []).length;
         });
       }
     });
@@ -31,7 +38,12 @@ export const getProjectStatus = (project: Project): ProjectStatusInfo => {
 
   const progress = totalTasks > 0 ? (doneTasks / totalTasks) * 100 : 0;
   
-  if (progress === 100) return { status: 'Concluído', progress, totalTasks, doneTasks };
-  if (progress > 0) return { status: 'Em Andamento', progress, totalTasks, doneTasks };
-  return { status: 'Novo', progress, totalTasks, doneTasks };
+  let status: ProjectStatus = 'Novo';
+  if (progress === 100) {
+    status = 'Concluído';
+  } else if (progress > 0 || doneTasks > 0) { // Considera "Em Andamento" se alguma tarefa começou
+    status = 'Em Andamento';
+  }
+  
+  return { status, progress, totalTasks, doneTasks, unresolvedPendencies, commentsCount };
 };
