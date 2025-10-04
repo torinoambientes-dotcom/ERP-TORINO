@@ -144,9 +144,13 @@
         "height": { "type": "number" },
         "width": { "type": "number" },
         "quantity": { "type": "number" },
-        "isBeveled": { "type": "boolean", "description": "Indicates if the glass has a beveled edge." }
+        "isBeveled": { "type": "boolean", "description": "Indicates if the glass has a beveled edge." },
+        "cornerRadiusTopLeft": { "type": "number" },
+        "cornerRadiusTopRight": { "type": "number" },
+        "cornerRadiusBottomLeft": { "type": "number" },
+        "cornerRadiusBottomRight": { "type": "number" }
       },
-      "required": ["id", "type", "height", "width", "quantity"]
+      "required": ["id", "type", "quantity"]
     },
     "ProfileDoorItem": {
       "title": "ProfileDoorItem",

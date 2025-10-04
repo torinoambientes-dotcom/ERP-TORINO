@@ -58,7 +58,10 @@ export interface GlassItem {
   width?: number;
   diameter?: number;
   quantity: number;
-  cornerRadius?: number;
+  cornerRadiusTopLeft?: number;
+  cornerRadiusTopRight?: number;
+  cornerRadiusBottomLeft?: number;
+  cornerRadiusBottomRight?: number;
   purchased?: boolean;
   hasFrostedStrips?: boolean;
   frostedStripTop?: number;

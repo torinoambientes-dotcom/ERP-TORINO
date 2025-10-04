@@ -67,7 +67,10 @@ const glassSchema = z.object({
     quantity: z.coerce.number().min(1, "Quantidade deve ser pelo menos 1."),
     width: z.coerce.number().min(1, "Largura é obrigatória.").optional(),
     height: z.coerce.number().min(1, "Altura é obrigatória.").optional(),
-    cornerRadius: z.coerce.number().optional(),
+    cornerRadiusTopLeft: z.coerce.number().optional(),
+    cornerRadiusTopRight: z.coerce.number().optional(),
+    cornerRadiusBottomLeft: z.coerce.number().optional(),
+    cornerRadiusBottomRight: z.coerce.number().optional(),
     addedAt: z.string().optional(),
     purchased: z.boolean().optional(),
     shape: z.enum(['rectangle', 'circle']).optional(),
@@ -508,7 +511,7 @@ export function FurnitureMaterialsModal({
                                 {field.quantity}x {field.type} {field.shape === 'circle' ? '(Círculo)' : ''}
                             </p>
                             <p>
-                                {field.shape === 'circle' ? `Ø ${field.diameter}mm` : `${field.width}mm x ${field.height}mm`} {field.cornerRadius ? `(Raio ${field.cornerRadius}mm)` : ''}
+                                {field.shape === 'circle' ? `Ø ${field.diameter}mm` : `${field.width}mm x ${field.height}mm`}
                             </p>
                           </div>
                          <div className='flex items-center'>

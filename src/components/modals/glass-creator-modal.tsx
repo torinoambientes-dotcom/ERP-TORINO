@@ -56,7 +56,10 @@ const glassCreatorSchema = z.object({
   height: z.coerce.number().optional(),
   diameter: z.coerce.number().optional(),
   quantity: z.coerce.number().min(1, 'A quantidade mínima é 1.'),
-  cornerRadius: z.coerce.number().min(0, 'O raio não pode ser negativo.').optional(),
+  cornerRadiusTopLeft: z.coerce.number().min(0, 'O raio não pode ser negativo.').optional(),
+  cornerRadiusTopRight: z.coerce.number().min(0, 'O raio não pode ser negativo.').optional(),
+  cornerRadiusBottomLeft: z.coerce.number().min(0, 'O raio não pode ser negativo.').optional(),
+  cornerRadiusBottomRight: z.coerce.number().min(0, 'O raio não pode ser negativo.').optional(),
   isBeveled: z.boolean().default(false),
   hasFrostedStrips: z.boolean().default(false),
   frostedStripWidth: z.coerce.number().min(0, 'A largura não pode ser negativa.').optional(),
@@ -106,7 +109,10 @@ export function GlassCreatorModal({ isOpen, onClose, onSave, glassToEdit, client
       height: 700,
       diameter: 500,
       quantity: 1,
-      cornerRadius: 0,
+      cornerRadiusTopLeft: 0,
+      cornerRadiusTopRight: 0,
+      cornerRadiusBottomLeft: 0,
+      cornerRadiusBottomRight: 0,
       isBeveled: false,
       hasFrostedStrips: false,
       frostedStripWidth: 50,
@@ -132,6 +138,10 @@ export function GlassCreatorModal({ isOpen, onClose, onSave, glassToEdit, client
           frostedStripLeft: glassToEdit.frostedStripLeft || 0,
           frostedStripRight: glassToEdit.frostedStripRight || 0,
           frostedStripCircularOffset: glassToEdit.frostedStripCircularOffset || 50,
+          cornerRadiusTopLeft: glassToEdit.cornerRadiusTopLeft || 0,
+          cornerRadiusTopRight: glassToEdit.cornerRadiusTopRight || 0,
+          cornerRadiusBottomLeft: glassToEdit.cornerRadiusBottomLeft || 0,
+          cornerRadiusBottomRight: glassToEdit.cornerRadiusBottomRight || 0,
         });
       } else {
         form.reset({
@@ -141,7 +151,10 @@ export function GlassCreatorModal({ isOpen, onClose, onSave, glassToEdit, client
           height: 700,
           diameter: 500,
           quantity: 1,
-          cornerRadius: 0,
+          cornerRadiusTopLeft: 0,
+          cornerRadiusTopRight: 0,
+          cornerRadiusBottomLeft: 0,
+          cornerRadiusBottomRight: 0,
           isBeveled: false,
           hasFrostedStrips: false,
           frostedStripWidth: 50,
@@ -197,7 +210,14 @@ export function GlassCreatorModal({ isOpen, onClose, onSave, glassToEdit, client
         writeSpec('Diâmetro', `${data.diameter} mm`);
     } else {
         writeSpec('Dimensões', `${data.width} x ${data.height} mm`);
-        writeSpec('Raio do Canto', `${data.cornerRadius || 0} mm`);
+        const radii = [data.cornerRadiusTopLeft, data.cornerRadiusTopRight, data.cornerRadiusBottomRight, data.cornerRadiusBottomLeft].map(r => r || 0);
+        if (radii.some(r => r > 0)) {
+           if (radii.every(r => r === radii[0])) {
+               writeSpec('Raio dos Cantos', `${radii[0]} mm`);
+           } else {
+              writeSpec('Raios (SE, SD, IE, ID)', `${radii[0]}mm, ${radii[1]}mm, ${radii[3]}mm, ${radii[2]}mm`);
+           }
+        }
     }
 
     if (data.isBeveled) {
@@ -225,7 +245,10 @@ export function GlassCreatorModal({ isOpen, onClose, onSave, glassToEdit, client
     // --- Drawing ---
     const drawWidth = (data.shape === 'circle' ? data.diameter! : data.width!) * scale;
     const drawHeight = (data.shape === 'circle' ? data.diameter! : data.height!) * scale;
-    const drawRadius = (data.cornerRadius || 0) * scale;
+    const tl = (data.cornerRadiusTopLeft || 0) * scale;
+    const tr = (data.cornerRadiusTopRight || 0) * scale;
+    const br = (data.cornerRadiusBottomRight || 0) * scale;
+    const bl = (data.cornerRadiusBottomLeft || 0) * scale;
     
     const startX = drawingColumnX + ((pageWidth - drawingColumnX - margin) / 2) - (drawWidth / 2);
     const startY = (pageHeight / 2) - (drawHeight / 2);
@@ -235,7 +258,7 @@ export function GlassCreatorModal({ isOpen, onClose, onSave, glassToEdit, client
     if(data.shape === 'circle'){
         doc.ellipse(startX + drawWidth / 2, startY + drawHeight / 2, drawWidth / 2, drawHeight / 2, 'FD');
     } else {
-        doc.roundedRect(startX, startY, drawWidth, drawHeight, drawRadius, drawRadius, 'FD');
+        doc.roundedRect(startX, startY, drawWidth, drawHeight, tl, tr, br, bl, 'FD');
     }
 
     if (data.isBeveled) {
@@ -245,7 +268,7 @@ export function GlassCreatorModal({ isOpen, onClose, onSave, glassToEdit, client
       if (data.shape === 'circle') {
         doc.ellipse(startX + drawWidth / 2, startY + drawHeight / 2, (drawWidth / 2) - bevelOffset, (drawHeight / 2) - bevelOffset, 'D');
       } else {
-        doc.roundedRect(startX + bevelOffset, startY + bevelOffset, drawWidth - 2 * bevelOffset, drawHeight - 2 * bevelOffset, drawRadius, drawRadius, 'D');
+        doc.roundedRect(startX + bevelOffset, startY + bevelOffset, drawWidth - 2 * bevelOffset, drawHeight - 2 * bevelOffset, tl, tr, br, bl, 'D');
       }
     }
 
@@ -272,7 +295,7 @@ export function GlassCreatorModal({ isOpen, onClose, onSave, glassToEdit, client
         doc.setFillColor(255, 255, 255, 0); // Transparent fill
         doc.setDrawColor(255, 255, 0); // Yellow stroke
         doc.setLineWidth(stripWidth);
-        doc.roundedRect(startX + leftOffset + stripWidth/2, startY + topOffset + stripWidth/2, drawWidth - leftOffset - rightOffset - stripWidth, drawHeight - topOffset - bottomOffset - stripWidth, drawRadius, drawRadius, 'D');
+        doc.roundedRect(startX + leftOffset + stripWidth/2, startY + topOffset + stripWidth/2, drawWidth - leftOffset - rightOffset - stripWidth, drawHeight - topOffset - bottomOffset - stripWidth, tl, tr, br, bl, 'D');
       }
     }
 
@@ -285,7 +308,10 @@ const GlassVisualizer = () => {
         width = 0,
         height = 0,
         diameter = 0,
-        cornerRadius = 0,
+        cornerRadiusTopLeft = 0,
+        cornerRadiusTopRight = 0,
+        cornerRadiusBottomLeft = 0,
+        cornerRadiusBottomRight = 0,
         type,
         isBeveled,
         hasFrostedStrips,
@@ -309,7 +335,7 @@ const GlassVisualizer = () => {
     const outerStyle: React.CSSProperties = {
         width: `${displayWidth * scaleFactor}px`,
         height: `${displayHeight * scaleFactor}px`,
-        borderRadius: isCircle ? '50%' : `${Math.min(cornerRadius, Math.min(displayWidth, displayHeight) / 2) * scaleFactor}px`,
+        borderRadius: isCircle ? '50%' : `${cornerRadiusTopLeft * scaleFactor}px ${cornerRadiusTopRight * scaleFactor}px ${cornerRadiusBottomRight * scaleFactor}px ${cornerRadiusBottomLeft * scaleFactor}px`,
         position: 'relative',
         overflow: 'hidden',
         boxSizing: 'border-box'
@@ -436,9 +462,17 @@ const GlassVisualizer = () => {
                         <FormField control={form.control} name="width" render={({ field }) => ( <FormItem><FormLabel>Largura (mm)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )}/>
                         <FormField control={form.control} name="height" render={({ field }) => ( <FormItem><FormLabel>Altura (mm)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )}/>
                     </div>
-                     <div className="grid grid-cols-2 gap-4">
+                     <div className="grid grid-cols-1 gap-4">
                         <FormField control={form.control} name="quantity" render={({ field }) => ( <FormItem><FormLabel>Quantidade</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                        <FormField control={form.control} name="cornerRadius" render={({ field }) => ( <FormItem><FormLabel>Raio do Canto (mm)</FormLabel><FormControl><Input type="number" placeholder='0' {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                     </div>
+                     <div>
+                        <FormLabel>Raios dos Cantos (mm)</FormLabel>
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-2 mt-2">
+                           <FormField control={form.control} name="cornerRadiusTopLeft" render={({ field }) => ( <FormItem className="relative"><FormLabel className="text-xs absolute -top-2 left-2 bg-background px-1 text-muted-foreground">Sup. Esq.</FormLabel><FormControl><Input type="number" placeholder='0' {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                           <FormField control={form.control} name="cornerRadiusTopRight" render={({ field }) => ( <FormItem className="relative"><FormLabel className="text-xs absolute -top-2 left-2 bg-background px-1 text-muted-foreground">Sup. Dir.</FormLabel><FormControl><Input type="number" placeholder='0' {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                           <FormField control={form.control} name="cornerRadiusBottomLeft" render={({ field }) => ( <FormItem className="relative"><FormLabel className="text-xs absolute -top-2 left-2 bg-background px-1 text-muted-foreground">Inf. Esq.</FormLabel><FormControl><Input type="number" placeholder='0' {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                           <FormField control={form.control} name="cornerRadiusBottomRight" render={({ field }) => ( <FormItem className="relative"><FormLabel className="text-xs absolute -top-2 left-2 bg-background px-1 text-muted-foreground">Inf. Dir.</FormLabel><FormControl><Input type="number" placeholder='0' {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                        </div>
                      </div>
                 </>
               ) : (
@@ -526,7 +560,7 @@ const GlassVisualizer = () => {
                     ) : (
                         <>
                          <p><strong>Dimensões:</strong> {glassData.width || 0}mm x {glassData.height || 0}mm</p>
-                         <p><strong>Raio do Canto:</strong> {glassData.cornerRadius || 0}mm</p>
+                         <p><strong>Raios (SE, SD, IE, ID):</strong> {glassData.cornerRadiusTopLeft || 0}mm, {glassData.cornerRadiusTopRight || 0}mm, {glassData.cornerRadiusBottomLeft || 0}mm, {glassData.cornerRadiusBottomRight || 0}mm</p>
                         </>
                     )}
                     <p><strong>Quantidade:</strong> {glassData.quantity}</p>
