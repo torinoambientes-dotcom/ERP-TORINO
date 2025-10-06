@@ -894,7 +894,7 @@ export default function PurchasesPage() {
                                             {furnitureData.profileDoors.map((item, index) => (
                                             <li key={index} className='flex justify-between items-center gap-2'>
                                                 <div>
-                                                    <span className="font-medium text-foreground/90">Perfil ${item.profileColor} com Vidro ${item.glassType} (${item.handleType}):</span> ${item.quantity} pç(s) - ${item.width}mm x ${item.height}mm
+                                                    <span className="font-medium text-foreground/90">Perfil {item.profileColor} com Vidro {item.glassType} ({item.handleType}):</span> {item.quantity} pç(s) - {item.width}mm x {item.height}mm
                                                 </div>
                                                 <div className='flex gap-1 flex-shrink-0'>
                                                   <Button variant="ghost" size="sm" onClick={() => handleOpenDoorViewer(item, projectName)}>
@@ -921,7 +921,7 @@ export default function PurchasesPage() {
                     </Accordion>
                     ) : (
                     <div className="flex h-48 items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/20">
-                        <p className="text-sm text-muted-foreground text-center">Nenhuma porta de perfil na lista de ${showPurchasedDoors ? 'compradas' : 'a comprar'}.</p>
+                        <p className="text-sm text-muted-foreground text-center">Nenhuma porta de perfil na lista de {showPurchasedDoors ? 'compradas' : 'a comprar'}.</p>
                     </div>
                     )}
                 </div>
@@ -996,11 +996,11 @@ export default function PurchasesPage() {
                                             </Button>
                                           </DropdownMenuTrigger>
                                           <DropdownMenuContent align='end'>
-                                            {status !== 'approved' && <DropdownMenuItem onClick={() => updatePurchaseRequestStatus(req.id, 'approved')}>Aprovar</DropdownMenuItem>}
-                                            {status !== 'purchased' && <DropdownMenuItem onClick={() => updatePurchaseRequestStatus(req.id, 'purchased')}>Marcar como Comprado</DropdownMenuItem>}
-                                            {status !== 'rejected' && <DropdownMenuItem onClick={() => updatePurchaseRequestStatus(req.id, 'rejected')}>Rejeitar</DropdownMenuItem>}
-                                            {status !== 'pending' && <DropdownMenuSeparator />}
-                                            {status !== 'pending' && <DropdownMenuItem onClick={() => updatePurchaseRequestStatus(req.id, 'pending')}>Mover para Pendente</DropdownMenuItem>}
+                                            {req.status !== 'approved' && <DropdownMenuItem onClick={() => updatePurchaseRequestStatus(req.id, 'approved')}>Aprovar</DropdownMenuItem>}
+                                            {req.status !== 'purchased' && <DropdownMenuItem onClick={() => updatePurchaseRequestStatus(req.id, 'purchased')}>Marcar como Comprado</DropdownMenuItem>}
+                                            {req.status !== 'rejected' && <DropdownMenuItem onClick={() => updatePurchaseRequestStatus(req.id, 'rejected')}>Rejeitar</DropdownMenuItem>}
+                                            {req.status !== 'pending' && <DropdownMenuSeparator />}
+                                            {req.status !== 'pending' && <DropdownMenuItem onClick={() => updatePurchaseRequestStatus(req.id, 'pending')}>Mover para Pendente</DropdownMenuItem>}
                                             <DropdownMenuSeparator />
                                             <DropdownMenuItem onClick={() => handleOpenRequestModal(req)}><Edit className="mr-2 h-4 w-4" />Editar</DropdownMenuItem>
                                             <DropdownMenuItem onClick={() => handleOpenDeleteAlert(req)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" />Apagar Solicitação</DropdownMenuItem>
