@@ -46,7 +46,7 @@ export interface CalendarTask {
 
 export default function CalendarPage() {
   const { projects, teamMembers, appointments, updateProject, updateAppointment, deleteAppointment, isLoading } = useContext(AppContext);
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [selectedDates, setSelectedDates] = useState<Date[]>([]);
   const [selectedMemberId, setSelectedMemberId] = useState('all');
   const [isAppointmentModalOpen, setAppointmentModalOpen] = useState(false);
@@ -301,9 +301,9 @@ export default function CalendarPage() {
                                              {getTaskTime(task)}
                                          </div>
                                          <div className="w-1.5 h-auto self-stretch rounded-full" style={{backgroundColor: task.responsible[0]?.color || '#ccc'}}></div>
-                                         <div className="flex-grow">
-                                            <p className="font-semibold">{task.title}</p>
-                                            {task.subtitle && <p className="text-sm text-muted-foreground">{task.subtitle}</p>}
+                                         <div className="flex-grow overflow-hidden">
+                                            <p className="font-semibold truncate">{task.title}</p>
+                                            {task.subtitle && <p className="text-sm text-muted-foreground truncate">{task.subtitle}</p>}
                                          </div>
                                          <div className="flex items-center -space-x-2">
                                            {task.responsible.map(member => (
