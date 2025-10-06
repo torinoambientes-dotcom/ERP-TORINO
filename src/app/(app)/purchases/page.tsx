@@ -149,8 +149,6 @@ export default function PurchasesPage() {
 
   const memberMap = useMemo(() => new Map(teamMembers.map(m => [m.id, m])), [teamMembers]);
 
-  const isAdmin = useMemo(() => user?.email === 'carlos.campigotto@gmail.com', [user]);
-
   const lowStockItems = useMemo((): LowStockInfo[] => {
     return stockItems
       .map(item => {
@@ -987,28 +985,24 @@ export default function PurchasesPage() {
                                   </div>
                                   
                                   <div className="flex-shrink-0 self-start flex items-center gap-1">
-                                    {isAdmin ? (
-                                        <DropdownMenu>
-                                          <DropdownMenuTrigger asChild>
-                                            <Button variant="outline" size="sm" className="bg-background/80 flex gap-2">
-                                              <span>Ações</span>
-                                              <MoreHorizontal className="h-4 w-4" />
-                                            </Button>
-                                          </DropdownMenuTrigger>
-                                          <DropdownMenuContent align='end'>
-                                            {req.status !== 'approved' && <DropdownMenuItem onClick={() => updatePurchaseRequestStatus(req.id, 'approved')}>Aprovar</DropdownMenuItem>}
-                                            {req.status !== 'purchased' && <DropdownMenuItem onClick={() => updatePurchaseRequestStatus(req.id, 'purchased')}>Marcar como Comprado</DropdownMenuItem>}
-                                            {req.status !== 'rejected' && <DropdownMenuItem onClick={() => updatePurchaseRequestStatus(req.id, 'rejected')}>Rejeitar</DropdownMenuItem>}
-                                            {req.status !== 'pending' && <DropdownMenuSeparator />}
-                                            {req.status !== 'pending' && <DropdownMenuItem onClick={() => updatePurchaseRequestStatus(req.id, 'pending')}>Mover para Pendente</DropdownMenuItem>}
-                                            <DropdownMenuSeparator />
-                                            <DropdownMenuItem onClick={() => handleOpenRequestModal(req)}><Edit className="mr-2 h-4 w-4" />Editar</DropdownMenuItem>
-                                            <DropdownMenuItem onClick={() => handleOpenDeleteAlert(req)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" />Apagar Solicitação</DropdownMenuItem>
-                                          </DropdownMenuContent>
-                                        </DropdownMenu>
-                                    ) : (
-                                      <Badge variant="outline" className='bg-background/80 capitalize'>{statusConfig[req.status as keyof typeof statusConfig].title}</Badge>
-                                    )}
+                                    <DropdownMenu>
+                                      <DropdownMenuTrigger asChild>
+                                        <Button variant="outline" size="sm" className="bg-background/80 flex gap-2">
+                                          <span>Ações</span>
+                                          <MoreHorizontal className="h-4 w-4" />
+                                        </Button>
+                                      </DropdownMenuTrigger>
+                                      <DropdownMenuContent align='end'>
+                                        {req.status !== 'approved' && <DropdownMenuItem onClick={() => updatePurchaseRequestStatus(req.id, 'approved')}>Aprovar</DropdownMenuItem>}
+                                        {req.status !== 'purchased' && <DropdownMenuItem onClick={() => updatePurchaseRequestStatus(req.id, 'purchased')}>Marcar como Comprado</DropdownMenuItem>}
+                                        {req.status !== 'rejected' && <DropdownMenuItem onClick={() => updatePurchaseRequestStatus(req.id, 'rejected')}>Rejeitar</DropdownMenuItem>}
+                                        {req.status !== 'pending' && <DropdownMenuSeparator />}
+                                        {req.status !== 'pending' && <DropdownMenuItem onClick={() => updatePurchaseRequestStatus(req.id, 'pending')}>Mover para Pendente</DropdownMenuItem>}
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem onClick={() => handleOpenRequestModal(req)}><Edit className="mr-2 h-4 w-4" />Editar</DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => handleOpenDeleteAlert(req)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" />Apagar Solicitação</DropdownMenuItem>
+                                      </DropdownMenuContent>
+                                    </DropdownMenu>
                                   </div>
                                 </div>
                               )
