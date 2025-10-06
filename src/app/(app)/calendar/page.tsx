@@ -20,7 +20,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { PlusCircle } from 'lucide-react';
+import { PlusCircle, X } from 'lucide-react';
 import { NewAppointmentModal } from '@/components/modals/new-appointment-modal';
 import { AppointmentDetailsModal } from '@/components/modals/appointment-details-modal';
 
@@ -46,6 +46,7 @@ export interface CalendarTask {
 export default function CalendarPage() {
   const { projects, teamMembers, appointments, updateProject, updateAppointmentDate, deleteAppointment, isLoading } = useContext(AppContext);
   const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [selectedDates, setSelectedDates] = useState<Date[] | undefined>();
   const [selectedMemberId, setSelectedMemberId] = useState('all');
   const [isAppointmentModalOpen, setAppointmentModalOpen] = useState(false);
   const [isDetailsModalOpen, setDetailsModalOpen] = useState(false);
@@ -169,24 +170,11 @@ export default function CalendarPage() {
     }
   };
 
-  const DayWithTasks = ({ date }: { date: Date }) => {
+  const DayWithTasks = ({ date, ...props }: { date: Date } & any) => {
     const dayKey = format(date, 'yyyy-MM-dd');
     const dailyTasks = tasksByDay[dayKey] || [];
 
-    const TaskItem = ({ task }: { task: CalendarTask }) => (
-       <div className="flex items-center gap-2 p-1.5 rounded-md" style={{ backgroundColor: `${task.responsible.color}20` }}>
-          <Avatar className="h-5 w-5">
-              {task.responsible.avatarUrl && <AvatarImage src={task.responsible.avatarUrl} alt={task.responsible.name} />}
-              <AvatarFallback style={{ backgroundColor: task.responsible.color }} className='text-xs'>
-                  {getInitials(task.responsible.name)}
-              </AvatarFallback>
-          </Avatar>
-          <div className="text-xs truncate">
-              <p className="font-medium truncate text-foreground">{task.title}</p>
-              {task.subtitle && <p className="text-muted-foreground truncate">{task.subtitle}</p>}
-          </div>
-      </div>
-    );
+    const isSelected = selectedDates?.some(d => isSameDay(d, date));
 
     return (
       <div className="p-2 h-full flex flex-col">
@@ -198,11 +186,33 @@ export default function CalendarPage() {
             <li key={task.id}>
               {task.link ? (
                  <Link href={task.link} className="group block">
-                  <TaskItem task={task} />
+                   <div className="flex items-center gap-2 p-1.5 rounded-md" style={{ backgroundColor: `${task.responsible.color}20` }}>
+                      <Avatar className="h-5 w-5">
+                          {task.responsible.avatarUrl && <AvatarImage src={task.responsible.avatarUrl} alt={task.responsible.name} />}
+                          <AvatarFallback style={{ backgroundColor: task.responsible.color }} className='text-xs'>
+                              {getInitials(task.responsible.name)}
+                          </AvatarFallback>
+                      </Avatar>
+                      <div className="text-xs truncate">
+                          <p className="font-medium truncate text-foreground">{task.title}</p>
+                          {task.subtitle && <p className="text-muted-foreground truncate">{task.subtitle}</p>}
+                      </div>
+                  </div>
                  </Link>
               ) : (
                 <div className="group block cursor-pointer" onClick={() => handleTaskClick(task)}>
-                  <TaskItem task={task} />
+                   <div className="flex items-center gap-2 p-1.5 rounded-md" style={{ backgroundColor: `${task.responsible.color}20` }}>
+                      <Avatar className="h-5 w-5">
+                          {task.responsible.avatarUrl && <AvatarImage src={task.responsible.avatarUrl} alt={task.responsible.name} />}
+                          <AvatarFallback style={{ backgroundColor: task.responsible.color }} className='text-xs'>
+                              {getInitials(task.responsible.name)}
+                          </AvatarFallback>
+                      </Avatar>
+                      <div className="text-xs truncate">
+                          <p className="font-medium truncate text-foreground">{task.title}</p>
+                          {task.subtitle && <p className="text-muted-foreground truncate">{task.subtitle}</p>}
+                      </div>
+                  </div>
                 </div>
               )}
             </li>
@@ -261,11 +271,27 @@ export default function CalendarPage() {
           </div>
         </div>
 
+        {selectedDates && selectedDates.length > 0 && (
+          <Card className="bg-muted/50 border-dashed">
+            <CardContent className="p-3 flex items-center justify-between">
+              <p className="text-sm font-medium">
+                {selectedDates.length} dia(s) selecionado(s).
+              </p>
+              <Button variant="ghost" size="sm" onClick={() => setSelectedDates(undefined)}>
+                <X className="mr-2 h-4 w-4" />
+                Limpar Seleção
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
         <Card>
           <CardContent className="p-2">
             <Calendar
-              mode="single"
-              selected={new Date()}
+              mode="multiple"
+              min={0}
+              selected={selectedDates}
+              onSelect={setSelectedDates}
               month={currentMonth}
               onMonthChange={setCurrentMonth}
               locale={ptBR}
@@ -280,7 +306,7 @@ export default function CalendarPage() {
                 row: 'flex w-full mt-2',
                 cell: 'h-32 w-full text-center text-sm p-0 relative [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md border-t border-l',
                 day: 'h-full w-full p-1.5 focus-within:relative focus-within:z-20',
-                day_selected: 'bg-accent text-accent-foreground',
+                day_selected: 'bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground',
                 day_today: 'bg-accent text-accent-foreground',
                 day_outside: 'text-muted-foreground opacity-50',
               }}
@@ -291,6 +317,8 @@ export default function CalendarPage() {
       <NewAppointmentModal
         isOpen={isAppointmentModalOpen}
         onClose={() => setAppointmentModalOpen(false)}
+        selectedDates={selectedDates}
+        onDatesConsumed={() => setSelectedDates(undefined)}
       />
       {selectedTask && (
         <AppointmentDetailsModal
