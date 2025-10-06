@@ -41,6 +41,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator
 } from '@/components/ui/dropdown-menu';
 
 
@@ -899,7 +900,7 @@ export default function PurchasesPage() {
         <TabsContent value="requests" className="mt-6 space-y-6">
             <Card>
                 <CardHeader>
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                       <div className='space-y-1.5'>
                       <CardTitle className="font-headline">Solicitações de Compra Avulsas</CardTitle>
                       <CardDescription>Itens que não pertencem a projetos, como material de escritório ou ferramentas.</CardDescription>
@@ -924,36 +925,42 @@ export default function PurchasesPage() {
                       return (
                         <div key={status}>
                           <h3 className="font-semibold mb-2">{statusConfig[status as keyof typeof statusConfig].title} ({requests.length})</h3>
-                          <div className="space-y-2">
+                          <div className="space-y-3">
                             {requests.map(req => {
                               const requester = memberMap.get(req.requesterId);
                               return(
-                                <div key={req.id} className={cn("p-4 rounded-lg border flex justify-between items-start gap-4", statusConfig[status as keyof typeof statusConfig].color)}>
-                                  <div>
-                                    <p className='font-semibold'>{req.description} - {req.quantity} {req.unit}</p>
-                                    <p className='text-sm text-muted-foreground'>{req.reason}</p>
+                                <div key={req.id} className={cn("p-4 rounded-lg border flex flex-col sm:flex-row justify-between items-start gap-4", statusConfig[status as keyof typeof statusConfig].color)}>
+                                  <div className="flex-grow">
+                                    <p className='font-semibold text-base'>{req.description} - {req.quantity} {req.unit}</p>
+                                    <p className='text-sm text-muted-foreground mt-1'>{req.reason}</p>
                                     {requester && (
                                         <div className='text-xs text-muted-foreground mt-2 flex items-center gap-1.5'>
-                                          <Avatar className="h-4 w-4"><AvatarFallback style={{backgroundColor: requester.color}} className="text-[8px]">{getInitials(requester.name)}</AvatarFallback></Avatar>
-                                          <span>Solicitado por {requester.name} em {format(new Date(req.createdAt), 'dd/MM/yy')}</span>
+                                          <Avatar className="h-4 w-4"><AvatarFallback style={{backgroundColor: requester.color}} className="text-[8px] font-bold">{getInitials(requester.name)}</AvatarFallback></Avatar>
+                                          <span>Solicitado por {requester.name} em {format(new Date(req.createdAt), 'dd/MM/yy \'às\' HH:mm')}</span>
                                         </div>
                                     )}
                                   </div>
                                   
-                                  {isAdmin && (
-                                    <DropdownMenu>
-                                      <DropdownMenuTrigger asChild>
-                                        <Button variant="outline" size="sm">Ações</Button>
-                                      </DropdownMenuTrigger>
-                                      <DropdownMenuContent>
-                                        {status !== 'approved' && <DropdownMenuItem onClick={() => updatePurchaseRequestStatus(req.id, 'approved')}>Aprovar</DropdownMenuItem>}
-                                        {status !== 'purchased' && <DropdownMenuItem onClick={() => updatePurchaseRequestStatus(req.id, 'purchased')}>Marcar como Comprado</DropdownMenuItem>}
-                                        {status !== 'rejected' && <DropdownMenuItem onClick={() => updatePurchaseRequestStatus(req.id, 'rejected')}>Rejeitar</DropdownMenuItem>}
-                                        {status === 'rejected' && <DropdownMenuItem onClick={() => updatePurchaseRequestStatus(req.id, 'pending')}>Reabrir</DropdownMenuItem>}
-                                        <DropdownMenuItem onClick={() => deletePurchaseRequest(req.id)} className="text-destructive">Apagar</DropdownMenuItem>
-                                      </DropdownMenuContent>
-                                    </DropdownMenu>
-                                  )}
+                                  <div className="flex-shrink-0 self-start">
+                                    {isAdmin ? (
+                                        <DropdownMenu>
+                                          <DropdownMenuTrigger asChild>
+                                            <Button variant="outline" size="sm" className="bg-background/80">Ações</Button>
+                                          </DropdownMenuTrigger>
+                                          <DropdownMenuContent>
+                                            {status !== 'approved' && <DropdownMenuItem onClick={() => updatePurchaseRequestStatus(req.id, 'approved')}>Aprovar</DropdownMenuItem>}
+                                            {status !== 'purchased' && <DropdownMenuItem onClick={() => updatePurchaseRequestStatus(req.id, 'purchased')}>Marcar como Comprado</DropdownMenuItem>}
+                                            {status !== 'rejected' && <DropdownMenuItem onClick={() => updatePurchaseRequestStatus(req.id, 'rejected')}>Rejeitar</DropdownMenuItem>}
+                                            {status !== 'pending' && <DropdownMenuSeparator />}
+                                            {status !== 'pending' && <DropdownMenuItem onClick={() => updatePurchaseRequestStatus(req.id, 'pending')}>Mover para Pendente</DropdownMenuItem>}
+                                            <DropdownMenuSeparator />
+                                            <DropdownMenuItem onClick={() => deletePurchaseRequest(req.id)} className="text-destructive">Apagar Solicitação</DropdownMenuItem>
+                                          </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    ) : (
+                                      <Badge variant="outline" className='bg-background/80 capitalize'>{req.status}</Badge>
+                                    )}
+                                  </div>
                                 </div>
                               )
                             })}
