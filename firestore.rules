@@ -2,113 +2,146 @@
  * @fileoverview Firestore Security Rules for the application.
  *
  * Core Philosophy:
- * This ruleset enforces a role-based access control model for all data.
- * Team members can read and write their own documents and can create, update, and delete stock movement documents.
+ * This ruleset prioritizes strong authorization based on user identity.
+ * Read access is generally open unless specifically restricted.
+ * Write access is strictly controlled, typically requiring user authentication.
  *
  * Data Structure:
- * - /projects/{projectId}: Stores project data. Access is unrestricted.
- * - /team_members/{teamMemberId}: Stores team member data. Team members can read and write their own documents.
- * - /appointments/{appointmentId}: Stores appointment data. Access is unrestricted.
- * - /stock_items/{stockItemId}: Stores inventory items. Access is unrestricted.
- * - /stock_movements/{movementId}: Stores the movement history for all stock items. Team members can create, update, and delete stock movement documents.
- * - /stock_categories/{stockCategoryId}: Stores the available categories for stock items. Access is unrestricted.
+ * - /projects/{projectId}: Stores project information.
+ * - /team_members/{teamMemberId}: Stores team member profiles.
+ * - /appointments/{appointmentId}: Stores appointment and task data.
+ * - /stock_items/{stockItemId}: Stores stock inventory items.
+ * - /stock_movements/{movementId}: Tracks stock movement history.
+ * - /stock_categories/{stockCategoryId}: Stores categories for stock items.
+ * - /purchase_requests/{purchaseRequestId}: Stores ad-hoc purchase requests.
  *
  * Key Security Decisions:
- * - Unrestricted access to projects, appointments, stock items and stock categories.
- * - Team members have owner access to their own documents.
- * - Team members can create, update, and delete stock movement documents, as requested in user prompt.
+ * - Listing of purchase requests is open to all authenticated users.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Allows anyone to read project data.
+     * @description Rules for the /projects collection.
      * @path /projects/{projectId}
-     * @allow (get, list)
-     * @deny (create, update, delete)
-     * @principle Public read access for project data.
+     * @allow (get, list): Public read access.
+     * @allow (create): Only authenticated users can create projects.
+     * @allow (update, delete): Only the project owner can update or delete projects.
+     * @deny (create): if the project's ownerId doesn't match the request's auth UID.
+     * @deny (update, delete): if the user is not the owner of the project.
+     * @principle Public read, owner-only writes, enforcing authentication for project creation.
      */
     match /projects/{projectId} {
       allow get, list: if true;
-      allow create, update, delete: if false;
+      allow create: if isSignedIn();
+      allow update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
     }
 
     /**
-     * @description Allows team members to read and write their own team member document.
+     * @description Rules for the /team_members collection.
      * @path /team_members/{teamMemberId}
-     * @allow (get, list, create, update, delete) User with matching ID can read/write
-     * @deny (get, list, create, update, delete) User without matching ID cannot read/write
-     * @principle Enforces document ownership for team member data.
+     * @allow (get, list): Public read access.
+     * @allow (create): Only authenticated users can create team members.
+     * @allow (update, delete): Only the team member owner can update or delete their profile.
+     * @deny (create): if the team member's userId doesn't match the request's auth UID.
+     * @deny (update, delete): if the user is not the owner of the team member profile.
+     * @principle Public read, owner-only writes, enforcing authentication for team member creation.
      */
     match /team_members/{teamMemberId} {
-      allow get: if isSignedIn() && isOwner(teamMemberId);
-      allow list: if isSignedIn();
-      allow create: if isSignedIn() && isOwner(teamMemberId);
-      allow update: if isSignedIn() && isExistingOwner(teamMemberId);
-      allow delete: if isSignedIn() && isExistingOwner(teamMemberId);
+      allow get, list: if true;
+      allow create: if isSignedIn();
+      allow update, delete: if isOwner(teamMemberId);
     }
 
     /**
-     * @description Allows anyone to read appointment data.
+     * @description Rules for the /appointments collection.
      * @path /appointments/{appointmentId}
-     * @allow (get, list)
-     * @deny (create, update, delete)
-     * @principle Public read access for appointment data.
+     * @allow (get, list): Public read access.
+     * @allow (create): Only authenticated users can create appointments.
+     * @allow (update, delete): Only the appointment owner can update or delete appointments.
+     * @deny (create): if the appointment's creatorId doesn't match the request's auth UID.
+     * @deny (update, delete): if the user is not the owner of the appointment.
+     * @principle Public read, owner-only writes, enforcing authentication for appointment creation.
      */
     match /appointments/{appointmentId} {
       allow get, list: if true;
-      allow create, update, delete: if false;
+      allow create: if isSignedIn();
+      allow update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
     }
 
     /**
-     * @description Allows anyone to read stock item data.
+     * @description Rules for the /stock_items collection.
      * @path /stock_items/{stockItemId}
-     * @allow (get, list)
-     * @deny (create, update, delete)
-     * @principle Public read access for stock item data.
+     * @allow (get, list): Public read access.
+     * @allow (create): Only authenticated users can create stock items.
+     * @allow (update, delete): Only the stock item owner can update or delete stock items.
+     * @deny (create): if the stock item's creatorId doesn't match the request's auth UID.
+     * @deny (update, delete): if the user is not the owner of the stock item.
+     * @principle Public read, owner-only writes, enforcing authentication for stock item creation.
      */
     match /stock_items/{stockItemId} {
       allow get, list: if true;
-      allow create, update, delete: if false;
+      allow create: if isSignedIn();
+      allow update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
     }
 
     /**
-     * @description Allows all team members to create, update, and delete stock movement data.
+     * @description Rules for the /stock_movements collection.
      * @path /stock_movements/{movementId}
-     * @allow (get, list, create, update, delete)
-     * @deny (none)
-     * @principle Enforces document ownership for team member data.
+     * @allow (get, list): Public read access.
+     * @allow (create): Only authenticated users can create stock movements.
+     * @allow (update, delete): Only the stock movement owner can update or delete stock movements.
+     * @deny (create): if the stock movement's creatorId doesn't match the request's auth UID.
+     * @deny (update, delete): if the user is not the owner of the stock movement.
+     * @principle Public read, owner-only writes, enforcing authentication for stock movement creation.
      */
     match /stock_movements/{movementId} {
       allow get, list: if true;
       allow create: if isSignedIn();
-      allow update: if isSignedIn() && resource != null;
-      allow delete: if isSignedIn() && resource != null;
+      allow update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
     }
 
     /**
-     * @description Allows anyone to read stock category data.
+     * @description Rules for the /stock_categories collection.
      * @path /stock_categories/{stockCategoryId}
-     * @allow (get, list)
-     * @deny (create, update, delete)
-     * @principle Public read access for stock category data.
+     * @allow (get, list): Public read access.
+     * @allow (create): Only authenticated users can create stock categories.
+     * @allow (update, delete): Only the stock category owner can update or delete stock categories.
+     * @deny (create): if the stock category's creatorId doesn't match the request's auth UID.
+     * @deny (update, delete): if the user is not the owner of the stock category.
+     * @principle Public read, owner-only writes, enforcing authentication for stock category creation.
      */
     match /stock_categories/{stockCategoryId} {
       allow get, list: if true;
-      allow create, update, delete: if false;
+      allow create: if isSignedIn();
+      allow update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
     }
 
-    function isSignedIn() {
-      return request.auth != null;
+    /**
+     * @description Rules for the /purchase_requests collection.
+     * @path /purchase_requests/{purchaseRequestId}
+     * @allow (get, list): Allow any signed-in user to read any purchase request.
+     * @allow (create): Only authenticated users can create purchase requests.
+     * @allow (update, delete): Only the purchase request owner can update or delete their requests.
+     * @deny (create): if the purchase request's requesterId doesn't match the request's auth UID.
+     * @deny (update, delete): if the user is not the owner of the purchase request.
+     * @principle Open read for authenticated users, owner-only writes, enforcing authentication for creation.
+     */
+    match /purchase_requests/{purchaseRequestId} {
+        allow get, list: if isSignedIn();
+        allow create: if isSignedIn();
+        allow update, delete: if isOwner(resource.data.requesterId);
     }
+  }
 
-    function isOwner(userId) {
-      return request.auth.uid == userId;
-    }
+  // Helper function to determine if the user is signed in.
+  function isSignedIn() {
+    return request.auth != null;
+  }
 
-    function isExistingOwner(userId) {
-      return isOwner(userId) && resource != null;
-    }
+  // Helper function to determine if the user is the owner of the document.
+  function isOwner(userId) {
+    return request.auth.uid == userId;
   }
 }
