@@ -88,9 +88,8 @@ const glassSchema = z.object({
 
 const profileDoorSchema = z.object({
     id: z.string(),
-    doorType: z.enum(['Giro', 'Correr', 'Escamoteavel']).optional(),
+    doorType: z.enum(['Giro', 'Correr', 'Escamoteavel', 'Frente de gaveta']).optional(),
     slidingSystem: z.string().optional(),
-    isPair: z.boolean().optional(),
     profileColor: z.string().min(1, "Cor do perfil é obrigatória."),
     glassType: z.string().min(1, "Tipo de vidro é obrigatório."),
     handleType: z.string().min(1, "Tipo de puxador é obrigatório."),
@@ -98,6 +97,7 @@ const profileDoorSchema = z.object({
     width: z.coerce.number().min(1, "Largura é obrigatória."),
     height: z.coerce.number().min(1, "Altura é obrigatória."),
     hinges: z.array(z.object({ position: z.number() })).optional(),
+    isPair: z.boolean().optional(),
     handlePosition: z.enum(['top', 'bottom', 'left', 'right']).optional(),
     handleWidth: z.coerce.number().optional(),
     handleOffset: z.coerce.number().optional(),
@@ -327,7 +327,7 @@ export function FurnitureMaterialsModal({
     appendMaterial({ id: generateId('mat'), name: '', quantity: 1, unit: 'unidade', addedAt: new Date().toISOString(), purchased: false });
   };
   
-  const handleSaveProfileDoor = (doorData: Omit<ProfileDoorItem, 'id' | 'addedAt'>) => {
+  const handleSaveProfileDoor = (doorData: Omit<ProfileDoorItem, 'id' | 'purchased' | 'addedAt'>) => {
     if (doorIndexToEdit !== null) {
       const existingDoor = profileDoorFields[doorIndexToEdit];
       updateProfileDoor(doorIndexToEdit, { ...existingDoor, ...doorData });
@@ -631,5 +631,7 @@ export function FurnitureMaterialsModal({
     </>
   );
 }
+
+    
 
     
