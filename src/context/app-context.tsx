@@ -44,6 +44,7 @@ interface AppContextType {
   registerPurchase: (itemId: string, quantity: number, supplier: string) => void;
   confirmStockReceipt: (item: StockItem) => void;
   addPurchaseRequest: (requestData: Omit<PurchaseRequest, 'id' | 'createdAt' | 'updatedAt' | 'status'>) => void;
+  updatePurchaseRequest: (requestData: PurchaseRequest) => void;
   updatePurchaseRequestStatus: (requestId: string, status: PurchaseRequestStatus, notes?: string) => void;
   deletePurchaseRequest: (requestId: string) => void;
 }
@@ -82,6 +83,7 @@ export const AppContext = createContext<AppContextType>({
   registerPurchase: () => {},
   confirmStockReceipt: () => {},
   addPurchaseRequest: () => {},
+  updatePurchaseRequest: () => {},
   updatePurchaseRequestStatus: () => {},
   deletePurchaseRequest: () => {},
 });
@@ -741,6 +743,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const requestRef = doc(firestore, 'purchase_requests', newRequest.id);
         setDocumentNonBlocking(requestRef, newRequest, { merge: false });
     }, [firestore]);
+    
+    const updatePurchaseRequest = useCallback((requestData: PurchaseRequest) => {
+        if (!firestore) return;
+        const requestRef = doc(firestore, 'purchase_requests', requestData.id);
+        const updateData = {
+            ...requestData,
+            updatedAt: new Date().toISOString(),
+        }
+        updateDocumentNonBlocking(requestRef, updateData);
+    }, [firestore]);
+
 
     const updatePurchaseRequestStatus = useCallback((requestId: string, status: PurchaseRequestStatus, notes?: string) => {
         if (!firestore) return;
@@ -796,6 +809,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     registerPurchase,
     confirmStockReceipt,
     addPurchaseRequest,
+    updatePurchaseRequest,
     updatePurchaseRequestStatus,
     deletePurchaseRequest,
   }), [
@@ -838,6 +852,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     registerPurchase,
     confirmStockReceipt,
     addPurchaseRequest,
+    updatePurchaseRequest,
     updatePurchaseRequestStatus,
     deletePurchaseRequest,
   ]);

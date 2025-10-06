@@ -47,7 +47,7 @@ export function NewPurchaseRequestModal({
   onClose,
   requestToEdit,
 }: NewPurchaseRequestModalProps) {
-  const { addPurchaseRequest, teamMembers } = useContext(AppContext);
+  const { addPurchaseRequest, updatePurchaseRequest, teamMembers } = useContext(AppContext);
   const { toast } = useToast();
   const { user } = useUser();
 
@@ -79,25 +79,31 @@ export function NewPurchaseRequestModal({
   }, [isOpen, isEditMode, requestToEdit, form]);
 
   const onSubmit = (data: RequestFormValues) => {
-    const requester = teamMembers.find(m => m.id === user?.uid);
-    if (!requester) {
-        toast({ variant: 'destructive', title: 'Erro', description: 'Usuário solicitante não encontrado.' });
-        return;
+    if (isEditMode && requestToEdit) {
+        updatePurchaseRequest({
+            ...requestToEdit,
+            ...data,
+        });
+        toast({
+            title: "Solicitação Atualizada!",
+            description: "A solicitação de compra foi atualizada com sucesso."
+        });
+    } else {
+        const requester = teamMembers.find(m => m.id === user?.uid);
+        if (!requester) {
+            toast({ variant: 'destructive', title: 'Erro', description: 'Usuário solicitante não encontrado.' });
+            return;
+        }
+        addPurchaseRequest({
+            ...data,
+            requesterId: requester.id,
+            requesterName: requester.name,
+        });
+        toast({
+            title: 'Solicitação Enviada!',
+            description: 'Sua solicitação de compra foi enviada para aprovação.'
+        });
     }
-    
-    // Note: Editing is not fully implemented, it just creates a new one for now.
-    // A full implementation would require an `updatePurchaseRequest` function.
-    addPurchaseRequest({
-        ...data,
-        requesterId: requester.id,
-        requesterName: requester.name,
-    });
-
-    toast({
-        title: 'Solicitação Enviada!',
-        description: 'Sua solicitação de compra foi enviada para aprovação.'
-    });
-
     onClose();
   };
 
@@ -109,7 +115,7 @@ export function NewPurchaseRequestModal({
             {isEditMode ? 'Editar Solicitação' : 'Nova Solicitação de Compra'}
           </DialogTitle>
           <DialogDescription>
-            Descreva o item que você precisa que seja comprado.
+            {isEditMode ? 'Edite os detalhes da sua solicitação.' : 'Descreva o item que você precisa que seja comprado.'}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>

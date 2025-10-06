@@ -16,7 +16,7 @@ import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/layout/page-header';
 import { AppContext } from '@/context/app-context';
 import type { StockItem, MaterialItem, GlassItem, ProfileDoorItem, PurchaseRequest } from '@/lib/types';
-import { AlertTriangle, ChevronsUpDown, CheckCircle, Copy, ShoppingCart, Eye, History, MessageCircle, Truck, PlusCircle, Trash2, Edit } from 'lucide-react';
+import { AlertTriangle, ChevronsUpDown, CheckCircle, Copy, ShoppingCart, Eye, History, MessageCircle, Truck, PlusCircle, Trash2, Edit, MoreHorizontal, FileSearch } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
   Accordion,
@@ -43,6 +43,8 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator
 } from '@/components/ui/dropdown-menu';
+import { Input } from '@/components/ui/input';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../ui/alert-dialog';
 
 
 interface ShoppingList {
@@ -139,6 +141,11 @@ export default function PurchasesPage() {
 
   const [isNewRequestModalOpen, setNewRequestModalOpen] = useState(false);
   const [requestToEdit, setRequestToEdit] = useState<PurchaseRequest | null>(null);
+  
+  const [isDeleteRequestAlertOpen, setDeleteRequestAlertOpen] = useState(false);
+  const [requestToDelete, setRequestToDelete] = useState<PurchaseRequest | null>(null);
+
+  const [requestSearchTerm, setRequestSearchTerm] = useState('');
 
   const memberMap = useMemo(() => new Map(teamMembers.map(m => [m.id, m])), [teamMembers]);
 
@@ -307,16 +314,23 @@ export default function PurchasesPage() {
     return list;
   }, [projects, showPurchasedDoors]);
 
+    const filteredPurchaseRequests = useMemo(() => {
+        return purchaseRequests.filter(req => 
+            req.description.toLowerCase().includes(requestSearchTerm.toLowerCase()) ||
+            req.reason.toLowerCase().includes(requestSearchTerm.toLowerCase())
+        );
+    }, [purchaseRequests, requestSearchTerm]);
+
     const pendingPurchaseRequestsCount = useMemo(() => {
         return purchaseRequests.filter(req => req.status === 'pending').length;
     }, [purchaseRequests]);
 
   const pendingCounts = useMemo(() => {
-    const activeProjects = projects.filter(p => !p.completedAt);
     let materials = lowStockItems.length;
     let glass = 0;
     let doors = 0;
 
+    const activeProjects = projects.filter(p => !p.completedAt);
     activeProjects.forEach(p => {
         p.environments.forEach(e => {
             e.furniture.forEach(f => {
@@ -547,6 +561,23 @@ export default function PurchasesPage() {
     const handleOpenRequestModal = (request: PurchaseRequest | null = null) => {
         setRequestToEdit(request);
         setNewRequestModalOpen(true);
+    }
+    
+    const handleOpenDeleteAlert = (request: PurchaseRequest) => {
+        setRequestToDelete(request);
+        setDeleteRequestAlertOpen(true);
+    }
+    
+    const handleConfirmDeleteRequest = () => {
+        if(requestToDelete) {
+            deletePurchaseRequest(requestToDelete.id);
+            toast({
+                title: "Solicitação Apagada",
+                description: "A solicitação de compra foi removida."
+            });
+            setDeleteRequestAlertOpen(false);
+            setRequestToDelete(null);
+        }
     }
 
 
@@ -905,23 +936,37 @@ export default function PurchasesPage() {
                       <CardTitle className="font-headline">Solicitações de Compra Avulsas</CardTitle>
                       <CardDescription>Itens que não pertencem a projetos, como material de escritório ou ferramentas.</CardDescription>
                       </div>
-                      <Button onClick={() => handleOpenRequestModal(null)}>
-                        <PlusCircle className="mr-2 h-4 w-4" />
-                        Nova Solicitação
-                      </Button>
+                      <div className='flex gap-2 w-full sm:w-auto'>
+                        <div className="relative flex-grow">
+                          <FileSearch className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                          <Input
+                            type="search"
+                            placeholder="Pesquisar solicitações..."
+                            value={requestSearchTerm}
+                            onChange={(e) => setRequestSearchTerm(e.target.value)}
+                            className="pl-8 w-full"
+                          />
+                        </div>
+                        <Button onClick={() => handleOpenRequestModal(null)} className="flex-shrink-0">
+                          <PlusCircle className="mr-2 h-4 w-4" />
+                          Nova Solicitação
+                        </Button>
+                      </div>
                   </div>
                 </CardHeader>
                 <CardContent>
                 <div className="space-y-4">
                   {['pending', 'approved', 'purchased', 'rejected'].map(status => {
-                      const requests = purchaseRequests.filter(r => r.status === status).sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+                      const requests = filteredPurchaseRequests.filter(r => r.status === status).sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
                       if(requests.length === 0) return null;
+                      
                       const statusConfig = {
                         pending: { title: 'Pendentes', color: 'border-amber-500 bg-amber-50' },
                         approved: { title: 'Aprovadas (Aguardando Compra)', color: 'border-blue-500 bg-blue-50' },
                         purchased: { title: 'Compradas', color: 'border-green-500 bg-green-50' },
                         rejected: { title: 'Rejeitadas', color: 'border-red-500 bg-red-50' },
                       };
+                      
                       return (
                         <div key={status}>
                           <h3 className="font-semibold mb-2">{statusConfig[status as keyof typeof statusConfig].title} ({requests.length})</h3>
@@ -941,24 +986,28 @@ export default function PurchasesPage() {
                                     )}
                                   </div>
                                   
-                                  <div className="flex-shrink-0 self-start">
+                                  <div className="flex-shrink-0 self-start flex items-center gap-1">
                                     {isAdmin ? (
                                         <DropdownMenu>
                                           <DropdownMenuTrigger asChild>
-                                            <Button variant="outline" size="sm" className="bg-background/80">Ações</Button>
+                                            <Button variant="outline" size="sm" className="bg-background/80 flex gap-2">
+                                              <span>Ações</span>
+                                              <MoreHorizontal className="h-4 w-4" />
+                                            </Button>
                                           </DropdownMenuTrigger>
-                                          <DropdownMenuContent>
+                                          <DropdownMenuContent align='end'>
                                             {status !== 'approved' && <DropdownMenuItem onClick={() => updatePurchaseRequestStatus(req.id, 'approved')}>Aprovar</DropdownMenuItem>}
                                             {status !== 'purchased' && <DropdownMenuItem onClick={() => updatePurchaseRequestStatus(req.id, 'purchased')}>Marcar como Comprado</DropdownMenuItem>}
                                             {status !== 'rejected' && <DropdownMenuItem onClick={() => updatePurchaseRequestStatus(req.id, 'rejected')}>Rejeitar</DropdownMenuItem>}
                                             {status !== 'pending' && <DropdownMenuSeparator />}
                                             {status !== 'pending' && <DropdownMenuItem onClick={() => updatePurchaseRequestStatus(req.id, 'pending')}>Mover para Pendente</DropdownMenuItem>}
                                             <DropdownMenuSeparator />
-                                            <DropdownMenuItem onClick={() => deletePurchaseRequest(req.id)} className="text-destructive">Apagar Solicitação</DropdownMenuItem>
+                                            <DropdownMenuItem onClick={() => handleOpenRequestModal(req)}><Edit className="mr-2 h-4 w-4" />Editar</DropdownMenuItem>
+                                            <DropdownMenuItem onClick={() => handleOpenDeleteAlert(req)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" />Apagar Solicitação</DropdownMenuItem>
                                           </DropdownMenuContent>
                                         </DropdownMenu>
                                     ) : (
-                                      <Badge variant="outline" className='bg-background/80 capitalize'>{req.status}</Badge>
+                                      <Badge variant="outline" className='bg-background/80 capitalize'>{statusConfig[req.status as keyof typeof statusConfig].title}</Badge>
                                     )}
                                   </div>
                                 </div>
@@ -968,9 +1017,11 @@ export default function PurchasesPage() {
                         </div>
                       )
                   })}
-                  {purchaseRequests.length === 0 && (
+                  {filteredPurchaseRequests.length === 0 && (
                     <div className="flex h-48 items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/20">
-                      <p className="text-sm text-muted-foreground text-center">Nenhuma solicitação de compra avulsa encontrada.</p>
+                      <p className="text-sm text-muted-foreground text-center">
+                        {requestSearchTerm ? `Nenhuma solicitação encontrada para "${requestSearchTerm}".` : 'Nenhuma solicitação de compra avulsa encontrada.'}
+                      </p>
                     </div>
                   )}
                 </div>
@@ -1012,6 +1063,22 @@ export default function PurchasesPage() {
         onClose={() => setNewRequestModalOpen(false)}
         requestToEdit={requestToEdit}
     />
+     <AlertDialog open={isDeleteRequestAlertOpen} onOpenChange={setDeleteRequestAlertOpen}>
+        <AlertDialogContent>
+            <AlertDialogHeader>
+                <AlertDialogTitle>Apagar Solicitação?</AlertDialogTitle>
+                <AlertDialogDescription>
+                    Esta ação não pode ser desfeita. A solicitação para <span className="font-bold">{requestToDelete?.description}</span> será permanentemente removida.
+                </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+                <AlertDialogCancel onClick={() => setDeleteRequestAlertOpen(false)}>Cancelar</AlertDialogCancel>
+                <AlertDialogAction onClick={handleConfirmDeleteRequest} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                    Sim, Apagar
+                </AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
