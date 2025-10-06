@@ -11,7 +11,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { AppContext } from '@/context/app-context';
 import type { ProductionStage, TeamMember, Appointment, StageStatus } from '@/lib/types';
 import { PageHeader } from '@/components/layout/page-header';
-import { eachDayOfInterval, endOfMonth, format, isSameDay, startOfMonth } from 'date-fns';
+import { eachDayOfInterval, endOfMonth, format, isSameDay, startOfMonth, isSameHour, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { STAGE_STATUSES } from '@/lib/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -33,6 +33,8 @@ export interface CalendarTask {
   link?: string;
   responsible: TeamMember;
   date: Date;
+  start: Date;
+  end: Date;
   // Raw data for updates
   rawData: {
     projectId?: string;
@@ -44,7 +46,7 @@ export interface CalendarTask {
 }
 
 export default function CalendarPage() {
-  const { projects, teamMembers, appointments, updateProject, updateAppointmentDate, deleteAppointment, isLoading } = useContext(AppContext);
+  const { projects, teamMembers, appointments, updateProject, updateAppointment, deleteAppointment, isLoading } = useContext(AppContext);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDates, setSelectedDates] = useState<Date[] | undefined>();
   const [selectedMemberId, setSelectedMemberId] = useState('all');
@@ -85,6 +87,8 @@ export default function CalendarPage() {
                   link: `/projects/${project.id}`,
                   responsible,
                   date,
+                  start: date, // Project tasks are treated as all-day
+                  end: date,
                   rawData: { projectId: project.id, envId: env.id, furId: fur.id, stageKey },
                 });
               }
@@ -96,12 +100,12 @@ export default function CalendarPage() {
 
     // Process general appointments
     appointments.forEach(appointment => {
-      if (appointment.date && appointment.memberIds) {
+      if (appointment.start && appointment.memberIds) {
         appointment.memberIds.forEach(memberId => {
             const responsible = memberMap.get(memberId);
             if (responsible && (selectedMemberId === 'all' || selectedMemberId === responsible.id)) {
-                const date = new Date(appointment.date);
-                const dayKey = format(date, 'yyyy-MM-dd');
+                const startDate = parseISO(appointment.start);
+                const dayKey = format(startDate, 'yyyy-MM-dd');
                 if (!tasks[dayKey]) {
                     tasks[dayKey] = [];
                 }
@@ -111,7 +115,9 @@ export default function CalendarPage() {
                     title: appointment.title,
                     subtitle: appointment.description,
                     responsible,
-                    date,
+                    date: startDate,
+                    start: startDate,
+                    end: parseISO(appointment.end),
                     rawData: { appointmentId: appointment.id },
                 });
             }
@@ -145,7 +151,10 @@ export default function CalendarPage() {
         }
         updateProject(newProject, project);
     } else if (task.type === 'appointment' && task.rawData.appointmentId) {
-        updateAppointmentDate(task.rawData.appointmentId, newDate);
+        // When rescheduling, we maintain the original duration
+        const duration = task.end.getTime() - task.start.getTime();
+        const newEndDate = new Date(newDate.getTime() + duration);
+        updateAppointment(task.rawData.appointmentId, { start: newDate.toISOString(), end: newEndDate.toISOString() });
     }
   };
 
@@ -175,6 +184,14 @@ export default function CalendarPage() {
     const dailyTasks = tasksByDay[dayKey] || [];
 
     const isSelected = selectedDates?.some(d => isSameDay(d, date));
+    
+    const getTaskTime = (task: CalendarTask) => {
+        const isAllDay = isSameDay(task.start, task.end) && isSameHour(task.start, 0) && isSameHour(task.end, 23);
+        if (isAllDay || task.type === 'project') {
+            return 'Dia Inteiro';
+        }
+        return `${format(task.start, 'HH:mm')} - ${format(task.end, 'HH:mm')}`;
+    };
 
     return (
       <div className="p-2 h-full flex flex-col">
@@ -210,7 +227,7 @@ export default function CalendarPage() {
                       </Avatar>
                       <div className="text-xs truncate">
                           <p className="font-medium truncate text-foreground">{task.title}</p>
-                          {task.subtitle && <p className="text-muted-foreground truncate">{task.subtitle}</p>}
+                          <p className="text-muted-foreground truncate">{getTaskTime(task)}</p>
                       </div>
                   </div>
                 </div>

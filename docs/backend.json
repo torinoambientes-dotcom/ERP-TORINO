@@ -213,14 +213,15 @@
         "id": { "type": "string" },
         "title": { "type": "string" },
         "description": { "type": "string" },
-        "date": { "type": "string", "format": "date-time" },
+        "start": { "type": "string", "format": "date-time", "description": "The start date and time of the appointment." },
+        "end": { "type": "string", "format": "date-time", "description": "The end date and time of the appointment." },
         "memberIds": {
           "type": "array",
           "items": { "type": "string" },
           "description": "A list of team member IDs assigned to this appointment."
         }
       },
-      "required": ["id", "title", "date", "memberIds"]
+      "required": ["id", "title", "start", "end", "memberIds"]
     },
     "StockItem": {
       "title": "StockItem",

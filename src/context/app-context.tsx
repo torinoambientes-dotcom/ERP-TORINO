@@ -26,7 +26,7 @@ interface AppContextType {
   updateTeamMember: (updatedMember: TeamMember) => void;
   deleteTeamMember: (memberId: string) => void;
   addAppointment: (appointmentData: Omit<Appointment, 'id'>) => void;
-  updateAppointmentDate: (appointmentId: string, newDate: Date) => void;
+  updateAppointment: (appointmentId: string, updates: Partial<Appointment>) => void;
   deleteAppointment: (appointmentId: string) => void;
   completeProjectStages: (projectId: string) => void;
   addStockItem: (itemData: Omit<StockItem, 'id'>) => void;
@@ -65,7 +65,7 @@ export const AppContext = createContext<AppContextType>({
   updateTeamMember: () => {},
   deleteTeamMember: () => {},
   addAppointment: () => {},
-  updateAppointmentDate: () => {},
+  updateAppointment: () => {},
   deleteAppointment: () => {},
   completeProjectStages: () => {},
   addStockItem: () => {},
@@ -374,10 +374,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setDocumentNonBlocking(appointmentRef, newAppointment, { merge: false });
     }, [firestore]);
     
-    const updateAppointmentDate = useCallback((appointmentId: string, newDate: Date) => {
+    const updateAppointment = useCallback((appointmentId: string, updates: Partial<Appointment>) => {
         if (!firestore) return;
         const appointmentRef = doc(firestore, 'appointments', appointmentId);
-        updateDocumentNonBlocking(appointmentRef, { date: newDate.toISOString() });
+        updateDocumentNonBlocking(appointmentRef, updates);
     }, [firestore]);
 
     const deleteAppointment = useCallback((appointmentId: string) => {
@@ -791,7 +791,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     updateTeamMember,
     deleteTeamMember,
     addAppointment,
-    updateAppointmentDate,
+    updateAppointment,
     deleteAppointment,
     completeProjectStages,
     addStockItem,
@@ -834,7 +834,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     updateTeamMember, 
     deleteTeamMember,
     addAppointment,
-    updateAppointmentDate,
+    updateAppointment,
     deleteAppointment,
     completeProjectStages,
     addStockItem,

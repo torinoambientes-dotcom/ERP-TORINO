@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Calendar } from '../ui/calendar';
 import { CalendarIcon, Trash2 } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, isSameDay, isSameHour } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
@@ -37,7 +37,7 @@ export function AppointmentDetailsModal({
   onReschedule,
   onCancel,
 }: AppointmentDetailsModalProps) {
-  const [newDate, setNewDate] = useState<Date | undefined>(task.date);
+  const [newDate, setNewDate] = useState<Date | undefined>(task.start);
   const [isRescheduling, setIsRescheduling] = useState(false);
   const [isConfirmAlertOpen, setConfirmAlertOpen] = useState(false);
   const { toast } = useToast();
@@ -72,6 +72,14 @@ export function AppointmentDetailsModal({
     ? 'Esta ação removerá permanentemente este compromisso do calendário. Tem a certeza?'
     : 'Esta ação irá remover o agendamento desta tarefa, mas ela continuará a existir no projeto. Tem a certeza?';
   const cancelDialogActionText = task.type === 'appointment' ? 'Sim, cancelar' : 'Sim, desagendar';
+  
+  const getTaskTime = (task: CalendarTask) => {
+    const isAllDay = isSameDay(task.start, task.end) && isSameHour(task.start, 0) && isSameHour(task.end, 23);
+    if (isAllDay || task.type === 'project') {
+        return 'Dia Inteiro';
+    }
+    return `${format(task.start, 'HH:mm')} - ${format(task.end, 'HH:mm')}`;
+  };
 
   return (
     <>
@@ -98,8 +106,8 @@ export function AppointmentDetailsModal({
               </div>
             </div>
             <div>
-                <p className="text-sm font-medium text-foreground">Data Agendada:</p>
-                <p className="text-sm text-muted-foreground">{format(task.date, 'PPP', { locale: ptBR })}</p>
+                <p className="text-sm font-medium text-foreground">Data e Horário:</p>
+                <p className="text-sm text-muted-foreground">{format(task.start, 'PPP', { locale: ptBR })} - {getTaskTime(task)}</p>
               </div>
           </div>
 
