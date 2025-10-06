@@ -739,7 +739,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             updatedAt: now,
         };
         const requestRef = doc(firestore, 'purchase_requests', newRequest.id);
-        addDocumentNonBlocking(requestRef, newRequest);
+        setDocumentNonBlocking(requestRef, newRequest, { merge: false });
     }, [firestore]);
 
     const updatePurchaseRequestStatus = useCallback((requestId: string, status: PurchaseRequestStatus, notes?: string) => {
