@@ -76,7 +76,7 @@ export interface GlassItem {
 
 export interface ProfileDoorItem {
   id: string;
-  doorType?: 'Giro' | 'Correr' | 'Escamoteavel';
+  doorType?: 'Giro' | 'Correr' | 'Escamoteavel' | 'Frente de gaveta';
   slidingSystem?: string;
   profileColor: string;
   glassType: string;

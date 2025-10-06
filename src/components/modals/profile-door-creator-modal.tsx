@@ -49,7 +49,7 @@ const hingeSchema = z.object({
   position: z.coerce.number().min(0, "Posição não pode ser negativa.")
 });
 
-const doorTypes = ['Giro', 'Correr', 'Escamoteavel'] as const;
+const doorTypes = ['Giro', 'Correr', 'Escamoteavel', 'Frente de gaveta'] as const;
 
 const doorCreatorSchema = z.object({
   doorType: z.enum(doorTypes).default(doorTypes[0]),
@@ -57,8 +57,8 @@ const doorCreatorSchema = z.object({
   profileColor: z.string().min(1, 'Cor do perfil é obrigatória.'),
   glassType: z.string().min(1, 'Tipo de vidro é obrigatório.'),
   handleType: z.string().min(1, 'Tipo de puxador é obrigatório.'),
-  width: z.coerce.number().min(100, 'Largura mínima de 100mm'),
-  height: z.coerce.number().min(300, 'Altura mínima de 300mm'),
+  width: z.coerce.number().min(1, 'Largura deve ser positiva.'),
+  height: z.coerce.number().min(1, 'Altura deve ser positiva.'),
   quantity: z.coerce.number().min(1, 'Quantidade mínima de 1.'),
   hinges: z.array(hingeSchema).optional(),
   isPair: z.boolean().optional(),
