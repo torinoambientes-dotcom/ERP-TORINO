@@ -1,0 +1,184 @@
+'use client';
+import { useContext, useEffect } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { AppContext } from '@/context/app-context';
+import { useToast } from '@/hooks/use-toast';
+import { useUser } from '@/firebase';
+import type { PurchaseRequest } from '@/lib/types';
+
+const requestSchema = z.object({
+  description: z.string().min(3, 'A descrição é obrigatória.'),
+  quantity: z.coerce.number().min(0.1, 'A quantidade deve ser positiva.'),
+  unit: z.string().min(1, 'A unidade é obrigatória.'),
+  reason: z.string().min(3, 'O motivo é obrigatório.'),
+});
+
+type RequestFormValues = z.infer<typeof requestSchema>;
+
+interface NewPurchaseRequestModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  requestToEdit?: PurchaseRequest | null;
+}
+
+export function NewPurchaseRequestModal({
+  isOpen,
+  onClose,
+  requestToEdit,
+}: NewPurchaseRequestModalProps) {
+  const { addPurchaseRequest, teamMembers } = useContext(AppContext);
+  const { toast } = useToast();
+  const { user } = useUser();
+
+  const isEditMode = !!requestToEdit;
+
+  const form = useForm<RequestFormValues>({
+    resolver: zodResolver(requestSchema),
+    defaultValues: {
+      description: '',
+      quantity: 1,
+      unit: 'un',
+      reason: '',
+    },
+  });
+
+  useEffect(() => {
+    if (isOpen) {
+      if (isEditMode && requestToEdit) {
+        form.reset(requestToEdit);
+      } else {
+        form.reset({
+          description: '',
+          quantity: 1,
+          unit: 'un',
+          reason: '',
+        });
+      }
+    }
+  }, [isOpen, isEditMode, requestToEdit, form]);
+
+  const onSubmit = (data: RequestFormValues) => {
+    const requester = teamMembers.find(m => m.id === user?.uid);
+    if (!requester) {
+        toast({ variant: 'destructive', title: 'Erro', description: 'Usuário solicitante não encontrado.' });
+        return;
+    }
+    
+    // Note: Editing is not fully implemented, it just creates a new one for now.
+    // A full implementation would require an `updatePurchaseRequest` function.
+    addPurchaseRequest({
+        ...data,
+        requesterId: requester.id,
+        requesterName: requester.name,
+    });
+
+    toast({
+        title: 'Solicitação Enviada!',
+        description: 'Sua solicitação de compra foi enviada para aprovação.'
+    });
+
+    onClose();
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="font-headline">
+            {isEditMode ? 'Editar Solicitação' : 'Nova Solicitação de Compra'}
+          </DialogTitle>
+          <DialogDescription>
+            Descreva o item que você precisa que seja comprado.
+          </DialogDescription>
+        </DialogHeader>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="description"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Descrição do Item</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Ex: Serra de bancada, Broca 6mm" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+             <div className="grid grid-cols-2 gap-4">
+                <FormField
+                    control={form.control}
+                    name="quantity"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Quantidade</FormLabel>
+                        <FormControl>
+                            <Input type="number" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                <FormField
+                    control={form.control}
+                    name="unit"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Unidade</FormLabel>
+                        <FormControl>
+                            <Input placeholder="un, cx, pç" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                />
+            </div>
+            <FormField
+              control={form.control}
+              name="reason"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Motivo da Solicitação</FormLabel>
+                  <FormControl>
+                    <Textarea placeholder="Ex: Ferramenta antiga quebrou, Reposição de material de escritório" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <DialogFooter>
+              <Button type="button" variant="ghost" onClick={onClose}>
+                Cancelar
+              </Button>
+              <Button type="submit">
+                {isEditMode ? 'Salvar Alterações' : 'Enviar Solicitação'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
+  );
+}

@@ -3,7 +3,7 @@
 import { createContext, type ReactNode, useCallback, useMemo, useEffect, useState } from 'react';
 import { collection, doc, serverTimestamp, deleteField, writeBatch, getDocs, runTransaction } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import type { Project, TeamMember, StageStatus, StockItem, StockMovement, StockCategory, Furniture, Environment, MaterialItem, StockReservation, ProductionStage, Appointment } from '@/lib/types';
+import type { Project, TeamMember, StageStatus, StockItem, StockMovement, StockCategory, Furniture, Environment, MaterialItem, StockReservation, ProductionStage, Appointment, PurchaseRequest, PurchaseRequestStatus } from '@/lib/types';
 import { generateId } from '@/lib/utils';
 import { setDocumentNonBlocking, deleteDocumentNonBlocking, addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
@@ -17,6 +17,7 @@ interface AppContextType {
   stockItems: StockItem[];
   stockCategories: StockCategory[];
   stockMovements: StockMovement[];
+  purchaseRequests: PurchaseRequest[];
   isLoading: boolean;
   addProject: (projectData: any) => void;
   updateProject: (updatedProject: Project, originalProject?: Project) => void;
@@ -42,6 +43,9 @@ interface AppContextType {
   dispatchItemToProduction: (stockItemId: string, reservation: StockReservation, memberId: string) => void;
   registerPurchase: (itemId: string, quantity: number, supplier: string) => void;
   confirmStockReceipt: (item: StockItem) => void;
+  addPurchaseRequest: (requestData: Omit<PurchaseRequest, 'id' | 'createdAt' | 'updatedAt' | 'status'>) => void;
+  updatePurchaseRequestStatus: (requestId: string, status: PurchaseRequestStatus, notes?: string) => void;
+  deletePurchaseRequest: (requestId: string) => void;
 }
 
 export const AppContext = createContext<AppContextType>({
@@ -51,6 +55,7 @@ export const AppContext = createContext<AppContextType>({
   stockItems: [],
   stockCategories: [],
   stockMovements: [],
+  purchaseRequests: [],
   isLoading: true,
   addProject: () => {},
   updateProject: () => {},
@@ -76,6 +81,9 @@ export const AppContext = createContext<AppContextType>({
   dispatchItemToProduction: () => {},
   registerPurchase: () => {},
   confirmStockReceipt: () => {},
+  addPurchaseRequest: () => {},
+  updatePurchaseRequestStatus: () => {},
+  deletePurchaseRequest: () => {},
 });
 
 const isProjectComplete = (project: Project): boolean => {
@@ -125,6 +133,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const stockItemsQuery = useMemoFirebase(() => collection(firestore, 'stock_items'), [firestore]);
   const stockCategoriesQuery = useMemoFirebase(() => collection(firestore, 'stock_categories'), [firestore]);
   const stockMovementsQuery = useMemoFirebase(() => collection(firestore, 'stock_movements'), [firestore]);
+  const purchaseRequestsQuery = useMemoFirebase(() => collection(firestore, 'purchase_requests'), [firestore]);
 
   const { data: projects, isLoading: isLoadingProjects } = useCollection<Project>(projectsQuery);
   const { data: teamMembers, isLoading: isLoadingTeamMembers } = useCollection<TeamMember>(teamMembersQuery);
@@ -132,6 +141,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const { data: stockItems, isLoading: isLoadingStockItems } = useCollection<StockItem>(stockItemsQuery);
   const { data: stockCategoriesData, isLoading: isLoadingStockCategories } = useCollection<StockCategory>(stockCategoriesQuery);
   const { data: stockMovements, isLoading: isLoadingMovements } = useCollection<StockMovement>(stockMovementsQuery);
+  const { data: purchaseRequests, isLoading: isLoadingPurchaseRequests } = useCollection<PurchaseRequest>(purchaseRequestsQuery);
 
   const stockCategories = useMemo(() => stockCategoriesData || [], [stockCategoriesData]);
   
@@ -718,6 +728,39 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   }, [firestore]);
 
+    const addPurchaseRequest = useCallback((requestData: Omit<PurchaseRequest, 'id' | 'createdAt' | 'updatedAt' | 'status'>) => {
+        if (!firestore) return;
+        const now = new Date().toISOString();
+        const newRequest: PurchaseRequest = {
+            ...requestData,
+            id: generateId('pr'),
+            status: 'pending',
+            createdAt: now,
+            updatedAt: now,
+        };
+        const requestRef = doc(firestore, 'purchase_requests', newRequest.id);
+        addDocumentNonBlocking(requestRef, newRequest);
+    }, [firestore]);
+
+    const updatePurchaseRequestStatus = useCallback((requestId: string, status: PurchaseRequestStatus, notes?: string) => {
+        if (!firestore) return;
+        const requestRef = doc(firestore, 'purchase_requests', requestId);
+        const updateData: any = {
+            status: status,
+            updatedAt: new Date().toISOString(),
+        };
+        if (notes) {
+            updateData.notes = notes;
+        }
+        updateDocumentNonBlocking(requestRef, updateData);
+    }, [firestore]);
+
+    const deletePurchaseRequest = useCallback((requestId: string) => {
+        if (!firestore) return;
+        const requestRef = doc(firestore, 'purchase_requests', requestId);
+        deleteDocumentNonBlocking(requestRef);
+    }, [firestore]);
+
 
   const value = useMemo(() => ({
     projects: projects || [],
@@ -726,7 +769,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     stockItems: stockItems || [],
     stockCategories: stockCategories,
     stockMovements: stockMovements || [],
-    isLoading: isLoadingProjects || isLoadingTeamMembers || isLoadingAppointments || isLoadingStockItems || isLoadingStockCategories || isLoadingMovements,
+    purchaseRequests: purchaseRequests || [],
+    isLoading: isLoadingProjects || isLoadingTeamMembers || isLoadingAppointments || isLoadingStockItems || isLoadingStockCategories || isLoadingMovements || isLoadingPurchaseRequests,
     addProject,
     updateProject,
     deleteProject,
@@ -751,6 +795,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     dispatchItemToProduction,
     registerPurchase,
     confirmStockReceipt,
+    addPurchaseRequest,
+    updatePurchaseRequestStatus,
+    deletePurchaseRequest,
   }), [
     projects, 
     teamMembers, 
@@ -758,12 +805,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     stockItems,
     stockCategories,
     stockMovements,
+    purchaseRequests,
     isLoadingProjects, 
     isLoadingTeamMembers, 
     isLoadingAppointments,
     isLoadingStockItems,
     isLoadingStockCategories,
     isLoadingMovements,
+    isLoadingPurchaseRequests,
     addProject, 
     updateProject, 
     deleteProject, 
@@ -788,6 +837,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     dispatchItemToProduction,
     registerPurchase,
     confirmStockReceipt,
+    addPurchaseRequest,
+    updatePurchaseRequestStatus,
+    deletePurchaseRequest,
   ]);
 
 

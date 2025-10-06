@@ -15,8 +15,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/layout/page-header';
 import { AppContext } from '@/context/app-context';
-import type { StockItem, MaterialItem, GlassItem, ProfileDoorItem } from '@/lib/types';
-import { AlertTriangle, ChevronsUpDown, CheckCircle, Copy, ShoppingCart, Eye, History, MessageCircle, Truck } from 'lucide-react';
+import type { StockItem, MaterialItem, GlassItem, ProfileDoorItem, PurchaseRequest } from '@/lib/types';
+import { AlertTriangle, ChevronsUpDown, CheckCircle, Copy, ShoppingCart, Eye, History, MessageCircle, Truck, PlusCircle, Trash2, Edit } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
   Accordion,
@@ -28,9 +28,20 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ProfileDoorCreatorModal } from '@/components/modals/profile-door-creator-modal';
 import { GlassCreatorModal } from '@/components/modals/glass-creator-modal';
 import { Checkbox } from '@/components/ui/checkbox';
-import { cn } from '@/lib/utils';
+import { cn, getInitials } from '@/lib/utils';
 import { RegisterPurchaseModal } from '@/components/modals/register-purchase-modal';
 import { Badge } from '@/components/ui/badge';
+import { useUser } from '@/firebase';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { NewPurchaseRequestModal } from '@/components/modals/new-purchase-request-modal';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 
 interface ShoppingList {
@@ -94,8 +105,19 @@ export default function PurchasesPage() {
   if (!context) {
     throw new Error('PurchasesPage must be used within an AppProvider');
   }
-  const { projects, stockItems, registerPurchase, toggleItemPurchasedStatus, toggleMaterialPurchased } = context;
+  const { 
+    projects, 
+    stockItems, 
+    registerPurchase, 
+    toggleItemPurchasedStatus, 
+    toggleMaterialPurchased,
+    purchaseRequests,
+    teamMembers,
+    updatePurchaseRequestStatus,
+    deletePurchaseRequest,
+  } = context;
   const { toast } = useToast();
+  const { user } = useUser();
 
   const [isStockAlertOpen, setIsStockAlertOpen] = useState(true);
 
@@ -114,6 +136,13 @@ export default function PurchasesPage() {
   const [isRegisterPurchaseModalOpen, setRegisterPurchaseModalOpen] = useState(false);
   const [itemToPurchase, setItemToPurchase] = useState<LowStockInfo | null>(null);
 
+  const [isNewRequestModalOpen, setNewRequestModalOpen] = useState(false);
+  const [requestToEdit, setRequestToEdit] = useState<PurchaseRequest | null>(null);
+
+  const memberMap = useMemo(() => new Map(teamMembers.map(m => [m.id, m])), [teamMembers]);
+
+  const isAdmin = useMemo(() => user?.email === 'carlos.campigotto@gmail.com', [user]);
+
   const lowStockItems = useMemo((): LowStockInfo[] => {
     return stockItems
       .map(item => {
@@ -124,8 +153,6 @@ export default function PurchasesPage() {
         const hasMinStockAlert = typeof item.minStock === 'number' && item.quantity < item.minStock && !item.awaitingReceipt;
         const hasDemandAlert = totalReserved > potentialStock;
 
-        // An item is in low stock if it has a minimum stock alert (and no pending receipt) 
-        // or if total demand exceeds current + incoming stock.
         if (hasMinStockAlert || hasDemandAlert) {
             return { ...item, demand: totalReserved };
         }
@@ -279,6 +306,10 @@ export default function PurchasesPage() {
     return list;
   }, [projects, showPurchasedDoors]);
 
+    const pendingPurchaseRequestsCount = useMemo(() => {
+        return purchaseRequests.filter(req => req.status === 'pending').length;
+    }, [purchaseRequests]);
+
   const pendingCounts = useMemo(() => {
     const activeProjects = projects.filter(p => !p.completedAt);
     let materials = lowStockItems.length;
@@ -295,8 +326,8 @@ export default function PurchasesPage() {
         });
     });
 
-    return { materials, glass, doors };
-  }, [projects, lowStockItems]);
+    return { materials, glass, doors, requests: pendingPurchaseRequestsCount };
+  }, [projects, lowStockItems, pendingPurchaseRequestsCount]);
 
 
     const generateShoppingListText = (forWhatsApp: boolean = false) => {
@@ -512,6 +543,11 @@ export default function PurchasesPage() {
       })
     };
 
+    const handleOpenRequestModal = (request: PurchaseRequest | null = null) => {
+        setRequestToEdit(request);
+        setNewRequestModalOpen(true);
+    }
+
 
   return (
     <>
@@ -522,7 +558,7 @@ export default function PurchasesPage() {
       />
 
       <Tabs defaultValue="materials" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="materials" className="relative">
               Materiais
               {pendingCounts.materials > 0 && <Badge className="absolute -right-2 -top-2 h-5 min-w-[20px] justify-center px-1.5">{pendingCounts.materials}</Badge>}
@@ -534,6 +570,10 @@ export default function PurchasesPage() {
             <TabsTrigger value="profileDoors" className="relative">
               Portas de Perfil
               {pendingCounts.doors > 0 && <Badge className="absolute -right-2 -top-2 h-5 min-w-[20px] justify-center px-1.5">{pendingCounts.doors}</Badge>}
+            </TabsTrigger>
+            <TabsTrigger value="requests" className="relative">
+                Solicitações Avulsas
+                {pendingCounts.requests > 0 && <Badge variant="destructive" className="absolute -right-2 -top-2 h-5 min-w-[20px] justify-center px-1.5">{pendingCounts.requests}</Badge>}
             </TabsTrigger>
         </TabsList>
         <TabsContent value="materials" className="mt-6 space-y-6">
@@ -856,6 +896,80 @@ export default function PurchasesPage() {
                 </CardContent>
             </Card>
         </TabsContent>
+        <TabsContent value="requests" className="mt-6 space-y-6">
+            <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                      <div className='space-y-1.5'>
+                      <CardTitle className="font-headline">Solicitações de Compra Avulsas</CardTitle>
+                      <CardDescription>Itens que não pertencem a projetos, como material de escritório ou ferramentas.</CardDescription>
+                      </div>
+                      <Button onClick={() => handleOpenRequestModal(null)}>
+                        <PlusCircle className="mr-2 h-4 w-4" />
+                        Nova Solicitação
+                      </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                <div className="space-y-4">
+                  {['pending', 'approved', 'purchased', 'rejected'].map(status => {
+                      const requests = purchaseRequests.filter(r => r.status === status).sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+                      if(requests.length === 0) return null;
+                      const statusConfig = {
+                        pending: { title: 'Pendentes', color: 'border-amber-500 bg-amber-50' },
+                        approved: { title: 'Aprovadas (Aguardando Compra)', color: 'border-blue-500 bg-blue-50' },
+                        purchased: { title: 'Compradas', color: 'border-green-500 bg-green-50' },
+                        rejected: { title: 'Rejeitadas', color: 'border-red-500 bg-red-50' },
+                      };
+                      return (
+                        <div key={status}>
+                          <h3 className="font-semibold mb-2">{statusConfig[status as keyof typeof statusConfig].title} ({requests.length})</h3>
+                          <div className="space-y-2">
+                            {requests.map(req => {
+                              const requester = memberMap.get(req.requesterId);
+                              return(
+                                <div key={req.id} className={cn("p-4 rounded-lg border flex justify-between items-start gap-4", statusConfig[status as keyof typeof statusConfig].color)}>
+                                  <div>
+                                    <p className='font-semibold'>{req.description} - {req.quantity} {req.unit}</p>
+                                    <p className='text-sm text-muted-foreground'>{req.reason}</p>
+                                    {requester && (
+                                        <div className='text-xs text-muted-foreground mt-2 flex items-center gap-1.5'>
+                                          <Avatar className="h-4 w-4"><AvatarFallback style={{backgroundColor: requester.color}} className="text-[8px]">{getInitials(requester.name)}</AvatarFallback></Avatar>
+                                          <span>Solicitado por {requester.name} em {format(new Date(req.createdAt), 'dd/MM/yy')}</span>
+                                        </div>
+                                    )}
+                                  </div>
+                                  
+                                  {isAdmin && (
+                                    <DropdownMenu>
+                                      <DropdownMenuTrigger asChild>
+                                        <Button variant="outline" size="sm">Ações</Button>
+                                      </DropdownMenuTrigger>
+                                      <DropdownMenuContent>
+                                        {status !== 'approved' && <DropdownMenuItem onClick={() => updatePurchaseRequestStatus(req.id, 'approved')}>Aprovar</DropdownMenuItem>}
+                                        {status !== 'purchased' && <DropdownMenuItem onClick={() => updatePurchaseRequestStatus(req.id, 'purchased')}>Marcar como Comprado</DropdownMenuItem>}
+                                        {status !== 'rejected' && <DropdownMenuItem onClick={() => updatePurchaseRequestStatus(req.id, 'rejected')}>Rejeitar</DropdownMenuItem>}
+                                        {status === 'rejected' && <DropdownMenuItem onClick={() => updatePurchaseRequestStatus(req.id, 'pending')}>Reabrir</DropdownMenuItem>}
+                                        <DropdownMenuItem onClick={() => deletePurchaseRequest(req.id)} className="text-destructive">Apagar</DropdownMenuItem>
+                                      </DropdownMenuContent>
+                                    </DropdownMenu>
+                                  )}
+                                </div>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      )
+                  })}
+                  {purchaseRequests.length === 0 && (
+                    <div className="flex h-48 items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/20">
+                      <p className="text-sm text-muted-foreground text-center">Nenhuma solicitação de compra avulsa encontrada.</p>
+                    </div>
+                  )}
+                </div>
+                </CardContent>
+            </Card>
+        </TabsContent>
       </Tabs>
     </div>
     {isDoorViewerOpen && (
@@ -886,14 +1000,11 @@ export default function PurchasesPage() {
         onConfirm={handleConfirmPurchase}
       />
     )}
+    <NewPurchaseRequestModal 
+        isOpen={isNewRequestModalOpen}
+        onClose={() => setNewRequestModalOpen(false)}
+        requestToEdit={requestToEdit}
+    />
     </>
   );
 }
-
-    
-
-    
-
-
-
- 

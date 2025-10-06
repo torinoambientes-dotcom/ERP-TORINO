@@ -175,3 +175,19 @@ export interface StockItem {
   };
   movements?: StockMovement[];
 }
+
+export type PurchaseRequestStatus = 'pending' | 'approved' | 'purchased' | 'rejected';
+
+export interface PurchaseRequest {
+    id: string;
+    description: string;
+    quantity: number;
+    unit: string;
+    reason: string;
+    requesterId: string;
+    requesterName: string;
+    status: PurchaseRequestStatus;
+    createdAt: string; // ISO date string
+    updatedAt: string; // ISO date string
+    notes?: string;
+}

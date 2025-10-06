@@ -56,7 +56,7 @@ export function SidebarNav() {
   const auth = useAuth();
   const router = useRouter();
   const { user } = useUser();
-  const { teamMembers, projects, stockItems, updateTeamMember } = useContext(AppContext);
+  const { teamMembers, projects, stockItems, updateTeamMember, purchaseRequests } = useContext(AppContext);
   const { toast } = useToast();
   
   const [isAvatarPopoverOpen, setAvatarPopoverOpen] = useState(false);
@@ -70,39 +70,32 @@ export function SidebarNav() {
 
   const pendingPurchasesCount = useMemo(() => {
     let count = 0;
-    
-    // 1. Low Stock Items
-    const lowStockItems = stockItems
-      .filter(item => {
+
+    // 1. Low Stock Items (only if not handled and not awaiting receipt)
+    count += stockItems.filter(item => {
         const totalReserved = (item.reservations || []).reduce((acc, res) => acc + res.quantity, 0);
         const hasMinStockAlert = typeof item.minStock === 'number' && item.quantity < item.minStock;
-        const hasDemandAlert = totalReserved > item.quantity;
-        return !item.alertHandledAt && (hasMinStockAlert || hasDemandAlert) && !item.awaitingReceipt;
-      });
-    count += lowStockItems.length;
+        const hasDemandAlert = totalReserved > (item.quantity + (item.awaitingReceipt?.quantity || 0));
+        return (hasMinStockAlert || hasDemandAlert) && !item.awaitingReceipt;
+    }).length;
 
+    // 2. Project materials
     const activeProjects = projects.filter(p => !p.completedAt);
-
     activeProjects.forEach(project => {
         project.environments.forEach(environment => {
             environment.furniture.forEach(furniture => {
-                // 2. Materials to Buy
-                const materialsToBuy = (furniture.materials || []).filter(m => !m.stockItemId && !m.purchased);
-                count += materialsToBuy.length;
-
-                // 3. Glass Items to Buy
-                const glassToBuy = (furniture.glassItems || []).filter(g => !g.purchased);
-                count += glassToBuy.length;
-
-                // 4. Profile Doors to Buy
-                const doorsToBuy = (furniture.profileDoors || []).filter(d => !d.purchased);
-                count += doorsToBuy.length;
+                count += (furniture.materials || []).filter(m => !m.stockItemId && !m.purchased).length;
+                count += (furniture.glassItems || []).filter(g => !g.purchased).length;
+                count += (furniture.profileDoors || []).filter(d => !d.purchased).length;
             });
         });
     });
 
+    // 3. Ad-hoc purchase requests
+    count += purchaseRequests.filter(req => req.status === 'pending').length;
+
     return count;
-  }, [projects, stockItems]);
+  }, [projects, stockItems, purchaseRequests]);
 
 
   const handleLogout = async () => {

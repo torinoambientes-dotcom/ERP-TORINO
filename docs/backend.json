@@ -130,7 +130,10 @@
         "id": { "type": "string" },
         "name": { "type": "string" },
         "quantity": { "type": "number" },
-        "unit": { "type": "string" }
+        "unit": { "type": "string" },
+        "stockItemId": { "type": "string", "description": "Link to the stock item" },
+        "addedAt": { "type": "string", "format": "date-time" },
+        "purchased": { "type": "boolean" }
       },
       "required": ["id", "name", "quantity", "unit"]
     },
@@ -140,15 +143,26 @@
       "description": "Represents a single glass item required for a piece of furniture.",
       "properties": {
         "id": { "type": "string" },
+        "shape": { "type": "string", "enum": ["rectangle", "circle"]},
         "type": { "type": "string", "enum": ["Vidro Incolor", "Espelho", "Vidro Reflecta Incolor", "Vidro Reflecta Bronze", "Vidro Reflecta Fume", "Espelho Fumê", "Espelho Bronze"]},
         "height": { "type": "number" },
         "width": { "type": "number" },
+        "diameter": { "type": "number" },
         "quantity": { "type": "number" },
-        "isBeveled": { "type": "boolean", "description": "Indicates if the glass has a beveled edge." },
         "cornerRadiusTopLeft": { "type": "number" },
         "cornerRadiusTopRight": { "type": "number" },
         "cornerRadiusBottomLeft": { "type": "number" },
-        "cornerRadiusBottomRight": { "type": "number" }
+        "cornerRadiusBottomRight": { "type": "number" },
+        "isBeveled": { "type": "boolean" },
+        "hasFrostedStrips": { "type": "boolean" },
+        "frostedStripTop": { "type": "number" },
+        "frostedStripBottom": { "type": "number" },
+        "frostedStripLeft": { "type": "number" },
+        "frostedStripRight": { "type": "number" },
+        "frostedStripWidth": { "type": "number" },
+        "frostedStripCircularOffset": { "type": "number" },
+        "addedAt": { "type": "string", "format": "date-time" },
+        "purchased": { "type": "boolean" }
       },
       "required": ["id", "type", "quantity"]
     },
@@ -158,12 +172,21 @@
       "description": "Represents a single profile door required for a piece of furniture.",
       "properties": {
         "id": { "type": "string" },
+        "doorType": { "type": "string", "enum": ["Giro", "Correr", "Escamoteavel", "Frente de gaveta"] },
+        "slidingSystem": { "type": "string" },
         "profileColor": { "type": "string", "enum": ["Preto", "Aluminio", "Inox"]},
         "glassType": { "type": "string", "enum": ["Incolor", "Fume", "Bronze", "Espelho Fume", "Espelho Bronze", "Espelho Prata", "Reflecta Incolor", "Reflecta Fume", "Reflecta Prata"]},
         "handleType": { "type": "string", "enum": ["Linear inteiro", "Aba Usinada", "Sem Puxador"]},
         "height": { "type": "number" },
         "width": { "type": "number" },
-        "quantity": { "type": "number" }
+        "quantity": { "type": "number" },
+        "hinges": { "type": "array", "items": { "type": "object", "properties": { "position": { "type": "number" } } } },
+        "isPair": { "type": "boolean" },
+        "handlePosition": { "type": "string", "enum": ["top", "bottom", "left", "right"] },
+        "handleWidth": { "type": "number" },
+        "handleOffset": { "type": "number" },
+        "addedAt": { "type": "string", "format": "date-time" },
+        "purchased": { "type": "boolean" }
       },
       "required": ["id", "profileColor", "glassType", "handleType", "height", "width", "quantity"]
     },
@@ -214,6 +237,18 @@
           "type": "string",
           "format": "date-time",
           "description": "Timestamp for when a low stock alert was handled."
+        },
+        "reservations": {
+            "type": "array",
+            "items": { "$ref": "#/entities/StockReservation" }
+        },
+        "awaitingReceipt": {
+            "type": "object",
+            "properties": {
+                "quantity": { "type": "number" },
+                "supplier": { "type": "string" },
+                "registeredAt": { "type": "string", "format": "date-time" }
+            }
         }
       },
       "required": ["id", "name", "quantity", "unit", "category"]
@@ -228,6 +263,7 @@
         "type": { "type": "string", "enum": ["entry", "exit"] },
         "quantity": { "type": "number" },
         "reason": { "type": "string" },
+        "details": { "type": "string" },
         "timestamp": { "type": "string", "format": "date-time" },
         "memberId": { "type": "string" }
       },
@@ -242,6 +278,42 @@
         "name": { "type": "string" }
       },
       "required": ["id", "name"]
+    },
+    "StockReservation": {
+      "title": "StockReservation",
+      "type": "object",
+      "description": "Represents a reservation of a stock item for a project.",
+      "properties": {
+        "projectId": { "type": "string" },
+        "projectName": { "type": "string" },
+        "environmentId": { "type": "string" },
+        "environmentName": { "type": "string" },
+        "furnitureId": { "type": "string" },
+        "furnitureName": { "type": "string" },
+        "materialId": { "type": "string" },
+        "quantity": { "type": "number" },
+        "status": { "type": "string", "enum": ["reservado", "separado"] }
+      },
+      "required": ["projectId", "projectName", "environmentId", "environmentName", "furnitureId", "furnitureName", "materialId", "quantity", "status"]
+    },
+    "PurchaseRequest": {
+        "title": "PurchaseRequest",
+        "type": "object",
+        "description": "Represents a request for purchasing an item not in stock or project lists.",
+        "properties": {
+            "id": { "type": "string" },
+            "description": { "type": "string", "description": "Description of the item to be purchased." },
+            "quantity": { "type": "number" },
+            "unit": { "type": "string" },
+            "reason": { "type": "string", "description": "Reason for the purchase request." },
+            "requesterId": { "type": "string", "description": "ID of the team member who made the request." },
+            "requesterName": { "type": "string" },
+            "status": { "type": "string", "enum": ["pending", "approved", "purchased", "rejected"], "description": "The current status of the purchase request." },
+            "createdAt": { "type": "string", "format": "date-time" },
+            "updatedAt": { "type": "string", "format": "date-time" },
+            "notes": { "type": "string", "description": "Notes from the purchasing team." }
+        },
+        "required": ["id", "description", "quantity", "unit", "reason", "requesterId", "requesterName", "status", "createdAt"]
     }
   },
   "auth": {
@@ -273,6 +345,10 @@
     "/stock_categories/{stockCategoryId}": {
       "schema": { "$ref": "#/entities/StockCategory" },
       "description": "Stores the available categories for stock items."
+    },
+    "/purchase_requests/{purchaseRequestId}": {
+        "schema": { "$ref": "#/entities/PurchaseRequest" },
+        "description": "Stores ad-hoc purchase requests."
     }
   }
 }
