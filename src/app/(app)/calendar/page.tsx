@@ -23,6 +23,7 @@ import { Button } from '@/components/ui/button';
 import { PlusCircle, User, Users, X } from 'lucide-react';
 import { NewAppointmentModal } from '@/components/modals/new-appointment-modal';
 import { AppointmentDetailsModal } from '@/components/modals/appointment-details-modal';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 export interface CalendarTask {
   id: string;
@@ -30,7 +31,7 @@ export interface CalendarTask {
   title: string;
   subtitle?: string;
   link?: string;
-  responsible: TeamMember;
+  responsible: TeamMember[];
   date: Date;
   start: Date;
   end: Date;
@@ -45,7 +46,7 @@ export interface CalendarTask {
 
 export default function CalendarPage() {
   const { projects, teamMembers, appointments, updateProject, updateAppointment, deleteAppointment, isLoading } = useContext(AppContext);
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [selectedDates, setSelectedDates] = useState<Date[]>([]);
   const [selectedMemberId, setSelectedMemberId] = useState('all');
   const [isAppointmentModalOpen, setAppointmentModalOpen] = useState(false);
@@ -76,7 +77,7 @@ export default function CalendarPage() {
                 if (!tasks[dayKey]) tasks[dayKey] = [];
                 tasks[dayKey].push({
                   id: `${fur.id}-${stageKey}`, type: 'project', title: `${fur.name} (${project.clientName})`,
-                  subtitle: `Etapa: ${STAGE_STATUSES[stageKey]}`, link: `/projects/${project.id}`, responsible, date,
+                  subtitle: `Etapa: ${STAGE_STATUSES[stageKey]}`, link: `/projects/${project.id}`, responsible: [responsible], date,
                   start: date, end: date,
                   rawData: { projectId: project.id, envId: env.id, furId: fur.id, stageKey },
                 });
@@ -89,19 +90,27 @@ export default function CalendarPage() {
 
     appointments.forEach(appointment => {
       if (appointment.start && appointment.memberIds) {
-        appointment.memberIds.forEach(memberId => {
-            const responsible = memberMap.get(memberId);
-            if (responsible && (selectedMemberId === 'all' || selectedMemberId === responsible.id)) {
-                const startDate = parseISO(appointment.start);
-                const dayKey = format(startDate, 'yyyy-MM-dd');
-                if (!tasks[dayKey]) tasks[dayKey] = [];
+        const responsibleMembers = appointment.memberIds
+          .map(id => memberMap.get(id))
+          .filter((m): m is TeamMember => !!m);
+
+        if (responsibleMembers.length > 0) {
+           const matchesFilter = selectedMemberId === 'all' || appointment.memberIds.includes(selectedMemberId);
+           if (matchesFilter) {
+             const startDate = parseISO(appointment.start);
+             const dayKey = format(startDate, 'yyyy-MM-dd');
+             if (!tasks[dayKey]) tasks[dayKey] = [];
+             
+             // Check if this exact appointment is already added for this day
+             if (!tasks[dayKey].some(t => t.rawData.appointmentId === appointment.id)) {
                 tasks[dayKey].push({
-                    id: `${appointment.id}-${memberId}`, type: 'appointment', title: appointment.title,
-                    subtitle: appointment.description, responsible, date: startDate, start: startDate,
+                    id: appointment.id, type: 'appointment', title: appointment.title,
+                    subtitle: appointment.description, responsible: responsibleMembers, date: startDate, start: startDate,
                     end: parseISO(appointment.end), rawData: { appointmentId: appointment.id },
                 });
-            }
-        });
+             }
+           }
+        }
       }
     });
 
@@ -189,6 +198,8 @@ export default function CalendarPage() {
       // If single date is selected in multi mode, also update single-date view
       if (dates.length === 1) {
         setSelectedDate(dates[0]);
+      } else {
+        setSelectedDate(undefined);
       }
     }
   };
@@ -202,7 +213,7 @@ export default function CalendarPage() {
   }
 
   return (
-    <>
+    <TooltipProvider>
       <div className="space-y-8">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <PageHeader
@@ -254,14 +265,14 @@ export default function CalendarPage() {
                         locale={ptBR}
                         className="w-full"
                         month={defaultMonth}
-                        onMonthChange={setSelectedDate}
+                        onMonthChange={(newMonth) => setSelectedDate(newMonth)}
                     />
                   </CardContent>
                   {selectedDates.length > 0 && (
                     <CardHeader className="p-3 border-t">
                       <div className="flex justify-between items-center">
                         <p className="text-sm font-medium">{selectedDates.length} dia(s) selecionado(s)</p>
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setSelectedDates([])}>
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setSelectedDates([]); setSelectedDate(new Date()); }}>
                           <X className="h-4 w-4" />
                           <span className="sr-only">Limpar seleção</span>
                         </Button>
@@ -285,32 +296,37 @@ export default function CalendarPage() {
                            {dailyTasks.length > 0 ? (
                                 <ul className="space-y-3">
                                   {dailyTasks.map(task => (
-                                      <li key={task.id}>
-                                         <div className="flex items-start gap-3 rounded-lg p-3" style={{ backgroundColor: `${task.responsible.color}1A` }}>
-                                            <div className="w-24 text-sm font-medium text-right flex-shrink-0 pt-1">
-                                                {getTaskTime(task)}
-                                            </div>
-                                            <div className="h-full w-px" style={{backgroundColor: task.responsible.color}}></div>
-                                            <div className="flex-grow">
-                                              <div className="flex justify-between items-start">
-                                                <div onClick={() => handleTaskClick(task)} className="cursor-pointer">
-                                                    <p className="font-semibold">{task.title}</p>
-                                                    {task.subtitle && <p className="text-sm text-muted-foreground">{task.subtitle}</p>}
-                                                </div>
-                                                {task.link && (
-                                                    <Button asChild variant="ghost" size="sm">
-                                                        <Link href={task.link}>Ver Projeto</Link>
-                                                    </Button>
-                                                )}
-                                              </div>
-                                            </div>
-                                            <Avatar className="h-8 w-8 self-center">
-                                                {task.responsible.avatarUrl && <AvatarImage src={task.responsible.avatarUrl} alt={task.responsible.name} />}
-                                                <AvatarFallback style={{ backgroundColor: task.responsible.color }}>
-                                                    {getInitials(task.responsible.name)}
-                                                </AvatarFallback>
-                                            </Avatar>
+                                      <li key={task.id} className="flex items-start gap-3 rounded-lg p-3 hover:bg-muted/50 cursor-pointer" onClick={() => handleTaskClick(task)}>
+                                         <div className="w-24 text-sm font-medium text-right flex-shrink-0 pt-0.5">
+                                             {getTaskTime(task)}
                                          </div>
+                                         <div className="w-1.5 h-auto self-stretch rounded-full" style={{backgroundColor: task.responsible[0]?.color || '#ccc'}}></div>
+                                         <div className="flex-grow">
+                                            <p className="font-semibold">{task.title}</p>
+                                            {task.subtitle && <p className="text-sm text-muted-foreground">{task.subtitle}</p>}
+                                         </div>
+                                         <div className="flex items-center -space-x-2">
+                                           {task.responsible.map(member => (
+                                            <Tooltip key={member.id}>
+                                              <TooltipTrigger asChild>
+                                                <Avatar className="h-8 w-8 border-2 border-background">
+                                                    {member.avatarUrl && <AvatarImage src={member.avatarUrl} alt={member.name} />}
+                                                    <AvatarFallback style={{ backgroundColor: member.color }}>
+                                                        {getInitials(member.name)}
+                                                    </AvatarFallback>
+                                                </Avatar>
+                                              </TooltipTrigger>
+                                              <TooltipContent>
+                                                <p>{member.name}</p>
+                                              </TooltipContent>
+                                            </Tooltip>
+                                           ))}
+                                         </div>
+                                          {task.link && (
+                                              <Button asChild variant="ghost" size="sm" onClick={(e) => e.stopPropagation()}>
+                                                  <Link href={task.link}>Ver Projeto</Link>
+                                              </Button>
+                                          )}
                                       </li>
                                   ))}
                                 </ul>
@@ -328,7 +344,7 @@ export default function CalendarPage() {
         isOpen={isAppointmentModalOpen}
         onClose={() => setAppointmentModalOpen(false)}
         selectedDates={selectedDates}
-        onDatesConsumed={() => setSelectedDates([])}
+        onDatesConsumed={() => { setSelectedDates([]); setSelectedDate(new Date()); }}
       />
       {selectedTask && (
         <AppointmentDetailsModal
@@ -339,6 +355,6 @@ export default function CalendarPage() {
             onCancel={handleCancelTask}
         />
       )}
-    </>
+    </TooltipProvider>
   );
 }

@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Calendar } from '../ui/calendar';
 import { CalendarIcon, Trash2 } from 'lucide-react';
-import { format, isSameDay, isSameHour } from 'date-fns';
+import { format, isSameDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
@@ -74,7 +74,7 @@ export function AppointmentDetailsModal({
   const cancelDialogActionText = task.type === 'appointment' ? 'Sim, cancelar' : 'Sim, desagendar';
   
   const getTaskTime = (task: CalendarTask) => {
-    const isAllDay = isSameDay(task.start, task.end) && isSameHour(task.start, 0) && isSameHour(task.end, 23);
+    const isAllDay = isSameDay(task.start, task.end) && task.start.getHours() === 0 && task.end.getHours() === 23;
     if (isAllDay || task.type === 'project') {
         return 'Dia Inteiro';
     }
@@ -93,16 +93,20 @@ export function AppointmentDetailsModal({
           </DialogHeader>
 
           <div className="space-y-4 py-4">
-            <div className="flex items-center gap-2">
-              <Avatar className="h-8 w-8">
-                  {task.responsible.avatarUrl && <AvatarImage src={task.responsible.avatarUrl} alt={task.responsible.name} />}
-                  <AvatarFallback style={{ backgroundColor: task.responsible.color }} className='text-sm'>
-                      {getInitials(task.responsible.name)}
-                  </AvatarFallback>
-              </Avatar>
-              <div>
-                <p className="text-sm font-medium text-foreground">Responsável:</p>
-                <p className="text-sm text-muted-foreground">{task.responsible.name}</p>
+             <div>
+              <p className="text-sm font-medium text-foreground">Responsável(eis):</p>
+              <div className="flex items-center gap-2 mt-1">
+                {task.responsible.map(member => (
+                   <div key={member.id} className="flex items-center gap-2">
+                    <Avatar className="h-8 w-8">
+                        {member.avatarUrl && <AvatarImage src={member.avatarUrl} alt={member.name} />}
+                        <AvatarFallback style={{ backgroundColor: member.color }} className='text-sm'>
+                            {getInitials(member.name)}
+                        </AvatarFallback>
+                    </Avatar>
+                     <p className="text-sm text-muted-foreground">{member.name}</p>
+                   </div>
+                ))}
               </div>
             </div>
             <div>
