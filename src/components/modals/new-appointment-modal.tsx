@@ -27,7 +27,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { CalendarIcon } from 'lucide-react';
 import { Calendar } from '../ui/calendar';
-import { format, set, parse } from 'date-fns';
+import { format, set } from 'date-fns';
 import { cn } from '@/lib/utils';
 import {
   Command,
@@ -150,7 +150,7 @@ export function NewAppointmentModal({ isOpen, onClose, selectedDates, onDatesCon
     onClose();
   };
 
-  const { memberIds, dates, timeType } = form.watch();
+  const { memberIds, timeType } = form.watch();
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>

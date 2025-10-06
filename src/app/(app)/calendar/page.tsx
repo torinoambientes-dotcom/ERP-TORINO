@@ -1,5 +1,5 @@
 'use client';
-import { useState, useMemo, useContext, useCallback } from 'react';
+import { useState, useMemo, useContext } from 'react';
 import {
   Card,
   CardContent,
@@ -20,7 +20,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, User, Users } from 'lucide-react';
+import { PlusCircle, User, Users, X } from 'lucide-react';
 import { NewAppointmentModal } from '@/components/modals/new-appointment-modal';
 import { AppointmentDetailsModal } from '@/components/modals/appointment-details-modal';
 
@@ -45,7 +45,8 @@ export interface CalendarTask {
 
 export default function CalendarPage() {
   const { projects, teamMembers, appointments, updateProject, updateAppointment, deleteAppointment, isLoading } = useContext(AppContext);
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
+  const [selectedDates, setSelectedDates] = useState<Date[]>([]);
   const [selectedMemberId, setSelectedMemberId] = useState('all');
   const [isAppointmentModalOpen, setAppointmentModalOpen] = useState(false);
   const [isDetailsModalOpen, setDetailsModalOpen] = useState(false);
@@ -112,11 +113,23 @@ export default function CalendarPage() {
     return tasks;
   }, [projects, appointments, isLoading, memberMap, selectedMemberId]);
 
+  const defaultMonth = useMemo(() => {
+    if (selectedDate) return selectedDate;
+    
+    const firstTaskDate = Object.keys(tasksByDay).sort()[0];
+    if (firstTaskDate) {
+      return parseISO(firstTaskDate);
+    }
+    
+    return new Date();
+  }, [selectedDate, tasksByDay]);
+
   const weekDays = useMemo(() => {
-    const start = startOfWeek(selectedDate || new Date(), { locale: ptBR });
-    const end = endOfWeek(selectedDate || new Date(), { locale: ptBR });
+    const dateToUse = selectedDate || defaultMonth;
+    const start = startOfWeek(dateToUse, { locale: ptBR });
+    const end = endOfWeek(dateToUse, { locale: ptBR });
     return eachDayOfInterval({ start, end });
-  }, [selectedDate]);
+  }, [selectedDate, defaultMonth]);
 
   const handleTaskClick = (task: CalendarTask) => {
     setSelectedTask(task);
@@ -163,10 +176,21 @@ export default function CalendarPage() {
   };
 
   const getTaskTime = (task: CalendarTask) => {
-    if (task.type === 'project' || (task.start.getHours() === 0 && task.end.getHours() === 23)) {
+    const isAllDay = isSameDay(task.start, task.end) && task.start.getHours() === 0 && task.end.getHours() === 23;
+    if (isAllDay || task.type === 'project') {
       return 'Dia inteiro';
     }
     return `${format(task.start, 'HH:mm')} - ${format(task.end, 'HH:mm')}`;
+  };
+
+  const handleMultiSelect = (dates: Date[] | undefined) => {
+    if (dates) {
+      setSelectedDates(dates);
+      // If single date is selected in multi mode, also update single-date view
+      if (dates.length === 1) {
+        setSelectedDate(dates[0]);
+      }
+    }
   };
 
   if (isLoading) {
@@ -222,13 +246,28 @@ export default function CalendarPage() {
               <Card>
                   <CardContent className="p-2">
                     <Calendar
-                        mode="single"
-                        selected={selectedDate}
-                        onSelect={setSelectedDate}
+                        mode="multiple"
+                        min={0}
+                        selected={selectedDates}
+                        onSelect={handleMultiSelect}
+                        onDayClick={(day) => setSelectedDate(day)}
                         locale={ptBR}
                         className="w-full"
+                        month={defaultMonth}
+                        onMonthChange={setSelectedDate}
                     />
                   </CardContent>
+                  {selectedDates.length > 0 && (
+                    <CardHeader className="p-3 border-t">
+                      <div className="flex justify-between items-center">
+                        <p className="text-sm font-medium">{selectedDates.length} dia(s) selecionado(s)</p>
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setSelectedDates([])}>
+                          <X className="h-4 w-4" />
+                          <span className="sr-only">Limpar seleção</span>
+                        </Button>
+                      </div>
+                    </CardHeader>
+                  )}
               </Card>
           </div>
           <div className="lg:col-span-8 xl:col-span-9">
@@ -251,7 +290,7 @@ export default function CalendarPage() {
                                             <div className="w-24 text-sm font-medium text-right flex-shrink-0 pt-1">
                                                 {getTaskTime(task)}
                                             </div>
-                                            <div className="h-full w-px bg-border-strong" style={{backgroundColor: task.responsible.color}}></div>
+                                            <div className="h-full w-px" style={{backgroundColor: task.responsible.color}}></div>
                                             <div className="flex-grow">
                                               <div className="flex justify-between items-start">
                                                 <div onClick={() => handleTaskClick(task)} className="cursor-pointer">
@@ -288,7 +327,8 @@ export default function CalendarPage() {
       <NewAppointmentModal
         isOpen={isAppointmentModalOpen}
         onClose={() => setAppointmentModalOpen(false)}
-        selectedDates={selectedDate ? [selectedDate] : []}
+        selectedDates={selectedDates}
+        onDatesConsumed={() => setSelectedDates([])}
       />
       {selectedTask && (
         <AppointmentDetailsModal
