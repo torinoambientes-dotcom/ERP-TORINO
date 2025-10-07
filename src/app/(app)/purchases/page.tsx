@@ -503,7 +503,7 @@ export default function PurchasesPage() {
   };
 
   const copyFullProfileDoorListToClipboard = () => {
-    let listText = `Lista de Portas de Perfil (${showPurchasedDoors ? 'Comprados' : 'A Comprar'}):\n\n`;
+    let listText = `Lista de Portas de Perfil (${showPurchasedDoors ? 'Compradas' : 'A Comprar'}):\n\n`;
 
     Object.entries(profileDoorList).forEach(([projectName, projectData]) => {
       listText += `Projeto: ${projectName}\n`;
