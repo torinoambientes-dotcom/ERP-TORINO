@@ -345,7 +345,7 @@ const GlassVisualizer = () => {
 
     return (
         <div style={outerStyle} className={cn(glassColorClass, 'shadow-md')}>
-            <div className="absolute inset-0 flex items-center justify-center text-xs text-muted-foreground text-center p-2 break-words">{type}</div>
+            <div className="absolute inset-0 flex items-center justify-center text-xs text-gray-600 text-center p-2 break-words">{type}</div>
             
             {isBeveled && (
               <div
