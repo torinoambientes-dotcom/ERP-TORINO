@@ -12,12 +12,12 @@ import { ptBR } from 'date-fns/locale';
 import type { CalendarTask } from './calendar/page';
 import type { TeamMember } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, ShoppingCart } from 'lucide-react';
 import { getProjectStatus } from '@/lib/projects';
 
 export default function DashboardPage() {
   const { user } = useUser();
-  const { projects, teamMembers, appointments, isLoading } = useContext(AppContext);
+  const { projects, teamMembers, appointments, purchaseRequests, isLoading } = useContext(AppContext);
 
   const loggedInMember = useMemo(() => {
     if (!user || !teamMembers) return null;
@@ -88,6 +88,13 @@ export default function DashboardPage() {
       .map(project => ({ project, statusInfo: getProjectStatus(project) }))
       .slice(0, 5); // Limit to 5 for the dashboard
   }, [projects]);
+  
+  const pendingPurchaseRequests = useMemo(() => {
+    if (!purchaseRequests || !loggedInMember || loggedInMember.role !== 'Administrativo') {
+        return [];
+    }
+    return purchaseRequests.filter(req => req.status === 'pending');
+  }, [purchaseRequests, loggedInMember]);
 
 
   if (isLoading || !loggedInMember) {
@@ -142,6 +149,27 @@ export default function DashboardPage() {
                     </div>
                 </CardContent>
             </Card>
+
+            {loggedInMember.role === 'Administrativo' && pendingPurchaseRequests.length > 0 && (
+                <Card className="border-amber-500 bg-amber-50/50">
+                    <CardHeader>
+                        <CardTitle className="text-amber-800 flex items-center gap-2">
+                           <ShoppingCart className="h-6 w-6" /> Compras Pendentes
+                        </CardTitle>
+                        <CardDescription className="text-amber-700">
+                           Existem solicitações de compra que aguardam a sua aprovação.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="flex justify-between items-center">
+                        <p className="text-lg font-bold text-amber-900">{pendingPurchaseRequests.length} {pendingPurchaseRequests.length === 1 ? 'solicitação pendente' : 'solicitações pendentes'}</p>
+                        <Button asChild variant="outline" className="bg-background">
+                            <Link href="/purchases?tab=requests">
+                                Ver Compras <ArrowRight className="ml-2 h-4 w-4" />
+                            </Link>
+                        </Button>
+                    </CardContent>
+                </Card>
+            )}
         </div>
         <div>
           <Card>
