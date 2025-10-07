@@ -102,6 +102,15 @@ interface LowStockInfo extends StockItem {
   demand?: number;
 }
 
+const handlePositions: Record<string, string> = {
+    left: 'Esquerda',
+    right: 'Direita',
+    both: 'Ambos os Lados',
+    none: 'Nenhum',
+    top: 'Em cima',
+    bottom: 'Em baixo',
+};
+
 
 export default function PurchasesPage() {
   const context = useContext(AppContext);
@@ -892,16 +901,25 @@ export default function PurchasesPage() {
                                     {Object.entries(envData.furnitures).map(([furnitureName, furnitureData]) => (
                                         <div key={furnitureData.id}>
                                         <p className="font-semibold text-sm">{furnitureName}</p>
-                                        <ul className='space-y-1 text-sm list-disc pl-5 text-muted-foreground'>
+                                        <ul className='space-y-1 text-sm list-disc pl-5'>
                                             {furnitureData.profileDoors.map((item, index) => {
                                                 const quantityText = item.doorType === 'Correr' && item.doorSet
-                                                    ? `${item.doorSet.count} pçs (Conjunto)`
+                                                    ? `${item.doorSet.count} pç(s) (Conjunto)`
                                                     : `${item.quantity} pç(s)`;
+
+                                                const handleDetails = item.doorType === 'Correr' && item.doorSet
+                                                  ? item.doorSet.doors.map((d, i) => `Porta ${i+1}: ${handlePositions[d.handlePosition] || 'N/A'}`).join(' / ')
+                                                  : handlePositions[item.handlePosition || 'left'];
 
                                                 return (
                                                     <li key={index} className='flex justify-between items-center gap-2'>
-                                                        <div>
-                                                            <span className="font-medium text-foreground/90">Perfil {item.profileColor} com Vidro {item.glassType} ({item.handleType}):</span> {quantityText} - {item.width}mm x {item.height}mm
+                                                        <div className='text-muted-foreground'>
+                                                            <p className="font-medium text-foreground/90">
+                                                                {quantityText} de Porta {item.profileColor} / Vidro {item.glassType}
+                                                            </p>
+                                                            <p>
+                                                                {item.width}mm x {item.height}mm - Puxador: {item.handleType} ({handleDetails})
+                                                            </p>
                                                         </div>
                                                         <div className='flex gap-1 flex-shrink-0'>
                                                           <Button variant="ghost" size="sm" onClick={() => handleOpenDoorViewer(item, projectName)}>
@@ -1086,3 +1104,5 @@ export default function PurchasesPage() {
     </>
   );
 }
+
+    
