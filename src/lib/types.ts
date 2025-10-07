@@ -74,6 +74,10 @@ export interface GlassItem {
   addedAt?: string; // ISO date string
 }
 
+export interface DoorSetConfiguration {
+  handlePosition: 'left' | 'right' | 'both' | 'none';
+}
+
 export interface ProfileDoorItem {
   id: string;
   doorType?: 'Giro' | 'Correr' | 'Escamoteavel' | 'Frente de gaveta';
@@ -91,6 +95,10 @@ export interface ProfileDoorItem {
   handleOffset?: number;
   purchased?: boolean;
   addedAt?: string; // ISO date string
+  doorSet?: {
+    count: number;
+    doors: DoorSetConfiguration[];
+  };
 }
 
 export interface Furniture {
