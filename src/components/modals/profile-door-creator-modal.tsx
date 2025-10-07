@@ -100,7 +100,7 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
       quantity: 1,
       profileColor: 'Preto',
       glassType: 'Incolor',
-      handleType: 'Linear inteiro',
+      handleType: handleTypes[0],
       hinges: [{position: 100}, {position: 600}],
       isPair: false,
       handlePosition: 'left',
@@ -129,35 +129,35 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
 
   useEffect(() => {
     if (isOpen) {
-      if (isEditMode && doorToEdit) {
-        form.reset({
-          ...doorToEdit,
-          doorType: doorToEdit.doorType || 'Giro',
-          handlePosition: doorToEdit.handlePosition || 'left',
-          handleType: doorToEdit.handleType || 'Sem Puxador',
-          doorSet: doorToEdit.doorSet || { count: 1, doors: [{ handlePosition: 'left' }] }
-        });
-      } else {
-        form.reset({
-          doorType: 'Giro',
-          slidingSystem: '',
-          width: 400,
-          height: 700,
-          quantity: 1,
-          profileColor: 'Preto',
-          glassType: 'Incolor',
-          handleType: 'Linear inteiro',
-          hinges: [{position: 100}, {position: 600}],
-          isPair: false,
-          handlePosition: 'left',
-          handleWidth: 150,
-          handleOffset: 50,
-          doorSet: {
-            count: 1,
-            doors: [{ handlePosition: 'left' }],
-          }
-        }); 
-      }
+        if (isEditMode && doorToEdit) {
+            form.reset({
+                ...doorToEdit,
+                doorType: doorToEdit.doorType || 'Giro',
+                handlePosition: doorToEdit.handlePosition || 'left',
+                handleType: doorToEdit.handleType || 'Sem Puxador',
+                doorSet: doorToEdit.doorSet || { count: 1, doors: [{ handlePosition: 'left' }] }
+            });
+        } else {
+            form.reset({
+                doorType: 'Giro',
+                slidingSystem: '',
+                width: 400,
+                height: 700,
+                quantity: 1,
+                profileColor: 'Preto',
+                glassType: 'Incolor',
+                handleType: handleTypes[0],
+                hinges: [{ position: 100 }, { position: 600 }],
+                isPair: false,
+                handlePosition: 'left',
+                handleWidth: 150,
+                handleOffset: 50,
+                doorSet: {
+                    count: 1,
+                    doors: [{ handlePosition: 'left' }],
+                }
+            });
+        }
     }
   }, [isOpen, isEditMode, doorToEdit, form]);
   
@@ -349,7 +349,7 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
 
   const PROFILE_WIDTH_MM = 45;
 
-  const HandleVisualizer = ({ mirrored = false, positionOverride }: { mirrored?: boolean, positionOverride?: 'left' | 'right' | 'top' | 'bottom' | 'both' | 'none' }) => {
+  const HandleVisualizer = ({ mirrored = false, positionOverride }: { mirrored?: boolean, positionOverride: 'left' | 'right' | 'top' | 'bottom' | 'both' | 'none' }) => {
     if (handleType === 'Sem Puxador' || !positionOverride || positionOverride === 'none') return null;
 
     const style: React.CSSProperties = { position: 'absolute', backgroundColor: 'red' };
@@ -388,7 +388,7 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
                   if (currentPos === 'left') individualStyle.left = '0'; else individualStyle.right = '0';
                   break;
           }
-          return <div key={pos} style={individualStyle}></div>
+          return <div key={`${pos}-${currentPos}`} style={individualStyle}></div>
         })}
       </>
     );
@@ -440,7 +440,7 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
 
     const doorDimensions = calculateDimensions();
     
-    const DoorVisualizer = ({ mirrored = false, style, positionOverride }: { mirrored?: boolean, style?: React.CSSProperties, positionOverride?: 'left' | 'right' | 'top' | 'bottom' | 'both' | 'none' }) => {
+    const DoorVisualizer = ({ mirrored = false, style, positionOverride }: { mirrored?: boolean, style?: React.CSSProperties, positionOverride: 'left' | 'right' | 'top' | 'bottom' | 'both' | 'none' }) => {
       return (
         <div className={cn("relative flex items-center justify-center transition-all duration-300", profileColorClass)} style={style}>
           <div className='absolute inset-0 bg-gray-300/30 backdrop-blur-sm flex items-center justify-center' style={{ margin: `${(PROFILE_WIDTH_MM / Math.min(doorWidth, doorHeight)) * 50}%`}}>
@@ -464,7 +464,7 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
         <div className="flex items-center justify-center gap-2" style={{ width: containerSize.width, height: containerSize.height }}>
             {doorType === 'Correr' && doorSetFields.map((field, index) => {
                 const handlePos = doorData?.doorSet?.doors?.[index]?.handlePosition;
-                return <DoorVisualizer key={`${field.id}-${handlePos}`} style={doorDimensions} positionOverride={handlePos} />
+                return <DoorVisualizer key={`${field.id}-${handlePos}`} style={doorDimensions} positionOverride={handlePos!} />
             })}
             {doorType === 'Giro' && <DoorVisualizer style={doorDimensions} positionOverride={doorData.handlePosition}/>}
             {doorType === 'Giro' && isPair && <DoorVisualizer mirrored={true} style={doorDimensions} positionOverride={doorData.handlePosition} />}
