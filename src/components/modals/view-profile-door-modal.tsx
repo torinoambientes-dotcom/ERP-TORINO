@@ -287,7 +287,7 @@ export function ViewProfileDoorModal({ isOpen, onClose, clientName, door }: View
       return (
         <div className={cn("relative flex items-center justify-center transition-all duration-300", profileColorClass)} style={style}>
           <div className='absolute inset-0 bg-gray-300/30 backdrop-blur-sm flex items-center justify-center' style={{ margin: `${(PROFILE_WIDTH_MM / Math.min(doorWidth, doorHeight)) * 50}%`}}>
-            <span className="text-sm text-muted-foreground text-center p-2 break-all">{door.glassType}</span>
+            <span className="text-sm text-gray-800 font-medium text-center p-2 break-all">{door.glassType}</span>
           </div>
           {doorType === 'Giro' && hinges?.map((hinge, index) => {
             const hingeDiameter = 35;
