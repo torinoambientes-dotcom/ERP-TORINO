@@ -93,7 +93,10 @@ export default function DashboardPage() {
     if (!purchaseRequests || !loggedInMember || loggedInMember.role !== 'Administrativo') {
         return [];
     }
-    return purchaseRequests.filter(req => req.status === 'pending');
+    return purchaseRequests
+      .filter(req => req.status === 'pending')
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .slice(0, 5); // Limit to 5 for the dashboard
   }, [purchaseRequests, loggedInMember]);
 
 
@@ -124,30 +127,49 @@ export default function DashboardPage() {
             />
         </div>
       </div>
-
-      {loggedInMember.role === 'Administrativo' && pendingPurchaseRequests.length > 0 && (
-          <Card className="border-amber-500 bg-amber-50/50">
-              <CardHeader>
-                  <CardTitle className="text-amber-800 flex items-center gap-2">
-                      <ShoppingCart className="h-6 w-6" /> Compras Pendentes
-                  </CardTitle>
-                  <CardDescription className="text-amber-700">
-                      Existem solicitações de compra que aguardam a sua aprovação.
-                  </CardDescription>
-              </CardHeader>
-              <CardContent className="flex justify-between items-center">
-                  <p className="text-lg font-bold text-amber-900">{pendingPurchaseRequests.length} {pendingPurchaseRequests.length === 1 ? 'solicitação pendente' : 'solicitações pendentes'}</p>
-                  <Button asChild variant="outline" className="bg-background">
-                      <Link href="/purchases?tab=requests">
-                          Ver Compras <ArrowRight className="ml-2 h-4 w-4" />
-                      </Link>
-                  </Button>
-              </CardContent>
-          </Card>
-      )}
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-6">
+            
+            {loggedInMember.role === 'Administrativo' && pendingPurchaseRequests.length > 0 && (
+                <Card className="border-amber-500 bg-amber-50/50">
+                    <CardHeader>
+                        <CardTitle className="text-amber-800 flex items-center gap-2">
+                            <ShoppingCart className="h-6 w-6" /> Solicitações de Compra Pendentes
+                        </CardTitle>
+                        <CardDescription className="text-amber-700">
+                            As solicitações de compra mais recentes que aguardam a sua aprovação.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-3">
+                        {pendingPurchaseRequests.map(req => (
+                          <div key={req.id} className="p-3 rounded-lg border bg-card/80 flex justify-between items-center">
+                            <div>
+                                <p className="font-semibold">{req.description} ({req.quantity} {req.unit})</p>
+                                <p className="text-sm text-muted-foreground">Solicitado por: {req.requesterName}</p>
+                            </div>
+                            <Button asChild variant="ghost" size="sm">
+                              <Link href="/purchases?tab=requests">
+                                  Ver <ArrowRight className="ml-2 h-4 w-4" />
+                              </Link>
+                          </Button>
+                          </div>
+                        ))}
+                      </div>
+                      {purchaseRequests.filter(r => r.status === 'pending').length > 5 && (
+                        <div className='text-center mt-4'>
+                            <Button asChild variant="outline" className="bg-background">
+                              <Link href="/purchases?tab=requests">
+                                  Ver Todas as Solicitações <ArrowRight className="ml-2 h-4 w-4" />
+                              </Link>
+                           </Button>
+                        </div>
+                      )}
+                    </CardContent>
+                </Card>
+            )}
+
             <Card>
                 <CardHeader>
                     <CardTitle>Projetos Ativos</CardTitle>
