@@ -63,7 +63,7 @@ export default function DashboardPage() {
 
     // Appointments for today
     appointments.forEach(appointment => {
-      if (appointment.start && appointment.memberIds.includes(loggedInMember.id) && isToday(parseISO(appointment.start))) {
+      if (appointment.start && appointment.memberIds?.includes(loggedInMember.id) && isToday(parseISO(appointment.start))) {
         tasks.push({
           id: appointment.id,
           type: 'appointment',
@@ -124,6 +124,27 @@ export default function DashboardPage() {
             />
         </div>
       </div>
+
+      {loggedInMember.role === 'Administrativo' && pendingPurchaseRequests.length > 0 && (
+          <Card className="border-amber-500 bg-amber-50/50">
+              <CardHeader>
+                  <CardTitle className="text-amber-800 flex items-center gap-2">
+                      <ShoppingCart className="h-6 w-6" /> Compras Pendentes
+                  </CardTitle>
+                  <CardDescription className="text-amber-700">
+                      Existem solicitações de compra que aguardam a sua aprovação.
+                  </CardDescription>
+              </CardHeader>
+              <CardContent className="flex justify-between items-center">
+                  <p className="text-lg font-bold text-amber-900">{pendingPurchaseRequests.length} {pendingPurchaseRequests.length === 1 ? 'solicitação pendente' : 'solicitações pendentes'}</p>
+                  <Button asChild variant="outline" className="bg-background">
+                      <Link href="/purchases?tab=requests">
+                          Ver Compras <ArrowRight className="ml-2 h-4 w-4" />
+                      </Link>
+                  </Button>
+              </CardContent>
+          </Card>
+      )}
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-6">
@@ -149,27 +170,6 @@ export default function DashboardPage() {
                     </div>
                 </CardContent>
             </Card>
-
-            {loggedInMember.role === 'Administrativo' && pendingPurchaseRequests.length > 0 && (
-                <Card className="border-amber-500 bg-amber-50/50">
-                    <CardHeader>
-                        <CardTitle className="text-amber-800 flex items-center gap-2">
-                           <ShoppingCart className="h-6 w-6" /> Compras Pendentes
-                        </CardTitle>
-                        <CardDescription className="text-amber-700">
-                           Existem solicitações de compra que aguardam a sua aprovação.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent className="flex justify-between items-center">
-                        <p className="text-lg font-bold text-amber-900">{pendingPurchaseRequests.length} {pendingPurchaseRequests.length === 1 ? 'solicitação pendente' : 'solicitações pendentes'}</p>
-                        <Button asChild variant="outline" className="bg-background">
-                            <Link href="/purchases?tab=requests">
-                                Ver Compras <ArrowRight className="ml-2 h-4 w-4" />
-                            </Link>
-                        </Button>
-                    </CardContent>
-                </Card>
-            )}
         </div>
         <div>
           <Card>
