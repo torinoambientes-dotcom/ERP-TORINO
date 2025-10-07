@@ -101,19 +101,25 @@ export default function DashboardPage() {
   }, [purchaseRequests, loggedInMember]);
 
   const highPriorityProjects = useMemo(() => {
+    if (!loggedInMember) return [];
     return projects
       .filter(p => !p.completedAt) // Apenas projetos ativos
       .filter(p => {
+        // Verifica se o projeto tem alguma tarefa de alta prioridade atribuída AO MEMBRO LOGADO
         return p.environments.some(env =>
           env.furniture.some(fur =>
-            Object.values(fur).some(stage => 
-              typeof stage === 'object' && stage !== null && 'priority' in stage && (stage as ProductionStage).priority === 'high'
-            )
+            (['measurement', 'cutting', 'purchase', 'assembly'] as const).some(stageKey => {
+              const stage = fur[stageKey];
+              return (
+                stage?.priority === 'high' &&
+                stage.responsibleId === loggedInMember.id
+              );
+            })
           )
         );
       })
       .slice(0, 5);
-  }, [projects]);
+  }, [projects, loggedInMember]);
 
 
   const pendingGlasswareCount = useMemo(() => {
@@ -180,10 +186,10 @@ export default function DashboardPage() {
               <Card className="border-red-500 bg-red-50/50">
                   <CardHeader>
                       <CardTitle className="text-red-800 flex items-center gap-2">
-                          <AlertTriangle className="h-6 w-6" /> Projetos Prioritários
+                          <AlertTriangle className="h-6 w-6" /> Projetos com Prioridade Alta (Para Você)
                       </CardTitle>
                       <CardDescription className="text-red-700">
-                          Estes projetos contêm tarefas marcadas com prioridade alta.
+                          Estes projetos contêm tarefas de alta prioridade atribuídas a você.
                       </CardDescription>
                   </CardHeader>
                   <CardContent>
