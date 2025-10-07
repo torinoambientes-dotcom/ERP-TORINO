@@ -266,7 +266,7 @@ export function FurnitureMaterialsModal({
 }: FurnitureMaterialsModalProps) {
   const { toast } = useToast();
   const { stockItems } = useContext(AppContext);
-  const originalFurniture = useMemo(() => JSON.parse(JSON.stringify(furniture)), [furniture]);
+  const [originalFurniture, setOriginalFurniture] = useState<Furniture | null>(null);
   
   const [isDoorCreatorOpen, setDoorCreatorOpen] = useState(false);
   const [doorToEdit, setDoorToEdit] = useState<ProfileDoorItem | null>(null);
@@ -304,15 +304,27 @@ export function FurnitureMaterialsModal({
 
   useEffect(() => {
     if (isOpen) {
+      setOriginalFurniture(JSON.parse(JSON.stringify(furniture)));
       form.reset({
         materials: furniture.materials || [],
         glassItems: furniture.glassItems || [],
         profileDoors: furniture.profileDoors || [],
       });
+    } else {
+      setOriginalFurniture(null);
     }
   }, [isOpen, furniture, form]);
 
+
   const onSubmit = () => {
+    if (!originalFurniture) {
+        toast({
+            variant: "destructive",
+            title: 'Erro ao salvar',
+            description: `Não foi possível encontrar os dados originais do móvel.`,
+        });
+        return;
+    }
     const data = form.getValues();
     const updatedFurniture: Furniture = {
       ...furniture,
