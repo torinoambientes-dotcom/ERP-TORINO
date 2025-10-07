@@ -390,8 +390,8 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
         const { width: rawContainerWidth, height: rawContainerHeight } = containerSize;
         if (!rawContainerWidth || !rawContainerHeight || !doorWidth || !doorHeight) return { width: 0, height: 0 };
         
-        const containerWidth = rawContainerWidth - 64; // p-8 -> 2rem padding
-        const containerHeight = rawContainerHeight - 64;
+        const containerWidth = rawContainerWidth; 
+        const containerHeight = rawContainerHeight;
         
         let doorCount = 1;
         if(doorType === 'Correr') doorCount = doorSetCount;
@@ -437,10 +437,10 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
     };
 
     return (
-      <div ref={containerRef} className="w-full h-full flex items-center justify-center p-8">
+      <div ref={containerRef} className="w-full h-full flex items-center justify-center">
         <div className="flex items-center justify-center gap-2" style={{ width: containerSize.width, height: containerSize.height }}>
             {doorType === 'Correr' && doorSetFields.map((field, index) => (
-                <DoorVisualizer key={field.id} style={doorDimensions} positionOverride={field.handlePosition as any} />
+                <DoorVisualizer key={`${field.id}-${field.handlePosition}`} style={doorDimensions} positionOverride={field.handlePosition as any} />
             ))}
             {doorType === 'Giro' && <DoorVisualizer style={doorDimensions} />}
             {doorType === 'Giro' && isPair && <DoorVisualizer mirrored={true} style={doorDimensions} />}
