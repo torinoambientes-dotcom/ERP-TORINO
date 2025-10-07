@@ -2,7 +2,7 @@
 import { useState, useContext, useMemo } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BarChart3, LayoutGrid, PlusCircle, Users, Boxes, LogOut, ShoppingCart, User, X, Calendar } from 'lucide-react';
+import { BarChart3, LayoutGrid, PlusCircle, Users, Boxes, LogOut, ShoppingCart, User, X, Calendar, Home } from 'lucide-react';
 import {
   SidebarHeader,
   SidebarContent,
@@ -36,7 +36,8 @@ interface LowStockInfo extends StockItem {
 }
 
 const menuItems = [
-  { href: '/', label: 'Projetos', icon: LayoutGrid, adminOnly: false },
+  { href: '/', label: 'Dashboard', icon: Home, adminOnly: false },
+  { href: '/projects', label: 'Projetos', icon: LayoutGrid, adminOnly: false },
   { href: '/calendar', label: 'Calendário', icon: Calendar, adminOnly: false },
   { href: '/purchases', label: 'Compras', icon: ShoppingCart, adminOnly: false },
   { href: '/reports', label: 'Relatórios', icon: BarChart3, adminOnly: false },
@@ -126,7 +127,7 @@ export function SidebarNav() {
   };
   
   const visibleMenuItems = menuItems.filter(item => !item.adminOnly || isAdmin).sort((a, b) => {
-    const order = ['Projetos', 'Calendário', 'Compras', 'Estoque', 'Relatórios', 'Equipe'];
+    const order = ['Dashboard', 'Projetos', 'Calendário', 'Compras', 'Estoque', 'Relatórios', 'Equipe'];
     return order.indexOf(a.label) - order.indexOf(b.label);
   });
 
@@ -142,11 +143,12 @@ export function SidebarNav() {
         <SidebarMenu>
           {visibleMenuItems.map((item) => {
             const showBadge = item.href === '/purchases' && pendingPurchasesCount > 0;
+            const isActive = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href);
             return (
               <SidebarMenuItem key={item.href}>
                 <SidebarMenuButton
                   asChild
-                  isActive={pathname === item.href}
+                  isActive={isActive}
                   className="justify-start relative"
                   tooltip={item.label}
                 >

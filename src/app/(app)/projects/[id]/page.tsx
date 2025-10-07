@@ -203,7 +203,7 @@ export default function ProjectDetailsPage() {
         <div className="flex items-center justify-between">
           <div>
             <Button variant="ghost" asChild className="-ml-4">
-              <Link href="/">
+              <Link href="/projects">
                 <ChevronLeft className="mr-2 h-4 w-4" />
                 Voltar para projetos
               </Link>

@@ -95,7 +95,7 @@ export default function CompletedProjectsPage() {
       <div className="flex flex-col gap-8">
           <div>
               <Button variant="ghost" asChild className="-ml-4">
-                <Link href="/">
+                <Link href="/projects">
                   <ChevronLeft className="mr-2 h-4 w-4" />
                   Voltar para projetos ativos
                 </Link>
