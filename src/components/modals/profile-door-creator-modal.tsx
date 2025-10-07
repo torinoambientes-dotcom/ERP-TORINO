@@ -45,15 +45,19 @@ const handlePositions: Record<string, string> = {
     bottom: 'Em baixo',
 };
 const handleTypes = ['Linear inteiro', 'Aba Usinada', 'Sem Puxador'];
-
 const doorTypes = ['Giro', 'Correr', 'Escamoteavel', 'Frente de gaveta'] as const;
 
 const hingeSchema = z.object({
   position: z.coerce.number().min(0, "Posição não pode ser negativa.")
 });
 
-const doorSetSchema = z.object({
+const doorSetDoorSchema = z.object({
   handlePosition: z.enum(['left', 'right', 'both', 'none']).default('left'),
+});
+
+const doorSetSchema = z.object({
+    count: z.coerce.number().min(1).max(3).default(1),
+    doors: z.array(doorSetDoorSchema),
 });
 
 const doorCreatorSchema = z.object({
@@ -70,10 +74,7 @@ const doorCreatorSchema = z.object({
   handlePosition: z.enum(['top', 'bottom', 'left', 'right']).default('left'),
   handleWidth: z.coerce.number().optional(),
   handleOffset: z.coerce.number().optional(),
-  doorSet: z.object({
-    count: z.coerce.number().min(1).max(3).default(1),
-    doors: z.array(doorSetSchema),
-  }).optional(),
+  doorSet: doorSetSchema.optional(),
 });
 
 type DoorCreatorFormValues = z.infer<typeof doorCreatorSchema>;
@@ -119,7 +120,7 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
     name: 'hinges',
   });
 
-  const { fields: doorSetFields } = useFieldArray({
+  const { fields: doorSetFields, replace: replaceDoorSet } = useFieldArray({
     control: form.control,
     name: 'doorSet.doors',
   });
@@ -170,12 +171,12 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
   useEffect(() => {
     const currentDoors = form.getValues('doorSet.doors') || [];
     if (currentDoors.length !== doorSetCount) {
-        const newDoors = Array.from({ length: doorSetCount }, (_, i) => {
-            return currentDoors[i] || { handlePosition: 'left' };
-        });
-        form.setValue('doorSet.doors', newDoors, { shouldDirty: true, shouldValidate: true });
+      const newDoors = Array.from({ length: doorSetCount }, (_, i) => {
+        return currentDoors[i] || { handlePosition: 'left' };
+      });
+      replaceDoorSet(newDoors);
     }
-}, [doorSetCount, form]);
+  }, [doorSetCount, form, replaceDoorSet]);
 
   const isPair = form.watch('isPair');
   const handleType = form.watch('handleType');
@@ -221,8 +222,8 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
     const drawingColumnWidth = pageWidth - drawingColumnX - margin;
 
     const drawDoor = (startX: number, startY: number, mirrored: boolean, handlePos: 'left' | 'right' | 'top' | 'bottom' | 'both' | 'none') => {
-        const doorWidthPx = data.width * scale;
-        const doorHeightPx = data.height * scale;
+        const doorWidthPx = data.width! * scale;
+        const doorHeightPx = data.height! * scale;
         const profileWidthPx = profileWidthMM * scale;
 
         doc.setDrawColor(0);
@@ -321,8 +322,8 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
         doc.setFontSize(12);
     }
 
-    const doorWidthInMM = data.width * scale;
-    const doorHeightInMM = data.height * scale;
+    const doorWidthInMM = data.width! * scale;
+    const doorHeightInMM = data.height! * scale;
     const spacingInMM = 10;
     
     let doorCount = 1;
@@ -349,22 +350,23 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
     doc.save(`Porta_${clientName || 'especificacao'}.pdf`);
   };
 
-  const { width: doorWidth, height: doorHeight, hinges } = doorData;
+  const { width: doorWidth = 0, height: doorHeight = 0, hinges } = doorData;
 
   const profileColorClass = {
     'Preto': 'bg-gray-800',
     'Aluminio': 'bg-gray-400',
     'Inox': 'bg-gray-500'
-  }[doorData.profileColor] || 'bg-gray-700';
+  }[doorData.profileColor || ''] || 'bg-gray-700';
 
   const PROFILE_WIDTH_MM = 45;
 
-  const HandleVisualizer = ({ mirrored = false, positionOverride }: { mirrored?: boolean, positionOverride: 'left' | 'right' | 'top' | 'bottom' | 'both' | 'none' }) => {
-    if (handleType === 'Sem Puxador' || !positionOverride || positionOverride === 'none') return null;
+  const HandleVisualizer = ({ mirrored = false, positionOverride }: { mirrored?: boolean, positionOverride?: 'left' | 'right' | 'top' | 'bottom' | 'both' | 'none' }) => {
+    const handlePos = positionOverride;
+    if (handleType === 'Sem Puxador' || !handlePos || handlePos === 'none') return null;
 
     const style: React.CSSProperties = { position: 'absolute', backgroundColor: 'red' };
     
-    const positionsToDraw = positionOverride === 'both' ? ['left', 'right'] : [positionOverride];
+    const positionsToDraw = handlePos === 'both' ? ['left', 'right'] : [handlePos];
     
     const handleThickness = 8;
     
@@ -381,9 +383,9 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
                   individualStyle.height = `${handleThickness}px`;
                   if (handleType === 'Linear inteiro') {
                       individualStyle.width = '100%'; individualStyle.left = '0';
-                  } else {
-                      individualStyle.width = `${(doorData.handleWidth! / doorData.width) * 100}%`;
-                      individualStyle.left = `${(doorData.handleOffset! / doorData.width) * 100}%`;
+                  } else if (doorData.handleWidth && doorData.width){
+                      individualStyle.width = `${(doorData.handleWidth / doorData.width) * 100}%`;
+                      individualStyle.left = `${((doorData.handleOffset || 0) / doorData.width) * 100}%`;
                   }
                   if (currentPos === 'top') individualStyle.top = '0'; else individualStyle.bottom = '0';
                   break;
@@ -391,9 +393,9 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
                   individualStyle.width = `${handleThickness}px`;
                   if (handleType === 'Linear inteiro') {
                       individualStyle.height = '100%'; individualStyle.top = '0';
-                  } else {
-                      individualStyle.height = `${(doorData.handleWidth! / doorData.height) * 100}%`;
-                      individualStyle.top = `${(doorData.handleOffset! / doorData.height) * 100}%`;
+                  } else if (doorData.handleWidth && doorData.height){
+                      individualStyle.height = `${(doorData.handleWidth / doorData.height) * 100}%`;
+                      individualStyle.top = `${((doorData.handleOffset || 0) / doorData.height) * 100}%`;
                   }
                   if (currentPos === 'left') individualStyle.left = '0'; else individualStyle.right = '0';
                   break;
@@ -450,7 +452,7 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
 
     const doorDimensions = calculateDimensions();
     
-    const DoorVisualizer = ({ mirrored = false, style, positionOverride }: { mirrored?: boolean, style?: React.CSSProperties, positionOverride: 'left' | 'right' | 'top' | 'bottom' | 'both' | 'none' }) => {
+    const DoorVisualizer = ({ mirrored = false, style, positionOverride }: { mirrored?: boolean, style?: React.CSSProperties, positionOverride?: 'left' | 'right' | 'top' | 'bottom' | 'both' | 'none' }) => {
       return (
         <div className={cn("relative flex items-center justify-center transition-all duration-300", profileColorClass)} style={style}>
           <div className='absolute inset-0 bg-gray-300/30 backdrop-blur-sm flex items-center justify-center' style={{ margin: `${(PROFILE_WIDTH_MM / Math.min(doorWidth, doorHeight)) * 50}%`}}>
@@ -476,7 +478,7 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
                 const handlePos = doorData?.doorSet?.doors?.[index]?.handlePosition;
                 return (
                     <div key={field.id} className="flex flex-col items-center gap-1">
-                        <DoorVisualizer style={doorDimensions} positionOverride={handlePos!} />
+                        <DoorVisualizer style={doorDimensions} positionOverride={handlePos} />
                         <p className="text-xs font-semibold text-muted-foreground">Porta {index + 1}</p>
                     </div>
                 )
@@ -530,7 +532,7 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
                             <FormLabel>Número de Portas no Conjunto</FormLabel>
                             <Select 
                               onValueChange={(v) => field.onChange(parseInt(v))} 
-                              value={field.value?.toString()}
+                              value={String(field.value)}
                             >
                               <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
                               <SelectContent>
@@ -565,10 +567,10 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
                                       key={field.id}
                                       control={form.control}
                                       name={`doorSet.doors.${index}.handlePosition`}
-                                      render={({ field: { onChange, value } }) => (
+                                      render={({ field: controllerField }) => (
                                         <FormItem>
                                           <FormLabel className="text-xs font-normal">Porta {index + 1}</FormLabel>
-                                          <Select onValueChange={onChange} value={value}>
+                                          <Select onValueChange={controllerField.onChange} value={controllerField.value}>
                                             <FormControl>
                                               <SelectTrigger>
                                                 <SelectValue />
@@ -628,7 +630,7 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
                           {clientName && <p><strong>Cliente:</strong> {clientName}</p>}
                           <p><strong>Tipo:</strong> {doorData.doorType} {doorData.doorType === 'Correr' && doorData.slidingSystem ? `(${doorData.slidingSystem})` : ''}</p>
                           <p><strong>Dimensões (por porta):</strong> {doorWidth}mm x {doorHeight}mm</p>
-                          {doorData.doorType === 'Correr' && <p><strong>Conjunto:</strong> {doorSetCount} porta(s)</p>}
+                          {doorData.doorType === 'Correr' && <p><strong>Conjunto:</strong> {doorData.doorSet?.count} porta(s)</p>}
                           <p><strong>Cor Perfil:</strong> {doorData.profileColor}</p>
                           <p><strong>Vidro:</strong> {doorData.glassType}</p>
                           <p><strong>Puxador:</strong> {doorData.handleType}</p>
