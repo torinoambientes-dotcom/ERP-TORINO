@@ -123,7 +123,6 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
   const doorType = form.watch('doorType');
   const doorData = form.watch();
   
-  // Use local state to manage the dynamic door set array more reliably
   const [doorSetDoors, setDoorSetDoors] = useState<DoorSetConfiguration[]>([]);
   const doorSetCount = form.watch('doorSet.count') || 1;
 
@@ -138,11 +137,10 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
                 handleType: doorToEdit.handleType || 'Sem Puxador',
                 doorSet: doorToEdit.doorSet ? {
                     count: doorToEdit.doorSet.count || 1,
-                    doors: doorToEdit.doorSet.doors || [{ handlePosition: 'left' }]
+                    doors: doorToEdit.doorSet.doors || Array.from({ length: doorToEdit.doorSet.count || 1 }, () => ({ handlePosition: 'left' }))
                 } : { count: doorToEdit.quantity || 1, doors: [{ handlePosition: 'left' }] }
             });
-            // Initialize local state from doorToEdit
-            setDoorSetDoors(doorToEdit.doorSet?.doors || [{ handlePosition: 'left' }]);
+            setDoorSetDoors(doorToEdit.doorSet?.doors || Array.from({ length: doorToEdit.doorSet?.count || 1 }, () => ({ handlePosition: 'left' })));
         } else {
             form.reset();
             setDoorSetDoors([{ handlePosition: 'left' }]);
@@ -151,18 +149,17 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
   }, [isOpen, isEditMode, doorToEdit, form]);
 
   useEffect(() => {
+    const currentDoors = form.getValues('doorSet.doors') || [];
     const newDoors = Array.from({ length: doorSetCount }, (_, i) => {
-        return doorSetDoors[i] || { handlePosition: 'left' };
+        return currentDoors[i] || { handlePosition: 'left' };
     });
-    setDoorSetDoors(newDoors);
-    form.setValue('doorSet.doors', newDoors);
+    form.setValue('doorSet.doors', newDoors, { shouldDirty: true });
 }, [doorSetCount, form]);
 
   const handleDoorSetConfigChange = (index: number, value: 'left' | 'right' | 'both' | 'none') => {
-      const newDoors = [...doorSetDoors];
+      const newDoors = [...form.getValues('doorSet.doors')];
       newDoors[index] = { handlePosition: value };
-      setDoorSetDoors(newDoors);
-      form.setValue('doorSet.doors', newDoors); // Force update react-hook-form state
+      form.setValue('doorSet.doors', newDoors, { shouldDirty: true, shouldValidate: true });
   };
 
 
@@ -179,14 +176,14 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
     }
   }, [isPair, form, doorType]);
 
-  const onSubmit = (data: DoorCreatorFormValues) => {
+  const onSubmit = () => { // Removed 'data' parameter
     if (viewOnly) return;
   
-    const submissionData = { ...data };
+    const currentData = form.getValues(); // Get the latest values directly from the form state
+    const submissionData = { ...currentData };
   
     if (submissionData.doorType === 'Correr' && submissionData.doorSet) {
       submissionData.quantity = submissionData.doorSet.count;
-      submissionData.doorSet.doors = doorSetDoors;
     }
   
     onSave(submissionData as Omit<ProfileDoorItem, 'id' | 'purchased' | 'addedAt'>);
@@ -462,7 +459,7 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
     return (
       <div ref={containerRef} className="w-full h-full flex items-center justify-center p-4">
         <div className="flex items-center justify-center gap-2" style={{ width: containerSize.width, height: containerSize.height }}>
-            {doorType === 'Correr' && doorSetDoors.map((field, index) => {
+            {doorType === 'Correr' && (doorData.doorSet?.doors || []).map((field, index) => {
                 return (
                     <div key={index} className="flex flex-col items-center gap-1">
                         <DoorVisualizer style={doorDimensions} positionOverride={field.handlePosition} />
@@ -549,29 +546,36 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
                           ) : (
                             <div className='space-y-3 p-3 border rounded-md'>
                               <FormLabel>Configuração dos Puxadores</FormLabel>
-                                {doorSetDoors.map((door, index) => (
-                                    <FormItem key={index}>
-                                      <FormLabel className="text-xs font-normal">Porta {index + 1}</FormLabel>
-                                      <Select
-                                        value={door.handlePosition}
-                                        onValueChange={(value) => handleDoorSetConfigChange(index, value as any)}
-                                      >
-                                        <FormControl>
-                                          <SelectTrigger>
-                                            <SelectValue />
-                                          </SelectTrigger>
-                                        </FormControl>
-                                        <SelectContent>
-                                          <SelectItem value="left">Esquerda</SelectItem>
-                                          <SelectItem value="right">Direita</SelectItem>
-                                          {doorSetCount === 3 && index === 1 && (
-                                            <SelectItem value="both">Ambos os Lados</SelectItem>
-                                          )}
-                                          <SelectItem value="none">Nenhum</SelectItem>
-                                        </SelectContent>
-                                      </Select>
-                                      <FormMessage />
-                                    </FormItem>
+                                {(form.watch('doorSet.doors') || []).map((door, index) => (
+                                    <Controller
+                                      key={index}
+                                      control={form.control}
+                                      name={`doorSet.doors.${index}.handlePosition`}
+                                      render={({ field }) => (
+                                          <FormItem>
+                                            <FormLabel className="text-xs font-normal">Porta {index + 1}</FormLabel>
+                                            <Select
+                                              value={field.value}
+                                              onValueChange={field.onChange}
+                                            >
+                                              <FormControl>
+                                                <SelectTrigger>
+                                                  <SelectValue />
+                                                </SelectTrigger>
+                                              </FormControl>
+                                              <SelectContent>
+                                                <SelectItem value="left">Esquerda</SelectItem>
+                                                <SelectItem value="right">Direita</SelectItem>
+                                                {doorSetCount === 3 && index === 1 && (
+                                                  <SelectItem value="both">Ambos os Lados</SelectItem>
+                                                )}
+                                                <SelectItem value="none">Nenhum</SelectItem>
+                                              </SelectContent>
+                                            </Select>
+                                            <FormMessage />
+                                          </FormItem>
+                                      )}
+                                    />
                                 ))}
                             </div>
                           )}
@@ -620,7 +624,7 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
                           {doorData.handleType !== 'Sem Puxador' && (
                               <div className="pl-4 text-xs">
                                 {doorData.doorType === 'Correr' ? (
-                                  doorSetDoors.map((door, index) => (
+                                  (doorData.doorSet?.doors || []).map((door, index) => (
                                       <p key={index}>Porta {index+1}: {handlePositions[door.handlePosition]}</p>
                                   ))
                                 ) : (
@@ -642,7 +646,7 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
                 Gerar PDF
               </Button>
               {!viewOnly && (
-                 <Button type="submit">
+                 <Button type="button" onClick={onSubmit}>
                     <DoorOpen className="mr-2 h-4 w-4" />
                     {isEditMode ? 'Salvar Alterações' : 'Adicionar Porta'}
                  </Button>
