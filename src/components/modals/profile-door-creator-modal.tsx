@@ -390,9 +390,8 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
         const { width: rawContainerWidth, height: rawContainerHeight } = containerSize;
         if (!rawContainerWidth || !rawContainerHeight || !doorWidth || !doorHeight) return { width: 0, height: 0 };
         
-        // Account for padding inside the container
-        const containerWidth = rawContainerWidth - 64; // 2rem padding on each side (16px * 2 * 2)
-        const containerHeight = rawContainerHeight - 64; // 2rem padding
+        const containerWidth = rawContainerWidth - 64; // p-8 -> 2rem padding
+        const containerHeight = rawContainerHeight - 64;
         
         let doorCount = 1;
         if(doorType === 'Correr') doorCount = doorSetCount;
@@ -461,145 +460,149 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-1 md:grid-cols-2 gap-8 flex-grow overflow-hidden">
-            {/* Left Column: Form */}
-            <fieldset disabled={viewOnly} className="flex flex-col space-y-4 overflow-y-auto pr-4 -mr-4">
-              <FormField control={form.control} name="doorType" render={({ field }) => ( <FormItem><FormLabel>Tipo de Porta</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{doorTypes.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem> )}/>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 flex flex-col min-h-0">
+              <div className="flex-1 flex min-h-0 gap-8">
+                  {/* Left Column: Form */}
+                  <fieldset disabled={viewOnly} className="w-[450px] flex-shrink-0 space-y-4 overflow-y-auto pr-6">
+                    <FormField control={form.control} name="doorType" render={({ field }) => ( <FormItem><FormLabel>Tipo de Porta</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{doorTypes.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem> )}/>
 
-              {doorType === 'Correr' && (
-                  <FormField control={form.control} name="slidingSystem" render={({ field }) => ( <FormItem><FormLabel>Sistema de Correr</FormLabel><FormControl><Input placeholder="Ex: RO-65" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem> )}/>
-              )}
+                    {doorType === 'Correr' && (
+                        <FormField control={form.control} name="slidingSystem" render={({ field }) => ( <FormItem><FormLabel>Sistema de Correr</FormLabel><FormControl><Input placeholder="Ex: RO-65" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem> )}/>
+                    )}
 
-              <div className="grid grid-cols-2 gap-4">
-                <FormField control={form.control} name="width" render={({ field }) => ( <FormItem><FormLabel>Largura por Porta (mm)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                <FormField control={form.control} name="height" render={({ field }) => ( <FormItem><FormLabel>Altura (mm)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )}/>
-              </div>
-              
-              {doorType !== 'Correr' && (
-                <div className="flex items-center gap-4">
-                  <FormField control={form.control} name="quantity" render={({ field }) => ( <FormItem className="flex-1"><FormLabel>Quantidade</FormLabel><FormControl><Input type="number" {...field} disabled={doorType === 'Giro' && isPair} /></FormControl><FormMessage /></FormItem> )}/>
-                  {doorType === 'Giro' && <FormField control={form.control} name="isPair" render={({ field }) => ( <FormItem className="flex flex-col pt-7"><div className="flex items-center space-x-2"><Switch id="is-pair-switch" checked={field.value} onCheckedChange={field.onChange} /><Label htmlFor="is-pair-switch">Par de Portas</Label></div><FormMessage /></FormItem> )}/>}
-                </div>
-              )}
-              
-              {doorType === 'Correr' && (
-                <FormField
-                  control={form.control}
-                  name="doorSet.count"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Número de Portas no Conjunto</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value?.toString()}>
-                        <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
-                        <SelectContent>
-                          <SelectItem value="1">1 Porta</SelectItem>
-                          <SelectItem value="2">2 Portas (Par)</SelectItem>
-                          <SelectItem value="3">3 Portas (Trio)</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              )}
-
-
-              <FormField control={form.control} name="profileColor" render={({ field }) => ( <FormItem><FormLabel>Cor do Perfil</FormLabel><FormControl><Input placeholder="Ex: Preto" {...field} /></FormControl><FormMessage /></FormItem> )}/>
-              <FormField control={form.control} name="glassType" render={({ field }) => ( <FormItem><FormLabel>Tipo de Vidro</FormLabel><FormControl><Input placeholder="Ex: Incolor" {...field} /></FormControl><FormMessage /></FormItem> )}/>
-              
-              <Separator />
-
-              <h4 className='font-medium'>Puxador</h4>
-              <FormField control={form.control} name="handleType" render={({ field }) => ( <FormItem><FormLabel>Tipo de Puxador</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{handleTypes.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem> )}/>
-              
-              {handleType !== 'Sem Puxador' && (
-                <>
-                    {doorType !== 'Correr' ? (
-                       <FormField control={form.control} name="handlePosition" render={({ field }) => ( <FormItem><FormLabel>Posição do Puxador</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{Object.entries(handlePositions).filter(([k]) => k !== 'both' && k !== 'none').map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem> )}/>
-                    ) : (
-                      <div className='space-y-3 p-3 border rounded-md'>
-                        <FormLabel>Configuração dos Puxadores</FormLabel>
-                        {doorSetFields.map((field, index) => (
-                          <FormField
-                            key={field.id}
-                            control={form.control}
-                            name={`doorSet.doors.${index}.handlePosition`}
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel className='text-xs font-normal'>Porta {index + 1}</FormLabel>
-                                <Select onValueChange={field.onChange} value={field.value}>
-                                  <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
-                                  <SelectContent>
-                                    <SelectItem value="left">Esquerda</SelectItem>
-                                    <SelectItem value="right">Direita</SelectItem>
-                                    {doorSetCount === 3 && index === 1 && <SelectItem value="both">Ambos os Lados</SelectItem>}
-                                    <SelectItem value="none">Nenhum</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                        ))}
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField control={form.control} name="width" render={({ field }) => ( <FormItem><FormLabel>Largura por Porta (mm)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                      <FormField control={form.control} name="height" render={({ field }) => ( <FormItem><FormLabel>Altura (mm)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                    </div>
+                    
+                    {doorType !== 'Correr' && (
+                      <div className="flex items-center gap-4">
+                        <FormField control={form.control} name="quantity" render={({ field }) => ( <FormItem className="flex-1"><FormLabel>Quantidade</FormLabel><FormControl><Input type="number" {...field} disabled={doorType === 'Giro' && isPair} /></FormControl><FormMessage /></FormItem> )}/>
+                        {doorType === 'Giro' && <FormField control={form.control} name="isPair" render={({ field }) => ( <FormItem className="flex flex-col pt-7"><div className="flex items-center space-x-2"><Switch id="is-pair-switch" checked={field.value} onCheckedChange={field.onChange} /><Label htmlFor="is-pair-switch">Par de Portas</Label></div><FormMessage /></FormItem> )}/>}
                       </div>
                     )}
                     
-                    {handleType === 'Aba Usinada' && doorType !== 'Correr' && (
-                        <div className="grid grid-cols-2 gap-4">
-                            <FormField control={form.control} name="handleWidth" render={({ field }) => ( <FormItem><FormLabel>Largura Puxador (mm)</FormLabel><FormControl><Input type="number" {...field} value={field.value || ''}/></FormControl><FormMessage /></FormItem> )}/>
-                            <FormField control={form.control} name="handleOffset" render={({ field }) => ( <FormItem><FormLabel>Dist. do Canto (mm)</FormLabel><FormControl><Input type="number" {...field} value={field.value || ''}/></FormControl><FormMessage /></FormItem> )}/>
-                        </div>
+                    {doorType === 'Correr' && (
+                      <FormField
+                        control={form.control}
+                        name="doorSet.count"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Número de Portas no Conjunto</FormLabel>
+                            <Select onValueChange={(v) => field.onChange(parseInt(v))} value={field.value?.toString()}>
+                              <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                              <SelectContent>
+                                <SelectItem value="1">1 Porta</SelectItem>
+                                <SelectItem value="2">2 Portas (Par)</SelectItem>
+                                <SelectItem value="3">3 Portas (Trio)</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
                     )}
-                </>
-              )}
 
 
-              <Separator />
+                    <FormField control={form.control} name="profileColor" render={({ field }) => ( <FormItem><FormLabel>Cor do Perfil</FormLabel><FormControl><Input placeholder="Ex: Preto" {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                    <FormField control={form.control} name="glassType" render={({ field }) => ( <FormItem><FormLabel>Tipo de Vidro</FormLabel><FormControl><Input placeholder="Ex: Incolor" {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                    
+                    <Separator />
 
-              {doorType === 'Giro' && (
-                <div>
-                  <FormLabel>Dobradiças (distância da base em mm)</FormLabel>
-                  <div className='space-y-2 mt-2'>
-                    {hingeFields.map((field, index) => (
-                      <div key={field.id} className="flex items-center gap-2">
-                        <FormField control={form.control} name={`hinges.${index}.position`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input type="number" placeholder={`Altura furo ${index + 1}`} {...field} /></FormControl><FormMessage /></FormItem> )} />
-                        <Button type="button" variant="ghost" size="icon" onClick={() => removeHinge(index)} className="text-destructive h-9 w-9"><Trash2 className="h-4 w-4" /></Button>
-                      </div>
-                    ))}
-                    <Button type="button" variant="outline" size="sm" onClick={() => appendHinge({ position: 0 })}><PlusCircle className="mr-2 h-4 w-4" /> Adicionar Dobradiça</Button>
-                  </div>
-                </div>
-              )}
-            </fieldset>
-
-            {/* Right Column: Visualizer */}
-            <div ref={doorVisualizerRef} className="flex flex-col items-center justify-center bg-muted/30 rounded-lg relative h-full border p-4 gap-4">
-                <VisualizerContainer />
-                <div className="w-full p-4 border rounded-lg bg-background text-sm max-h-[200px] overflow-y-auto">
-                    <h4 className="font-bold mb-2">Especificações</h4>
-                    {clientName && <p><strong>Cliente:</strong> {clientName}</p>}
-                    <p><strong>Tipo:</strong> {doorData.doorType} {doorData.doorType === 'Correr' && doorData.slidingSystem ? `(${doorData.slidingSystem})` : ''}</p>
-                    <p><strong>Dimensões (por porta):</strong> {doorWidth}mm x {doorHeight}mm</p>
-                    {doorData.doorType === 'Correr' && <p><strong>Conjunto:</strong> {doorSetCount} porta(s)</p>}
-                    <p><strong>Cor Perfil:</strong> {doorData.profileColor}</p>
-                    <p><strong>Vidro:</strong> {doorData.glassType}</p>
-                    <p><strong>Puxador:</strong> {doorData.handleType}</p>
-                    {doorData.handleType !== 'Sem Puxador' && (
-                        <div className="pl-4 text-xs">
-                          {doorData.doorType === 'Correr' ? (
-                            doorSetFields.map((door, index) => (
-                                <p key={door.id}>Porta {index+1}: {handlePositions[door.handlePosition]}</p>
-                            ))
+                    <h4 className='font-medium'>Puxador</h4>
+                    <FormField control={form.control} name="handleType" render={({ field }) => ( <FormItem><FormLabel>Tipo de Puxador</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{handleTypes.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem> )}/>
+                    
+                    {handleType !== 'Sem Puxador' && (
+                      <>
+                          {doorType !== 'Correr' ? (
+                            <FormField control={form.control} name="handlePosition" render={({ field }) => ( <FormItem><FormLabel>Posição do Puxador</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{Object.entries(handlePositions).filter(([k]) => k !== 'both' && k !== 'none').map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem> )}/>
                           ) : (
-                            <p>Posição: {handlePositions[doorData.handlePosition]}</p>
+                            <div className='space-y-3 p-3 border rounded-md'>
+                              <FormLabel>Configuração dos Puxadores</FormLabel>
+                              {doorSetFields.map((field, index) => (
+                                <FormField
+                                  key={field.id}
+                                  control={form.control}
+                                  name={`doorSet.doors.${index}.handlePosition`}
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel className='text-xs font-normal'>Porta {index + 1}</FormLabel>
+                                      <Select onValueChange={field.onChange} value={field.value}>
+                                        <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                                        <SelectContent>
+                                          <SelectItem value="left">Esquerda</SelectItem>
+                                          <SelectItem value="right">Direita</SelectItem>
+                                          {doorSetCount === 3 && index === 1 && <SelectItem value="both">Ambos os Lados</SelectItem>}
+                                          <SelectItem value="none">Nenhum</SelectItem>
+                                        </SelectContent>
+                                      </Select>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+                              ))}
+                            </div>
                           )}
-                        </div>
+                          
+                          {handleType === 'Aba Usinada' && doorType !== 'Correr' && (
+                              <div className="grid grid-cols-2 gap-4">
+                                  <FormField control={form.control} name="handleWidth" render={({ field }) => ( <FormItem><FormLabel>Largura Puxador (mm)</FormLabel><FormControl><Input type="number" {...field} value={field.value || ''}/></FormControl><FormMessage /></FormItem> )}/>
+                                  <FormField control={form.control} name="handleOffset" render={({ field }) => ( <FormItem><FormLabel>Dist. do Canto (mm)</FormLabel><FormControl><Input type="number" {...field} value={field.value || ''}/></FormControl><FormMessage /></FormItem> )}/>
+                              </div>
+                          )}
+                      </>
                     )}
-                    {doorData.doorType === 'Giro' && <p><strong>Dobradiças (da base):</strong> {hinges?.map(h => `${h.position}mm`).join(', ')}</p>}
-                </div>
-            </div>
+
+
+                    <Separator />
+
+                    {doorType === 'Giro' && (
+                      <div>
+                        <FormLabel>Dobradiças (distância da base em mm)</FormLabel>
+                        <div className='space-y-2 mt-2'>
+                          {hingeFields.map((field, index) => (
+                            <div key={field.id} className="flex items-center gap-2">
+                              <FormField control={form.control} name={`hinges.${index}.position`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input type="number" placeholder={`Altura furo ${index + 1}`} {...field} /></FormControl><FormMessage /></FormItem> )} />
+                              <Button type="button" variant="ghost" size="icon" onClick={() => removeHinge(index)} className="text-destructive h-9 w-9"><Trash2 className="h-4 w-4" /></Button>
+                            </div>
+                          ))}
+                          <Button type="button" variant="outline" size="sm" onClick={() => appendHinge({ position: 0 })}><PlusCircle className="mr-2 h-4 w-4" /> Adicionar Dobradiça</Button>
+                        </div>
+                      </div>
+                    )}
+                  </fieldset>
+
+                  {/* Right Column: Visualizer */}
+                  <div className="flex-1 flex flex-col items-center justify-center bg-muted/30 rounded-lg relative min-h-0 border p-4 gap-4">
+                      <div className="w-full flex-1 flex items-center justify-center min-h-0">
+                          <VisualizerContainer />
+                      </div>
+                      <div className="w-full p-4 border rounded-lg bg-background text-sm max-h-[200px] overflow-y-auto flex-shrink-0">
+                          <h4 className="font-bold mb-2">Especificações</h4>
+                          {clientName && <p><strong>Cliente:</strong> {clientName}</p>}
+                          <p><strong>Tipo:</strong> {doorData.doorType} {doorData.doorType === 'Correr' && doorData.slidingSystem ? `(${doorData.slidingSystem})` : ''}</p>
+                          <p><strong>Dimensões (por porta):</strong> {doorWidth}mm x {doorHeight}mm</p>
+                          {doorData.doorType === 'Correr' && <p><strong>Conjunto:</strong> {doorSetCount} porta(s)</p>}
+                          <p><strong>Cor Perfil:</strong> {doorData.profileColor}</p>
+                          <p><strong>Vidro:</strong> {doorData.glassType}</p>
+                          <p><strong>Puxador:</strong> {doorData.handleType}</p>
+                          {doorData.handleType !== 'Sem Puxador' && (
+                              <div className="pl-4 text-xs">
+                                {doorData.doorType === 'Correr' ? (
+                                  doorSetFields.map((door, index) => (
+                                      <p key={door.id}>Porta {index+1}: {handlePositions[door.handlePosition]}</p>
+                                  ))
+                                ) : (
+                                  <p>Posição: {handlePositions[doorData.handlePosition]}</p>
+                                )}
+                              </div>
+                          )}
+                          {doorData.doorType === 'Giro' && <p><strong>Dobradiças (da base):</strong> {hinges?.map(h => `${h.position}mm`).join(', ')}</p>}
+                      </div>
+                  </div>
+              </div>
             
-            <DialogFooter className="md:col-span-2 mt-auto pt-6 border-t">
+            <DialogFooter className="mt-auto pt-6 border-t">
               <Button type="button" variant={viewOnly ? "default" : "ghost"} onClick={onClose}>
                 {viewOnly ? "Fechar" : "Cancelar"}
               </Button>
