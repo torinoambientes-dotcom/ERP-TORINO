@@ -130,17 +130,22 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
   useEffect(() => {
     if (isOpen) {
         if (isEditMode && doorToEdit) {
+            const initialDoorSet = doorToEdit.doorSet || {
+                count: doorToEdit.quantity || 1,
+                doors: Array.from({ length: doorToEdit.quantity || 1 }, () => ({ handlePosition: 'left' as const }))
+            };
+            
             form.reset({
                 ...doorToEdit,
                 doorType: doorToEdit.doorType || 'Giro',
                 handlePosition: doorToEdit.handlePosition || 'left',
                 handleType: doorToEdit.handleType || 'Sem Puxador',
-                doorSet: doorToEdit.doorSet ? {
-                    count: doorToEdit.doorSet.count || 1,
-                    doors: doorToEdit.doorSet.doors || Array.from({ length: doorToEdit.doorSet.count || 1 }, () => ({ handlePosition: 'left' }))
-                } : { count: doorToEdit.quantity || 1, doors: [{ handlePosition: 'left' }] }
+                doorSet: {
+                    count: initialDoorSet.count,
+                    doors: initialDoorSet.doors,
+                }
             });
-            setDoorSetDoors(doorToEdit.doorSet?.doors || Array.from({ length: doorToEdit.doorSet?.count || 1 }, () => ({ handlePosition: 'left' })));
+            setDoorSetDoors(initialDoorSet.doors);
         } else {
             form.reset();
             setDoorSetDoors([{ handlePosition: 'left' }]);
@@ -154,6 +159,7 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
         return currentDoors[i] || { handlePosition: 'left' };
     });
     form.setValue('doorSet.doors', newDoors, { shouldDirty: true });
+    setDoorSetDoors(newDoors); // Sync local state
 }, [doorSetCount, form]);
 
   const handleDoorSetConfigChange = (index: number, value: 'left' | 'right' | 'both' | 'none') => {
@@ -176,11 +182,10 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
     }
   }, [isPair, form, doorType]);
 
-  const onSubmit = () => { // Removed 'data' parameter
+  const onSubmit = () => {
     if (viewOnly) return;
   
-    const currentData = form.getValues(); // Get the latest values directly from the form state
-    const submissionData = { ...currentData };
+    const submissionData = form.getValues();
   
     if (submissionData.doorType === 'Correr' && submissionData.doorSet) {
       submissionData.quantity = submissionData.doorSet.count;
@@ -546,7 +551,7 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
                           ) : (
                             <div className='space-y-3 p-3 border rounded-md'>
                               <FormLabel>Configuração dos Puxadores</FormLabel>
-                                {(form.watch('doorSet.doors') || []).map((door, index) => (
+                                {(doorData.doorSet?.doors || []).map((door, index) => (
                                     <Controller
                                       key={index}
                                       control={form.control}
