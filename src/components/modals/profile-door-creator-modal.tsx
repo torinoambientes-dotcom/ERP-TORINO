@@ -119,7 +119,7 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
     name: 'hinges',
   });
 
-  const { fields: doorSetFields, replace: replaceDoorSet } = useFieldArray({
+  const { fields: doorSetFields } = useFieldArray({
     control: form.control,
     name: 'doorSet.doors',
   });
@@ -170,14 +170,12 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
   useEffect(() => {
     const currentDoors = form.getValues('doorSet.doors') || [];
     if (currentDoors.length !== doorSetCount) {
-      const newDoors = Array.from({ length: doorSetCount }, (_, i) => {
-        return currentDoors[i] || { handlePosition: 'left' };
-      });
-      form.setValue('doorSet.doors', newDoors, { shouldDirty: true, shouldValidate: true });
+        const newDoors = Array.from({ length: doorSetCount }, (_, i) => {
+            return currentDoors[i] || { handlePosition: 'left' };
+        });
+        form.setValue('doorSet.doors', newDoors, { shouldDirty: true, shouldValidate: true });
     }
-  }, [doorSetCount, form]);
-
-
+}, [doorSetCount, form]);
 
   const isPair = form.watch('isPair');
   const handleType = form.watch('handleType');
@@ -195,7 +193,7 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
   const onSubmit = (data: DoorCreatorFormValues) => {
     if (viewOnly) return;
   
-    const submissionData = { ...data };
+    const submissionData = form.getValues();
   
     if (submissionData.doorType === 'Correr' && submissionData.doorSet) {
       submissionData.quantity = submissionData.doorSet.count;
@@ -204,7 +202,6 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
     onSave(submissionData as Omit<ProfileDoorItem, 'id' | 'purchased' | 'addedAt'>);
     onClose();
   };
-
 
   const doorVisualizerRef = useRef(null);
 
@@ -478,7 +475,7 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
             {doorType === 'Correr' && doorSetFields.map((field, index) => {
                 const handlePos = doorData?.doorSet?.doors?.[index]?.handlePosition;
                 return (
-                    <div key={`${field.id}-${handlePos}`} className="flex flex-col items-center gap-1">
+                    <div key={field.id} className="flex flex-col items-center gap-1">
                         <DoorVisualizer style={doorDimensions} positionOverride={handlePos!} />
                         <p className="text-xs font-semibold text-muted-foreground">Porta {index + 1}</p>
                     </div>
@@ -548,7 +545,6 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
                       />
                     )}
 
-
                     <FormField control={form.control} name="profileColor" render={({ field }) => ( <FormItem><FormLabel>Cor do Perfil</FormLabel><FormControl><Input placeholder="Ex: Preto" {...field} /></FormControl><FormMessage /></FormItem> )}/>
                     <FormField control={form.control} name="glassType" render={({ field }) => ( <FormItem><FormLabel>Tipo de Vidro</FormLabel><FormControl><Input placeholder="Ex: Incolor" {...field} /></FormControl><FormMessage /></FormItem> )}/>
                     
@@ -565,27 +561,31 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
                             <div className='space-y-3 p-3 border rounded-md'>
                               <FormLabel>Configuração dos Puxadores</FormLabel>
                                 {doorSetFields.map((field, index) => (
-                                    <FormField
-                                        key={field.id}
-                                        control={form.control}
-                                        name={`doorSet.doors.${index}.handlePosition`}
-                                        render={({ field: selectField }) => (
+                                    <Controller
+                                      key={field.id}
+                                      control={form.control}
+                                      name={`doorSet.doors.${index}.handlePosition`}
+                                      render={({ field: { onChange, value } }) => (
                                         <FormItem>
-                                            <FormLabel className="text-xs font-normal">Porta {index + 1}</FormLabel>
-                                            <Select onValueChange={selectField.onChange} value={selectField.value}>
-                                            <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                                          <FormLabel className="text-xs font-normal">Porta {index + 1}</FormLabel>
+                                          <Select onValueChange={onChange} value={value}>
+                                            <FormControl>
+                                              <SelectTrigger>
+                                                <SelectValue />
+                                              </SelectTrigger>
+                                            </FormControl>
                                             <SelectContent>
-                                                <SelectItem value="left">Esquerda</SelectItem>
-                                                <SelectItem value="right">Direita</SelectItem>
-                                                {doorSetCount === 3 && index === 1 && (
+                                              <SelectItem value="left">Esquerda</SelectItem>
+                                              <SelectItem value="right">Direita</SelectItem>
+                                              {doorSetCount === 3 && index === 1 && (
                                                 <SelectItem value="both">Ambos os Lados</SelectItem>
-                                                )}
-                                                <SelectItem value="none">Nenhum</SelectItem>
+                                              )}
+                                              <SelectItem value="none">Nenhum</SelectItem>
                                             </SelectContent>
-                                            </Select>
-                                            <FormMessage />
+                                          </Select>
+                                          <FormMessage />
                                         </FormItem>
-                                        )}
+                                      )}
                                     />
                                 ))}
                             </div>
@@ -599,7 +599,6 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
                           )}
                       </>
                     )}
-
 
                     <Separator />
 
