@@ -387,8 +387,12 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
     }, []);
 
     const calculateDimensions = () => {
-        const { width: containerWidth, height: containerHeight } = containerSize;
-        if (!containerWidth || !containerHeight || !doorWidth || !doorHeight) return { width: 0, height: 0 };
+        const { width: rawContainerWidth, height: rawContainerHeight } = containerSize;
+        if (!rawContainerWidth || !rawContainerHeight || !doorWidth || !doorHeight) return { width: 0, height: 0 };
+        
+        // Account for padding inside the container
+        const containerWidth = rawContainerWidth - 64; // 2rem padding on each side (16px * 2 * 2)
+        const containerHeight = rawContainerHeight - 64; // 2rem padding
         
         let doorCount = 1;
         if(doorType === 'Correr') doorCount = doorSetCount;
