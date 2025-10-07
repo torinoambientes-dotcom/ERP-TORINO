@@ -2,7 +2,7 @@
 import { useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import { notFound, useParams } from 'next/navigation';
-import { ChevronLeft, MessageSquare, Package, ListTodo, CalendarIcon, XCircle } from 'lucide-react';
+import { ChevronLeft, MessageSquare, Package, ListTodo, CalendarIcon, XCircle, Flag } from 'lucide-react';
 import {
   Accordion,
   AccordionContent,
@@ -19,7 +19,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/layout/page-header';
 import { AppContext } from '@/context/app-context';
-import type { Project, Furniture, StageStatus, TeamMember, ProductionStage } from '@/lib/types';
+import type { Project, Furniture, StageStatus, TeamMember, ProductionStage, Priority } from '@/lib/types';
 import { STAGE_STATUSES } from '@/lib/types';
 import { FurniturePendenciesModal } from '@/components/modals/furniture-pendencies-modal';
 import { FurnitureConversationModal } from '@/components/modals/furniture-conversation-modal';
@@ -31,6 +31,7 @@ import { ProfileDoorCreatorModal } from '@/components/modals/profile-door-creato
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { format } from 'date-fns';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 type StageKey = 'measurement' | 'cutting' | 'purchase' | 'assembly';
 const stages: { key: StageKey; label: string }[] = [
@@ -44,6 +45,12 @@ const statusColors: Record<StageStatus, string> = {
   todo: 'bg-amber-100 border-amber-200 text-amber-800',
   in_progress: 'bg-blue-100 border-blue-200 text-blue-800',
   done: 'bg-green-100 border-green-200 text-green-800',
+};
+
+const priorityMap: Record<Priority, { label: string; className: string }> = {
+    low: { label: 'Baixa', className: 'text-gray-500' },
+    medium: { label: 'Média', className: 'text-yellow-500' },
+    high: { label: 'Alta', className: 'text-red-500' },
 };
 
 
@@ -71,8 +78,8 @@ export default function ProjectDetailsPage() {
     envId: string,
     furId: string,
     stage: StageKey,
-    key: 'status' | 'responsibleId' | 'scheduledFor',
-    value: string | Date | undefined
+    key: 'status' | 'responsibleId' | 'scheduledFor' | 'priority',
+    value: string | Date | undefined | Priority
   ) => {
     setProject(currentProject => {
       if (!currentProject) return null;
@@ -94,6 +101,8 @@ export default function ProjectDetailsPage() {
             }
           } else if (key === 'scheduledFor') {
             fur[stage].scheduledFor = value instanceof Date ? value.toISOString() : value;
+          } else if (key === 'priority') {
+            fur[stage].priority = value as Priority;
           } else if (key === 'status') {
              const previousStatus = fur[stage].status;
              const newStatus = value as StageStatus;
@@ -260,6 +269,7 @@ export default function ProjectDetailsPage() {
                           const stageData = fur[stage.key] || { status: 'todo' };
                           const responsibleMember = stageData.responsibleId ? memberMap.get(stageData.responsibleId) : undefined;
                           const responsibleList = stage.key === 'assembly' ? marceneiros : outrosMembros;
+                          const currentPriority = stageData.priority || 'medium';
                           
                           return (
                           <div key={stage.key} className="space-y-2">
@@ -340,6 +350,21 @@ export default function ProjectDetailsPage() {
                                   />
                                 </PopoverContent>
                               </Popover>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant={"outline"} size="icon" className={cn("w-10 h-10", priorityMap[currentPriority].className)}>
+                                        <Flag className="h-4 w-4" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent>
+                                    {(Object.keys(priorityMap) as Priority[]).map(p => (
+                                        <DropdownMenuItem key={p} onClick={() => handleStageChange(env.id, fur.id, stage.key, 'priority', p)}>
+                                            <Flag className={cn("mr-2 h-4 w-4", priorityMap[p].className)} />
+                                            <span>{priorityMap[p].label}</span>
+                                        </DropdownMenuItem>
+                                    ))}
+                                </DropdownMenuContent>
+                              </DropdownMenu>
                             </div>
                             {stageData.scheduledFor && (
                               <div className="flex items-center justify-center gap-1 text-xs text-muted-foreground">
