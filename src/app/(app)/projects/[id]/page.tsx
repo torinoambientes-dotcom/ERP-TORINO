@@ -215,19 +215,19 @@ export default function ProjectDetailsPage() {
           </div>
         </div>
 
-        <Accordion type="multiple" defaultValue={project.environments?.map(e => e.id) || []} className="w-full">
+        <Accordion type="multiple" defaultValue={project.environments?.map(e => e.id) || []} className="w-full space-y-4">
           {project.environments?.map((env) => (
-            <AccordionItem value={env.id} key={env.id}>
-              <AccordionTrigger className="font-headline text-xl hover:no-underline">
+            <AccordionItem value={env.id} key={env.id} className="border-none rounded-xl bg-card overflow-hidden shadow-sm">
+              <AccordionTrigger className="font-headline text-xl hover:no-underline px-6 py-4 bg-muted/50">
                 {env.name}
               </AccordionTrigger>
-              <AccordionContent>
+              <AccordionContent className="p-6">
                 <div className="space-y-4">
                   {env.furniture?.map((fur) => {
                     const unresolvedPendencies = fur.pendencies?.filter(p => !p.isResolved).length || 0;
                     const commentsCount = fur.comments?.length || 0;
                     return (
-                    <div key={fur.id} className="p-4 rounded-lg border bg-card/80">
+                    <div key={fur.id} className="p-4 rounded-lg border bg-background">
                       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
                         <h4 className="font-semibold text-lg">{fur.name}</h4>
                         <div className="flex gap-2 w-full sm:w-auto">
