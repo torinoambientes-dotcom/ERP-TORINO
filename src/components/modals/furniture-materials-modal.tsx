@@ -65,8 +65,8 @@ const glassSchema = z.object({
     id: z.string(),
     type: z.string().min(1, "Tipo de vidro é obrigatório."),
     quantity: z.coerce.number().min(1, "Quantidade deve ser pelo menos 1."),
-    width: z.coerce.number().min(1, "Largura é obrigatória.").optional(),
-    height: z.coerce.number().min(1, "Altura é obrigatória.").optional(),
+    width: z.coerce.number().optional(),
+    height: z.coerce.number().optional(),
     cornerRadiusTopLeft: z.coerce.number().optional(),
     cornerRadiusTopRight: z.coerce.number().optional(),
     cornerRadiusBottomLeft: z.coerce.number().optional(),
@@ -103,6 +103,10 @@ const profileDoorSchema = z.object({
     handleOffset: z.coerce.number().optional(),
     addedAt: z.string().optional(),
     purchased: z.boolean().optional(),
+    doorSet: z.object({
+        count: z.number(),
+        doors: z.array(z.object({ handlePosition: z.enum(['left', 'right', 'both', 'none']) }))
+    }).optional()
 });
 
 const formSchema = z.object({
@@ -308,7 +312,8 @@ export function FurnitureMaterialsModal({
     }
   }, [isOpen, furniture, form]);
 
-  const onSubmit = (data: MaterialFormValues) => {
+  const onSubmit = () => {
+    const data = form.getValues();
     const updatedFurniture: Furniture = {
       ...furniture,
       materials: data.materials.map(m => ({ ...m, purchased: m.stockItemId ? (m.purchased ?? false) : (m.purchased ?? false) })),
@@ -631,7 +636,3 @@ export function FurnitureMaterialsModal({
     </>
   );
 }
-
-    
-
-    
