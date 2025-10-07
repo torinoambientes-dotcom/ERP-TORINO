@@ -72,11 +72,20 @@ const doorCreatorSchema = z.object({
   handleOffset: z.coerce.number().optional(),
   doorSet: z.object({
     count: z.coerce.number().min(1).max(3).default(1),
-    doors: z.array(doorSetSchema).optional(),
+    doors: z.array(doorSetSchema),
   }).optional(),
 });
 
 type DoorCreatorFormValues = z.infer<typeof doorCreatorSchema>;
+
+interface ProfileDoorCreatorModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSave: (door: Omit<ProfileDoorItem, 'id' | 'purchased' | 'addedAt'>) => void;
+  clientName?: string;
+  doorToEdit?: ProfileDoorItem | null;
+  viewOnly?: boolean;
+}
 
 
 export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, doorToEdit, viewOnly = false }: ProfileDoorCreatorModalProps) {
@@ -110,7 +119,7 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
     name: 'hinges',
   });
 
-  const { fields: doorSetFields } = useFieldArray({
+  const { fields: doorSetFields, replace: replaceDoorSet } = useFieldArray({
     control: form.control,
     name: 'doorSet.doors',
   });
@@ -158,15 +167,15 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
     }
   }, [isOpen, isEditMode, doorToEdit, form]);
   
-    useEffect(() => {
-        const currentDoors = form.getValues('doorSet.doors') || [];
-        if (currentDoors.length !== doorSetCount) {
-            const newDoors = Array.from({ length: doorSetCount }, (_, i) => {
-                return currentDoors[i] || { handlePosition: 'left' };
-            });
-            form.setValue('doorSet.doors', newDoors, { shouldDirty: true, shouldValidate: true });
-        }
-    }, [doorSetCount, form]);
+  useEffect(() => {
+    const currentDoors = form.getValues('doorSet.doors') || [];
+    if (currentDoors.length !== doorSetCount) {
+      const newDoors = Array.from({ length: doorSetCount }, (_, i) => {
+        return currentDoors[i] || { handlePosition: 'left' };
+      });
+      form.setValue('doorSet.doors', newDoors, { shouldDirty: true, shouldValidate: true });
+    }
+  }, [doorSetCount, form]);
 
 
 
@@ -186,8 +195,7 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
   const onSubmit = (data: DoorCreatorFormValues) => {
     if (viewOnly) return;
   
-    const currentValues = form.getValues();
-    const submissionData = { ...currentValues };
+    const submissionData = { ...data };
   
     if (submissionData.doorType === 'Correr' && submissionData.doorSet) {
       submissionData.quantity = submissionData.doorSet.count;
@@ -470,7 +478,7 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
             {doorType === 'Correr' && doorSetFields.map((field, index) => {
                 const handlePos = doorData?.doorSet?.doors?.[index]?.handlePosition;
                 return (
-                    <div key={field.id} className="flex flex-col items-center gap-1">
+                    <div key={`${field.id}-${handlePos}`} className="flex flex-col items-center gap-1">
                         <DoorVisualizer style={doorDimensions} positionOverride={handlePos!} />
                         <p className="text-xs font-semibold text-muted-foreground">Porta {index + 1}</p>
                     </div>
