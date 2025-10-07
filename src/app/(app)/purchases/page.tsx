@@ -25,7 +25,6 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ProfileDoorCreatorModal } from '@/components/modals/profile-door-creator-modal';
 import { GlassCreatorModal } from '@/components/modals/glass-creator-modal';
 import { Checkbox } from '@/components/ui/checkbox';
 import { cn, getInitials } from '@/lib/utils';
@@ -45,6 +44,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { ViewProfileDoorModal } from '@/components/modals/view-profile-door-modal';
 
 
 interface ShoppingList {
@@ -907,7 +907,7 @@ export default function PurchasesPage() {
                                                     ? `${item.doorSet.count} pç(s) (Conjunto)`
                                                     : `${item.quantity} pç(s)`;
 
-                                                const handleDetails = item.doorType === 'Correr' && item.doorSet
+                                                const handleDetails = item.doorType === 'Correr' && item.doorSet?.doors
                                                   ? item.doorSet.doors.map((d, i) => `Porta ${i+1}: ${handlePositions[d.handlePosition] || 'N/A'}`).join(' / ')
                                                   : handlePositions[item.handlePosition || 'left'];
 
@@ -1052,14 +1052,12 @@ export default function PurchasesPage() {
         </TabsContent>
       </Tabs>
     </div>
-    {isDoorViewerOpen && (
-        <ProfileDoorCreatorModal
+    {isDoorViewerOpen && doorToView && (
+        <ViewProfileDoorModal
             isOpen={isDoorViewerOpen}
             onClose={() => setIsDoorViewerOpen(false)}
-            onSave={() => {}} // Dummy onSave for view-only mode
             clientName={clientNameToView}
-            doorToEdit={doorToView}
-            viewOnly={true}
+            door={doorToView}
         />
     )}
      {isGlassViewerOpen && (
@@ -1104,5 +1102,3 @@ export default function PurchasesPage() {
     </>
   );
 }
-
-    
