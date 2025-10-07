@@ -67,7 +67,7 @@ export function SidebarNav() {
     return teamMembers.find(member => member.id === user.uid);
   }, [user, teamMembers]);
   
-  const isAdmin = user?.email === 'carlos.campigotto@gmail.com';
+  const isAdmin = loggedInMember?.role === 'Administrativo';
 
   const pendingPurchasesCount = useMemo(() => {
     let count = 0;
