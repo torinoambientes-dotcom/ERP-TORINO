@@ -54,6 +54,7 @@ const doorSetSchema = z.object({
 });
 
 const doorTypes = ['Giro', 'Correr', 'Escamoteavel', 'Frente de gaveta'] as const;
+const handleTypes = ['Linear inteiro', 'Aba Usinada', 'Sem Puxador'];
 
 const doorCreatorSchema = z.object({
   doorType: z.enum(doorTypes).default(doorTypes[0]),
@@ -117,7 +118,7 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
     name: 'hinges',
   });
 
-  const { fields: doorSetFields, replace: replaceDoorSet } = useFieldArray({
+  const { fields: doorSetFields } = useFieldArray({
     control: form.control,
     name: 'doorSet.doors',
   });
@@ -171,7 +172,6 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
 
   const isPair = form.watch('isPair');
   const handleType = form.watch('handleType');
-  const handleTypes = ['Linear inteiro', 'Aba Usinada', 'Sem Puxador'];
   
   useEffect(() => {
     if (doorType === 'Giro' && isPair) {
