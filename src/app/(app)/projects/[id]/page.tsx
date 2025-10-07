@@ -121,20 +121,20 @@ export default function ProjectDetailsPage() {
     });
   }, [updateProject]);
 
-  const handleFurnitureUpdateInModal = useCallback((updatedFurniture: Furniture, originalFurniture?: Furniture) => {
+  const handleFurnitureUpdateInModal = useCallback((updatedFurniture: Furniture) => {
     setProject(currentProject => {
         if (!currentProject || !selectedEnvironmentId) return currentProject;
 
+        const originalProject = JSON.parse(JSON.stringify(currentProject)); // Deep copy for comparison
         const newProject = JSON.parse(JSON.stringify(currentProject));
+        
         const env = newProject.environments.find((e: any) => e.id === selectedEnvironmentId);
 
         if (env) {
             const furIndex = env.furniture.findIndex((f: any) => f.id === updatedFurniture.id);
             if (furIndex !== -1) {
-                // Pass both the updated project and the original project state for comparison
-                const originalProjectForUpdate = JSON.parse(JSON.stringify(currentProject));
                 env.furniture[furIndex] = updatedFurniture;
-                updateProject(newProject, originalProjectForUpdate);
+                updateProject(newProject, originalProject);
                 return newProject;
             }
         }
@@ -384,7 +384,7 @@ export default function ProjectDetailsPage() {
         />
       )}
 
-      {getFurnitureForModal() && (
+      {getFurnitureForModal() && project && (
         <FurnitureMaterialsModal
             isOpen={isMaterialsModalOpen}
             onClose={() => setMaterialsModalOpen(false)}

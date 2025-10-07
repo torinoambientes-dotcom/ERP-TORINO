@@ -47,7 +47,7 @@ interface FurnitureMaterialsModalProps {
   isOpen: boolean;
   onClose: () => void;
   furniture: Furniture;
-  onUpdate: (updatedFurniture: Furniture, originalFurniture: Furniture) => void;
+  onUpdate: (updatedFurniture: Furniture) => void;
   clientName?: string;
 }
 
@@ -266,7 +266,6 @@ export function FurnitureMaterialsModal({
 }: FurnitureMaterialsModalProps) {
   const { toast } = useToast();
   const { stockItems } = useContext(AppContext);
-  const [originalFurniture, setOriginalFurniture] = useState<Furniture | null>(null);
   
   const [isDoorCreatorOpen, setDoorCreatorOpen] = useState(false);
   const [doorToEdit, setDoorToEdit] = useState<ProfileDoorItem | null>(null);
@@ -304,27 +303,16 @@ export function FurnitureMaterialsModal({
 
   useEffect(() => {
     if (isOpen) {
-      setOriginalFurniture(JSON.parse(JSON.stringify(furniture)));
       form.reset({
         materials: furniture.materials || [],
         glassItems: furniture.glassItems || [],
         profileDoors: furniture.profileDoors || [],
       });
-    } else {
-      setOriginalFurniture(null);
     }
   }, [isOpen, furniture, form]);
 
 
   const onSubmit = () => {
-    if (!originalFurniture) {
-        toast({
-            variant: "destructive",
-            title: 'Erro ao salvar',
-            description: `Não foi possível encontrar os dados originais do móvel.`,
-        });
-        return;
-    }
     const data = form.getValues();
     const updatedFurniture: Furniture = {
       ...furniture,
@@ -332,7 +320,7 @@ export function FurnitureMaterialsModal({
       glassItems: data.glassItems.map(g => g as GlassItem),
       profileDoors: data.profileDoors.map(p => p as ProfileDoorItem),
     };
-    onUpdate(updatedFurniture, originalFurniture);
+    onUpdate(updatedFurniture);
     toast({
       title: 'Lista de materiais atualizada!',
       description: `Os materiais para ${furniture.name} foram salvos.`,
