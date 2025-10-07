@@ -45,6 +45,15 @@ interface ProfileDoorCreatorModalProps {
   viewOnly?: boolean;
 }
 
+const handlePositions: Record<string, string> = {
+    left: 'Esquerda',
+    right: 'Direita',
+    both: 'Ambos os Lados',
+    none: 'Nenhum',
+    top: 'Em cima',
+    bottom: 'Em baixo',
+};
+
 const handleTypes = ['Linear inteiro', 'Aba Usinada', 'Sem Puxador'];
 const doorTypes = ['Giro', 'Correr', 'Escamoteavel', 'Frente de gaveta'] as const;
 
@@ -78,14 +87,6 @@ const doorCreatorSchema = z.object({
 
 type DoorCreatorFormValues = z.infer<typeof doorCreatorSchema>;
 
-const handlePositions: Record<string, string> = {
-    left: 'Esquerda',
-    right: 'Direita',
-    both: 'Ambos os Lados',
-    none: 'Nenhum',
-    top: 'Em cima',
-    bottom: 'Em baixo',
-};
 
 export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, doorToEdit, viewOnly = false }: ProfileDoorCreatorModalProps) {
   const isEditMode = !!doorToEdit;
@@ -118,13 +119,13 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
     name: 'hinges',
   });
 
-  const { fields: doorSetFields } = useFieldArray({
+  const { fields: doorSetFields, replace: replaceDoorSet } = useFieldArray({
     control: form.control,
     name: 'doorSet.doors',
   });
 
   const doorType = form.watch('doorType');
-  const doorSetCount = form.watch('doorSet.count');
+  const doorSetCount = form.watch('doorSet.count') || 1;
   const doorData = form.watch();
 
   useEffect(() => {
@@ -135,7 +136,10 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
                 doorType: doorToEdit.doorType || 'Giro',
                 handlePosition: doorToEdit.handlePosition || 'left',
                 handleType: doorToEdit.handleType || 'Sem Puxador',
-                doorSet: doorToEdit.doorSet || { count: 1, doors: [{ handlePosition: 'left' }] }
+                doorSet: doorToEdit.doorSet ? {
+                    count: doorToEdit.doorSet.count,
+                    doors: doorToEdit.doorSet.doors || Array.from({ length: doorToEdit.doorSet.count }, () => ({ handlePosition: 'left' }))
+                } : { count: 1, doors: [{ handlePosition: 'left' }] }
             });
         } else {
             form.reset({
@@ -162,12 +166,11 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
   }, [isOpen, isEditMode, doorToEdit, form]);
   
   useEffect(() => {
-      const newDoors: DoorSetConfiguration[] = Array.from({ length: doorSetCount }, (_, i) => {
-        const existingDoor = form.getValues(`doorSet.doors.${i}`);
-        return existingDoor || { handlePosition: 'left' };
+      const newDoors = Array.from({ length: doorSetCount }, (_, i) => {
+          return form.getValues(`doorSet.doors.${i}`) || { handlePosition: 'left' };
       });
-      form.setValue('doorSet.doors', newDoors, { shouldValidate: true, shouldDirty: true });
-  }, [doorSetCount, form]);
+      replaceDoorSet(newDoors);
+  }, [doorSetCount, replaceDoorSet, form]);
 
 
   const isPair = form.watch('isPair');
