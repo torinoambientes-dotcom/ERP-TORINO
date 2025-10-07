@@ -177,6 +177,13 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
       submissionData.quantity = submissionData.doorSet.count;
     }
   
+    // Ensure hinge positions are numbers
+    if (submissionData.hinges) {
+      submissionData.hinges = submissionData.hinges.map(h => ({
+        position: parseFloat(String(h.position)) || 0,
+      }));
+    }
+
     onSave(submissionData as Omit<ProfileDoorItem, 'id' | 'purchased' | 'addedAt'>);
     onClose();
   };
