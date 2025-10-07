@@ -1,5 +1,5 @@
 'use client';
-import { useForm, useFieldArray } from 'react-hook-form';
+import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import {
@@ -118,7 +118,7 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
     name: 'hinges',
   });
 
-  const { fields: doorSetFields } = useFieldArray({
+  const { fields: doorSetFields, replace: replaceDoorSet } = useFieldArray({
     control: form.control,
     name: 'doorSet.doors',
   });
@@ -162,12 +162,11 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
   }, [isOpen, isEditMode, doorToEdit, form]);
   
   useEffect(() => {
-      const currentDoors = form.getValues('doorSet.doors') || [];
-      const newDoors: DoorSetConfiguration[] = Array.from({ length: doorSetCount }, (_, i) => {
-          return currentDoors[i] || { handlePosition: 'left' };
-      });
-      form.setValue('doorSet.doors', newDoors, { shouldDirty: true, shouldValidate: true });
-  }, [doorSetCount, form]);
+    const newDoors: DoorSetConfiguration[] = Array.from({ length: doorSetCount }, () => ({
+        handlePosition: 'left'
+    }));
+    replaceDoorSet(newDoors);
+}, [doorSetCount, replaceDoorSet]);
 
 
   const isPair = form.watch('isPair');
@@ -272,7 +271,10 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
     
     writeSpec(`Cliente: ${clientName || 'N/A'}`);
     writeSpec(`Tipo: ${data.doorType}${data.doorType === 'Correr' && data.slidingSystem ? ` (${data.slidingSystem})` : ''}`);
-    writeSpec(`Qtd: ${data.quantity}${data.isPair ? ' (par)' : ''}`);
+    
+    const doorCountForSpec = data.doorType === 'Correr' && data.doorSet ? data.doorSet.count : data.quantity;
+    writeSpec(`Qtd: ${doorCountForSpec}${data.isPair ? ' (par)' : ''}`);
+
     if (data.doorType === 'Correr') writeSpec(`Conjunto: ${data.doorSet?.count} porta(s)`);
     writeSpec(`Dimensões por Porta: ${data.width} x ${data.height} mm`);
     writeSpec(`Perfil: ${data.profileColor}`);
@@ -507,7 +509,10 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Número de Portas no Conjunto</FormLabel>
-                            <Select onValueChange={(v) => field.onChange(parseInt(v))} value={field.value?.toString()}>
+                            <Select 
+                              onValueChange={(v) => field.onChange(parseInt(v))} 
+                              value={viewOnly ? doorToEdit?.doorSet?.count.toString() : field.value?.toString()}
+                            >
                               <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
                               <SelectContent>
                                 <SelectItem value="1">1 Porta</SelectItem>

@@ -512,7 +512,11 @@ export default function PurchasesPage() {
         Object.entries(environmentData.furnitures).forEach(([furnitureName, furnitureData]) => {
           listText += `    Móvel: ${furnitureName}\n`;
           furnitureData.profileDoors.forEach(item => {
-            listText += `      - Perfil ${item.profileColor} com Vidro ${item.glassType} (${item.handleType}): ${item.quantity} pç(s) - ${item.width}mm x ${item.height}mm\n`;
+            const quantityText = item.doorType === 'Correr' && item.doorSet
+              ? `${item.doorSet.count} pçs (Conjunto)`
+              : `${item.quantity} pç(s)`;
+
+            listText += `      - Perfil ${item.profileColor} com Vidro ${item.glassType} (${item.handleType}): ${quantityText} - ${item.width}mm x ${item.height}mm\n`;
           });
         });
       });
@@ -889,23 +893,29 @@ export default function PurchasesPage() {
                                         <div key={furnitureData.id}>
                                         <p className="font-semibold text-sm">{furnitureName}</p>
                                         <ul className='space-y-1 text-sm list-disc pl-5 text-muted-foreground'>
-                                            {furnitureData.profileDoors.map((item, index) => (
-                                            <li key={index} className='flex justify-between items-center gap-2'>
-                                                <div>
-                                                    <span className="font-medium text-foreground/90">Perfil {item.profileColor} com Vidro {item.glassType} ({item.handleType}):</span> {item.quantity} pç(s) - {item.width}mm x {item.height}mm
-                                                </div>
-                                                <div className='flex gap-1 flex-shrink-0'>
-                                                  <Button variant="ghost" size="sm" onClick={() => handleOpenDoorViewer(item, projectName)}>
-                                                      <Eye className="mr-2 h-4 w-4" />
-                                                      Visualizar
-                                                  </Button>
-                                                  <Button variant={showPurchasedDoors ? 'secondary' : 'outline'} size="sm" onClick={() => handleToggleItemPurchased('door', item.id, item.projectId, item.envId, item.furId)}>
-                                                      {showPurchasedDoors ? <History className="mr-2 h-4 w-4" /> : <ShoppingCart className="mr-2 h-4 w-4" />}
-                                                      {showPurchasedDoors ? 'Mover para "A comprar"' : 'Comprado'}
-                                                  </Button>
-                                                </div>
-                                            </li>
-                                            ))}
+                                            {furnitureData.profileDoors.map((item, index) => {
+                                                const quantityText = item.doorType === 'Correr' && item.doorSet
+                                                    ? `${item.doorSet.count} pçs (Conjunto)`
+                                                    : `${item.quantity} pç(s)`;
+
+                                                return (
+                                                    <li key={index} className='flex justify-between items-center gap-2'>
+                                                        <div>
+                                                            <span className="font-medium text-foreground/90">Perfil {item.profileColor} com Vidro {item.glassType} ({item.handleType}):</span> {quantityText} - {item.width}mm x {item.height}mm
+                                                        </div>
+                                                        <div className='flex gap-1 flex-shrink-0'>
+                                                          <Button variant="ghost" size="sm" onClick={() => handleOpenDoorViewer(item, projectName)}>
+                                                              <Eye className="mr-2 h-4 w-4" />
+                                                              Visualizar
+                                                          </Button>
+                                                          <Button variant={showPurchasedDoors ? 'secondary' : 'outline'} size="sm" onClick={() => handleToggleItemPurchased('door', item.id, item.projectId, item.envId, item.furId)}>
+                                                              {showPurchasedDoors ? <History className="mr-2 h-4 w-4" /> : <ShoppingCart className="mr-2 h-4 w-4" />}
+                                                              {showPurchasedDoors ? 'Mover para "A comprar"' : 'Comprado'}
+                                                          </Button>
+                                                        </div>
+                                                    </li>
+                                                );
+                                            })}
                                         </ul>
                                         </div>
                                     ))}
