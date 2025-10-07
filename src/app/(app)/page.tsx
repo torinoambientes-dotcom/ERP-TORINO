@@ -63,7 +63,7 @@ export default function DashboardPage() {
 
     // Appointments for today
     appointments.forEach(appointment => {
-      if (appointment.memberIds.includes(loggedInMember.id) && isToday(parseISO(appointment.start))) {
+      if (appointment.start && appointment.memberIds.includes(loggedInMember.id) && isToday(parseISO(appointment.start))) {
         tasks.push({
           id: appointment.id,
           type: 'appointment',
