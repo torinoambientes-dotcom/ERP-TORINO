@@ -12,7 +12,7 @@ import { ptBR } from 'date-fns/locale';
 import type { CalendarTask } from './calendar/page';
 import type { TeamMember } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, ShoppingCart } from 'lucide-react';
+import { ArrowRight, ShoppingCart, RectangleHorizontal, DoorOpen } from 'lucide-react';
 import { getProjectStatus } from '@/lib/projects';
 
 export default function DashboardPage() {
@@ -99,6 +99,34 @@ export default function DashboardPage() {
       .slice(0, 5); // Limit to 5 for the dashboard
   }, [purchaseRequests, loggedInMember]);
 
+  const pendingGlasswareCount = useMemo(() => {
+    if (!projects || !loggedInMember || loggedInMember.role !== 'Administrativo') {
+      return 0;
+    }
+    return projects.reduce((acc, project) => {
+      if (project.completedAt) return acc;
+      return acc + project.environments.reduce((envAcc, env) => {
+        return envAcc + env.furniture.reduce((furAcc, fur) => {
+          return furAcc + (fur.glassItems || []).filter(g => !g.purchased).length;
+        }, 0);
+      }, 0);
+    }, 0);
+  }, [projects, loggedInMember]);
+  
+  const pendingProfileDoorsCount = useMemo(() => {
+      if (!projects || !loggedInMember || loggedInMember.role !== 'Administrativo') {
+        return 0;
+      }
+      return projects.reduce((acc, project) => {
+        if (project.completedAt) return acc;
+        return acc + project.environments.reduce((envAcc, env) => {
+          return envAcc + env.furniture.reduce((furAcc, fur) => {
+            return furAcc + (fur.profileDoors || []).filter(d => !d.purchased).length;
+          }, 0);
+        }, 0);
+      }, 0);
+  }, [projects, loggedInMember]);
+
 
   if (isLoading || !loggedInMember) {
     return <div className="flex h-full w-full items-center justify-center"><p>Carregando dashboard...</p></div>;
@@ -166,6 +194,42 @@ export default function DashboardPage() {
                            </Button>
                         </div>
                       )}
+                    </CardContent>
+                </Card>
+            )}
+
+            {loggedInMember.role === 'Administrativo' && pendingGlasswareCount > 0 && (
+                <Card className="border-sky-500 bg-sky-50/50">
+                    <CardHeader>
+                        <CardTitle className="text-sky-800 flex items-center gap-2">
+                            <RectangleHorizontal className="h-6 w-6" /> Vidraçaria Pendente
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="flex justify-between items-center">
+                       <p>Existem <span className='font-bold'>{pendingGlasswareCount}</span> item(ns) de vidraçaria aguardando compra nos projetos ativos.</p>
+                        <Button asChild variant="outline" className="bg-background">
+                            <Link href="/purchases?tab=glass">
+                                Ver Lista <ArrowRight className="ml-2 h-4 w-4" />
+                            </Link>
+                        </Button>
+                    </CardContent>
+                </Card>
+            )}
+
+            {loggedInMember.role === 'Administrativo' && pendingProfileDoorsCount > 0 && (
+                <Card className="border-violet-500 bg-violet-50/50">
+                    <CardHeader>
+                        <CardTitle className="text-violet-800 flex items-center gap-2">
+                            <DoorOpen className="h-6 w-6" /> Portas de Perfil Pendentes
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="flex justify-between items-center">
+                       <p>Existem <span className='font-bold'>{pendingProfileDoorsCount}</span> porta(s) de perfil aguardando compra nos projetos ativos.</p>
+                        <Button asChild variant="outline" className="bg-background">
+                            <Link href="/purchases?tab=profileDoors">
+                                Ver Lista <ArrowRight className="ml-2 h-4 w-4" />
+                            </Link>
+                        </Button>
                     </CardContent>
                 </Card>
             )}
