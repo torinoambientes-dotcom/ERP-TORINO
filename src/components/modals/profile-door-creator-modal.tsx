@@ -36,15 +36,6 @@ import { Separator } from '../ui/separator';
 import { Switch } from '../ui/switch';
 import { Label } from '../ui/label';
 
-interface ProfileDoorCreatorModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onSave: (door: Omit<ProfileDoorItem, 'id' | 'purchased' | 'addedAt'>) => void;
-  clientName?: string;
-  doorToEdit?: ProfileDoorItem | null;
-  viewOnly?: boolean;
-}
-
 const handlePositions: Record<string, string> = {
     left: 'Esquerda',
     right: 'Direita',
@@ -119,7 +110,7 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
     name: 'hinges',
   });
 
-  const { fields: doorSetFields } = useFieldArray({
+  const { fields: doorSetFields, replace: replaceDoorSet } = useFieldArray({
     control: form.control,
     name: 'doorSet.doors',
   });
@@ -138,8 +129,10 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
                 handleType: doorToEdit.handleType || 'Sem Puxador',
                 doorSet: doorToEdit.doorSet ? {
                     count: doorToEdit.doorSet.count || 1,
-                    doors: doorToEdit.doorSet.doors || Array.from({ length: doorToEdit.doorSet.count || 1 }, () => ({ handlePosition: 'left' }))
-                } : { count: 1, doors: [{ handlePosition: 'left' }] }
+                    doors: doorToEdit.doorSet.doors && doorToEdit.doorSet.doors.length > 0
+                        ? doorToEdit.doorSet.doors 
+                        : Array.from({ length: doorToEdit.doorSet.count || 1 }, () => ({ handlePosition: 'left' as const }))
+                } : { count: doorToEdit.quantity || 1, doors: [{ handlePosition: 'left' }] }
             });
         } else {
             form.reset({
@@ -166,12 +159,15 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
   }, [isOpen, isEditMode, doorToEdit, form]);
   
   useEffect(() => {
-      const currentDoors = form.getValues('doorSet.doors') || [];
-      const newDoors = Array.from({ length: doorSetCount }, (_, i) => {
-          return currentDoors[i] || { handlePosition: 'left' };
-      });
-      form.setValue('doorSet.doors', newDoors, { shouldValidate: true });
-  }, [doorSetCount, form]);
+    const currentDoors = form.getValues('doorSet.doors') || [];
+    if (currentDoors.length !== doorSetCount) {
+        const newDoors = Array.from({ length: doorSetCount }, (_, i) => {
+            return currentDoors[i] || { handlePosition: 'left' };
+        });
+        form.setValue('doorSet.doors', newDoors, { shouldDirty: true, shouldValidate: true });
+    }
+}, [doorSetCount, form]);
+
 
 
   const isPair = form.watch('isPair');
@@ -189,14 +185,15 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
 
   const onSubmit = (data: DoorCreatorFormValues) => {
     if (viewOnly) return;
-
-    const submissionData = { ...data };
-    
-    // CRITICAL FIX: Ensure quantity is set from doorSet.count for sliding doors
+  
+    // Get the most up-to-date form values, especially for nested arrays
+    const currentValues = form.getValues();
+    const submissionData = { ...currentValues };
+  
     if (submissionData.doorType === 'Correr' && submissionData.doorSet) {
       submissionData.quantity = submissionData.doorSet.count;
     }
-
+  
     onSave(submissionData as Omit<ProfileDoorItem, 'id' | 'purchased' | 'addedAt'>);
     onClose();
   };
