@@ -39,7 +39,7 @@ import { Label } from '../ui/label';
 interface ProfileDoorCreatorModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (door: Omit<ProfileDoorItem, 'id'>) => void;
+  onSave: (door: Omit<ProfileDoorItem, 'id' | 'purchased' | 'addedAt'>) => void;
   clientName?: string;
   doorToEdit?: ProfileDoorItem | null;
   viewOnly?: boolean;
@@ -77,14 +77,13 @@ const doorCreatorSchema = z.object({
 
 type DoorCreatorFormValues = z.infer<typeof doorCreatorSchema>;
 
-const handleTypes = ['Linear inteiro', 'Aba Usinada', 'Sem Puxador'];
 const handlePositions: Record<string, string> = {
-    top: 'Em cima',
-    bottom: 'Em baixo',
     left: 'Esquerda',
     right: 'Direita',
     both: 'Ambos os Lados',
     none: 'Nenhum',
+    top: 'Em cima',
+    bottom: 'Em baixo',
 };
 
 export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, doorToEdit, viewOnly = false }: ProfileDoorCreatorModalProps) {
@@ -138,23 +137,41 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
           doorSet: doorToEdit.doorSet || { count: 1, doors: [{ handlePosition: 'left' }] }
         });
       } else {
-        form.reset(); // Reset to default values
+        form.reset({
+          doorType: 'Giro',
+          slidingSystem: '',
+          width: 400,
+          height: 700,
+          quantity: 1,
+          profileColor: 'Preto',
+          glassType: 'Incolor',
+          handleType: handleTypes[0],
+          hinges: [{position: 100}, {position: 600}],
+          isPair: false,
+          handlePosition: 'left',
+          handleWidth: 150,
+          handleOffset: 50,
+          doorSet: {
+            count: 1,
+            doors: [{ handlePosition: 'left' }],
+          }
+        }); 
       }
     }
   }, [isOpen, isEditMode, doorToEdit, form]);
   
   useEffect(() => {
     const currentDoors = form.getValues('doorSet.doors') || [];
-    const newDoors: DoorSetConfiguration[] = [];
-    for (let i = 0; i < doorSetCount; i++) {
-        newDoors.push(currentDoors[i] || { handlePosition: 'left' });
-    }
-    replaceDoorSet(newDoors);
-  }, [doorSetCount, replaceDoorSet, form]);
+    const newDoors: DoorSetConfiguration[] = Array.from({ length: doorSetCount }, (_, i) => {
+        return currentDoors[i] || { handlePosition: 'left' };
+    });
+    form.setValue('doorSet.doors', newDoors, { shouldDirty: true, shouldValidate: true });
+  }, [doorSetCount, form]);
 
 
   const isPair = form.watch('isPair');
   const handleType = form.watch('handleType');
+  const handleTypes = ['Linear inteiro', 'Aba Usinada', 'Sem Puxador'];
   
   useEffect(() => {
     if (doorType === 'Giro' && isPair) {
@@ -168,7 +185,7 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
 
   const onSubmit = (data: DoorCreatorFormValues) => {
     if (viewOnly) return;
-    onSave(data as Omit<ProfileDoorItem, 'id'>);
+    onSave(data as Omit<ProfileDoorItem, 'id' | 'purchased' | 'addedAt'>);
     onClose();
   };
 
@@ -326,9 +343,9 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
   const PROFILE_WIDTH_MM = 45;
 
   const HandleVisualizer = ({ mirrored = false, positionOverride }: { mirrored?: boolean, positionOverride?: 'left' | 'right' | 'top' | 'bottom' | 'both' | 'none' }) => {
-    if (handleType === 'Sem Puxador' || !positionOverride) return null;
+    if (handleType === 'Sem Puxador' || !positionOverride || positionOverride === 'none') return null;
 
-    const style: React.CSSProperties = { position: 'absolute', backgroundColor: 'red', fontWeight: 'bold' };
+    const style: React.CSSProperties = { position: 'absolute', backgroundColor: 'red' };
 
     let basePosition = positionOverride;
     if (doorType === 'Giro' && mirrored) {
@@ -336,8 +353,7 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
     }
     
     const positionsToDraw = basePosition === 'both' ? ['left', 'right'] : [basePosition];
-    if (positionsToDraw.includes('none')) return null;
-
+    
     const handleThickness = 8;
     
     return (
@@ -390,8 +406,9 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
         const { width: rawContainerWidth, height: rawContainerHeight } = containerSize;
         if (!rawContainerWidth || !rawContainerHeight || !doorWidth || !doorHeight) return { width: 0, height: 0 };
         
-        const containerWidth = rawContainerWidth; 
-        const containerHeight = rawContainerHeight;
+        const containerPadding = 32; // p-4 = 1rem = 16px * 2
+        const containerWidth = rawContainerWidth - containerPadding; 
+        const containerHeight = rawContainerHeight - containerPadding;
         
         let doorCount = 1;
         if(doorType === 'Correr') doorCount = doorSetCount;
