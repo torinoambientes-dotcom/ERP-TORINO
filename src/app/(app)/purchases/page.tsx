@@ -328,28 +328,31 @@ export default function PurchasesPage() {
         );
     }, [purchaseRequests, requestSearchTerm]);
 
-    const pendingPurchaseRequestsCount = useMemo(() => {
-        return purchaseRequests.filter(req => req.status === 'pending').length;
-    }, [purchaseRequests]);
-
   const pendingCounts = useMemo(() => {
-    let materials = lowStockItems.length;
-    let glass = 0;
-    let doors = 0;
-
     const activeProjects = projects.filter(p => !p.completedAt);
+    
+    let materialsCount = 0;
+    let glassCount = 0;
+    let doorsCount = 0;
+
     activeProjects.forEach(p => {
         p.environments.forEach(e => {
             e.furniture.forEach(f => {
-                materials += (f.materials || []).filter(m => !m.stockItemId && !m.purchased).length;
-                glass += (f.glassItems || []).filter(g => !g.purchased).length;
-                doors += (f.profileDoors || []).filter(d => !d.purchased).length;
+                materialsCount += (f.materials || []).filter(m => !m.stockItemId && !m.purchased).length;
+                glassCount += (f.glassItems || []).filter(g => !g.purchased).length;
+                doorsCount += (f.profileDoors || []).filter(d => !d.purchased).length;
             });
         });
     });
 
-    return { materials, glass, doors, requests: pendingPurchaseRequestsCount };
-  }, [projects, lowStockItems, pendingPurchaseRequestsCount]);
+    return {
+      materials: materialsCount,
+      glass: glassCount,
+      doors: doorsCount,
+      requests: purchaseRequests.filter(req => req.status === 'pending').length,
+      lowStock: lowStockItems.length,
+    };
+  }, [projects, purchaseRequests, lowStockItems]);
 
 
     const generateShoppingListText = (forWhatsApp: boolean = false) => {
@@ -630,7 +633,7 @@ export default function PurchasesPage() {
                     <CardHeader>
                         <div className="flex items-center justify-between">
                         <div className='space-y-1.5'>
-                            <CardTitle className="font-headline">Alerta de Estoque ({lowStockItems.length})</CardTitle>
+                            <CardTitle className="font-headline">Alerta de Estoque ({pendingCounts.lowStock})</CardTitle>
                             <CardDescription>Materiais com estoque baixo ou com demanda de projetos maior que o estoque.</CardDescription>
                         </div>
                         <CollapsibleTrigger asChild>
