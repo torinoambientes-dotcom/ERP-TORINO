@@ -44,8 +44,8 @@ const handlePositions: Record<string, string> = {
     top: 'Em cima',
     bottom: 'Em baixo',
 };
-
 const handleTypes = ['Linear inteiro', 'Aba Usinada', 'Sem Puxador'];
+
 const doorTypes = ['Giro', 'Correr', 'Escamoteavel', 'Frente de gaveta'] as const;
 
 const hingeSchema = z.object({
@@ -110,7 +110,7 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
     name: 'hinges',
   });
 
-  const { fields: doorSetFields, replace: replaceDoorSet } = useFieldArray({
+  const { fields: doorSetFields } = useFieldArray({
     control: form.control,
     name: 'doorSet.doors',
   });
@@ -158,15 +158,15 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
     }
   }, [isOpen, isEditMode, doorToEdit, form]);
   
-  useEffect(() => {
-    const currentDoors = form.getValues('doorSet.doors') || [];
-    if (currentDoors.length !== doorSetCount) {
-        const newDoors = Array.from({ length: doorSetCount }, (_, i) => {
-            return currentDoors[i] || { handlePosition: 'left' };
-        });
-        form.setValue('doorSet.doors', newDoors, { shouldDirty: true, shouldValidate: true });
-    }
-}, [doorSetCount, form]);
+    useEffect(() => {
+        const currentDoors = form.getValues('doorSet.doors') || [];
+        if (currentDoors.length !== doorSetCount) {
+            const newDoors = Array.from({ length: doorSetCount }, (_, i) => {
+                return currentDoors[i] || { handlePosition: 'left' };
+            });
+            form.setValue('doorSet.doors', newDoors, { shouldDirty: true, shouldValidate: true });
+        }
+    }, [doorSetCount, form]);
 
 
 
@@ -186,7 +186,6 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
   const onSubmit = (data: DoorCreatorFormValues) => {
     if (viewOnly) return;
   
-    // Get the most up-to-date form values, especially for nested arrays
     const currentValues = form.getValues();
     const submissionData = { ...currentValues };
   
@@ -470,7 +469,12 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
         <div className="flex items-center justify-center gap-2" style={{ width: containerSize.width, height: containerSize.height }}>
             {doorType === 'Correr' && doorSetFields.map((field, index) => {
                 const handlePos = doorData?.doorSet?.doors?.[index]?.handlePosition;
-                return <DoorVisualizer key={`${field.id}-${handlePos}`} style={doorDimensions} positionOverride={handlePos!} />
+                return (
+                    <div key={field.id} className="flex flex-col items-center gap-1">
+                        <DoorVisualizer style={doorDimensions} positionOverride={handlePos!} />
+                        <p className="text-xs font-semibold text-muted-foreground">Porta {index + 1}</p>
+                    </div>
+                )
             })}
             {doorType === 'Giro' && <DoorVisualizer style={doorDimensions} positionOverride={doorData.handlePosition}/>}
             {doorType === 'Giro' && isPair && <DoorVisualizer mirrored={true} style={doorDimensions} positionOverride={doorData.handlePosition} />}
@@ -553,28 +557,28 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
                             <div className='space-y-3 p-3 border rounded-md'>
                               <FormLabel>Configuração dos Puxadores</FormLabel>
                                 {doorSetFields.map((field, index) => (
-                                  <FormField
-                                    key={field.id}
-                                    control={form.control}
-                                    name={`doorSet.doors.${index}.handlePosition`}
-                                    render={({ field: selectField }) => (
-                                      <FormItem>
-                                        <FormLabel className="text-xs font-normal">Porta {index + 1}</FormLabel>
-                                        <Select onValueChange={selectField.onChange} value={selectField.value}>
-                                          <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
-                                          <SelectContent>
-                                            <SelectItem value="left">Esquerda</SelectItem>
-                                            <SelectItem value="right">Direita</SelectItem>
-                                            {doorSetCount === 3 && index === 1 && (
-                                              <SelectItem value="both">Ambos os Lados</SelectItem>
-                                            )}
-                                            <SelectItem value="none">Nenhum</SelectItem>
-                                          </SelectContent>
-                                        </Select>
-                                        <FormMessage />
-                                      </FormItem>
-                                    )}
-                                  />
+                                    <FormField
+                                        key={field.id}
+                                        control={form.control}
+                                        name={`doorSet.doors.${index}.handlePosition`}
+                                        render={({ field: selectField }) => (
+                                        <FormItem>
+                                            <FormLabel className="text-xs font-normal">Porta {index + 1}</FormLabel>
+                                            <Select onValueChange={selectField.onChange} value={selectField.value}>
+                                            <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                                            <SelectContent>
+                                                <SelectItem value="left">Esquerda</SelectItem>
+                                                <SelectItem value="right">Direita</SelectItem>
+                                                {doorSetCount === 3 && index === 1 && (
+                                                <SelectItem value="both">Ambos os Lados</SelectItem>
+                                                )}
+                                                <SelectItem value="none">Nenhum</SelectItem>
+                                            </SelectContent>
+                                            </Select>
+                                            <FormMessage />
+                                        </FormItem>
+                                        )}
+                                    />
                                 ))}
                             </div>
                           )}
