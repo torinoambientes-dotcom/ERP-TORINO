@@ -129,27 +129,25 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
 
   useEffect(() => {
     if (isOpen) {
-        if (isEditMode && doorToEdit) {
-            const initialDoorSet = doorToEdit.doorSet || {
-                count: doorToEdit.quantity || 1,
-                doors: Array.from({ length: doorToEdit.quantity || 1 }, () => ({ handlePosition: 'left' as const }))
-            };
-            
-            form.reset({
-                ...doorToEdit,
-                doorType: doorToEdit.doorType || 'Giro',
-                handlePosition: doorToEdit.handlePosition || 'left',
-                handleType: doorToEdit.handleType || 'Sem Puxador',
-                doorSet: {
-                    count: initialDoorSet.count,
-                    doors: initialDoorSet.doors,
-                }
-            });
-            setDoorSetDoors(initialDoorSet.doors);
-        } else {
-            form.reset();
-            setDoorSetDoors([{ handlePosition: 'left' }]);
-        }
+      if (isEditMode && doorToEdit) {
+        const initialDoors = doorToEdit.doorSet?.doors || [{ handlePosition: 'left' as const }];
+        const initialCount = doorToEdit.doorSet?.count || 1;
+
+        form.reset({
+          ...doorToEdit,
+          doorType: doorToEdit.doorType || 'Giro',
+          handlePosition: doorToEdit.handlePosition || 'left',
+          handleType: doorToEdit.handleType || 'Sem Puxador',
+          doorSet: {
+            count: initialCount,
+            doors: initialDoors,
+          },
+        });
+        setDoorSetDoors(initialDoors);
+      } else {
+        form.reset();
+        setDoorSetDoors([{ handlePosition: 'left' }]);
+      }
     }
   }, [isOpen, isEditMode, doorToEdit, form]);
 
@@ -184,7 +182,8 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
 
   const onSubmit = () => {
     if (viewOnly) return;
-  
+    
+    // Get the most up-to-date values directly from the form state.
     const submissionData = form.getValues();
   
     if (submissionData.doorType === 'Correr' && submissionData.doorSet) {
@@ -464,7 +463,7 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
     return (
       <div ref={containerRef} className="w-full h-full flex items-center justify-center p-4">
         <div className="flex items-center justify-center gap-2" style={{ width: containerSize.width, height: containerSize.height }}>
-            {doorType === 'Correr' && (doorData.doorSet?.doors || []).map((field, index) => {
+            {doorType === 'Correr' && (doorSetDoors || []).map((field, index) => {
                 return (
                     <div key={index} className="flex flex-col items-center gap-1">
                         <DoorVisualizer style={doorDimensions} positionOverride={field.handlePosition} />
@@ -551,7 +550,7 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
                           ) : (
                             <div className='space-y-3 p-3 border rounded-md'>
                               <FormLabel>Configuração dos Puxadores</FormLabel>
-                                {(doorData.doorSet?.doors || []).map((door, index) => (
+                                {doorSetDoors.map((door, index) => (
                                     <Controller
                                       key={index}
                                       control={form.control}
@@ -561,7 +560,10 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
                                             <FormLabel className="text-xs font-normal">Porta {index + 1}</FormLabel>
                                             <Select
                                               value={field.value}
-                                              onValueChange={field.onChange}
+                                              onValueChange={(value) => {
+                                                  field.onChange(value);
+                                                  handleDoorSetConfigChange(index, value as any);
+                                              }}
                                             >
                                               <FormControl>
                                                 <SelectTrigger>
