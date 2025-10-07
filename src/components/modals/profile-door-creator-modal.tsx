@@ -432,7 +432,7 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
       return (
         <div className={cn("relative flex items-center justify-center transition-all duration-300", profileColorClass)} style={style}>
           <div className='absolute inset-0 bg-gray-300/30 backdrop-blur-sm flex items-center justify-center' style={{ margin: `${(PROFILE_WIDTH_MM / Math.min(doorWidth, doorHeight)) * 50}%`}}>
-            <span className="text-base font-semibold text-white text-center p-2 break-all">{doorData.glassType}</span>
+            <span className="text-white font-semibold text-base text-center p-2 break-all">{doorData.glassType}</span>
           </div>
           {doorType === 'Giro' && hinges?.map((hinge, index) => {
             const hingeDiameter = 35;
