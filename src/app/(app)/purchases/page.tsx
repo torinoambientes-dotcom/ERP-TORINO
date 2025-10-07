@@ -140,6 +140,7 @@ export default function PurchasesPage() {
   const [glassToView, setGlassToView] = useState<GlassItem | null>(null);
 
   const [clientNameToView, setClientNameToView] = useState<string | undefined>(undefined);
+  const [environmentNameToView, setEnvironmentNameToView] = useState<string | undefined>(undefined);
 
   const [showPurchasedMaterials, setShowPurchasedMaterials] = useState(false);
   const [showPurchasedGlass, setShowPurchasedGlass] = useState(false);
@@ -553,9 +554,10 @@ export default function PurchasesPage() {
     });
   };
 
-    const handleOpenDoorViewer = (door: ProfileDoorItem, clientName: string) => {
+    const handleOpenDoorViewer = (door: ProfileDoorItem, clientName: string, environmentName: string) => {
         setDoorToView(door);
         setClientNameToView(clientName);
+        setEnvironmentNameToView(environmentName);
         setIsDoorViewerOpen(true);
     };
 
@@ -925,7 +927,7 @@ export default function PurchasesPage() {
                                                             </p>
                                                         </div>
                                                         <div className='flex gap-1 flex-shrink-0'>
-                                                          <Button variant="ghost" size="sm" onClick={() => handleOpenDoorViewer(item, projectName)}>
+                                                          <Button variant="ghost" size="sm" onClick={() => handleOpenDoorViewer(item, projectName, environmentName)}>
                                                               <Eye className="mr-2 h-4 w-4" />
                                                               Visualizar
                                                           </Button>
@@ -1060,6 +1062,7 @@ export default function PurchasesPage() {
             isOpen={isDoorViewerOpen}
             onClose={() => setIsDoorViewerOpen(false)}
             clientName={clientNameToView}
+            environmentName={environmentNameToView}
             door={doorToView}
         />
     )}

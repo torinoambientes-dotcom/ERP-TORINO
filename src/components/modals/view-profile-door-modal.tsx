@@ -27,10 +27,11 @@ interface ViewProfileDoorModalProps {
   isOpen: boolean;
   onClose: () => void;
   clientName?: string;
+  environmentName?: string;
   door: ProfileDoorItem;
 }
 
-export function ViewProfileDoorModal({ isOpen, onClose, clientName, door }: ViewProfileDoorModalProps) {
+export function ViewProfileDoorModal({ isOpen, onClose, clientName, environmentName, door }: ViewProfileDoorModalProps) {
   const isPair = door.isPair;
   const doorType = door.doorType;
   const doorSetCount = door.doorSet?.count || 1;
@@ -120,6 +121,9 @@ export function ViewProfileDoorModal({ isOpen, onClose, clientName, door }: View
     const writeSpec = (text: string) => { doc.text(text, margin, currentY); currentY += 6; };
     
     writeSpec(`Cliente: ${clientName || 'N/A'}`);
+    if (environmentName) {
+      writeSpec(`Ambiente: ${environmentName}`);
+    }
     writeSpec(`Tipo: ${data.doorType}${data.doorType === 'Correr' && data.slidingSystem ? ` (${data.slidingSystem})` : ''}`);
     
     const doorCountForSpec = data.doorType === 'Correr' && data.doorSet ? data.doorSet.count : data.quantity;
@@ -341,9 +345,10 @@ export function ViewProfileDoorModal({ isOpen, onClose, clientName, door }: View
             </div>
 
             {/* Right Column: Specs */}
-            <div className="w-[350px] flex-shrink-0 space-y-4 overflow-y-auto pr-6 border-l pl-6">
+            <div className="w-[350px] flex-shrink-0 space-y-2 overflow-y-auto pr-6 border-l pl-6 text-sm">
               <h3 className="font-bold text-lg mb-2">Especificações</h3>
               {clientName && <p><strong>Cliente:</strong> {clientName}</p>}
+              {environmentName && <p><strong>Ambiente:</strong> {environmentName}</p>}
               <p><strong>Tipo:</strong> {door.doorType} {door.doorType === 'Correr' && door.slidingSystem ? `(${door.slidingSystem})` : ''}</p>
               <p><strong>Dimensões (por porta):</strong> {doorWidth}mm x {doorHeight}mm</p>
               {door.doorType === 'Correr' && <p><strong>Conjunto:</strong> {door.doorSet?.count} porta(s)</p>}
@@ -351,7 +356,7 @@ export function ViewProfileDoorModal({ isOpen, onClose, clientName, door }: View
               <p><strong>Vidro:</strong> {door.glassType}</p>
               <p><strong>Puxador:</strong> {door.handleType}</p>
               {door.handleType !== 'Sem Puxador' && (
-                  <div className="pl-4 text-sm">
+                  <div className="pl-4 text-xs">
                     {door.doorType === 'Correr' ? (
                       (door.doorSet?.doors || []).map((d, index) => (
                           <p key={index}>Porta {index+1}: {handlePositions[d.handlePosition]}</p>
