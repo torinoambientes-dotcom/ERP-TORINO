@@ -123,49 +123,36 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
   const doorType = form.watch('doorType');
   const doorData = form.watch();
   
-  const [doorSetDoors, setDoorSetDoors] = useState<DoorSetConfiguration[]>([]);
   const doorSetCount = form.watch('doorSet.count') || 1;
-
 
   useEffect(() => {
     if (isOpen) {
       if (isEditMode && doorToEdit) {
-        const initialDoors = doorToEdit.doorSet?.doors || [{ handlePosition: 'left' as const }];
-        const initialCount = doorToEdit.doorSet?.count || 1;
-
         form.reset({
           ...doorToEdit,
           doorType: doorToEdit.doorType || 'Giro',
           handlePosition: doorToEdit.handlePosition || 'left',
           handleType: doorToEdit.handleType || 'Sem Puxador',
           doorSet: {
-            count: initialCount,
-            doors: initialDoors,
+            count: doorToEdit.doorSet?.count || 1,
+            doors: doorToEdit.doorSet?.doors || [{ handlePosition: 'left' }],
           },
         });
-        setDoorSetDoors(initialDoors);
       } else {
-        form.reset();
-        setDoorSetDoors([{ handlePosition: 'left' }]);
+        // This is for creating a new door
+        form.reset(); // Resets to defaultValues
       }
     }
   }, [isOpen, isEditMode, doorToEdit, form]);
-
+  
   useEffect(() => {
     const currentDoors = form.getValues('doorSet.doors') || [];
     const newDoors = Array.from({ length: doorSetCount }, (_, i) => {
         return currentDoors[i] || { handlePosition: 'left' };
     });
-    form.setValue('doorSet.doors', newDoors, { shouldDirty: true });
-    setDoorSetDoors(newDoors); // Sync local state
+    // This setValue is crucial to keep react-hook-form's state in sync
+    form.setValue('doorSet.doors', newDoors, { shouldDirty: true, shouldValidate: true });
 }, [doorSetCount, form]);
-
-  const handleDoorSetConfigChange = (index: number, value: 'left' | 'right' | 'both' | 'none') => {
-      const newDoors = [...form.getValues('doorSet.doors')];
-      newDoors[index] = { handlePosition: value };
-      form.setValue('doorSet.doors', newDoors, { shouldDirty: true, shouldValidate: true });
-  };
-
 
   const isPair = form.watch('isPair');
   const handleType = form.watch('handleType');
@@ -463,7 +450,7 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
     return (
       <div ref={containerRef} className="w-full h-full flex items-center justify-center p-4">
         <div className="flex items-center justify-center gap-2" style={{ width: containerSize.width, height: containerSize.height }}>
-            {doorType === 'Correr' && (doorSetDoors || []).map((field, index) => {
+            {doorType === 'Correr' && (doorData.doorSet?.doors || []).map((field, index) => {
                 return (
                     <div key={index} className="flex flex-col items-center gap-1">
                         <DoorVisualizer style={doorDimensions} positionOverride={field.handlePosition} />
@@ -550,7 +537,7 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
                           ) : (
                             <div className='space-y-3 p-3 border rounded-md'>
                               <FormLabel>Configuração dos Puxadores</FormLabel>
-                                {doorSetDoors.map((door, index) => (
+                                {(form.watch('doorSet.doors') || []).map((door, index) => (
                                     <Controller
                                       key={index}
                                       control={form.control}
@@ -560,10 +547,7 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
                                             <FormLabel className="text-xs font-normal">Porta {index + 1}</FormLabel>
                                             <Select
                                               value={field.value}
-                                              onValueChange={(value) => {
-                                                  field.onChange(value);
-                                                  handleDoorSetConfigChange(index, value as any);
-                                              }}
+                                              onValueChange={field.onChange}
                                             >
                                               <FormControl>
                                                 <SelectTrigger>
