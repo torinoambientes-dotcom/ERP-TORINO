@@ -326,11 +326,11 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
   const PROFILE_WIDTH_MM = 45;
 
   const HandleVisualizer = ({ mirrored = false, positionOverride }: { mirrored?: boolean, positionOverride?: 'left' | 'right' | 'top' | 'bottom' | 'both' | 'none' }) => {
-    if (handleType === 'Sem Puxador') return null;
+    if (handleType === 'Sem Puxador' || !positionOverride) return null;
 
     const style: React.CSSProperties = { position: 'absolute', backgroundColor: 'red', fontWeight: 'bold' };
 
-    let basePosition = positionOverride || doorData.handlePosition;
+    let basePosition = positionOverride;
     if (doorType === 'Giro' && mirrored) {
         basePosition = { 'left': 'right', 'right': 'left', 'top': 'top', 'bottom': 'bottom' }[basePosition] as any;
     }
@@ -437,13 +437,13 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
     };
 
     return (
-      <div ref={containerRef} className="w-full h-full flex items-center justify-center">
+      <div ref={containerRef} className="w-full h-full flex items-center justify-center p-4">
         <div className="flex items-center justify-center gap-2" style={{ width: containerSize.width, height: containerSize.height }}>
             {doorType === 'Correr' && doorSetFields.map((field, index) => (
                 <DoorVisualizer key={`${field.id}-${field.handlePosition}`} style={doorDimensions} positionOverride={field.handlePosition as any} />
             ))}
-            {doorType === 'Giro' && <DoorVisualizer style={doorDimensions} />}
-            {doorType === 'Giro' && isPair && <DoorVisualizer mirrored={true} style={doorDimensions} />}
+            {doorType === 'Giro' && <DoorVisualizer style={doorDimensions} positionOverride={doorData.handlePosition}/>}
+            {doorType === 'Giro' && isPair && <DoorVisualizer mirrored={true} style={doorDimensions} positionOverride={doorData.handlePosition} />}
             {doorType !== 'Correr' && doorType !== 'Giro' && <DoorVisualizer style={doorDimensions} positionOverride={doorData.handlePosition} />}
         </div>
       </div>
