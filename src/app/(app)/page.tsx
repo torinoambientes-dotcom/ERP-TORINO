@@ -10,9 +10,9 @@ import { getInitials } from '@/lib/utils';
 import { format, isToday, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import type { CalendarTask } from './calendar/page';
-import type { TeamMember } from '@/lib/types';
+import type { TeamMember, ProductionStage } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, ShoppingCart, RectangleHorizontal, DoorOpen } from 'lucide-react';
+import { ArrowRight, ShoppingCart, RectangleHorizontal, DoorOpen, AlertTriangle } from 'lucide-react';
 import { getProjectStatus } from '@/lib/projects';
 
 export default function DashboardPage() {
@@ -53,6 +53,7 @@ export default function DashboardPage() {
                 date: parseISO(stage.scheduledFor),
                 start: parseISO(stage.scheduledFor),
                 end: parseISO(stage.scheduledFor),
+                priority: stage.priority,
                 rawData: { projectId: project.id, envId: env.id, furId: fur.id, stageKey },
               });
             }
@@ -98,6 +99,22 @@ export default function DashboardPage() {
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
       .slice(0, 5); // Limit to 5 for the dashboard
   }, [purchaseRequests, loggedInMember]);
+
+  const highPriorityProjects = useMemo(() => {
+    return projects
+      .filter(p => !p.completedAt) // Apenas projetos ativos
+      .filter(p => {
+        return p.environments.some(env =>
+          env.furniture.some(fur =>
+            Object.values(fur).some(stage => 
+              typeof stage === 'object' && stage !== null && 'priority' in stage && (stage as ProductionStage).priority === 'high'
+            )
+          )
+        );
+      })
+      .slice(0, 5);
+  }, [projects]);
+
 
   const pendingGlasswareCount = useMemo(() => {
     if (!projects || !loggedInMember || loggedInMember.role !== 'Administrativo') {
@@ -159,6 +176,35 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-6">
             
+            {highPriorityProjects.length > 0 && (
+              <Card className="border-red-500 bg-red-50/50">
+                  <CardHeader>
+                      <CardTitle className="text-red-800 flex items-center gap-2">
+                          <AlertTriangle className="h-6 w-6" /> Projetos Prioritários
+                      </CardTitle>
+                      <CardDescription className="text-red-700">
+                          Estes projetos contêm tarefas marcadas com prioridade alta.
+                      </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {highPriorityProjects.map(project => (
+                        <div key={project.id} className="p-3 rounded-lg border bg-card/80 flex justify-between items-center">
+                          <div>
+                              <p className="font-semibold">{project.clientName}</p>
+                          </div>
+                          <Button asChild variant="ghost" size="sm">
+                            <Link href={`/projects/${project.id}`}>
+                                Ver Projeto <ArrowRight className="ml-2 h-4 w-4" />
+                            </Link>
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+              </Card>
+            )}
+
             {loggedInMember.role === 'Administrativo' && pendingPurchaseRequests.length > 0 && (
                 <Card className="border-amber-500 bg-amber-50/50">
                     <CardHeader>
