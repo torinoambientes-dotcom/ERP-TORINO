@@ -80,18 +80,28 @@ export default function CalendarPage() {
           const stages: (keyof typeof STAGE_STATUSES)[] = ['measurement', 'cutting', 'purchase', 'assembly'];
           stages.forEach(stageKey => {
             const stage = fur[stageKey as keyof typeof fur] as ProductionStage;
-            if (stage && stage.scheduledFor && stage.responsibleId) {
-              const responsible = memberMap.get(stage.responsibleId);
-              if (responsible && (selectedMemberId === 'all' || selectedMemberId === responsible.id)) {
-                const date = new Date(stage.scheduledFor);
-                const dayKey = format(date, 'yyyy-MM-dd');
-                if (!tasks[dayKey]) tasks[dayKey] = [];
-                tasks[dayKey].push({
-                  id: `${fur.id}-${stageKey}`, type: 'project', title: `${fur.name} (${project.clientName})`,
-                  subtitle: `Etapa: ${STAGE_STATUSES[stageKey]}`, link: `/projects/${project.id}`, responsible: [responsible], date,
-                  start: date, end: date, priority: stage.priority || 'medium',
-                  rawData: { projectId: project.id, envId: env.id, furId: fur.id, stageKey },
-                });
+            if (stage && stage.scheduledFor && stage.responsibleIds && stage.responsibleIds.length > 0) {
+              const responsibleMembers = stage.responsibleIds
+                .map(id => memberMap.get(id))
+                .filter((m): m is TeamMember => !!m);
+
+              if (responsibleMembers.length > 0) {
+                const matchesFilter = selectedMemberId === 'all' || stage.responsibleIds.includes(selectedMemberId);
+                if(matchesFilter) {
+                  const date = new Date(stage.scheduledFor);
+                  const dayKey = format(date, 'yyyy-MM-dd');
+                  if (!tasks[dayKey]) tasks[dayKey] = [];
+                  
+                  const taskId = `${fur.id}-${stageKey}`;
+                  if (!tasks[dayKey].some(t => t.id === taskId)) {
+                    tasks[dayKey].push({
+                      id: taskId, type: 'project', title: `${fur.name} (${project.clientName})`,
+                      subtitle: `Etapa: ${STAGE_STATUSES[stageKey]}`, link: `/projects/${project.id}`, responsible: responsibleMembers, date,
+                      start: date, end: date, priority: stage.priority || 'medium',
+                      rawData: { projectId: project.id, envId: env.id, furId: fur.id, stageKey },
+                    });
+                  }
+                }
               }
             }
           });

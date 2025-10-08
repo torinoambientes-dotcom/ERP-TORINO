@@ -21,7 +21,7 @@ export type Priority = 'low' | 'medium' | 'high';
 
 export interface ProductionStage {
   status: StageStatus;
-  responsibleId?: string;
+  responsibleIds?: string[];
   startedAt?: string; // ISO date string when the stage moved to in_progress
   completedAt?: string; // ISO date string when the stage was marked as 'done'
   scheduledFor?: string; // ISO date string

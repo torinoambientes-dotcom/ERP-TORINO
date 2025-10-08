@@ -179,7 +179,7 @@ export default function ReportsPage() {
             const stages = ['measurement', 'cutting', 'purchase', 'assembly'] as const;
             stages.forEach(key => {
               const stage = f[key];
-              if (stage.responsibleId === member.id) {
+              if (stage.responsibleIds?.includes(member.id)) {
                 tasks[stage.status]++;
               }
             });
@@ -218,8 +218,8 @@ export default function ReportsPage() {
                 if (
                     assemblyStage.status === 'done' && 
                     assemblyStage.completedAt && 
-                    assemblyStage.responsibleId && 
-                    memberIdsToFilter.includes(assemblyStage.responsibleId)
+                    assemblyStage.responsibleIds &&
+                    assemblyStage.responsibleIds.some(id => memberIdsToFilter.includes(id))
                 ) {
                     const completedDate = parseISO(assemblyStage.completedAt);
                     const completedMonth = getMonth(completedDate);
@@ -246,7 +246,7 @@ export default function ReportsPage() {
           let isAssignedToMember = false;
           if (selectedMemberId !== 'all') {
             const stages = ['measurement', 'cutting', 'purchase', 'assembly'] as const;
-            isAssignedToMember = stages.some(key => furniture[key]?.responsibleId === selectedMemberId);
+            isAssignedToMember = stages.some(key => furniture[key]?.responsibleIds?.includes(selectedMemberId));
           }
 
           if (furniture.pendencies) {
@@ -305,10 +305,11 @@ export default function ReportsPage() {
             stage.status === 'done' &&
             stage.startedAt &&
             stage.completedAt &&
-            stage.responsibleId &&
-            memberIdsToFilter.includes(stage.responsibleId)
+            stage.responsibleIds &&
+            stage.responsibleIds.some(id => memberIdsToFilter.includes(id))
           ) {
-            const member = memberMap.get(stage.responsibleId);
+            const firstResponsibleId = stage.responsibleIds[0];
+            const member = memberMap.get(firstResponsibleId);
             if(member) {
               const duration = intervalToDuration({
                 start: parseISO(stage.startedAt),
@@ -325,7 +326,7 @@ export default function ReportsPage() {
                 id: fur.id,
                 projectName: project.clientName,
                 furnitureName: fur.name,
-                memberId: member.id,
+                memberId: member.id, // Storing one member for simplicity, could be adapted
                 memberName: member.name,
                 memberColor: member.color,
                 startedAt: stage.startedAt,

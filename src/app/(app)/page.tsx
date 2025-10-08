@@ -42,7 +42,7 @@ export default function DashboardPage() {
         env.furniture.forEach(fur => {
           (['measurement', 'cutting', 'purchase', 'assembly'] as const).forEach(stageKey => {
             const stage = fur[stageKey];
-            if (stage && stage.scheduledFor && stage.responsibleId === loggedInMember.id && isToday(parseISO(stage.scheduledFor))) {
+            if (stage && stage.scheduledFor && stage.responsibleIds?.includes(loggedInMember.id) && isToday(parseISO(stage.scheduledFor))) {
               tasks.push({
                 id: `${fur.id}-${stageKey}`,
                 type: 'project',
@@ -112,7 +112,7 @@ export default function DashboardPage() {
               const stage = fur[stageKey];
               return (
                 stage?.priority === 'high' &&
-                stage.responsibleId === loggedInMember.id
+                stage.responsibleIds?.includes(loggedInMember.id)
               );
             })
           )

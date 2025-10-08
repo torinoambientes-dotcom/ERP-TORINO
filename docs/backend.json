@@ -76,9 +76,10 @@
           "type": "string",
           "enum": ["todo", "in_progress", "done"]
         },
-        "responsibleId": {
-          "type": "string",
-          "description": "The ID of the team member responsible for this stage."
+        "responsibleIds": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "A list of team member IDs responsible for this stage."
         },
         "startedAt": {
           "type": "string",
@@ -94,6 +95,10 @@
           "type": "string",
           "format": "date-time",
           "description": "The date the task is scheduled to be worked on."
+        },
+        "priority": {
+          "type": "string",
+          "enum": ["low", "medium", "high"]
         }
       },
       "required": ["status"]

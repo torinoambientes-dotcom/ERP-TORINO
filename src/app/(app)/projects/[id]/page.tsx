@@ -2,7 +2,7 @@
 import { useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import { notFound, useParams } from 'next/navigation';
-import { ChevronLeft, MessageSquare, Package, ListTodo, CalendarIcon, XCircle, Flag } from 'lucide-react';
+import { ChevronLeft, MessageSquare, Package, ListTodo, CalendarIcon, XCircle, Flag, User, X } from 'lucide-react';
 import {
   Accordion,
   AccordionContent,
@@ -27,11 +27,13 @@ import { FurnitureMaterialsModal } from '@/components/modals/furniture-materials
 import { cn, getInitials } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ProfileDoorCreatorModal } from '@/components/modals/profile-door-creator-modal';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { format } from 'date-fns';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { Checkbox } from '@/components/ui/checkbox';
+
 
 type StageKey = 'measurement' | 'cutting' | 'purchase' | 'assembly';
 const stages: { key: StageKey; label: string }[] = [
@@ -78,8 +80,8 @@ export default function ProjectDetailsPage() {
     envId: string,
     furId: string,
     stage: StageKey,
-    key: 'status' | 'responsibleId' | 'scheduledFor' | 'priority',
-    value: string | Date | undefined | Priority
+    key: 'status' | 'responsibleIds' | 'scheduledFor' | 'priority',
+    value: any
   ) => {
     setProject(currentProject => {
       if (!currentProject) return null;
@@ -93,11 +95,13 @@ export default function ProjectDetailsPage() {
             fur[stage] = { status: 'todo' };
           }
           
-          if (key === 'responsibleId') {
-            if (value === 'unassigned') {
-              delete fur[stage].responsibleId;
+          if (key === 'responsibleIds') {
+            const currentIds = fur[stage].responsibleIds || [];
+            const memberId = value;
+            if (currentIds.includes(memberId)) {
+                fur[stage].responsibleIds = currentIds.filter((id: string) => id !== memberId);
             } else {
-              fur[stage].responsibleId = value;
+                fur[stage].responsibleIds = [...currentIds, memberId];
             }
           } else if (key === 'scheduledFor') {
             fur[stage].scheduledFor = value instanceof Date ? value.toISOString() : value;
@@ -134,22 +138,28 @@ export default function ProjectDetailsPage() {
     setProject(currentProject => {
         if (!currentProject || !selectedEnvironmentId) return currentProject;
 
-        const originalProject = JSON.parse(JSON.stringify(currentProject)); // Deep copy for comparison
         const newProject = JSON.parse(JSON.stringify(currentProject));
         
-        const env = newProject.environments.find((e: any) => e.id === selectedEnvironmentId);
+        const envIndex = newProject.environments.findIndex((e: any) => e.id === selectedEnvironmentId);
+        if (envIndex === -1) return currentProject;
 
-        if (env) {
-            const furIndex = env.furniture.findIndex((f: any) => f.id === updatedFurniture.id);
-            if (furIndex !== -1) {
-                env.furniture[furIndex] = updatedFurniture;
-                updateProject(newProject, originalProject);
-                return newProject;
-            }
-        }
-        return currentProject;
+        const furIndex = newProject.environments[envIndex].furniture.findIndex((f: any) => f.id === updatedFurniture.id);
+        if (furIndex === -1) return currentProject;
+
+        // Create a deep copy of the original project BEFORE making changes
+        const originalProjectForComparison = JSON.parse(JSON.stringify(currentProject));
+        
+        // Apply the update
+        newProject.environments[envIndex].furniture[furIndex] = updatedFurniture;
+
+        // Call updateProject with the new state and the original state
+        updateProject(newProject, originalProjectForComparison);
+
+        // Return the new state for immediate UI update
+        return newProject;
     });
   }, [selectedEnvironmentId, updateProject]);
+
 
   const openPendencyModal = useCallback((furniture: Furniture, envId: string) => {
     setSelectedFurniture(furniture);
@@ -267,7 +277,10 @@ export default function ProjectDetailsPage() {
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                         {stages.map((stage) => {
                           const stageData = fur[stage.key] || { status: 'todo' };
-                          const responsibleMember = stageData.responsibleId ? memberMap.get(stageData.responsibleId) : undefined;
+                          const responsibleMembers = (stageData.responsibleIds || [])
+                            .map(id => memberMap.get(id))
+                            .filter((m): m is TeamMember => !!m);
+                          
                           const responsibleList = stage.key === 'assembly' ? marceneiros : outrosMembros;
                           const currentPriority = stageData.priority || 'medium';
                           
@@ -293,47 +306,61 @@ export default function ProjectDetailsPage() {
                             </Select>
                             
                             <div className="flex items-center gap-1">
-                              <Select
-                                value={stageData.responsibleId || "unassigned"}
-                                onValueChange={(value) =>
-                                  handleStageChange(env.id, fur.id, stage.key, 'responsibleId', value)
-                                }
-                              >
-                                <SelectTrigger>
-                                    <div className="flex items-center gap-2 truncate">
-                                      {responsibleMember ? (
-                                        <>
-                                          <Avatar className="h-6 w-6">
-                                              {responsibleMember.avatarUrl && <AvatarImage src={responsibleMember.avatarUrl} alt={responsibleMember.name} />}
-                                              <AvatarFallback style={{ backgroundColor: responsibleMember.color }} className='text-xs'>
-                                              {getInitials(responsibleMember.name)}
-                                              </AvatarFallback>
-                                          </Avatar>
-                                          <span className='truncate'>{responsibleMember.name}</span>
-                                        </>
-                                      ) : (
-                                        <span className='text-muted-foreground'>Não atribuído</span>
-                                      )}
-                                    </div>
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="unassigned">Não atribuído</SelectItem>
-                                  <Separator />
-                                  {responsibleList?.map((member) => (
-                                    <SelectItem key={member.id} value={member.id}>
-                                      <div className="flex items-center gap-2">
-                                        <Avatar className="h-6 w-6">
-                                              {member.avatarUrl && <AvatarImage src={member.avatarUrl} alt={member.name} />}
-                                              <AvatarFallback style={{ backgroundColor: member.color }} className='text-xs'>
-                                              {getInitials(member.name)}
-                                              </AvatarFallback>
-                                          </Avatar>
-                                        <span>{member.name}</span>
-                                      </div>
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                    <Button variant="outline" className="w-full justify-start h-10">
+                                        <div className="flex items-center gap-2 truncate">
+                                            {responsibleMembers.length > 0 ? (
+                                                <div className="flex items-center -space-x-2">
+                                                    {responsibleMembers.slice(0, 2).map(member => (
+                                                        <Avatar key={member.id} className="h-6 w-6 border-background">
+                                                            <AvatarImage src={member.avatarUrl} />
+                                                            <AvatarFallback style={{ backgroundColor: member.color }} className="text-xs">{getInitials(member.name)}</AvatarFallback>
+                                                        </Avatar>
+                                                    ))}
+                                                </div>
+                                            ) : (
+                                                <User className="h-5 w-5 text-muted-foreground" />
+                                            )}
+                                            <span className='truncate text-sm text-muted-foreground'>
+                                                {responsibleMembers.length > 0
+                                                    ? responsibleMembers.map(m => m.name.split(' ')[0]).join(', ')
+                                                    : 'Não atribuído'}
+                                            </span>
+                                            {responsibleMembers.length > 2 && (
+                                                <span className='text-xs text-muted-foreground'>+{responsibleMembers.length - 2}</span>
+                                            )}
+                                        </div>
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-[300px] p-0">
+                                    <Command>
+                                        <CommandInput placeholder="Buscar membro..." />
+                                        <CommandList>
+                                            <CommandEmpty>Nenhum membro encontrado.</CommandEmpty>
+                                            <CommandGroup>
+                                            {responsibleList?.map((member) => (
+                                                <CommandItem
+                                                    key={member.id}
+                                                    onSelect={() => handleStageChange(env.id, fur.id, stage.key, 'responsibleIds', member.id)}
+                                                    className="cursor-pointer"
+                                                >
+                                                    <Checkbox
+                                                        className='mr-2'
+                                                        checked={(stageData.responsibleIds || []).includes(member.id)}
+                                                    />
+                                                     <Avatar className="h-6 w-6 mr-2">
+                                                        {member.avatarUrl && <AvatarImage src={member.avatarUrl} alt={member.name} />}
+                                                        <AvatarFallback style={{ backgroundColor: member.color }} className='text-xs'>{getInitials(member.name)}</AvatarFallback>
+                                                    </Avatar>
+                                                    <span>{member.name}</span>
+                                                </CommandItem>
+                                            ))}
+                                            </CommandGroup>
+                                        </CommandList>
+                                    </Command>
+                                </PopoverContent>
+                              </Popover>
 
                               <Popover>
                                 <PopoverTrigger asChild>
