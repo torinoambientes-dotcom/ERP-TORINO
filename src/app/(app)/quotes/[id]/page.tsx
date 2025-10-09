@@ -164,15 +164,10 @@ export default function QuoteDetailsPage() {
     doc.text('TORINO', margin, y);
 
     doc.setFontSize(8);
-    const torinoWidth = doc.getStringUnitWidth('TORINO') * 20 / doc.internal.scaleFactor;
-    const ambientesWidth = doc.getStringUnitWidth('AMBIENTES') * 8 / doc.internal.scaleFactor;
-    const charSpacing = (torinoWidth - ambientesWidth) / ('AMBIENTES'.length - 1);
-    doc.setCharSpace(charSpacing);
     doc.setTextColor('#969696');
     doc.text('AMBIENTES', margin, y + 5);
 
     // Reset styles
-    doc.setCharSpace(0);
     doc.setTextColor('#000000');
 
 
@@ -196,7 +191,7 @@ export default function QuoteDetailsPage() {
     doc.text(`Cliente: ${quote.clientName}`, margin, y);
     y += 7;
     doc.setFontSize(10);
-    doc.text(`Data de Geração: ${generationDate}`, margin, y);
+    doc.text(`Data: ${generationDate}`, margin, y);
     y += 10;
   
     // --- Content ---
@@ -583,5 +578,7 @@ export default function QuoteDetailsPage() {
 
     
 }
+
+    
 
     
