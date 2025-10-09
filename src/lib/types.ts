@@ -214,16 +214,23 @@ export interface QuoteItem {
   totalPrice: number;
 }
 
+export interface QuoteStage {
+  status: StageStatus;
+  responsibleIds?: string[];
+}
+
 export interface Quote {
   id: string;
   clientName: string;
   clientContact?: string;
-  status: QuoteStatus;
   environments: Environment[];
-  items: QuoteItem[]; // Deprecated, but keeping for now.
   totalValue: number;
   notes?: string;
-  createdAt: string; // ISO date string
-  updatedAt: string; // ISO date string
-  validUntil?: string; // ISO date string
+  createdAt: string;
+  updatedAt: string;
+  projectOrigin: 'client_provided' | 'internal_development';
+  materialSurveyStage: QuoteStage;
+  descriptiveStage: QuoteStage;
+  presentationStatus: 'pending_send' | 'sent';
+  clientFeedback: 'analyzing' | 'approved' | 'rejected';
 }

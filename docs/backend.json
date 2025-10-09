@@ -321,39 +321,52 @@
         },
         "required": ["id", "description", "quantity", "unit", "reason", "requesterId", "requesterName", "status", "createdAt"]
     },
+    "QuoteStage": {
+      "title": "Quote Stage",
+      "type": "object",
+      "description": "Represents a single stage of a quote's workflow.",
+      "properties": {
+        "status": { "type": "string", "enum": ["todo", "in_progress", "done"] },
+        "responsibleIds": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "A list of team member IDs responsible for this stage."
+        }
+      },
+      "required": ["status"]
+    },
     "Quote": {
       "title": "Quote",
-      "description": "Represents a sales quote or budget for a client.",
+      "description": "Represents a sales quote or budget for a client, with workflow stages.",
       "type": "object",
       "properties": {
         "id": { "type": "string" },
         "clientName": { "type": "string" },
         "clientContact": { "type": "string" },
-        "status": { "type": "string", "enum": ["draft", "sent", "approved", "rejected"] },
-        "items": {
-          "type": "array",
-          "items": { "$ref": "#/entities/QuoteItem" }
-        },
+        "environments": { "type": "array", "items": { "$ref": "#/entities/Environment" } },
         "totalValue": { "type": "number" },
         "notes": { "type": "string" },
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" },
-        "validUntil": { "type": "string", "format": "date-time" }
+        "projectOrigin": {
+          "type": "string",
+          "enum": ["client_provided", "internal_development"],
+          "description": "Whether the project design is from the client or internal."
+        },
+        "materialSurveyStage": { "$ref": "#/entities/QuoteStage" },
+        "descriptiveStage": { "$ref": "#/entities/QuoteStage" },
+        "presentationStatus": {
+          "type": "string",
+          "enum": ["pending_send", "sent"],
+          "description": "Status of the quote presentation to the client."
+        },
+        "clientFeedback": {
+          "type": "string",
+          "enum": ["analyzing", "approved", "rejected"],
+          "description": "Client's feedback on the quote."
+        }
       },
-      "required": ["id", "clientName", "status", "items", "totalValue", "createdAt", "updatedAt"]
-    },
-    "QuoteItem": {
-      "title": "QuoteItem",
-      "description": "Represents a single line item within a quote.",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "description": { "type": "string" },
-        "quantity": { "type": "number" },
-        "unitPrice": { "type": "number" },
-        "totalPrice": { "type": "number" }
-      },
-      "required": ["id", "description", "quantity", "unitPrice", "totalPrice"]
+      "required": ["id", "clientName", "environments", "createdAt", "updatedAt", "projectOrigin", "materialSurveyStage", "descriptiveStage", "presentationStatus", "clientFeedback"]
     }
   },
   "auth": {

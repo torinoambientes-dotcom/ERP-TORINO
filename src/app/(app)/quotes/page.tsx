@@ -10,21 +10,22 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { PlusCircle, FileText } from 'lucide-react';
 import { AppContext } from '@/context/app-context';
 import { RegisterQuoteModal } from '@/components/modals/register-quote-modal';
-import type { QuoteStatus } from '@/lib/types';
+import type { Quote } from '@/lib/types';
 
-const statusMap: Record<QuoteStatus | 'all', { label: string; color: string }> = {
-  draft: { label: 'Rascunho', color: 'bg-gray-500' },
-  sent: { label: 'Enviado', color: 'bg-blue-500' },
+const statusMap: Record<string, { label: string; color: string }> = {
+  analyzing: { label: 'Em Análise', color: 'bg-yellow-500' },
   approved: { label: 'Aprovado', color: 'bg-green-500' },
-  rejected: { label: 'Rejeitado', color: 'bg-red-500' },
-  all: { label: 'Todos', color: '' },
+  rejected: { label: 'Recusado', color: 'bg-red-500' },
+  pending_send: { label: 'A Enviar', color: 'bg-blue-500' },
+  sent: { label: 'Enviado', color: 'bg-indigo-500' },
 };
+
 
 export default function QuotesPage() {
     const { quotes, isLoading } = useContext(AppContext);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
-    const [statusFilter, setStatusFilter] = useState<QuoteStatus | 'all'>('all');
+    const [statusFilter, setStatusFilter] = useState<string>('all');
 
     if (isLoading) {
         return (
@@ -34,9 +35,9 @@ export default function QuotesPage() {
         );
     }
 
-    const filteredQuotes = (quotes || []).filter(quote => {
+    const filteredQuotes = (quotes || []).filter((quote: Quote) => {
         const matchesSearch = quote.clientName.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesStatus = statusFilter === 'all' || quote.status === statusFilter;
+        const matchesStatus = statusFilter === 'all' || quote.clientFeedback === statusFilter || quote.presentationStatus === statusFilter;
         return matchesSearch && matchesStatus;
     });
 
@@ -64,14 +65,14 @@ export default function QuotesPage() {
               />
               <Select
                 value={statusFilter}
-                onValueChange={(value) => setStatusFilter(value as QuoteStatus)}
+                onValueChange={(value) => setStatusFilter(value as string)}
               >
-                <SelectTrigger className="w-full sm:w-[180px]">
+                <SelectTrigger className="w-full sm:w-[200px]">
                   <SelectValue placeholder="Filtrar por status" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todos os Status</SelectItem>
-                   {Object.entries(statusMap).filter(([key]) => key !== 'all').map(([key, { label }]) => (
+                   {Object.entries(statusMap).map(([key, { label }]) => (
                       <SelectItem key={key} value={key}>{label}</SelectItem>
                   ))}
                 </SelectContent>
@@ -88,8 +89,7 @@ export default function QuotesPage() {
                                 <CardTitle>{quote.clientName}</CardTitle>
                             </CardHeader>
                             <CardContent>
-                                <p>Status: {statusMap[quote.status].label}</p>
-                                <p>Valor: R$ {quote.totalValue.toFixed(2)}</p>
+                                <p>Valor Total: R$ {quote.totalValue.toFixed(2)}</p>
                             </CardContent>
                         </Card>
                     </Link>
