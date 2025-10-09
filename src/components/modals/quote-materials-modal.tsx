@@ -198,14 +198,15 @@ export function QuoteMaterialsModal({
     }
   }, [isOpen, furniture, form]);
 
+  const watchedMaterials = form.watch('materials');
+
   const totalCost = useMemo(() => {
-    const materials = form.watch('materials');
-    return (materials || []).reduce((acc, material) => {
+    return (watchedMaterials || []).reduce((acc, material) => {
         const quantity = Number(material.quantity) || 0;
         const cost = Number(material.cost) || 0;
         return acc + (quantity * cost);
     }, 0);
-  }, [form.watch('materials')]);
+  }, [watchedMaterials]);
 
   const onSubmit = () => {
     const data = form.getValues();
