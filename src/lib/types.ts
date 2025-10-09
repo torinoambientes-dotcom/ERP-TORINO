@@ -253,3 +253,16 @@ export interface Quote {
   presentationStatus: 'pending_send' | 'sent';
   clientFeedback: 'analyzing' | 'approved' | 'rejected' | 'revision';
 }
+
+export interface QuoteMaterialCategory {
+  id: string;
+  name: string;
+}
+
+export interface QuoteMaterial {
+  id: string;
+  name: string;
+  unit: string;
+  cost: number;
+  category: string;
+}

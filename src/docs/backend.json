@@ -368,6 +368,29 @@
         }
       },
       "required": ["id", "clientName", "environments", "createdAt", "updatedAt", "projectOrigin", "materialSurveyStage", "descriptiveStage", "presentationStatus", "clientFeedback"]
+    },
+    "QuoteMaterial": {
+      "title": "QuoteMaterial",
+      "type": "object",
+      "description": "Represents an item in the quoting materials database.",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "unit": { "type": "string" },
+        "cost": { "type": "number" },
+        "category": { "type": "string", "description": "The category of the material." }
+      },
+      "required": ["id", "name", "unit", "cost", "category"]
+    },
+    "QuoteMaterialCategory": {
+      "title": "QuoteMaterialCategory",
+      "type": "object",
+      "description": "Represents a category for quote materials.",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" }
+      },
+      "required": ["id", "name"]
     }
   },
   "auth": {
@@ -407,6 +430,14 @@
     "/quotes/{quoteId}": {
       "schema": { "$ref": "#/entities/Quote" },
       "description": "Stores all quotes."
+    },
+    "/quote_materials/{quoteMaterialId}": {
+      "schema": { "$ref": "#/entities/QuoteMaterial" },
+      "description": "Stores the quoting materials database."
+    },
+    "/quote_material_categories/{quoteMaterialCategoryId}": {
+      "schema": { "$ref": "#/entities/QuoteMaterialCategory" },
+      "description": "Stores the categories for quoting materials."
     }
   }
 }
