@@ -1,6 +1,6 @@
 'use client';
 import { useState, useMemo, useEffect, useContext, useCallback } from 'react';
-import { useForm, useFieldArray, Controller } from 'react-hook-form';
+import { useForm, useFieldArray, Controller, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import {
@@ -64,7 +64,10 @@ type MaterialFormValues = z.infer<typeof formSchema>;
 
 const ItemRow = ({ index, control, remove, update, quoteMaterials, listName }: any) => {
   const [popoverOpen, setPopoverOpen] = useState(false);
-  const field = control.getValues(`${listName}.${index}`);
+  const field = useWatch({
+    control,
+    name: `${listName}.${index}`
+  });
   const isAreaBased = listName !== 'materials';
 
   return (
