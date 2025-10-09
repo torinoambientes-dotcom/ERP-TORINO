@@ -151,154 +151,138 @@ export default function QuoteDetailsPage() {
   const generatePDF = async (isQuote: boolean) => {
     if (!quote) return;
   
-    const doc = new jsPDF();
+    const doc = new jsPDF('p', 'mm', 'a4');
     const pageHeight = doc.internal.pageSize.height || doc.internal.pageSize.getHeight();
     const pageWidth = doc.internal.pageSize.width || doc.internal.pageSize.getWidth();
-    const margin = 20;
-    let y = 25;
+    const margin = 15;
+    let y = 0;
     let totalQuoteValue = 0;
   
-    // --- Header ---
-    doc.setFont('Helvetica', 'normal');
-    doc.setFontSize(20);
-    const torinoText = 'TORINO';
-    doc.text(torinoText, margin, y);
-    const torinoWidth = doc.getStringUnitWidth(torinoText) * doc.getFontSize() / doc.internal.scaleFactor;
-    
-    doc.setFontSize(8);
-    doc.setTextColor('#969696');
-    const ambientesText = 'AMBIENTES';
-    const ambientesWidth = doc.getStringUnitWidth(ambientesText) * doc.getFontSize() / doc.internal.scaleFactor;
-    const charSpacing = (torinoWidth - ambientesWidth) / (ambientesText.length - 1);
-    doc.setCharSpace(charSpacing);
-    doc.text(ambientesText, margin, y + 5);
-    
-    doc.setCharSpace(0);
-    doc.setTextColor('#000000');
+    const addHeader = () => {
+      // Adiciona a logo
+      const coloredLogoSvg = logoSvgString.replace(/currentColor/g, "#292524");
+      doc.addSvgAsImage(coloredLogoSvg, margin, 12, 40, 12.3);
+
+      // Título do documento
+      doc.setFont('Helvetica', 'bold');
+      doc.setFontSize(14);
+      const title = isQuote ? 'Proposta Comercial' : 'Memorial Descritivo';
+      const titleWidth = doc.getStringUnitWidth(title) * doc.getFontSize() / doc.internal.scaleFactor;
+      doc.text(title, pageWidth - margin - titleWidth, 20);
+
+      // Linha separadora do cabeçalho
+      y = 30;
+      doc.setDrawColor(220, 220, 220);
+      doc.line(margin, y, pageWidth - margin, y);
+      y += 10;
+    };
   
+    const addFooter = (pageNumber: number, totalPages: number) => {
+        const footerY = pageHeight - 15;
+        doc.setDrawColor(220, 220, 220);
+        doc.line(margin, footerY - 5, pageWidth - margin, footerY - 5);
+        
+        doc.setFont('Helvetica', 'normal');
+        doc.setFontSize(8);
+        doc.setTextColor('#666666');
+        
+        const footerText = "Torino Ambientes Planejados | contato@torinoambientes.com.br";
+        doc.text(footerText, margin, footerY);
+
+        const pageText = `Página ${pageNumber} de ${totalPages}`;
+        const pageTextWidth = doc.getStringUnitWidth(pageText) * doc.getFontSize() / doc.internal.scaleFactor;
+        doc.text(pageText, pageWidth - margin - pageTextWidth, footerY);
+    };
+
+    const checkPageBreak = (requiredHeight: number) => {
+        if (y + requiredHeight > pageHeight - 25) { // 25mm margin for footer
+            doc.addPage();
+            y = 0;
+            addHeader();
+            return true;
+        }
+        return false;
+    };
+    
+    addHeader();
+  
+    // --- Client and Date Info ---
     doc.setFont('Helvetica', 'bold');
-    doc.setFontSize(18);
-    const title = isQuote ? 'Proposta Comercial' : 'Descritivo do Orçamento';
-    const titleWidth = doc.getStringUnitWidth(title) * doc.getFontSize() / doc.internal.scaleFactor;
-    doc.text(title, pageWidth - margin - titleWidth, y);
-  
-    y += 10;
-    doc.setDrawColor(220, 220, 220);
-    doc.line(margin, y, pageWidth - margin, y); 
-  
-    y += 8;
-    
-    // --- Client and Date ---
-    const generationDate = new Date().toLocaleDateString('pt-BR');
-    doc.setFont('Helvetica', 'normal');
     doc.setFontSize(12);
-    doc.text(`Cliente: ${quote.clientName}`, margin, y);
-    y += 6;
-    doc.setFontSize(10);
-    doc.text(`Data: ${generationDate}`, margin, y);
+    doc.text(`Cliente:`, margin, y);
+    doc.setFont('Helvetica', 'normal');
+    doc.text(`${quote.clientName}`, margin + 20, y);
+    y+= 6;
+
+    doc.setFont('Helvetica', 'bold');
+    doc.text(`Data:`, margin, y);
+    doc.setFont('Helvetica', 'normal');
+    doc.text(`${new Date().toLocaleDateString('pt-BR')}`, margin + 20, y);
     y += 15;
   
     // --- Content ---
-    for (const [envIndex, env] of quote.environments.entries()) {
-      let environmentValue = 0;
-      if (isQuote) {
-        environmentValue = (env.furniture || []).reduce((envAcc, fur) => {
-          return envAcc + (fur.materials || []).reduce((furAcc, mat) => {
-            return furAcc + ((mat.quantity || 0) * (mat.cost || 0) * (mat.markup || 1));
-          }, 0);
-        }, 0);
-        totalQuoteValue += environmentValue;
-      }
-      
-      const cardPadding = 8;
-      let cardContentHeight = 0;
+    for (const env of quote.environments) {
+        if (isQuote) {
+            const environmentValue = (env.furniture || []).reduce((envAcc, fur) => {
+                return envAcc + (fur.materials || []).reduce((furAcc, mat) => {
+                    return furAcc + ((mat.quantity || 0) * (mat.cost || 0) * (mat.markup || 1));
+                }, 0);
+            }, 0);
+            totalQuoteValue += environmentValue;
+        }
 
-      doc.setFont('Helvetica', 'bold');
-      doc.setFontSize(14);
-      cardContentHeight += doc.getLineHeight() * 0.352778 + 4; // Space after title
+        checkPageBreak(20);
 
-      (env.furniture || []).forEach((fur, furIndex) => {
-          doc.setFont('Helvetica', 'bold');
-          doc.setFontSize(12);
-          const titleLines = doc.splitTextToSize(fur.name, pageWidth - (margin * 2) - (cardPadding * 2));
-          cardContentHeight += titleLines.length * (doc.getLineHeight() * 0.352778) + 2;
-
-          doc.setFontSize(10);
-          const descriptionText = fur.description || 'Nenhum descritivo fornecido.';
-          const descriptionLines = doc.splitTextToSize(descriptionText, pageWidth - (margin * 2) - (cardPadding * 2));
-          cardContentHeight += descriptionLines.length * (doc.getLineHeight() * 0.352778);
-          
-          if (furIndex < (env.furniture || []).length - 1) {
-            cardContentHeight += 6; // Space between furniture items
-          }
-      });
-      const totalCardHeight = cardContentHeight + (cardPadding * 2);
-
-      if (y + totalCardHeight > pageHeight - margin) { 
-        doc.addPage();
-        y = margin;
-      }
-
-      // Draw the card background
-      doc.setFillColor(248, 248, 248);
-      doc.roundedRect(margin, y, pageWidth - (margin * 2), totalCardHeight, 3, 3, 'FD');
-
-      let contentY = y + cardPadding;
-
-      // Draw environment title
-      doc.setFont('Helvetica', 'bold');
-      doc.setFontSize(14);
-      const envNameText = env.name;
-      const envValueText = isQuote ? ` - R$ ${environmentValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '';
-      doc.text(envNameText, margin + cardPadding, contentY + 5);
-       if (isQuote) {
-          doc.setFont('Helvetica', 'normal');
-          doc.text(envValueText, margin + cardPadding + doc.getStringUnitWidth(envNameText) * doc.getFontSize() / doc.internal.scaleFactor + 2, contentY + 5);
-      }
-      contentY += (doc.getLineHeight() * 0.352778) + 8; // Adjust space after title
-
-      // Draw furniture inside the card
-      for (const fur of (env.furniture || [])) {
+        // Environment Title
         doc.setFont('Helvetica', 'bold');
-        doc.setFontSize(12);
-        const titleLines = doc.splitTextToSize(fur.name, pageWidth - (margin * 2) - (cardPadding * 2));
-        doc.text(titleLines, margin + cardPadding, contentY);
-        contentY += titleLines.length * (doc.getLineHeight() * 0.352778) + 2;
-        
-        doc.setFont('Helvetica', 'normal');
-        doc.setFontSize(10);
-        doc.setTextColor('#666666');
-        const descriptionText = fur.description || 'Nenhum descritivo fornecido.';
-        const descriptionLines = doc.splitTextToSize(descriptionText, pageWidth - (margin * 2) - (cardPadding * 2));
-        doc.text(descriptionLines, margin + cardPadding, contentY);
-        doc.setTextColor('#000000');
-        
-        contentY += descriptionLines.length * (doc.getLineHeight() * 0.352778) + 6;
-      }
-      
-      y += totalCardHeight + 5; // Move y to after the current card
+        doc.setFontSize(16);
+        const envNameText = env.name;
+        doc.text(envNameText, margin, y);
+
+        if(isQuote){
+            const environmentValue = (env.furniture || []).reduce((envAcc, fur) => furAcc + (fur.materials || []).reduce((furAcc, mat) => furAcc + (mat.quantity * (mat.cost || 0) * (mat.markup || 1)), 0), 0);
+            const envValueText = `- R$ ${environmentValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            doc.setFont('Helvetica', 'normal');
+            doc.text(envValueText, margin + doc.getStringUnitWidth(envNameText) * doc.getFontSize() / doc.internal.scaleFactor + 3, y);
+        }
+        y += 6;
+        doc.setDrawColor(220, 220, 220);
+        doc.line(margin, y, pageWidth - margin, y);
+        y += 8;
+
+        // Furniture
+        for (const fur of (env.furniture || [])) {
+            const descriptionText = fur.description || 'Nenhum descritivo fornecido.';
+            const descriptionLines = doc.splitTextToSize(descriptionText, pageWidth - (margin * 2));
+            const furnitureBlockHeight = 6 + (descriptionLines.length * 4) + 8; // title height + description height + bottom margin
+            
+            checkPageBreak(furnitureBlockHeight);
+
+            doc.setFont('Helvetica', 'bold');
+            doc.setFontSize(11);
+            doc.text(fur.name, margin, y);
+            y += 5;
+
+            doc.setFont('Helvetica', 'normal');
+            doc.setFontSize(10);
+            doc.setTextColor('#666666');
+            doc.text(descriptionLines, margin, y);
+            y += descriptionLines.length * 4 + 6;
+            doc.setTextColor('#000000');
+        }
+        y+= 5; // Extra space after an environment block
     }
   
     if (isQuote) {
-      if (y > pageHeight - 60) {
-        doc.addPage();
-        y = margin;
-      }
-      y += 5;
-      doc.setFont('Helvetica', 'bold');
-      doc.setFontSize(16);
-      doc.text(`Valor Total do Orçamento: R$ ${totalQuoteValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, margin, y);
-      y += 15;
+        checkPageBreak(30);
+        y+= 5;
+        doc.setFont('Helvetica', 'bold');
+        doc.setFontSize(16);
+        doc.text(`Valor Total do Orçamento: R$ ${totalQuoteValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, margin, y);
+        y += 15;
     }
     
-    const finalY = pageHeight - 40;
-    if (y > finalY) { 
-      doc.addPage();
-      y = finalY;
-    } else {
-      y = finalY;
-    }
-    
+    checkPageBreak(20);
     doc.setFont('Helvetica', 'bold');
     doc.setFontSize(10);
     doc.text('Observações:', margin, y);
@@ -307,6 +291,12 @@ export default function QuoteDetailsPage() {
     doc.setFont('Helvetica', 'normal');
     doc.setFontSize(8);
     doc.text('- Orçamento válido por 15 dias.', margin, y);
+    
+    const totalPages = (doc as any).internal.getNumberOfPages();
+    for (let i = 1; i <= totalPages; i++) {
+      doc.setPage(i);
+      addFooter(i, totalPages);
+    }
     
     const fileName = `${isQuote ? 'Orcamento' : 'Descritivo'}_${quote.clientName.replace(/\s+/g, '_')}.pdf`;
     doc.save(fileName);
