@@ -219,7 +219,8 @@ export interface Quote {
   clientName: string;
   clientContact?: string;
   status: QuoteStatus;
-  items: QuoteItem[];
+  environments: Environment[];
+  items: QuoteItem[]; // Deprecated, but keeping for now.
   totalValue: number;
   notes?: string;
   createdAt: string; // ISO date string
