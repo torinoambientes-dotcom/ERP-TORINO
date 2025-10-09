@@ -51,6 +51,7 @@ export interface MaterialItem {
   stockItemId?: string; // Link to the stock item
   addedAt?: string; // ISO date string
   purchased?: boolean;
+  cost?: number; // Cost per unit for quote materials
 }
 
 export interface GlassItem {

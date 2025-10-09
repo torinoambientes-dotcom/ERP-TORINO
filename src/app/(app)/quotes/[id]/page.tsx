@@ -2,7 +2,7 @@
 import { useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import { notFound, useParams } from 'next/navigation';
 import { AppContext } from '@/context/app-context';
-import type { Quote, StageStatus, TeamMember, QuoteStage, Furniture, Environment } from '@/lib/types';
+import type { Quote, StageStatus, TeamMember, QuoteStage, QuoteFurniture, QuoteEnvironment } from '@/lib/types';
 import { PageHeader } from '@/components/layout/page-header';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, User, Package, ListTodo, MessageSquare } from 'lucide-react';
@@ -17,7 +17,7 @@ import { cn, getInitials } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Separator } from '@/components/ui/separator';
-import { FurnitureMaterialsModal } from '@/components/modals/furniture-materials-modal';
+import { QuoteMaterialsModal } from '@/components/modals/quote-materials-modal';
 
 
 type StageKey = 'internalProjectStage' | 'materialSurveyStage' | 'descriptiveStage';
@@ -47,7 +47,7 @@ export default function QuoteDetailsPage() {
 
   const [quote, setQuote] = useState<Quote | null | undefined>(undefined);
   const [isMaterialsModalOpen, setMaterialsModalOpen] = useState(false);
-  const [selectedFurniture, setSelectedFurniture] = useState<Furniture | null>(null);
+  const [selectedFurniture, setSelectedFurniture] = useState<QuoteFurniture | null>(null);
   const [selectedEnvironmentId, setSelectedEnvironmentId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -87,16 +87,16 @@ export default function QuoteDetailsPage() {
     });
   };
   
-    const handleFurnitureUpdateInModal = useCallback((updatedFurniture: Furniture) => {
+    const handleFurnitureUpdateInModal = useCallback((updatedFurniture: QuoteFurniture) => {
         setQuote(currentQuote => {
             if (!currentQuote || !selectedEnvironmentId) return currentQuote;
 
             const newQuote = JSON.parse(JSON.stringify(currentQuote));
             
-            const envIndex = newQuote.environments.findIndex((e: Environment) => e.id === selectedEnvironmentId);
+            const envIndex = newQuote.environments.findIndex((e: QuoteEnvironment) => e.id === selectedEnvironmentId);
             if (envIndex === -1) return currentQuote;
 
-            const furIndex = newQuote.environments[envIndex].furniture.findIndex((f: Furniture) => f.id === updatedFurniture.id);
+            const furIndex = newQuote.environments[envIndex].furniture.findIndex((f: QuoteFurniture) => f.id === updatedFurniture.id);
             if (furIndex === -1) return currentQuote;
             
             newQuote.environments[envIndex].furniture[furIndex] = updatedFurniture;
@@ -107,7 +107,7 @@ export default function QuoteDetailsPage() {
     }, [selectedEnvironmentId, updateQuote]);
 
 
-  const openMaterialsModal = useCallback((furniture: Furniture, envId: string) => {
+  const openMaterialsModal = useCallback((furniture: QuoteFurniture, envId: string) => {
     setSelectedFurniture(furniture);
     setSelectedEnvironmentId(envId);
     setMaterialsModalOpen(true);
@@ -256,7 +256,7 @@ export default function QuoteDetailsPage() {
                 <CardTitle>Recebimento do Projeto</CardTitle>
             </CardHeader>
             <CardContent>
-                 {quote.projectOrigin === 'internal_development' ? (
+                 {quote.projectOrigin === 'internal_development' && quote.internalProjectStage ? (
                    <StageCard 
                       stageKey="internalProjectStage"
                       title="Desenvolvimento do Projeto Interno"
@@ -352,7 +352,7 @@ export default function QuoteDetailsPage() {
 
     </div>
     {getFurnitureForModal() && (
-        <FurnitureMaterialsModal
+        <QuoteMaterialsModal
             isOpen={isMaterialsModalOpen}
             onClose={() => setMaterialsModalOpen(false)}
             furniture={getFurnitureForModal()!}
