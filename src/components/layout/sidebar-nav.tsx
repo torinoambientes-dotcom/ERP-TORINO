@@ -2,7 +2,7 @@
 import { useState, useContext, useMemo } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BarChart3, LayoutGrid, PlusCircle, Users, Boxes, LogOut, ShoppingCart, User, X, Calendar, Home, FileText } from 'lucide-react';
+import { BarChart3, LayoutGrid, PlusCircle, Users, Boxes, LogOut, ShoppingCart, User, X, Calendar, Home, FileText, Recycle } from 'lucide-react';
 import {
   SidebarHeader,
   SidebarContent,
@@ -45,6 +45,11 @@ const menuItems = [
   { href: '/team', label: 'Equipe', icon: Users, adminOnly: true },
   { href: '/stock', label: 'Estoque', icon: Boxes, adminOnly: false, restrictedRoles: ['Projetista'] },
 ];
+
+const externalMenuItems = [
+  { href: 'https://studio--studio-9212003213-3671f.us-central1.hosted.app/', label: 'Gestão de Sobras', icon: Recycle, adminOnly: false, restrictedRoles: ['Projetista'] },
+];
+
 
 const defaultColors = [
   '#3b82f6', '#16a34a', '#f97316', '#8b5cf6',
@@ -127,19 +132,24 @@ export function SidebarNav() {
     setAvatarPopoverOpen(false);
   };
   
-  const visibleMenuItems = useMemo(() => {
-    return menuItems
+  const filterMenuItems = (items: any[]) => {
+    return items
       .filter(item => {
         if (item.adminOnly && !isAdmin) return false;
         if (item.restrictedRoles && loggedInMember && item.restrictedRoles.includes(loggedInMember.role)) {
           return false;
         }
         return true;
-      })
-      .sort((a, b) => {
+      });
+  }
+
+  const visibleMenuItems = useMemo(() => {
+    const internal = filterMenuItems(menuItems).sort((a, b) => {
         const order = ['Dashboard', 'Projetos', 'Orçamentos', 'Calendário', 'Compras', 'Estoque', 'Relatórios', 'Equipe'];
         return order.indexOf(a.label) - order.indexOf(b.label);
       });
+    const external = filterMenuItems(externalMenuItems);
+    return [...internal, ...external];
   }, [isAdmin, loggedInMember]);
 
   return (
@@ -153,8 +163,10 @@ export function SidebarNav() {
       <SidebarContent className="p-2">
         <SidebarMenu>
           {visibleMenuItems.map((item) => {
+            const isInternalLink = menuItems.some(i => i.href === item.href);
             const showBadge = item.href === '/purchases' && pendingPurchasesCount > 0;
-            const isActive = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href);
+            const isActive = isInternalLink && (item.href === '/' ? pathname === '/' : pathname.startsWith(item.href));
+            
             return (
               <SidebarMenuItem key={item.href}>
                 <SidebarMenuButton
@@ -163,15 +175,22 @@ export function SidebarNav() {
                   className="justify-start relative"
                   tooltip={item.label}
                 >
-                  <Link href={item.href}>
-                    <item.icon className="h-5 w-5" />
-                    <span className="text-base">{item.label}</span>
-                     {showBadge && (
-                        <Badge className="absolute right-2 top-1/2 -translate-y-1/2 h-5 min-w-[20px] justify-center p-1 text-xs group-data-[collapsible=icon]:right-0 group-data-[collapsible=icon]:top-0">
-                            {pendingPurchasesCount}
-                        </Badge>
-                    )}
-                  </Link>
+                  {isInternalLink ? (
+                    <Link href={item.href}>
+                      <item.icon className="h-5 w-5" />
+                      <span className="text-base">{item.label}</span>
+                       {showBadge && (
+                          <Badge className="absolute right-2 top-1/2 -translate-y-1/2 h-5 min-w-[20px] justify-center p-1 text-xs group-data-[collapsible=icon]:right-0 group-data-[collapsible=icon]:top-0">
+                              {pendingPurchasesCount}
+                          </Badge>
+                      )}
+                    </Link>
+                  ) : (
+                    <a href={item.href} target="_blank" rel="noopener noreferrer">
+                      <item.icon className="h-5 w-5" />
+                      <span className="text-base">{item.label}</span>
+                    </a>
+                  )}
                 </SidebarMenuButton>
               </SidebarMenuItem>
             );
