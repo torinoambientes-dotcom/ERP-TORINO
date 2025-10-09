@@ -161,15 +161,17 @@ export default function QuoteDetailsPage() {
     // --- Header ---
     doc.setFont('Helvetica', 'normal');
     doc.setFontSize(20);
-    doc.text('TORINO', margin, y);
-    const torinoWidth = doc.getStringUnitWidth('TORINO') * doc.getFontSize() / doc.internal.scaleFactor;
+    const torinoText = 'TORINO';
+    doc.text(torinoText, margin, y);
+    const torinoWidth = doc.getStringUnitWidth(torinoText) * doc.getFontSize() / doc.internal.scaleFactor;
     
     doc.setFontSize(8);
     doc.setTextColor('#969696');
-    const ambientesWidth = doc.getStringUnitWidth('AMBIENTES') * doc.getFontSize() / doc.internal.scaleFactor;
-    const charSpacing = (torinoWidth - ambientesWidth) / ('AMBIENTES'.length - 1);
+    const ambientesText = 'AMBIENTES';
+    const ambientesWidth = doc.getStringUnitWidth(ambientesText) * doc.getFontSize() / doc.internal.scaleFactor;
+    const charSpacing = (torinoWidth - ambientesWidth) / (ambientesText.length - 1);
     doc.setCharSpace(charSpacing);
-    doc.text('AMBIENTES', margin, y + 5);
+    doc.text(ambientesText, margin, y + 5);
     
     doc.setCharSpace(0);
     doc.setTextColor('#000000');
@@ -185,17 +187,17 @@ export default function QuoteDetailsPage() {
     doc.setDrawColor(220, 220, 220);
     doc.line(margin, y, pageWidth - margin, y); 
   
-    y += 10;
+    y += 8;
     
     // --- Client and Date ---
     const generationDate = new Date().toLocaleDateString('pt-BR');
     doc.setFont('Helvetica', 'normal');
     doc.setFontSize(12);
     doc.text(`Cliente: ${quote.clientName}`, margin, y);
-    y += 7;
+    y += 6;
     doc.setFontSize(10);
     doc.text(`Data: ${generationDate}`, margin, y);
-    y += 10;
+    y += 8;
   
     // --- Content ---
     for (const [envIndex, env] of quote.environments.entries()) {
@@ -213,6 +215,11 @@ export default function QuoteDetailsPage() {
         doc.addPage();
         y = margin;
       }
+
+      if (envIndex > 0) {
+        y+= 5;
+      }
+
       doc.setFont('Helvetica', 'bold');
       doc.setFontSize(14);
       
@@ -227,13 +234,19 @@ export default function QuoteDetailsPage() {
       y += 8;
   
       for (const fur of (env.furniture || [])) {
+        doc.setFontSize(12);
+        const titleLines = doc.splitTextToSize(fur.name, pageWidth - (margin * 2) - 20);
+        
+        doc.setFontSize(10);
         const descriptionLines = doc.splitTextToSize(fur.description || 'Nenhum descritivo fornecido.', pageWidth - (margin * 2) - 20);
         
-        const cardHeaderHeight = 8;
-        const cardContentHeight = descriptionLines.length * 5 + (descriptionLines.length > 1 ? (descriptionLines.length - 1) * 2 : 0);
-        const cardPadding = 10;
-        const cardTotalHeight = cardHeaderHeight + cardContentHeight + cardPadding;
+        const titleHeight = titleLines.length * 5;
+        const descriptionHeight = descriptionLines.length * 4 + (descriptionLines.length > 1 ? (descriptionLines.length - 1) * 1.5 : 0);
         
+        const contentHeight = titleHeight + descriptionHeight + 3; // 3 is the space between title and description
+        const cardPadding = 10;
+        const cardTotalHeight = contentHeight + cardPadding;
+
         if (y + cardTotalHeight > pageHeight - margin) {
             doc.addPage();
             y = margin;
@@ -243,12 +256,12 @@ export default function QuoteDetailsPage() {
         doc.setFillColor(248, 248, 248);
         doc.roundedRect(margin, y, pageWidth - (margin * 2), cardTotalHeight, 3, 3, 'FD');
   
-        let contentY = y + cardPadding;
+        let contentY = y + cardPadding / 2;
   
         doc.setFont('Helvetica', 'bold');
         doc.setFontSize(12);
-        doc.text(fur.name, margin + 10, contentY);
-        contentY += 6;
+        doc.text(titleLines, margin + 10, contentY);
+        contentY += titleHeight + 3;
   
         doc.setFont('Helvetica', 'normal');
         doc.setFontSize(10);
@@ -258,7 +271,6 @@ export default function QuoteDetailsPage() {
         
         y += cardTotalHeight + 5;
       }
-      y += 5;
     }
   
     if (isQuote) {
@@ -266,6 +278,7 @@ export default function QuoteDetailsPage() {
         doc.addPage();
         y = margin;
       }
+      y += 5;
       doc.setFont('Helvetica', 'bold');
       doc.setFontSize(16);
       doc.text(`Valor Total do Orçamento: R$ ${totalQuoteValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, margin, y);
