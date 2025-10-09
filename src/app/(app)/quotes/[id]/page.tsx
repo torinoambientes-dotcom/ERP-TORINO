@@ -325,11 +325,16 @@ export default function QuoteDetailsPage() {
                         </div>
                         </AccordionTrigger>
                         <AccordionContent className="p-4 sm:p-6 space-y-6">
-                        {env.furniture?.map((fur, index) => (
+                        {env.furniture?.map((fur, index) => {
+                          const totalCost = (fur.materials || []).reduce((acc, mat) => acc + (mat.quantity * (mat.cost || 0)), 0);
+                          return (
                             <div key={fur.id}>
                             {index > 0 && <Separator className="mb-6" />}
                             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
-                                <h4 className="font-semibold text-lg">{fur.name}</h4>
+                                <div className="flex-grow">
+                                  <h4 className="font-semibold text-lg">{fur.name}</h4>
+                                  <p className="text-sm text-primary font-semibold">Custo Materiais: R$ {totalCost.toFixed(2)}</p>
+                                </div>
                                 <div className="flex gap-2 w-full sm:w-auto">
                                 <Button variant="outline" size="sm" onClick={() => openMaterialsModal(fur, env.id)} className="w-full sm:w-auto flex-1">
                                     <Package className="mr-2 h-4 w-4" />
@@ -339,7 +344,8 @@ export default function QuoteDetailsPage() {
                                 </div>
                             </div>
                             </div>
-                        ))}
+                          );
+                        })}
                         </AccordionContent>
                     </div>
                     </AccordionItem>
