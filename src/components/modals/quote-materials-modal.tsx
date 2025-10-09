@@ -89,7 +89,7 @@ const MaterialRow = ({ index, control, field, remove, update, quoteMaterials }: 
                     <CommandEmpty>
                        <div className="p-2 cursor-pointer hover:bg-accent" onClick={() => {
                             const inputValue = (document.querySelector(`[cmdk-input]`) as HTMLInputElement).value;
-                            update(index, {...field, name: inputValue, unit: 'unidade', cost: 0, markup: 1 });
+                            update(index, {...field, name: inputValue, unit: 'unidade', cost: 0, markup: 2.5 });
                             setPopoverOpen(false);
                        }}>
                             Adicionar novo material: "{ (document.querySelector(`[cmdk-input]`) as HTMLInputElement)?.value }"
@@ -101,7 +101,7 @@ const MaterialRow = ({ index, control, field, remove, update, quoteMaterials }: 
                           key={item.id}
                           value={item.name}
                           onSelect={() => {
-                            update(index, {...field, name: item.name, unit: item.unit, cost: item.cost, markup: 1 });
+                            update(index, {...field, name: item.name, unit: item.unit, cost: item.cost, markup: 2.5 });
                             setPopoverOpen(false);
                           }}
                         >
@@ -245,7 +245,7 @@ export function QuoteMaterialsModal({
         quantity: 1,
         unit: 'unidade',
         cost: 0,
-        markup: 1,
+        markup: 2.5,
         addedAt: new Date().toISOString()
     });
   };
