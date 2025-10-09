@@ -21,7 +21,6 @@ import { QuoteMaterialsModal } from '@/components/modals/quote-materials-modal';
 import { RegisterQuoteModal } from '@/components/modals/register-quote-modal';
 import { QuoteFurnitureDescriptionModal } from '@/components/modals/quote-furniture-description-modal';
 import jsPDF from 'jspdf';
-import 'jspdf/dist/polyfills.js'; // Required for some environments
 
 type StageKey = 'internalProjectStage' | 'materialSurveyStage' | 'descriptiveStage';
 
@@ -461,7 +460,7 @@ export default function QuoteDetailsPage() {
             isOpen={isDescriptionModalOpen}
             onClose={() => setDescriptionModalOpen(false)}
             furniture={getFurnitureForModal()!}
-            onUpdate={handleFurnitureUpdateInodal}
+            onUpdate={handleFurnitureUpdateInModal}
         />
       )}
        {isEditModalOpen && (
