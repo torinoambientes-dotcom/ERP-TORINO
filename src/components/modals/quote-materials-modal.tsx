@@ -202,14 +202,22 @@ export function QuoteMaterialsModal({
 
   const watchedMaterials = form.watch('materials');
   const { totalCost, totalBudgetValue } = useMemo(() => {
-    return (watchedMaterials || []).reduce((acc, material) => {
+    const result = (watchedMaterials || []).reduce((acc, material) => {
       const quantity = Number(material.quantity) || 0;
       const cost = Number(material.cost) || 0;
       const markup = Number(material.markup) || 1;
-      acc.cost += quantity * cost;
-      acc.budget += quantity * cost * markup;
-      return acc;
+      
+      const newCost = acc.cost + quantity * cost;
+      const newBudget = acc.budget + quantity * cost * markup;
+
+      return { cost: newCost, budget: newBudget };
     }, { cost: 0, budget: 0 });
+    
+    return {
+        totalCost: result.cost,
+        totalBudgetValue: result.budget
+    };
+
   }, [watchedMaterials]);
 
 
