@@ -162,17 +162,15 @@ export default function QuoteDetailsPage() {
     doc.setFont('Helvetica', 'normal');
     doc.setFontSize(20);
     doc.text('TORINO', margin, y);
-  
     const torinoWidth = doc.getStringUnitWidth('TORINO') * doc.getFontSize() / doc.internal.scaleFactor;
-    const ambientesWidth = doc.getStringUnitWidth('AMBIENTES') * 8 / doc.internal.scaleFactor;
-    const charSpacing = (torinoWidth - ambientesWidth) / ('AMBIENTES'.length - 1);
-  
+    
     doc.setFontSize(8);
-    doc.setCharSpace(charSpacing);
     doc.setTextColor('#969696');
+    const ambientesWidth = doc.getStringUnitWidth('AMBIENTES') * doc.getFontSize() / doc.internal.scaleFactor;
+    const charSpacing = (torinoWidth - ambientesWidth) / ('AMBIENTES'.length - 1);
+    doc.setCharSpace(charSpacing);
     doc.text('AMBIENTES', margin, y + 5);
     
-    // Reset styles
     doc.setCharSpace(0);
     doc.setTextColor('#000000');
   
@@ -183,11 +181,11 @@ export default function QuoteDetailsPage() {
     doc.text(title, pageWidth - margin - titleWidth, y);
   
   
-    y += 15;
+    y += 10;
     doc.setDrawColor(220, 220, 220);
-    doc.line(margin, y, pageWidth - margin, y); // Horizontal line
+    doc.line(margin, y, pageWidth - margin, y); 
   
-    y += 15;
+    y += 10;
     
     // --- Client and Date ---
     const generationDate = new Date().toLocaleDateString('pt-BR');
@@ -197,10 +195,10 @@ export default function QuoteDetailsPage() {
     y += 7;
     doc.setFontSize(10);
     doc.text(`Data: ${generationDate}`, margin, y);
-    y += 15;
+    y += 10;
   
     // --- Content ---
-    quote.environments.forEach(env => {
+    for (const [envIndex, env] of quote.environments.entries()) {
       let environmentValue = 0;
       if (isQuote) {
         environmentValue = (env.furniture || []).reduce((envAcc, fur) => {
@@ -226,10 +224,10 @@ export default function QuoteDetailsPage() {
           doc.setFont('Helvetica', 'normal');
           doc.text(envValueText, margin + doc.getStringUnitWidth(envNameText) * doc.getFontSize() / doc.internal.scaleFactor + 2, y);
       }
-      y += 10;
+      y += 8;
   
-      (env.furniture || []).forEach(fur => {
-        const descriptionLines = doc.splitTextToSize(fur.description || 'Nenhum descritivo fornecido.', pageWidth - (margin * 2) - 20); // Content width inside card
+      for (const fur of (env.furniture || [])) {
+        const descriptionLines = doc.splitTextToSize(fur.description || 'Nenhum descritivo fornecido.', pageWidth - (margin * 2) - 20);
         
         const cardHeaderHeight = 8;
         const cardContentHeight = descriptionLines.length * 5 + (descriptionLines.length > 1 ? (descriptionLines.length - 1) * 2 : 0);
@@ -259,9 +257,9 @@ export default function QuoteDetailsPage() {
         doc.setTextColor('#000000');
         
         y += cardTotalHeight + 5;
-      });
-      y += 10;
-    });
+      }
+      y += 5;
+    }
   
     if (isQuote) {
       if (y > pageHeight - 60) {
@@ -274,11 +272,10 @@ export default function QuoteDetailsPage() {
       y += 15;
     }
     
-    // --- Footer Notes ---
     const finalY = pageHeight - 40;
     if (y > finalY) { 
       doc.addPage();
-      y = margin;
+      y = finalY;
     } else {
       y = finalY;
     }
@@ -290,13 +287,8 @@ export default function QuoteDetailsPage() {
   
     doc.setFont('Helvetica', 'normal');
     doc.setFontSize(8);
-    const notes = [
-      '- Orçamento válido por 15 dias.',
-    ];
-    notes.forEach(note => {
-      doc.text(note, margin, y);
-      y += 4;
-    });
+    doc.text('- Orçamento válido por 15 dias.', margin, y);
+    y += 4;
     
     const fileName = `${isQuote ? 'Orcamento' : 'Descritivo'}_${quote.clientName.replace(/\s+/g, '_')}.pdf`;
     doc.save(fileName);
