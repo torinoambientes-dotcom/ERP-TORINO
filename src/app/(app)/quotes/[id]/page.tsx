@@ -187,11 +187,15 @@ export default function QuoteDetailsPage() {
     doc.text(isQuote ? 'Orçamento' : 'Descritivo do Orçamento', margin, y);
     y += 8;
     
-    // --- Client ---
+    // --- Client and Date ---
+    const generationDate = new Date().toLocaleDateString('pt-BR');
     doc.setFont('Helvetica', 'normal');
     doc.setFontSize(12);
     doc.text(`Cliente: ${quote.clientName}`, margin, y);
-    y += 15;
+    y += 7;
+    doc.setFontSize(10);
+    doc.text(`Data de Geração: ${generationDate}`, margin, y);
+    y += 10;
   
     // --- Content ---
     quote.environments.forEach(env => {
@@ -264,14 +268,42 @@ export default function QuoteDetailsPage() {
     });
 
     if (isQuote) {
-      if (y > pageHeight - 30) { 
+      if (y > pageHeight - 60) { // Increased space for notes and total
         doc.addPage();
         y = margin;
       }
       doc.setFont('Helvetica', 'bold');
       doc.setFontSize(16);
       doc.text(`Valor Total do Orçamento: R$ ${totalQuoteValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, margin, y);
+      y += 15;
     }
+    
+    // --- Footer Notes ---
+    const finalY = (isQuote ? y : pageHeight - 50); // Position notes at bottom if no total value
+    if (finalY > pageHeight - 50) { 
+      doc.addPage();
+      y = margin;
+    } else {
+      y = finalY;
+    }
+    
+    doc.setFont('Helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.text('Observações:', margin, y);
+    y += 5;
+
+    doc.setFont('Helvetica', 'normal');
+    doc.setFontSize(8);
+    const notes = [
+      '- Orçamento válido por 15 dias.',
+      '- Condições de pagamento: 50% de entrada, 50% na entrega.',
+      '- Prazo de entrega: A combinar.',
+      '- Não incluso: frete, instalação de pedras, cubas e eletrodomésticos.',
+    ];
+    notes.forEach(note => {
+      doc.text(note, margin, y);
+      y += 4;
+    });
     
     const fileName = `${isQuote ? 'Orcamento' : 'Descritivo'}_${quote.clientName.replace(/\s+/g, '_')}.pdf`;
     doc.save(fileName);
