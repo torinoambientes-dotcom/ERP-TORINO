@@ -3,7 +3,7 @@
 import { createContext, type ReactNode, useCallback, useMemo, useEffect, useState } from 'react';
 import { collection, doc, serverTimestamp, deleteField, writeBatch, getDocs, runTransaction } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useAuth, useUser } from '@/firebase';
-import type { Project, TeamMember, StageStatus, StockItem, StockMovement, StockCategory, Furniture, Environment, MaterialItem, StockReservation, ProductionStage, Appointment, PurchaseRequest, PurchaseRequestStatus, Quote, QuoteItem } from '@/lib/types';
+import type { Project, TeamMember, StageStatus, StockItem, StockMovement, StockCategory, Furniture, Environment, MaterialItem, StockReservation, ProductionStage, Appointment, PurchaseRequest, PurchaseRequestStatus, Quote } from '@/lib/types';
 import { generateId } from '@/lib/utils';
 import { setDocumentNonBlocking, deleteDocumentNonBlocking, addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
@@ -47,7 +47,7 @@ interface AppContextType {
   updatePurchaseRequest: (requestData: PurchaseRequest) => void;
   updatePurchaseRequestStatus: (requestId: string, status: PurchaseRequestStatus, notes?: string) => void;
   deletePurchaseRequest: (requestId: string) => void;
-  addQuote: (quoteData: { clientName: string; clientContact?: string; environments: any[] }) => void;
+  addQuote: (quoteData: Pick<Quote, 'clientName' | 'clientContact' | 'environments' | 'projectOrigin'>) => void;
 }
 
 export const AppContext = createContext<AppContextType>({
@@ -782,26 +782,29 @@ export function AppProvider({ children }: { children: ReactNode }) {
         deleteDocumentNonBlocking(requestRef);
     }, [firestore]);
 
-    const addQuote = useCallback((quoteData: { clientName: string; clientContact?: string; environments: any[] }) => {
+    const addQuote = useCallback((quoteData: Pick<Quote, 'clientName' | 'clientContact' | 'environments' | 'projectOrigin'>) => {
       if (!firestore) return;
       const now = new Date().toISOString();
       const quoteId = generateId('quote');
       
-      const newQuote: Quote = {
+      const newQuote: Omit<Quote, 'totalValue' | 'notes'> & { totalValue?: number, notes?: string } = {
         id: quoteId,
         clientName: quoteData.clientName,
-        clientContact: quoteData.clientContact || '',
+        clientContact: quoteData.clientContact,
+        projectOrigin: quoteData.projectOrigin,
         environments: quoteData.environments.map((env: any) => ({
           ...env,
           id: generateId('env'),
           furniture: env.furniture.map((fur: any) => ({ ...fur, id: generateId('fur') }))
         })),
-        items: [],
-        totalValue: 0,
-        notes: '',
-        status: 'draft',
         createdAt: now,
         updatedAt: now,
+        materialSurveyStage: { status: 'todo' },
+        descriptiveStage: { status: 'todo' },
+        presentationStatus: 'pending_send',
+        clientFeedback: 'analyzing',
+        totalValue: 0,
+        notes: '',
       };
       
       const quoteRef = doc(firestore, 'quotes', quoteId);

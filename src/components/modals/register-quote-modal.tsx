@@ -26,6 +26,7 @@ import { Input } from '@/components/ui/input';
 import { AppContext } from '@/context/app-context';
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from '../ui/separator';
+import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 
 const furnitureSchema = z.object({
   name: z.string().min(1, 'Nome do móvel é obrigatório.'),
@@ -38,8 +39,11 @@ const environmentSchema = z.object({
 
 const quoteSchema = z.object({
   clientName: z.string().min(1, 'Nome do cliente é obrigatório.'),
-  environments: z.array(environmentSchema).min(1, 'Adicione ao menos um ambiente.'),
   clientContact: z.string().optional(),
+  environments: z.array(environmentSchema).min(1, 'Adicione ao menos um ambiente.'),
+  projectOrigin: z.enum(['client_provided', 'internal_development'], {
+    required_error: "Selecione a origem do projeto."
+  }),
 });
 
 
@@ -60,6 +64,7 @@ export function RegisterQuoteModal({
   const defaultValues: QuoteFormValues = {
     clientName: '',
     clientContact: '',
+    projectOrigin: 'client_provided',
     environments: [{ name: '', furniture: [{ name: '' }] }],
   };
 
@@ -81,7 +86,7 @@ export function RegisterQuoteModal({
     if (isOpen) {
         form.reset(defaultValues);
     }
-  }, [isOpen, form]);
+  }, [isOpen, form, defaultValues]);
 
 
   const onSubmit = (data: QuoteFormValues) => {
@@ -131,6 +136,42 @@ export function RegisterQuoteModal({
                 </FormItem>
               )}
             />
+
+            <FormField
+              control={form.control}
+              name="projectOrigin"
+              render={({ field }) => (
+                <FormItem className="space-y-3">
+                  <FormLabel>Origem do Projeto</FormLabel>
+                  <FormControl>
+                    <RadioGroup
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}
+                      className="flex space-x-4"
+                    >
+                      <FormItem className="flex items-center space-x-2 space-y-0">
+                        <FormControl>
+                          <RadioGroupItem value="client_provided" />
+                        </FormControl>
+                        <FormLabel className="font-normal">
+                          Fornecido pelo Cliente
+                        </FormLabel>
+                      </FormItem>
+                      <FormItem className="flex items-center space-x-2 space-y-0">
+                        <FormControl>
+                          <RadioGroupItem value="internal_development" />
+                        </FormControl>
+                        <FormLabel className="font-normal">
+                          Desenvolvimento Interno
+                        </FormLabel>
+                      </FormItem>
+                    </RadioGroup>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
 
             <Separator />
 
