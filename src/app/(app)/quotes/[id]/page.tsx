@@ -155,7 +155,7 @@ export default function QuoteDetailsPage() {
     const pageHeight = doc.internal.pageSize.height || doc.internal.pageSize.getHeight();
     const pageWidth = doc.internal.pageSize.width || doc.internal.pageSize.getWidth();
     const margin = 20;
-    let y = 20;
+    let y = 25;
     let totalQuoteValue = 0;
   
     // --- Header ---
@@ -231,20 +231,24 @@ export default function QuoteDetailsPage() {
           doc.setFont('Helvetica', 'normal');
           doc.text(envValueText, margin + doc.getStringUnitWidth(envNameText) * doc.getFontSize() / doc.internal.scaleFactor + 2, y);
       }
-      y += 8;
+      y += 6;
   
       for (const fur of (env.furniture || [])) {
+        
         doc.setFontSize(12);
         const titleLines = doc.splitTextToSize(fur.name, pageWidth - (margin * 2) - 20);
         
         doc.setFontSize(10);
-        const descriptionLines = doc.splitTextToSize(fur.description || 'Nenhum descritivo fornecido.', pageWidth - (margin * 2) - 20);
+        const descriptionText = fur.description || 'Nenhum descritivo fornecido.';
+        const descriptionLines = doc.splitTextToSize(descriptionText, pageWidth - (margin * 2) - 20);
         
-        const titleHeight = titleLines.length * 5;
-        const descriptionHeight = descriptionLines.length * 4 + (descriptionLines.length > 1 ? (descriptionLines.length - 1) * 1.5 : 0);
+        const titleHeight = (titleLines.length) * doc.getLineHeight() / doc.internal.scaleFactor;
+        const descriptionHeight = (descriptionLines.length) * doc.getLineHeight() / doc.internal.scaleFactor;
+        const spacing = 3; 
+
+        const contentHeight = titleHeight + spacing + descriptionHeight;
         
-        const contentHeight = titleHeight + descriptionHeight + 3; // 3 is the space between title and description
-        const cardPadding = 10;
+        const cardPadding = 12;
         const cardTotalHeight = contentHeight + cardPadding;
 
         if (y + cardTotalHeight > pageHeight - margin) {
@@ -256,12 +260,12 @@ export default function QuoteDetailsPage() {
         doc.setFillColor(248, 248, 248);
         doc.roundedRect(margin, y, pageWidth - (margin * 2), cardTotalHeight, 3, 3, 'FD');
   
-        let contentY = y + cardPadding / 2;
+        let contentY = y + (cardPadding / 2);
   
         doc.setFont('Helvetica', 'bold');
         doc.setFontSize(12);
-        doc.text(titleLines, margin + 10, contentY);
-        contentY += titleHeight + 3;
+        doc.text(titleLines, margin + 10, contentY + 3);
+        contentY += titleHeight + spacing;
   
         doc.setFont('Helvetica', 'normal');
         doc.setFontSize(10);
