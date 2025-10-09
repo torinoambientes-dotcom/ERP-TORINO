@@ -223,12 +223,12 @@ export default function QuoteDetailsPage() {
     // --- Content ---
     for (const env of quote.environments) {
         if (isQuote) {
-            const environmentValue = (env.furniture || []).reduce((envAcc, fur) => {
-                return envAcc + (fur.materials || []).reduce((furAcc, mat) => {
-                    return furAcc + ((mat.quantity || 0) * (mat.cost || 0) * (mat.markup || 1));
-                }, 0);
-            }, 0);
-            totalQuoteValue += environmentValue;
+          const environmentValue = (env.furniture || []).reduce((envAcc, fur) => {
+              return envAcc + (fur.materials || []).reduce((matAcc, mat) => {
+                  return matAcc + (mat.quantity * (mat.cost || 0) * (mat.markup || 1));
+              }, 0);
+          }, 0);
+          totalQuoteValue += environmentValue;
         }
 
         checkPageBreak(20);
@@ -240,7 +240,7 @@ export default function QuoteDetailsPage() {
         doc.text(envNameText, margin, y);
 
         if(isQuote){
-            const environmentValue = (env.furniture || []).reduce((envAcc, fur) => furAcc + (fur.materials || []).reduce((furAcc, mat) => furAcc + (mat.quantity * (mat.cost || 0) * (mat.markup || 1)), 0), 0);
+            const environmentValue = (env.furniture || []).reduce((envAcc, fur) => envAcc + (fur.materials || []).reduce((matAcc, mat) => matAcc + (mat.quantity * (mat.cost || 0) * (mat.markup || 1)), 0), 0);
             const envValueText = `- R$ ${environmentValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
             doc.setFont('Helvetica', 'normal');
             doc.text(envValueText, margin + doc.getStringUnitWidth(envNameText) * doc.getFontSize() / doc.internal.scaleFactor + 3, y);
