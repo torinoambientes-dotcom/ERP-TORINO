@@ -25,7 +25,7 @@ import type { QuoteFurniture, MaterialItem, QuoteMaterial } from '@/lib/types';
 import { ScrollArea } from '../ui/scroll-area';
 import { generateId, cn } from '@/lib/utils';
 import { Separator } from '../ui/separator';
-import { PlusCircle, Trash2 } from 'lucide-react';
+import { PlusCircle, Trash2, Calculator } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
@@ -179,6 +179,8 @@ export function QuoteMaterialsModal({
 }: QuoteMaterialsModalProps) {
   const { toast } = useToast();
   const { quoteMaterials } = useContext(AppContext);
+  
+  const [totals, setTotals] = useState({ cost: 0, budget: 0 });
 
   const form = useForm<MaterialFormValues>({
     resolver: zodResolver(formSchema),
@@ -192,33 +194,33 @@ export function QuoteMaterialsModal({
     name: 'materials',
   });
 
-  useEffect(() => {
-    if (isOpen) {
-      form.reset({
-        materials: furniture.materials || [],
-      });
-    }
-  }, [isOpen, furniture, form]);
-
-  const watchedMaterials = form.watch('materials');
-  const { totalCost, totalBudgetValue } = useMemo(() => {
-    const result = (watchedMaterials || []).reduce((acc, material) => {
+  const calculateTotals = (materials: MaterialFormValues['materials']) => {
+    return (materials || []).reduce((acc, material) => {
       const quantity = Number(material.quantity) || 0;
       const cost = Number(material.cost) || 0;
       const markup = Number(material.markup) || 1;
       
-      const newCost = acc.cost + quantity * cost;
-      const newBudget = acc.budget + quantity * cost * markup;
+      acc.cost += quantity * cost;
+      acc.budget += quantity * cost * markup;
 
-      return { cost: newCost, budget: newBudget };
+      return acc;
     }, { cost: 0, budget: 0 });
-    
-    return {
-        totalCost: result.cost,
-        totalBudgetValue: result.budget
-    };
+  };
+  
+  useEffect(() => {
+    if (isOpen) {
+      const initialMaterials = furniture.materials || [];
+      form.reset({
+        materials: initialMaterials,
+      });
+      setTotals(calculateTotals(initialMaterials));
+    }
+  }, [isOpen, furniture, form]);
 
-  }, [watchedMaterials]);
+  const handleCalculate = () => {
+    const currentMaterials = form.getValues('materials');
+    setTotals(calculateTotals(currentMaterials));
+  };
 
 
   const onSubmit = () => {
@@ -301,16 +303,20 @@ export function QuoteMaterialsModal({
               </div>
             </ScrollArea>
             
-            <DialogFooter className="mt-4 pt-4 border-t items-end gap-4">
+            <DialogFooter className="mt-4 pt-4 border-t items-center gap-4">
+                <Button type="button" variant="secondary" onClick={handleCalculate} className="mr-auto">
+                    <Calculator className="mr-2 h-4 w-4" />
+                    Calcular
+                </Button>
               <div className='flex flex-col text-right'>
                 <p className='text-sm text-muted-foreground'>Custo Total dos Materiais</p>
-                <p className='text-lg font-semibold'>R$ {totalCost.toFixed(2)}</p>
+                <p className='text-lg font-semibold'>R$ {totals.cost.toFixed(2)}</p>
               </div>
               <div className='flex flex-col text-right'>
                 <p className='text-sm text-muted-foreground'>Valor do Orçamento</p>
-                <p className='text-xl font-bold text-primary'>R$ {totalBudgetValue.toFixed(2)}</p>
+                <p className='text-xl font-bold text-primary'>R$ {totals.budget.toFixed(2)}</p>
               </div>
-              <div className='flex-grow' />
+              
               <Button type="button" variant="ghost" onClick={onClose}>
                 Cancelar
               </Button>
