@@ -159,8 +159,21 @@ export default function QuoteDetailsPage() {
     let totalQuoteValue = 0;
   
     // --- Header ---
-    const coloredLogoSvg = logoSvgString.replace(/currentColor/g, "#292524");
-    await doc.svg(coloredLogoSvg, { x: margin, y: y - 12, width: 40, height: 12.3 });
+    doc.setFont('Helvetica', 'normal');
+    doc.setFontSize(20);
+    doc.text('TORINO', margin, y);
+
+    doc.setFontSize(8);
+    const torinoWidth = doc.getStringUnitWidth('TORINO') * 20 / doc.internal.scaleFactor;
+    const ambientesWidth = doc.getStringUnitWidth('AMBIENTES') * 8 / doc.internal.scaleFactor;
+    const charSpacing = (torinoWidth - ambientesWidth) / ('AMBIENTES'.length - 1);
+    doc.setCharSpace(charSpacing);
+    doc.setTextColor('#969696');
+    doc.text('AMBIENTES', margin, y + 5);
+
+    // Reset styles
+    doc.setCharSpace(0);
+    doc.setTextColor('#000000');
 
 
     doc.setFont('Helvetica', 'bold');
@@ -570,3 +583,5 @@ export default function QuoteDetailsPage() {
 
     
 }
+
+    
