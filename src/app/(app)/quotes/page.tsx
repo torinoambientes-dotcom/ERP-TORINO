@@ -131,7 +131,7 @@ export default function QuotesPage() {
                                         {quote.isArchived && <Badge variant="outline">Arquivado</Badge>}
                                     </CardHeader>
                                     <CardContent>
-                                        <p className="text-sm text-muted-foreground">{quote.environments.length} ambiente(s)</p>
+                                        <p className="text-sm text-muted-foreground">{(quote.environments || []).length} ambiente(s)</p>
                                     </CardContent>
                                 </Card>
                               </Link>
