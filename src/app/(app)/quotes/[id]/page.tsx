@@ -21,7 +21,7 @@ import { QuoteMaterialsModal } from '@/components/modals/quote-materials-modal';
 import { RegisterQuoteModal } from '@/components/modals/register-quote-modal';
 import { QuoteFurnitureDescriptionModal } from '@/components/modals/quote-furniture-description-modal';
 import jsPDF from 'jspdf';
-import { logoSvgString } from '@/components/logo';
+import 'jspdf-autotable'; // Ensure you have this import if you use autoTable
 
 type StageKey = 'internalProjectStage' | 'materialSurveyStage' | 'descriptiveStage';
 
@@ -148,33 +148,32 @@ export default function QuoteDetailsPage() {
     return new Map(teamMembers.map(m => [m.id, m]));
   }, [teamMembers]);
 
-  const generatePDF = async (isQuote: boolean) => {
+ const generatePDF = (isQuote: boolean) => {
     if (!quote) return;
   
     const doc = new jsPDF('p', 'mm', 'a4');
     const pageHeight = doc.internal.pageSize.height || doc.internal.pageSize.getHeight();
     const pageWidth = doc.internal.pageSize.width || doc.internal.pageSize.getWidth();
     const margin = 15;
-    let y = 0;
+    let y = 30; // Start y position after header
     let totalQuoteValue = 0;
   
-    const addHeader = () => {
-      // Adiciona a logo
-      const coloredLogoSvg = logoSvgString.replace(/currentColor/g, "#292524");
-      doc.addSvgAsImage(coloredLogoSvg, margin, 12, 40, 12.3);
+    const addHeader = (pageNumber: number) => {
+        // --- Header ---
+        doc.setFont('Helvetica', 'normal');
+        doc.setFontSize(16);
+        doc.text('TORINO', margin, 18);
+        doc.setFontSize(7);
+        doc.text('AMBIENTES', margin, 22, { charSpace: 2 });
 
-      // Título do documento
-      doc.setFont('Helvetica', 'bold');
-      doc.setFontSize(14);
-      const title = isQuote ? 'Proposta Comercial' : 'Memorial Descritivo';
-      const titleWidth = doc.getStringUnitWidth(title) * doc.getFontSize() / doc.internal.scaleFactor;
-      doc.text(title, pageWidth - margin - titleWidth, 20);
+        const title = isQuote ? 'Proposta Comercial' : 'Memorial Descritivo';
+        doc.setFont('Helvetica', 'bold');
+        doc.setFontSize(14);
+        const titleWidth = doc.getStringUnitWidth(title) * doc.getFontSize() / doc.internal.scaleFactor;
+        doc.text(title, pageWidth - margin - titleWidth, 20);
 
-      // Linha separadora do cabeçalho
-      y = 30;
-      doc.setDrawColor(220, 220, 220);
-      doc.line(margin, y, pageWidth - margin, y);
-      y += 10;
+        doc.setDrawColor(220, 220, 220);
+        doc.line(margin, 28, pageWidth - margin, 28);
     };
   
     const addFooter = (pageNumber: number, totalPages: number) => {
@@ -197,27 +196,26 @@ export default function QuoteDetailsPage() {
     const checkPageBreak = (requiredHeight: number) => {
         if (y + requiredHeight > pageHeight - 25) { // 25mm margin for footer
             doc.addPage();
-            y = 0;
-            addHeader();
+            y = 30; // Reset y for new page
             return true;
         }
         return false;
     };
     
-    addHeader();
+    // Initial Page
+    addHeader(1);
   
     // --- Client and Date Info ---
+    y+= 10;
     doc.setFont('Helvetica', 'bold');
     doc.setFontSize(12);
     doc.text(`Cliente:`, margin, y);
     doc.setFont('Helvetica', 'normal');
     doc.text(`${quote.clientName}`, margin + 20, y);
-    y+= 6;
-
-    doc.setFont('Helvetica', 'bold');
-    doc.text(`Data:`, margin, y);
-    doc.setFont('Helvetica', 'normal');
-    doc.text(`${new Date().toLocaleDateString('pt-BR')}`, margin + 20, y);
+    
+    const dateText = `Data: ${new Date().toLocaleDateString('pt-BR')}`;
+    const dateWidth = doc.getStringUnitWidth(dateText) * doc.getFontSize() / doc.internal.scaleFactor;
+    doc.text(dateText, pageWidth - margin - dateWidth, y);
     y += 15;
   
     // --- Content ---
@@ -231,17 +229,19 @@ export default function QuoteDetailsPage() {
           totalQuoteValue += environmentValue;
         }
 
-        checkPageBreak(20);
+        const envNameText = env.name;
+        const envValue = (env.furniture || []).reduce((envAcc, fur) => envAcc + (fur.materials || []).reduce((matAcc, mat) => matAcc + (mat.quantity * (mat.cost || 0) * (mat.markup || 1)), 0), 0);
+        const envValueText = isQuote ? `- R$ ${envValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '';
+        const environmentBlockHeight = 15; // Approx height for title
+        
+        checkPageBreak(environmentBlockHeight);
 
         // Environment Title
         doc.setFont('Helvetica', 'bold');
-        doc.setFontSize(16);
-        const envNameText = env.name;
+        doc.setFontSize(14);
         doc.text(envNameText, margin, y);
-
-        if(isQuote){
-            const environmentValue = (env.furniture || []).reduce((envAcc, fur) => envAcc + (fur.materials || []).reduce((matAcc, mat) => matAcc + (mat.quantity * (mat.cost || 0) * (mat.markup || 1)), 0), 0);
-            const envValueText = `- R$ ${environmentValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        
+        if (isQuote) {
             doc.setFont('Helvetica', 'normal');
             doc.text(envValueText, margin + doc.getStringUnitWidth(envNameText) * doc.getFontSize() / doc.internal.scaleFactor + 3, y);
         }
@@ -253,24 +253,25 @@ export default function QuoteDetailsPage() {
         // Furniture
         for (const fur of (env.furniture || [])) {
             const descriptionText = fur.description || 'Nenhum descritivo fornecido.';
-            const descriptionLines = doc.splitTextToSize(descriptionText, pageWidth - (margin * 2));
-            const furnitureBlockHeight = 6 + (descriptionLines.length * 4) + 8; // title height + description height + bottom margin
+            const descriptionLines = doc.splitTextToSize(descriptionText, pageWidth - (margin * 2) - 5); // Indent
+            const lineHeight = doc.getLineHeight() / doc.internal.scaleFactor;
+            const furnitureBlockHeight = 6 + (descriptionLines.length * lineHeight) + 4; // title + description + margin
             
             checkPageBreak(furnitureBlockHeight);
 
             doc.setFont('Helvetica', 'bold');
             doc.setFontSize(11);
             doc.text(fur.name, margin, y);
-            y += 5;
+            y += 6;
 
             doc.setFont('Helvetica', 'normal');
             doc.setFontSize(10);
             doc.setTextColor('#666666');
-            doc.text(descriptionLines, margin, y);
-            y += descriptionLines.length * 4 + 6;
+            doc.text(descriptionLines, margin + 5, y); // Indent description
+            y += descriptionLines.length * lineHeight + 4;
             doc.setTextColor('#000000');
         }
-        y+= 5; // Extra space after an environment block
+        y+= 10; // Extra space after an environment block
     }
   
     if (isQuote) {
@@ -278,7 +279,8 @@ export default function QuoteDetailsPage() {
         y+= 5;
         doc.setFont('Helvetica', 'bold');
         doc.setFontSize(16);
-        doc.text(`Valor Total do Orçamento: R$ ${totalQuoteValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, margin, y);
+        const totalText = `Valor Total do Orçamento: R$ ${totalQuoteValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        doc.text(totalText, margin, y);
         y += 15;
     }
     
@@ -295,6 +297,7 @@ export default function QuoteDetailsPage() {
     const totalPages = (doc as any).internal.getNumberOfPages();
     for (let i = 1; i <= totalPages; i++) {
       doc.setPage(i);
+      addHeader(i);
       addFooter(i, totalPages);
     }
     
