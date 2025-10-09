@@ -161,14 +161,16 @@ export default function QuoteDetailsPage() {
     doc.setFontSize(22);
     const torinoText = 'TORINO';
     const torinoWidth = doc.getStringUnitWidth(torinoText) * doc.getFontSize() / doc.internal.scaleFactor;
-    doc.text(torinoText, (pageWidth - torinoWidth) / 2, y);
-
+    const torinoStartX = (pageWidth - torinoWidth) / 2;
+    doc.text(torinoText, torinoStartX, y);
+    
     y += 7;
     doc.setFontSize(8);
     doc.setCharSpace(3);
     const ambientesText = 'AMBIENTES';
     const ambientesWidth = doc.getStringUnitWidth(ambientesText) * doc.getFontSize() / doc.internal.scaleFactor + (ambientesText.length -1) * 3;
-    doc.text(ambientesText, (pageWidth - ambientesWidth) / 2, y);
+    const ambientesStartX = torinoStartX + (torinoWidth - ambientesWidth) / 2;
+    doc.text(ambientesText, ambientesStartX, y);
     
     y += 15;
     doc.setCharSpace(0);
