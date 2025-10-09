@@ -21,15 +21,17 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import type { QuoteFurniture, MaterialItem, QuoteMaterial } from '@/lib/types';
+import type { QuoteFurniture, MaterialItem, QuoteMaterial, GlassItem, ProfileDoorItem } from '@/lib/types';
 import { ScrollArea } from '../ui/scroll-area';
 import { generateId, cn } from '@/lib/utils';
 import { Separator } from '../ui/separator';
-import { PlusCircle, Trash2, Calculator } from 'lucide-react';
+import { PlusCircle, Trash2, Calculator, Pencil } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { AppContext } from '@/context/app-context';
+import { GlassCreatorModal } from './glass-creator-modal';
+import { ProfileDoorCreatorModal } from './profile-door-creator-modal';
 
 interface QuoteMaterialsModalProps {
   isOpen: boolean;
@@ -49,9 +51,14 @@ const materialSchema = z.object({
   addedAt: z.string().optional(),
 });
 
+const glassSchema = z.object({ id: z.string() }).passthrough();
+const profileDoorSchema = z.object({ id: z.string() }).passthrough();
+
 
 const formSchema = z.object({
   materials: z.array(materialSchema),
+  glassItems: z.array(glassSchema),
+  profileDoors: z.array(profileDoorSchema),
 });
 
 type MaterialFormValues = z.infer<typeof formSchema>;
@@ -183,10 +190,20 @@ export function QuoteMaterialsModal({
   const [totalCost, setTotalCost] = useState(0);
   const [totalBudgetValue, setTotalBudgetValue] = useState(0);
 
+  const [isDoorCreatorOpen, setDoorCreatorOpen] = useState(false);
+  const [doorToEdit, setDoorToEdit] = useState<ProfileDoorItem | null>(null);
+  const [doorIndexToEdit, setDoorIndexToEdit] = useState<number | null>(null);
+
+  const [isGlassCreatorOpen, setGlassCreatorOpen] = useState(false);
+  const [glassToEdit, setGlassToEdit] = useState<GlassItem | null>(null);
+  const [glassIndexToEdit, setGlassIndexToEdit] = useState<number | null>(null);
+
   const form = useForm<MaterialFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       materials: [],
+      glassItems: [],
+      profileDoors: [],
     },
   });
 
@@ -194,41 +211,50 @@ export function QuoteMaterialsModal({
     control: form.control,
     name: 'materials',
   });
+
+  const { fields: glassFields, append: appendGlass, remove: removeGlass, update: updateGlass } = useFieldArray({
+    control: form.control,
+    name: 'glassItems',
+  });
+  
+  const { fields: profileDoorFields, append: appendProfileDoor, remove: removeProfileDoor, update: updateProfileDoor } = useFieldArray({
+    control: form.control,
+    name: 'profileDoors',
+  });
+  
+  const handleCalculate = useCallback((materialsToCalc?: MaterialFormValues) => {
+    const data = materialsToCalc || form.getValues();
+    
+    // Calculate from general materials
+    let cost = (data.materials || []).reduce((acc, mat) => acc + (Number(mat.quantity) || 0) * (Number(mat.cost) || 0), 0);
+    let budget = (data.materials || []).reduce((acc, mat) => acc + (Number(mat.quantity) || 0) * (Number(mat.cost) || 0) * (Number(mat.markup) || 1), 0);
+
+    // TODO: Add calculation logic for glass and profile doors
+    // For now, just setting the state.
+    setTotalCost(cost);
+    setTotalBudgetValue(budget);
+  }, [form]);
   
   useEffect(() => {
     if (isOpen) {
-      const initialMaterials = furniture.materials || [];
-      form.reset({
-        materials: initialMaterials,
-      });
-      handleCalculate(initialMaterials); // Calculate initial totals
+      const initialData = {
+        materials: furniture.materials || [],
+        glassItems: furniture.glassItems || [],
+        profileDoors: furniture.profileDoors || [],
+      };
+      form.reset(initialData);
+      handleCalculate(initialData);
     }
-  }, [isOpen, furniture, form]);
+  }, [isOpen, furniture, form, handleCalculate]);
 
-  const handleCalculate = (materialsToCalc?: MaterialFormValues['materials']) => {
-    const materials = materialsToCalc || form.getValues('materials');
-    const { cost, budget } = (materials || []).reduce(
-      (acc, material) => {
-        const quantity = Number(material.quantity) || 0;
-        const cost = Number(material.cost) || 0;
-        const markup = Number(material.markup) || 1;
-
-        acc.cost += quantity * cost;
-        acc.budget += quantity * cost * markup;
-        
-        return acc;
-      },
-      { cost: 0, budget: 0 }
-    );
-    setTotalCost(cost);
-    setTotalBudgetValue(budget);
-  };
 
   const onSubmit = () => {
     const data = form.getValues();
     const updatedFurniture: QuoteFurniture = {
       ...furniture,
-      materials: data.materials as MaterialItem[],
+      materials: data.materials,
+      glassItems: data.glassItems as GlassItem[],
+      profileDoors: data.profileDoors as ProfileDoorItem[],
     };
     onUpdate(updatedFurniture);
     toast({
@@ -249,6 +275,79 @@ export function QuoteMaterialsModal({
         addedAt: new Date().toISOString()
     });
   };
+  
+  const handleSaveProfileDoor = (doorData: Omit<ProfileDoorItem, 'id' | 'purchased' | 'addedAt'>) => {
+    if (doorIndexToEdit !== null) {
+      const existingDoor = profileDoorFields[doorIndexToEdit];
+      updateProfileDoor(doorIndexToEdit, { ...existingDoor, ...doorData });
+      toast({ title: "Porta atualizada!" });
+    } else {
+      appendProfileDoor({
+        ...doorData,
+        id: generateId('pfd'),
+        addedAt: new Date().toISOString(),
+        purchased: false,
+      } as ProfileDoorItem);
+      toast({ title: "Porta adicionada!" });
+    }
+  };
+
+  const handleOpenDoorEditor = (index: number | null) => {
+    if (index !== null) {
+      setDoorToEdit(profileDoorFields[index] as ProfileDoorItem);
+      setDoorIndexToEdit(index);
+    } else {
+      setDoorToEdit(null);
+      setDoorIndexToEdit(null);
+    }
+    setDoorCreatorOpen(true);
+  };
+  
+  const handleCloseDoorEditor = () => {
+    setDoorToEdit(null);
+    setDoorIndexToEdit(null);
+    setDoorCreatorOpen(false);
+  }
+
+  const handleSaveGlass = (glassData: Omit<GlassItem, 'id' | 'addedAt' | 'purchased'>) => {
+      if (glassIndexToEdit !== null) {
+          const existingGlass = glassFields[glassIndexToEdit];
+          const updatedGlass = {
+              id: existingGlass.id,
+              addedAt: existingGlass.addedAt,
+              purchased: existingGlass.purchased,
+              ...glassData,
+          };
+          updateGlass(glassIndexToEdit, updatedGlass);
+          toast({ title: "Vidro atualizado!" });
+      } else {
+          const newGlassData = {
+              ...glassData,
+              id: generateId('gla'),
+              addedAt: new Date().toISOString(),
+              purchased: false,
+          };
+          appendGlass(newGlassData as GlassItem);
+          toast({ title: "Vidro adicionado!" });
+      }
+  };
+
+  const handleOpenGlassEditor = (index: number | null) => {
+    if (index !== null) {
+      setGlassToEdit(glassFields[index] as GlassItem);
+      setGlassIndexToEdit(index);
+    } else {
+      setGlassToEdit(null);
+      setGlassIndexToEdit(null);
+    }
+    setGlassCreatorOpen(true);
+  };
+  
+  const handleCloseGlassEditor = () => {
+    setGlassToEdit(null);
+    setGlassIndexToEdit(null);
+    setGlassCreatorOpen(false);
+  };
 
   return (
     <>
@@ -267,8 +366,64 @@ export function QuoteMaterialsModal({
           <form onSubmit={form.handleSubmit(onSubmit)} className="flex-grow flex flex-col overflow-hidden">
             <ScrollArea className="flex-grow pr-4 -mr-4 pt-4">
               <div className="space-y-6">
+                
+                {/* Portas de Perfil Section */}
                 <div>
-                  <h3 className="text-lg font-semibold mb-2">Materiais</h3>
+                  <h3 className="text-lg font-semibold mb-2">Portas de Perfil</h3>
+                  <div className="space-y-2">
+                    {profileDoorFields.length > 0 ? (
+                      profileDoorFields.map((field, index) => (
+                       <div key={field.id} className={cn("flex items-center justify-between rounded-lg border p-3 gap-2 text-sm", "bg-muted/50")}>
+                          <div className='flex-grow'>
+                            <p className="font-medium text-foreground">
+                                {field.quantity}x Porta {field.profileColor} / Vidro {field.glassType}
+                            </p>
+                            <p>{field.width}mm x {field.height}mm - Puxador: {field.handleType}</p>
+                          </div>
+                         <div className='flex items-center'>
+                            <Button type="button" variant="ghost" size="icon" className="text-muted-foreground hover:text-primary h-9 w-9 flex-shrink-0" onClick={() => handleOpenDoorEditor(index)}><Pencil className="h-4 w-4" /></Button>
+                            <Button type="button" variant="ghost" size="icon" className="text-destructive/80 hover:text-destructive h-9 w-9 flex-shrink-0" onClick={() => removeProfileDoor(index)}><Trash2 className="h-4 w-4" /></Button>
+                         </div>
+                       </div>
+                      ))
+                    ) : (
+                      <p className="text-sm text-muted-foreground text-center py-4">Nenhuma porta de perfil adicionada.</p>
+                    )}
+                  </div>
+                   <Button type="button" variant="outline" size="sm" className="mt-4" onClick={() => handleOpenDoorEditor(null)}><PlusCircle className="mr-2 h-4 w-4" />Adicionar Porta de Perfil</Button>
+                </div>
+
+                <Separator />
+                
+                {/* Vidraçaria Section */}
+                <div>
+                  <h3 className="text-lg font-semibold mb-2">Vidraçaria</h3>
+                   <div className="space-y-2">
+                    {glassFields.length > 0 ? (
+                      glassFields.map((field, index) => (
+                       <div key={field.id} className={cn("flex items-center justify-between rounded-lg border p-3 gap-2 text-sm", "bg-muted/50")}>
+                          <div className='flex-grow'>
+                            <p className="font-medium text-foreground">{field.quantity}x {field.type} {field.shape === 'circle' ? '(Círculo)' : ''}</p>
+                            <p>{field.shape === 'circle' ? `Ø ${field.diameter}mm` : `${field.width}mm x ${field.height}mm`}</p>
+                          </div>
+                         <div className='flex items-center'>
+                            <Button type="button" variant="ghost" size="icon" className="text-muted-foreground hover:text-primary h-9 w-9 flex-shrink-0" onClick={() => handleOpenGlassEditor(index)}><Pencil className="h-4 w-4" /></Button>
+                            <Button type="button" variant="ghost" size="icon" className="text-destructive/80 hover:text-destructive h-9 w-9 flex-shrink-0" onClick={() => removeGlass(index)}><Trash2 className="h-4 w-4" /></Button>
+                         </div>
+                       </div>
+                      ))
+                    ) : (
+                      <p className="text-sm text-muted-foreground text-center py-4">Nenhum item de vidraçaria adicionado.</p>
+                    )}
+                  </div>
+                   <Button type="button" variant="outline" size="sm" className="mt-4" onClick={() => handleOpenGlassEditor(null)}><PlusCircle className="mr-2 h-4 w-4" />Adicionar Vidraçaria</Button>
+                </div>
+
+                <Separator />
+
+                {/* Materiais Gerais Section */}
+                <div>
+                  <h3 className="text-lg font-semibold mb-2">Materiais Gerais</h3>
                    <div className="space-y-4">
                     {materialFields.length > 0 ? (
                       materialFields.map((field, index) => (
@@ -284,22 +439,10 @@ export function QuoteMaterialsModal({
                         )
                       )
                     ) : (
-                      <p className="text-sm text-muted-foreground text-center py-4">
-                        Nenhum material adicionado.
-                      </p>
+                      <p className="text-sm text-muted-foreground text-center py-4">Nenhum material geral adicionado.</p>
                     )}
                   </div>
-                  
-                   <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="mt-4"
-                      onClick={handleAddNewMaterial}
-                    >
-                      <PlusCircle className="mr-2 h-4 w-4" />
-                      Adicionar Material
-                    </Button>
+                   <Button type="button" variant="outline" size="sm" className="mt-4" onClick={handleAddNewMaterial}><PlusCircle className="mr-2 h-4 w-4" />Adicionar Material Geral</Button>
                 </div>
               </div>
             </ScrollArea>
@@ -327,6 +470,27 @@ export function QuoteMaterialsModal({
         </Form>
       </DialogContent>
     </Dialog>
+    
+    {isOpen && (
+        <ProfileDoorCreatorModal
+            isOpen={isDoorCreatorOpen}
+            onClose={handleCloseDoorEditor}
+            onSave={handleSaveProfileDoor}
+            clientName={clientName}
+            doorToEdit={doorToEdit}
+            viewOnly={false} // Always editable in quote context
+        />
+    )}
+    {isOpen && (
+      <GlassCreatorModal
+        isOpen={isGlassCreatorOpen}
+        onClose={handleCloseGlassEditor}
+        onSave={handleSaveGlass}
+        glassToEdit={glassToEdit}
+        clientName={clientName}
+        viewOnly={false} // Always editable in quote context
+      />
+    )}
     </>
   );
 }
