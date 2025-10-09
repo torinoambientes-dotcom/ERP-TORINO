@@ -21,6 +21,7 @@ import { QuoteMaterialsModal } from '@/components/modals/quote-materials-modal';
 import { RegisterQuoteModal } from '@/components/modals/register-quote-modal';
 import { QuoteFurnitureDescriptionModal } from '@/components/modals/quote-furniture-description-modal';
 import jsPDF from 'jspdf';
+import { logoSvgString } from '@/components/logo';
 
 type StageKey = 'internalProjectStage' | 'materialSurveyStage' | 'descriptiveStage';
 
@@ -147,7 +148,7 @@ export default function QuoteDetailsPage() {
     return new Map(teamMembers.map(m => [m.id, m]));
   }, [teamMembers]);
 
-  const generatePDF = (isQuote: boolean) => {
+  const generatePDF = async (isQuote: boolean) => {
     if (!quote) return;
   
     const doc = new jsPDF();
@@ -158,21 +159,9 @@ export default function QuoteDetailsPage() {
     let totalQuoteValue = 0;
   
     // --- Header ---
-    doc.setFont('Helvetica', 'normal');
-    doc.setFontSize(20);
-    doc.setTextColor(41, 37, 36);
-    doc.text('TORINO', margin, y, { align: 'left' });
-    
-    // Calculate width of TORINO to align AMBIENTES
-    const torinoWidth = doc.getStringUnitWidth('TORINO') * doc.getFontSize() / doc.internal.scaleFactor;
+    const coloredLogoSvg = logoSvgString.replace(/currentColor/g, "#292524");
+    await doc.svg(coloredLogoSvg, { x: margin, y: y - 12, width: 40, height: 12.3 });
 
-    doc.setFontSize(8);
-    doc.setTextColor(150, 150, 150);
-    doc.text('AMBIENTES', margin, y + 6, { align: 'left', charSpace: 3.1 });
-
-    // Reset text settings
-    doc.setCharSpace(0);
-    doc.setTextColor(41, 37, 36);
 
     doc.setFont('Helvetica', 'bold');
     doc.setFontSize(18);
