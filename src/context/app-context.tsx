@@ -47,7 +47,7 @@ interface AppContextType {
   updatePurchaseRequest: (requestData: PurchaseRequest) => void;
   updatePurchaseRequestStatus: (requestId: string, status: PurchaseRequestStatus, notes?: string) => void;
   deletePurchaseRequest: (requestId: string) => void;
-  addQuote: (quoteData: Omit<Quote, 'id' | 'createdAt' | 'updatedAt' | 'status' | 'totalValue' | 'items'> & { environments: any[] }) => void;
+  addQuote: (quoteData: { clientName: string; clientContact?: string; environments: any[] }) => void;
 }
 
 export const AppContext = createContext<AppContextType>({
@@ -782,29 +782,30 @@ export function AppProvider({ children }: { children: ReactNode }) {
         deleteDocumentNonBlocking(requestRef);
     }, [firestore]);
 
-    const addQuote = useCallback((quoteData: Omit<Quote, 'id' | 'createdAt' | 'updatedAt' | 'status' | 'totalValue' | 'items'> & { environments: any[] }) => {
+    const addQuote = useCallback((quoteData: { clientName: string; clientContact?: string; environments: any[] }) => {
       if (!firestore) return;
       const now = new Date().toISOString();
+      const quoteId = generateId('quote');
       
-      const newQuote: Omit<Quote, 'id'> = {
+      const newQuote: Quote = {
+        id: quoteId,
         clientName: quoteData.clientName,
-        clientContact: quoteData.clientContact,
-        environments: quoteData.environments.map(env => ({
+        clientContact: quoteData.clientContact || '',
+        environments: quoteData.environments.map((env: any) => ({
           ...env,
           id: generateId('env'),
           furniture: env.furniture.map((fur: any) => ({ ...fur, id: generateId('fur') }))
         })),
-        items: [], // Deprecated, but keep for schema compatibility if needed.
-        totalValue: 0, // Should be calculated later
-        notes: quoteData.notes,
+        items: [],
+        totalValue: 0,
+        notes: '',
         status: 'draft',
         createdAt: now,
         updatedAt: now,
       };
       
-      const quoteId = generateId('quote');
       const quoteRef = doc(firestore, 'quotes', quoteId);
-      setDocumentNonBlocking(quoteRef, { ...newQuote, id: quoteId }, { merge: false });
+      setDocumentNonBlocking(quoteRef, newQuote, { merge: false });
     }, [firestore]);
 
 
