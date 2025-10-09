@@ -73,12 +73,6 @@ export default function ProjectDetailsPage() {
   const [selectedFurniture, setSelectedFurniture] = useState<Furniture | null>(null);
   const [selectedEnvironmentId, setSelectedEnvironmentId] = useState<string | null>(null);
   
-  const defaultOpenAccordionItems = useMemo(() => {
-    if (project?.environments) {
-      return project.environments.map(env => env.id);
-    }
-    return [];
-  }, [project]);
 
   useEffect(() => {
     if (!isLoading && projects) {
@@ -278,8 +272,8 @@ export default function ProjectDetailsPage() {
           </div>
         </div>
 
-        {defaultOpenAccordionItems.length > 0 && (
-          <Accordion type="multiple" defaultValue={defaultOpenAccordionItems} className="space-y-4">
+        {project.environments?.length > 0 && (
+          <Accordion type="multiple" className="space-y-4">
             {project.environments?.map((env) => {
               
               const {status, progress} = getEnvironmentStatus(env);
@@ -296,10 +290,10 @@ export default function ProjectDetailsPage() {
               return (
               <AccordionItem key={env.id} value={env.id} className="border-none">
                  <div className="bg-card rounded-lg overflow-hidden border">
-                    <AccordionTrigger className="p-4 bg-muted/50 hover:no-underline [&[data-state=closed]>div>div]:opacity-0 [&[data-state=closed]>div>div]:h-0 [&[data-state=open]>div>div]:opacity-100 [&[data-state=open]>div>div]:h-auto">
+                    <AccordionTrigger className="p-4 bg-muted/50 hover:no-underline">
                         <div className="flex-grow flex flex-col items-start text-left gap-2">
                            <h3 className="font-headline text-xl">{env.name}</h3>
-                           <div className="flex items-center gap-4 transition-all duration-300 ease-in-out w-full">
+                           <div className="flex items-center gap-4 w-full">
                               <Progress value={progress} className="w-1/2 h-1.5" />
                               <div className='flex gap-2 items-center'>
                                 <Badge variant={statusConfig[status].variant} className={cn('text-xs', statusConfig[status].className)}>{status}</Badge>
