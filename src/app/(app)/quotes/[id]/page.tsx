@@ -182,7 +182,6 @@ export default function QuoteDetailsPage() {
     const titleWidth = doc.getStringUnitWidth(title) * doc.getFontSize() / doc.internal.scaleFactor;
     doc.text(title, pageWidth - margin - titleWidth, y);
   
-  
     y += 10;
     doc.setDrawColor(220, 220, 220);
     doc.line(margin, y, pageWidth - margin, y); 
@@ -197,7 +196,7 @@ export default function QuoteDetailsPage() {
     y += 6;
     doc.setFontSize(10);
     doc.text(`Data: ${generationDate}`, margin, y);
-    y += 10;
+    y += 15;
   
     // --- Content ---
     for (const [envIndex, env] of quote.environments.entries()) {
@@ -210,61 +209,74 @@ export default function QuoteDetailsPage() {
         }, 0);
         totalQuoteValue += environmentValue;
       }
-  
-      if (y > pageHeight - 60) { 
+      
+      const cardPadding = 8;
+      let cardContentHeight = 0;
+
+      doc.setFont('Helvetica', 'bold');
+      doc.setFontSize(14);
+      cardContentHeight += doc.getLineHeight() * 0.352778 + 4; // Space after title
+
+      (env.furniture || []).forEach((fur, furIndex) => {
+          doc.setFont('Helvetica', 'bold');
+          doc.setFontSize(12);
+          const titleLines = doc.splitTextToSize(fur.name, pageWidth - (margin * 2) - (cardPadding * 2));
+          cardContentHeight += titleLines.length * (doc.getLineHeight() * 0.352778) + 2;
+
+          doc.setFontSize(10);
+          const descriptionText = fur.description || 'Nenhum descritivo fornecido.';
+          const descriptionLines = doc.splitTextToSize(descriptionText, pageWidth - (margin * 2) - (cardPadding * 2));
+          cardContentHeight += descriptionLines.length * (doc.getLineHeight() * 0.352778);
+          
+          if (furIndex < (env.furniture || []).length - 1) {
+            cardContentHeight += 6; // Space between furniture items
+          }
+      });
+      const totalCardHeight = cardContentHeight + (cardPadding * 2);
+
+      if (y + totalCardHeight > pageHeight - margin) { 
         doc.addPage();
         y = margin;
       }
 
-      if (envIndex > 0) {
-        y+= 5;
-      }
+      // Draw the card background
+      doc.setFillColor(248, 248, 248);
+      doc.roundedRect(margin, y, pageWidth - (margin * 2), totalCardHeight, 3, 3, 'FD');
 
+      let contentY = y + cardPadding;
+
+      // Draw environment title
       doc.setFont('Helvetica', 'bold');
       doc.setFontSize(14);
-      
       const envNameText = env.name;
       const envValueText = isQuote ? ` - R$ ${environmentValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '';
-      
-      doc.text(envNameText, margin, y);
-      if (isQuote) {
+      doc.text(envNameText, margin + cardPadding, contentY + 5);
+       if (isQuote) {
           doc.setFont('Helvetica', 'normal');
-          doc.text(envValueText, margin + doc.getStringUnitWidth(envNameText) * doc.getFontSize() / doc.internal.scaleFactor + 2, y);
+          doc.text(envValueText, margin + cardPadding + doc.getStringUnitWidth(envNameText) * doc.getFontSize() / doc.internal.scaleFactor + 2, contentY + 5);
       }
-      y += 8;
-  
+      contentY += (doc.getLineHeight() * 0.352778) + 8; // Adjust space after title
+
+      // Draw furniture inside the card
       for (const fur of (env.furniture || [])) {
-        doc.setFontSize(12);
-        const titleLines = doc.splitTextToSize(fur.name, pageWidth - (margin * 2));
-        
-        doc.setFontSize(10);
-        const descriptionText = fur.description || 'Nenhum descritivo fornecido.';
-        const descriptionLines = doc.splitTextToSize(descriptionText, pageWidth - (margin * 2));
-        
-        const titleHeight = (titleLines.length) * (doc.getLineHeight() / doc.internal.scaleFactor);
-        const descriptionHeight = (descriptionLines.length) * (doc.getLineHeight() / doc.internal.scaleFactor);
-        const spacing = 3;
-        
-        const contentHeight = titleHeight + spacing + descriptionHeight + 5; // Add extra space after description
-        
-        if (y + contentHeight > pageHeight - margin) {
-            doc.addPage();
-            y = margin;
-        }
-        
         doc.setFont('Helvetica', 'bold');
         doc.setFontSize(12);
-        doc.text(titleLines, margin, y);
-        y += titleHeight + 2;
+        const titleLines = doc.splitTextToSize(fur.name, pageWidth - (margin * 2) - (cardPadding * 2));
+        doc.text(titleLines, margin + cardPadding, contentY);
+        contentY += titleLines.length * (doc.getLineHeight() * 0.352778) + 2;
         
         doc.setFont('Helvetica', 'normal');
         doc.setFontSize(10);
         doc.setTextColor('#666666');
-        doc.text(descriptionLines, margin, y);
+        const descriptionText = fur.description || 'Nenhum descritivo fornecido.';
+        const descriptionLines = doc.splitTextToSize(descriptionText, pageWidth - (margin * 2) - (cardPadding * 2));
+        doc.text(descriptionLines, margin + cardPadding, contentY);
         doc.setTextColor('#000000');
         
-        y += descriptionHeight + 5; // Space after this furniture item
+        contentY += descriptionLines.length * (doc.getLineHeight() * 0.352778) + 6;
       }
+      
+      y += totalCardHeight + 5; // Move y to after the current card
     }
   
     if (isQuote) {
