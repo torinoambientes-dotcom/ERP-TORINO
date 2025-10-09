@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useContext } from 'react';
+import { useState, useContext, useMemo } from 'react';
 import Link from 'next/link';
 import { PageHeader } from '@/components/layout/page-header';
 import { Button } from '@/components/ui/button';
@@ -11,13 +11,31 @@ import { PlusCircle, FileText } from 'lucide-react';
 import { AppContext } from '@/context/app-context';
 import { RegisterQuoteModal } from '@/components/modals/register-quote-modal';
 import type { Quote } from '@/lib/types';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
 
-const statusMap: Record<string, { label: string; color: string }> = {
-  analyzing: { label: 'Em Análise', color: 'bg-yellow-500' },
-  approved: { label: 'Aprovado', color: 'bg-green-500' },
-  rejected: { label: 'Recusado', color: 'bg-red-500' },
-  pending_send: { label: 'A Enviar', color: 'bg-blue-500' },
-  sent: { label: 'Enviado', color: 'bg-indigo-500' },
+type QuoteGroup = 'inProgress' | 'approved' | 'rejected';
+
+const statusGroupMap: Record<string, QuoteGroup> = {
+  analyzing: 'inProgress',
+  pending_send: 'inProgress',
+  sent: 'inProgress',
+  approved: 'approved',
+  rejected: 'rejected',
+};
+
+const groupTitles: Record<QuoteGroup, string> = {
+  inProgress: 'Em Andamento',
+  approved: 'Fechados',
+  rejected: 'Recusados',
+};
+
+const statusDisplayMap: Record<string, { label: string; variant: 'default' | 'secondary' | 'outline' | 'destructive' }> = {
+    analyzing: { label: 'Em Análise', variant: 'outline' },
+    approved: { label: 'Aprovado', variant: 'default' },
+    rejected: { label: 'Recusado', variant: 'destructive' },
+    pending_send: { label: 'A Enviar', variant: 'secondary' },
+    sent: { label: 'Enviado', variant: 'secondary' },
 };
 
 
@@ -27,6 +45,30 @@ export default function QuotesPage() {
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState<string>('all');
 
+    const groupedQuotes = useMemo(() => {
+        const filtered = (quotes || []).filter((quote: Quote) => {
+            const matchesSearch = quote.clientName.toLowerCase().includes(searchTerm.toLowerCase());
+            const matchesStatus = statusFilter === 'all' || quote.clientFeedback === statusFilter || quote.presentationStatus === statusFilter;
+            return matchesSearch && matchesStatus;
+        });
+
+        const groups: Record<QuoteGroup, Quote[]> = {
+            inProgress: [],
+            approved: [],
+            rejected: [],
+        };
+
+        filtered.forEach(quote => {
+            const groupKey = statusGroupMap[quote.clientFeedback] || statusGroupMap[quote.presentationStatus];
+            if (groupKey) {
+                groups[groupKey].push(quote);
+            }
+        });
+        
+        return groups;
+
+    }, [quotes, searchTerm, statusFilter]);
+
     if (isLoading) {
         return (
           <div className="flex h-full w-full items-center justify-center">
@@ -34,12 +76,38 @@ export default function QuotesPage() {
           </div>
         );
     }
+    
+    const QuoteGroup = ({ title, quotes }: { title: string, quotes: Quote[] }) => {
+        if (quotes.length === 0) {
+            return null;
+        }
+        return (
+            <div className="space-y-4">
+                <div className='flex items-center gap-3'>
+                    <h3 className="font-headline text-xl font-semibold">{title}</h3>
+                    <Badge variant="secondary">{quotes.length}</Badge>
+                </div>
+                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                    {quotes.map(quote => {
+                        const statusKey = quote.clientFeedback || quote.presentationStatus;
+                        const displayStatus = statusDisplayMap[statusKey];
+                        return (
+                            <Link href={`/quotes/${quote.id}`} key={quote.id}>
+                                <Card className="h-full hover:shadow-lg transition-shadow">
+                                    <CardHeader className="flex flex-row items-start justify-between">
+                                        <CardTitle>{quote.clientName}</CardTitle>
+                                        {displayStatus && <Badge variant={displayStatus.variant}>{displayStatus.label}</Badge>}
+                                    </CardHeader>
+                                </Card>
+                            </Link>
+                        )
+                    })}
+                </div>
+            </div>
+        );
+    };
 
-    const filteredQuotes = (quotes || []).filter((quote: Quote) => {
-        const matchesSearch = quote.clientName.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesStatus = statusFilter === 'all' || quote.clientFeedback === statusFilter || quote.presentationStatus === statusFilter;
-        return matchesSearch && matchesStatus;
-    });
+    const allQuotes = Object.values(groupedQuotes).flat();
 
   return (
     <>
@@ -72,7 +140,7 @@ export default function QuotesPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todos os Status</SelectItem>
-                   {Object.entries(statusMap).map(([key, { label }]) => (
+                   {Object.entries(statusDisplayMap).map(([key, { label }]) => (
                       <SelectItem key={key} value={key}>{label}</SelectItem>
                   ))}
                 </SelectContent>
@@ -80,20 +148,11 @@ export default function QuotesPage() {
             </CardContent>
           </Card>
 
-           {filteredQuotes.length > 0 ? (
-               <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                  {filteredQuotes.map(quote => (
-                    <Link href={`/quotes/${quote.id}`} key={quote.id}>
-                        <Card className="h-full hover:shadow-lg transition-shadow">
-                            <CardHeader>
-                                <CardTitle>{quote.clientName}</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <p>Valor Total: R$ {quote.totalValue.toFixed(2)}</p>
-                            </CardContent>
-                        </Card>
-                    </Link>
-                  ))}
+           {allQuotes.length > 0 ? (
+               <div className="space-y-8">
+                  <QuoteGroup title={groupTitles.inProgress} quotes={groupedQuotes.inProgress} />
+                  <QuoteGroup title={groupTitles.approved} quotes={groupedQuotes.approved} />
+                  <QuoteGroup title={groupTitles.rejected} quotes={groupedQuotes.rejected} />
                </div>
            ) : (
               <div className="flex h-64 items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/20 bg-muted/30">
