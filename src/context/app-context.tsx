@@ -128,6 +128,7 @@ const cleanupUndefinedFields = (obj: any) => {
 export function AppProvider({ children }: { children: ReactNode }) {
   const firestore = useFirestore();
   const auth = useAuth();
+  const { user } = useUser();
 
   const projectsQuery = useMemoFirebase(() => collection(firestore, 'projects'), [firestore]);
   const teamMembersQuery = useMemoFirebase(() => collection(firestore, 'team_members'), [firestore]);
@@ -701,7 +702,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [firestore]);
 
   const confirmStockReceipt = useCallback((item: StockItem) => {
-    if (!firestore || !item.awaitingReceipt) return;
+    if (!firestore || !item.awaitingReceipt || !user) return;
 
     const batch = writeBatch(firestore);
     const itemRef = doc(firestore, 'stock_items', item.id);
@@ -715,8 +716,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     // Add movement record
     const movementId = generateId('move');
-    const newMovement: Omit<StockMovement, 'id' | 'memberId' | 'stockItemId'> & { memberId?: string, stockItemId: string } = {
+    const newMovement: StockMovement = {
+      id: movementId,
       stockItemId: item.id,
+      memberId: user.uid,
       type: 'entry',
       quantity: item.awaitingReceipt.quantity,
       reason: 'compra',
@@ -728,7 +731,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     batch.commit();
 
-  }, [firestore]);
+  }, [firestore, user]);
 
     const addPurchaseRequest = useCallback((requestData: Omit<PurchaseRequest, 'id' | 'createdAt' | 'updatedAt' | 'status'>) => {
         if (!firestore) return;

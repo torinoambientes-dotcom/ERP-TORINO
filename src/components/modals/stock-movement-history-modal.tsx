@@ -28,7 +28,7 @@ interface StockMovementHistoryModalProps {
 }
 
 const reasonLabels: { [key: string]: string } = {
-  compra: 'Compra de Reposição',
+  compra: 'Entrada por Compra',
   estorno: 'Estorno / Devolução',
   uso_marceneiro: 'Uso por Marceneiro',
   despacho_producao: 'Despacho para Produção',
