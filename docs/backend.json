@@ -320,6 +320,40 @@
             "notes": { "type": "string", "description": "Notes from the purchasing team." }
         },
         "required": ["id", "description", "quantity", "unit", "reason", "requesterId", "requesterName", "status", "createdAt"]
+    },
+    "Quote": {
+      "title": "Quote",
+      "description": "Represents a sales quote or budget for a client.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "clientName": { "type": "string" },
+        "clientContact": { "type": "string" },
+        "status": { "type": "string", "enum": ["draft", "sent", "approved", "rejected"] },
+        "items": {
+          "type": "array",
+          "items": { "$ref": "#/entities/QuoteItem" }
+        },
+        "totalValue": { "type": "number" },
+        "notes": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "validUntil": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "clientName", "status", "items", "totalValue", "createdAt", "updatedAt"]
+    },
+    "QuoteItem": {
+      "title": "QuoteItem",
+      "description": "Represents a single line item within a quote.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "description": { "type": "string" },
+        "quantity": { "type": "number" },
+        "unitPrice": { "type": "number" },
+        "totalPrice": { "type": "number" }
+      },
+      "required": ["id", "description", "quantity", "unitPrice", "totalPrice"]
     }
   },
   "auth": {
@@ -355,6 +389,10 @@
     "/purchase_requests/{purchaseRequestId}": {
         "schema": { "$ref": "#/entities/PurchaseRequest" },
         "description": "Stores ad-hoc purchase requests."
+    },
+    "/quotes/{quoteId}": {
+      "schema": { "$ref": "#/entities/Quote" },
+      "description": "Stores all quotes."
     }
   }
 }
