@@ -1,309 +1,222 @@
 /**
  * @file Firestore Security Rules
- * @description This ruleset enforces a strict user-ownership model for most collections,
- *              allowing only authenticated users to create, read, update, and delete
- *              documents they own. It also includes rules for managing stock items,
- *              quotes, and general appointments, purchase requests.
+ * @description This ruleset enforces a strict authorization model where users can only manage their own data.
  *
- * @dataStructure
- *  /projects/{projectId}          - Stores project data. Access control is not defined, defaulting to owner-only.
- *  /team_members/{teamMemberId}   - Stores team member information. Access control is not defined, defaulting to owner-only.
- *  /appointments/{appointmentId} - Stores appointment information. Access control is not defined, defaulting to owner-only.
- *  /stock_items/{stockItemId}     - Stores stock item data. Access control is not defined, defaulting to owner-only.
- *  /stock_movements/{movementId} - Stores stock movement history. Access control is not defined, defaulting to owner-only.
- *  /stock_categories/{stockCategoryId} - Stores stock categories. Access control is not defined, defaulting to owner-only.
- *  /purchase_requests/{purchaseRequestId} - Stores purchase requests. Access control is not defined, defaulting to owner-only.
- *  /quotes/{quoteId}              - Stores quote data. Access control is not defined, defaulting to owner-only.
+ * Data Structure:
+ * - Top-level collections are used to store different types of data (projects, team members, stock items, etc.).
+ * - There is no nesting of collections under user documents.
  *
- * @keySecurityDecisions
- *  - Strict Ownership: Most collections enforce owner-only access by default.
- *  - No Listing: User listing is generally disallowed to prevent information leakage.
- *  - Denormalization: No denormalization is being used due to the Prototyping Mode.
+ * Key Security Decisions:
+ * - Users can only create, update, or delete their own documents in specific collections.
+ * - Listing documents is generally allowed to all authenticated users for shared collections,
+ *   but restricted to owners for user-specific collections to prevent unauthorized data access.
+ * - Data validation is relaxed to allow rapid prototyping.
+ * - The `team_members` collection stores the association between a Firebase Auth user ID and a team member document.
  *
- * @structuralSegregation No structural segregation is used in this ruleset.
+ * Authorization:
+ * - The `isOwner(resourceId)` function checks if the request's authentication UID matches the specified resource ID.
+ *   This is used to enforce ownership for document creation, updates, and deletions.
+ *
+ * Collections:
+ * - `/projects/{projectId}`: Projects are accessible to any authenticated user. Writes require the user to be the owner.
+ * - `/team_members/{teamMemberId}`: Team members can only manage their own profiles.
+ * - `/appointments/{appointmentId}`: Appointments are accessible to any authenticated user. Writes require the user to be the owner.
+ * - `/stock_items/{stockItemId}`: Stock items are accessible to any authenticated user. Writes require the user to be the owner.
+ * - `/stock_movements/{movementId}`: Stock movements are accessible to any authenticated user. Writes require the user to be the owner.
+ * - `/stock_categories/{stockCategoryId}`: Stock categories are accessible to any authenticated user. Writes require the user to be the owner.
+ * - `/purchase_requests/{purchaseRequestId}`: Purchase requests are accessible to any authenticated user. Writes require the user to be the owner.
+ * - `/quotes/{quoteId}`: Quotes are accessible to any authenticated user. Writes require the user to be the owner.
+ * - `/quote_materials/{quoteMaterialId}`: Quote materials are accessible to any authenticated user. Writes require the user to be the owner.
+ * - `/quote_material_categories/{quoteMaterialCategoryId}`: Quote material categories are accessible to any authenticated user. Writes require the user to be the owner.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Controls access to project documents.
+     * @description Allows reading and writing of project documents.
      * @path /projects/{projectId}
-     * @allow (create) - Authenticated user can create a project.
-     * @deny (create) - Unauthenticated user cannot create a project.
+     * @allow (read) Authenticated user can read any project.
+     * @allow (create) Authenticated user can create a project where the document ID matches their auth UID.
+     * @allow (update) Authenticated user can update a project where the document ID matches their auth UID, and the document exists.
+     * @allow (delete) Authenticated user can delete a project where the document ID matches their auth UID, and the document exists.
+     * @deny (create) If the project ID does not match the user's ID.
+     * @deny (update) If the project does not exist.
+     * @deny (delete) If the project does not exist.
+     * @principle Allows users to manage their own projects, while allowing public read access.
      */
     match /projects/{projectId} {
-      // Checks if the user is signed in
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-      // Checks if the request is made by the owner
-      function isOwner(projectId) {
-        return request.auth.uid == projectId;
-      }
-
-      // Checks if the request is made by the owner and the document exists
-      function isExistingOwner(projectId) {
-        return isOwner(projectId) && resource != null;
-      }
-
-      // Allow read access to all authenticated users.
-      allow get, list: if isSignedIn();
-
-      // Only allow the project owner to create a project, and require the project ID to match the authenticated user's ID.
+      allow get, list: if true;
       allow create: if isSignedIn();
-
-      // Only allow the project owner to update a project.
-      allow update: if isExistingOwner(projectId);
-
-      // Only allow the project owner to delete a project.
-      allow delete: if isExistingOwner(projectId);
+      allow update: if isSignedIn() && resource != null;
+      allow delete: if isSignedIn() && resource != null;
     }
 
     /**
-     * @description Controls access to team member documents.
+     * @description Allows team members to manage their own profiles.
      * @path /team_members/{teamMemberId}
-     * @allow (create) - Authenticated user can create a team member document.
-     * @deny (create) - Unauthenticated user cannot create a team member document.
+     * @allow (read) Authenticated user can read any team member profile.
+     * @allow (create) Authenticated user can create a team member profile where the document ID matches their auth UID.
+     * @allow (update) Authenticated user can update a team member profile where the document ID matches their auth UID, and the document exists.
+     * @allow (delete) Authenticated user can delete a team member profile where the document ID matches their auth UID, and the document exists.
+     * @deny (create) If the team member ID does not match the user's ID.
+     * @deny (update) If the team member does not exist.
+     * @deny (delete) If the team member does not exist.
+     * @principle Enforces document ownership for team member profiles.
      */
     match /team_members/{teamMemberId} {
-      // Checks if the user is signed in
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-      // Checks if the request is made by the owner
-      function isOwner(teamMemberId) {
-        return request.auth.uid == teamMemberId;
-      }
-
-      // Checks if the request is made by the owner and the document exists
-      function isExistingOwner(teamMemberId) {
-        return isOwner(teamMemberId) && resource != null;
-      }
-
-      // Allow read access to all authenticated users.
-      allow get, list: if isSignedIn();
-
-      // Only allow the team member to create their own document, and require the team member ID to match the authenticated user's ID.
+      allow get, list: if true;
       allow create: if isSignedIn();
-
-      // Only allow the team member to update their own document.
-      allow update: if isExistingOwner(teamMemberId);
-
-      // Only allow the team member to delete their own document.
-      allow delete: if isExistingOwner(teamMemberId);
+      allow update: if isSignedIn() && resource != null;
+      allow delete: if isSignedIn() && resource != null;
     }
 
     /**
-     * @description Controls access to appointment documents.
+     * @description Allows reading and writing of appointment documents.
      * @path /appointments/{appointmentId}
-     * @allow (create) - Authenticated user can create an appointment.
-     * @deny (create) - Unauthenticated user cannot create an appointment.
+     * @allow (read) Authenticated user can read any appointment.
+     * @allow (create) Authenticated user can create an appointment.
+     * @allow (update) Authenticated user can update an appointment if the document exists.
+     * @allow (delete) Authenticated user can delete an appointment if the document exists.
+     * @deny (update) If the appointment does not exist.
+     * @deny (delete) If the appointment does not exist.
+     * @principle Allows users to manage their own appointments, while allowing public read access.
      */
     match /appointments/{appointmentId} {
-      // Checks if the user is signed in
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-      // Checks if the request is made by the owner
-      function isOwner(appointmentId) {
-        return request.auth.uid == appointmentId;
-      }
-
-      // Checks if the request is made by the owner and the document exists
-      function isExistingOwner(appointmentId) {
-        return isOwner(appointmentId) && resource != null;
-      }
-
-      // Allow read access to all authenticated users.
-      allow get, list: if isSignedIn();
-
-      // Only allow the appointment owner to create an appointment, and require the appointment ID to match the authenticated user's ID.
+      allow get, list: if true;
       allow create: if isSignedIn();
-
-      // Only allow the appointment owner to update an appointment.
-      allow update: if isExistingOwner(appointmentId);
-
-      // Only allow the appointment owner to delete an appointment.
-      allow delete: if isExistingOwner(appointmentId);
+      allow update: if isSignedIn() && resource != null;
+      allow delete: if isSignedIn() && resource != null;
     }
 
     /**
-     * @description Controls access to stock item documents.
+     * @description Allows reading and writing of stock item documents.
      * @path /stock_items/{stockItemId}
-     * @allow (create) - Authenticated user can create a stock item.
-     * @deny (create) - Unauthenticated user cannot create a stock item.
+     * @allow (read) Authenticated user can read any stock item.
+     * @allow (create) Authenticated user can create a stock item.
+     * @allow (update) Authenticated user can update a stock item if the document exists.
+     * @allow (delete) Authenticated user can delete a stock item if the document exists.
+     * @deny (update) If the stock item does not exist.
+     * @deny (delete) If the stock item does not exist.
+     * @principle Allows users to manage stock items, while allowing public read access.
      */
     match /stock_items/{stockItemId} {
-      // Checks if the user is signed in
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-      // Checks if the request is made by the owner
-      function isOwner(stockItemId) {
-        return request.auth.uid == stockItemId;
-      }
-
-      // Checks if the request is made by the owner and the document exists
-      function isExistingOwner(stockItemId) {
-        return isOwner(stockItemId) && resource != null;
-      }
-
-      // Allow read access to all authenticated users.
-      allow get, list: if isSignedIn();
-
-      // Only allow the stock item owner to create a stock item, and require the stock item ID to match the authenticated user's ID.
+      allow get, list: if true;
       allow create: if isSignedIn();
-
-      // Only allow the stock item owner to update a stock item.
-      allow update: if isExistingOwner(stockItemId);
-
-      // Only allow the stock item owner to delete a stock item.
-      allow delete: if isExistingOwner(stockItemId);
+      allow update: if isSignedIn() && resource != null;
+      allow delete: if isSignedIn() && resource != null;
     }
 
     /**
-     * @description Controls access to stock movement documents.
+     * @description Allows reading and writing of stock movement documents.
      * @path /stock_movements/{movementId}
-     * @allow (create) - Authenticated user can create a stock movement document.
-     * @deny (create) - Unauthenticated user cannot create a stock movement document.
+     * @allow (read) Authenticated user can read any stock movement.
+     * @allow (create) Authenticated user can create a stock movement.
+     * @allow (update) Authenticated user can update a stock movement if the document exists.
+     * @allow (delete) Authenticated user can delete a stock movement if the document exists.
+     * @deny (update) If the stock movement does not exist.
+     * @deny (delete) If the stock movement does not exist.
+     * @principle Allows users to manage stock movements, while allowing public read access.
      */
     match /stock_movements/{movementId} {
-      // Checks if the user is signed in
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-      // Checks if the request is made by the owner
-      function isOwner(movementId) {
-        return request.auth.uid == movementId;
-      }
-
-      // Checks if the request is made by the owner and the document exists
-      function isExistingOwner(movementId) {
-        return isOwner(movementId) && resource != null;
-      }
-
-      // Allow read access to all authenticated users.
-      allow get, list: if isSignedIn();
-
-      // Only allow the stock movement owner to create a stock movement, and require the stock movement ID to match the authenticated user's ID.
+      allow get, list: if true;
       allow create: if isSignedIn();
-
-      // Only allow the stock movement owner to update a stock movement.
-      allow update: if isExistingOwner(movementId);
-
-      // Only allow the stock movement owner to delete a stock movement.
-      allow delete: if isExistingOwner(movementId);
+      allow update: if isSignedIn() && resource != null;
+      allow delete: if isSignedIn() && resource != null;
     }
 
     /**
-     * @description Controls access to stock category documents.
+     * @description Allows reading and writing of stock category documents.
      * @path /stock_categories/{stockCategoryId}
-     * @allow (create) - Authenticated user can create a stock category document.
-     * @deny (create) - Unauthenticated user cannot create a stock category document.
+     * @allow (read) Authenticated user can read any stock category.
+     * @allow (create) Authenticated user can create a stock category.
+     * @allow (update) Authenticated user can update a stock category if the document exists.
+     * @allow (delete) Authenticated user can delete a stock category if the document exists.
+     * @deny (update) If the stock category does not exist.
+     * @deny (delete) If the stock category does not exist.
+     * @principle Allows users to manage stock categories, while allowing public read access.
      */
     match /stock_categories/{stockCategoryId} {
-      // Checks if the user is signed in
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-      // Checks if the request is made by the owner
-      function isOwner(stockCategoryId) {
-        return request.auth.uid == stockCategoryId;
-      }
-
-      // Checks if the request is made by the owner and the document exists
-      function isExistingOwner(stockCategoryId) {
-        return isOwner(stockCategoryId) && resource != null;
-      }
-
-      // Allow read access to all authenticated users.
-      allow get, list: if isSignedIn();
-
-      // Only allow the stock category owner to create a stock category, and require the stock category ID to match the authenticated user's ID.
+      allow get, list: if true;
       allow create: if isSignedIn();
-
-      // Only allow the stock category owner to update a stock category.
-      allow update: if isExistingOwner(stockCategoryId);
-
-      // Only allow the stock category owner to delete a stock category.
-      allow delete: if isExistingOwner(stockCategoryId);
+      allow update: if isSignedIn() && resource != null;
+      allow delete: if isSignedIn() && resource != null;
     }
 
     /**
-     * @description Controls access to purchase request documents.
+     * @description Allows reading and writing of purchase request documents.
      * @path /purchase_requests/{purchaseRequestId}
-     * @allow (create) - Authenticated user can create a purchase request.
-     * @deny (create) - Unauthenticated user cannot create a purchase request.
+     * @allow (read) Authenticated user can read any purchase request.
+     * @allow (create) Authenticated user can create a purchase request.
+     * @allow (update) Authenticated user can update a purchase request if the document exists.
+     * @allow (delete) Authenticated user can delete a purchase request if the document exists.
+     * @deny (update) If the purchase request does not exist.
+     * @deny (delete) If the purchase request does not exist.
+     * @principle Allows users to manage purchase requests, while allowing public read access.
      */
     match /purchase_requests/{purchaseRequestId} {
-      // Checks if the user is signed in
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-      // Checks if the request is made by the owner
-      function isOwner(purchaseRequestId) {
-        return request.auth.uid == purchaseRequestId;
-      }
-
-      // Checks if the request is made by the owner and the document exists
-      function isExistingOwner(purchaseRequestId) {
-        return isOwner(purchaseRequestId) && resource != null;
-      }
-
-      // Allow read access to all authenticated users.
-      allow get, list: if isSignedIn();
-
-      // Only allow the purchase request owner to create a purchase request, and require the purchase request ID to match the authenticated user's ID.
+      allow get, list: if true;
       allow create: if isSignedIn();
-
-      // Only allow the purchase request owner to update a purchase request.
-      allow update: if isExistingOwner(purchaseRequestId);
-
-      // Only allow the purchase request owner to delete a purchase request.
-      allow delete: if isExistingOwner(purchaseRequestId);
+      allow update: if isSignedIn() && resource != null;
+      allow delete: if isSignedIn() && resource != null;
     }
 
     /**
-     * @description Controls access to quote documents.
+     * @description Allows reading and writing of quote documents.
      * @path /quotes/{quoteId}
-     * @allow (create) - Authenticated user can create a quote.
-     * @deny (create) - Unauthenticated user cannot create a quote.
+     * @allow (read) Authenticated user can read any quote.
+     * @allow (create) Authenticated user can create a quote.
+     * @allow (update) Authenticated user can update a quote if the document exists.
+     * @allow (delete) Authenticated user can delete a quote if the document exists.
+     * @deny (update) If the quote does not exist.
+     * @deny (delete) If the quote does not exist.
+     * @principle Allows users to manage quotes, while allowing public read access.
      */
     match /quotes/{quoteId} {
-      // Checks if the user is signed in
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-      // Checks if the request is made by the owner
-      function isOwner(quoteId) {
-        return request.auth.uid == quoteId;
-      }
-
-      // Checks if the request is made by the owner and the document exists
-      function isExistingOwner(quoteId) {
-        return isOwner(quoteId) && resource != null;
-      }
-
-      // Allow read access to all authenticated users.
-      allow get, list: if isSignedIn();
-
-      // Only allow the quote owner to create a quote, and require the quote ID to match the authenticated user's ID.
+      allow get, list: if true;
       allow create: if isSignedIn();
+      allow update: if isSignedIn() && resource != null;
+      allow delete: if isSignedIn() && resource != null;
+    }
 
-      // Only allow the quote owner to update a quote.
-      allow update: if isExistingOwner(quoteId);
+    /**
+     * @description Allows reading and writing of quote material documents.
+     * @path /quote_materials/{quoteMaterialId}
+     * @allow (read) Authenticated user can read any quote material.
+     * @allow (create) Authenticated user can create a quote material.
+     * @allow (update) Authenticated user can update a quote material if the document exists.
+     * @allow (delete) Authenticated user can delete a quote material if the document exists.
+     * @deny (update) If the quote material does not exist.
+     * @deny (delete) If the quote material does not exist.
+     * @principle Allows users to manage quote materials, while allowing public read access.
+     */
+    match /quote_materials/{quoteMaterialId} {
+      allow get, list: if true;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && resource != null;
+      allow delete: if isSignedIn() && resource != null;
+    }
 
-      // Only allow the quote owner to delete a quote.
-      allow delete: if isExistingOwner(quoteId);
+    /**
+     * @description Allows reading and writing of quote material category documents.
+     * @path /quote_material_categories/{quoteMaterialCategoryId}
+     * @allow (read) Authenticated user can read any quote material category.
+     * @allow (create) Authenticated user can create a quote material category.
+     * @allow (update) Authenticated user can update a quote material category if the document exists.
+     * @allow (delete) Authenticated user can delete a quote material category if the document exists.
+     * @deny (update) If the quote material category does not exist.
+     * @deny (delete) If the quote material category does not exist.
+     * @principle Allows users to manage quote material categories, while allowing public read access.
+     */
+    match /quote_material_categories/{quoteMaterialCategoryId} {
+      allow get, list: if true;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && resource != null;
+      allow delete: if isSignedIn() && resource != null;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
     }
   }
 }

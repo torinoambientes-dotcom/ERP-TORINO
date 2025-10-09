@@ -3,7 +3,7 @@
 import { createContext, type ReactNode, useCallback, useMemo, useEffect, useState } from 'react';
 import { collection, doc, serverTimestamp, deleteField, writeBatch, getDocs, runTransaction } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useAuth, useUser } from '@/firebase';
-import type { Project, TeamMember, StageStatus, StockItem, StockMovement, StockCategory, Furniture, Environment, MaterialItem, StockReservation, ProductionStage, Appointment, PurchaseRequest, PurchaseRequestStatus, Quote, QuoteStage, QuoteEnvironment, QuoteFurniture } from '@/lib/types';
+import type { Project, TeamMember, StageStatus, StockItem, StockMovement, StockCategory, Furniture, Environment, MaterialItem, StockReservation, ProductionStage, Appointment, PurchaseRequest, PurchaseRequestStatus, Quote, QuoteStage, QuoteEnvironment, QuoteFurniture, QuoteMaterial, QuoteMaterialCategory } from '@/lib/types';
 import { generateId } from '@/lib/utils';
 import { setDocumentNonBlocking, deleteDocumentNonBlocking, addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
@@ -18,6 +18,8 @@ interface AppContextType {
   stockMovements: StockMovement[];
   purchaseRequests: PurchaseRequest[];
   quotes: Quote[];
+  quoteMaterials: QuoteMaterial[];
+  quoteMaterialCategories: QuoteMaterialCategory[];
   isLoading: boolean;
   addProject: (projectData: any) => void;
   updateProject: (updatedProject: Project, originalProject?: Project) => void;
@@ -49,6 +51,11 @@ interface AppContextType {
   deletePurchaseRequest: (requestId: string) => void;
   addQuote: (quoteData: Pick<Quote, 'clientName' | 'clientContact' | 'environments' | 'projectOrigin'>) => void;
   updateQuote: (quoteId: string, updates: Partial<Quote>) => void;
+  addQuoteMaterial: (itemData: Omit<QuoteMaterial, 'id'>) => void;
+  updateQuoteMaterial: (updatedItem: QuoteMaterial) => void;
+  deleteQuoteMaterial: (itemId: string) => void;
+  addQuoteMaterialCategory: (categoryData: Omit<QuoteMaterialCategory, 'id'>) => void;
+  deleteQuoteMaterialCategory: (categoryId: string) => void;
 }
 
 export const AppContext = createContext<AppContextType>({
@@ -60,6 +67,8 @@ export const AppContext = createContext<AppContextType>({
   stockMovements: [],
   purchaseRequests: [],
   quotes: [],
+  quoteMaterials: [],
+  quoteMaterialCategories: [],
   isLoading: true,
   addProject: () => {},
   updateProject: () => {},
@@ -91,6 +100,11 @@ export const AppContext = createContext<AppContextType>({
   deletePurchaseRequest: () => {},
   addQuote: () => {},
   updateQuote: () => {},
+  addQuoteMaterial: () => {},
+  updateQuoteMaterial: () => {},
+  deleteQuoteMaterial: () => {},
+  addQuoteMaterialCategory: () => {},
+  deleteQuoteMaterialCategory: () => {},
 });
 
 const isProjectComplete = (project: Project): boolean => {
@@ -143,6 +157,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const stockMovementsQuery = useMemoFirebase(() => collection(firestore, 'stock_movements'), [firestore]);
   const purchaseRequestsQuery = useMemoFirebase(() => collection(firestore, 'purchase_requests'), [firestore]);
   const quotesQuery = useMemoFirebase(() => collection(firestore, 'quotes'), [firestore]);
+  const quoteMaterialsQuery = useMemoFirebase(() => collection(firestore, 'quote_materials'), [firestore]);
+  const quoteMaterialCategoriesQuery = useMemoFirebase(() => collection(firestore, 'quote_material_categories'), [firestore]);
+
 
   const { data: projects, isLoading: isLoadingProjects } = useCollection<Project>(projectsQuery);
   const { data: teamMembers, isLoading: isLoadingTeamMembers } = useCollection<TeamMember>(teamMembersQuery);
@@ -152,6 +169,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const { data: stockMovements, isLoading: isLoadingMovements } = useCollection<StockMovement>(stockMovementsQuery);
   const { data: purchaseRequests, isLoading: isLoadingPurchaseRequests } = useCollection<PurchaseRequest>(purchaseRequestsQuery);
   const { data: quotes, isLoading: isLoadingQuotes } = useCollection<Quote>(quotesQuery);
+  const { data: quoteMaterials, isLoading: isLoadingQuoteMaterials } = useCollection<QuoteMaterial>(quoteMaterialsQuery);
+  const { data: quoteMaterialCategories, isLoading: isLoadingQuoteMaterialCategories } = useCollection<QuoteMaterialCategory>(quoteMaterialCategoriesQuery);
+
 
   const stockCategories = useMemo(() => stockCategoriesData || [], [stockCategoriesData]);
   
@@ -828,6 +848,40 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const dataWithTimestamp = { ...updates, updatedAt: new Date().toISOString() };
       updateDocumentNonBlocking(quoteRef, dataWithTimestamp);
     }, [firestore]);
+    
+    const addQuoteMaterial = useCallback((itemData: Omit<QuoteMaterial, 'id'>) => {
+        if (!firestore) return;
+        const itemId = generateId('qmat');
+        const newItem = { ...itemData, id: itemId };
+        const itemRef = doc(firestore, 'quote_materials', itemId);
+        setDocumentNonBlocking(itemRef, newItem, { merge: false });
+    }, [firestore]);
+
+    const updateQuoteMaterial = useCallback((updatedItem: QuoteMaterial) => {
+        if (!firestore) return;
+        const itemRef = doc(firestore, 'quote_materials', updatedItem.id);
+        setDocumentNonBlocking(itemRef, updatedItem, { merge: true });
+    }, [firestore]);
+
+    const deleteQuoteMaterial = useCallback((itemId: string) => {
+        if (!firestore) return;
+        const itemRef = doc(firestore, 'quote_materials', itemId);
+        deleteDocumentNonBlocking(itemRef);
+    }, [firestore]);
+
+    const addQuoteMaterialCategory = useCallback((categoryData: Omit<QuoteMaterialCategory, 'id'>) => {
+        if (!firestore) return;
+        const categoryId = generateId('qcat');
+        const newCategory = { ...categoryData, id: categoryId };
+        const categoryRef = doc(firestore, 'quote_material_categories', categoryId);
+        setDocumentNonBlocking(categoryRef, newCategory, { merge: false });
+    }, [firestore]);
+
+    const deleteQuoteMaterialCategory = useCallback((categoryId: string) => {
+        if (!firestore) return;
+        const categoryRef = doc(firestore, 'quote_material_categories', categoryId);
+        deleteDocumentNonBlocking(categoryRef);
+    }, [firestore]);
 
 
   const value = useMemo(() => ({
@@ -839,7 +893,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     stockMovements: stockMovements || [],
     purchaseRequests: purchaseRequests || [],
     quotes: quotes || [],
-    isLoading: isLoadingProjects || isLoadingTeamMembers || isLoadingAppointments || isLoadingStockItems || isLoadingStockCategories || isLoadingMovements || isLoadingPurchaseRequests || isLoadingQuotes,
+    quoteMaterials: quoteMaterials || [],
+    quoteMaterialCategories: quoteMaterialCategories || [],
+    isLoading: isLoadingProjects || isLoadingTeamMembers || isLoadingAppointments || isLoadingStockItems || isLoadingStockCategories || isLoadingMovements || isLoadingPurchaseRequests || isLoadingQuotes || isLoadingQuoteMaterials || isLoadingQuoteMaterialCategories,
     addProject,
     updateProject,
     deleteProject,
@@ -870,6 +926,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     deletePurchaseRequest,
     addQuote,
     updateQuote,
+    addQuoteMaterial,
+    updateQuoteMaterial,
+    deleteQuoteMaterial,
+    addQuoteMaterialCategory,
+    deleteQuoteMaterialCategory,
   }), [
     projects, 
     teamMembers, 
@@ -879,6 +940,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     stockMovements,
     purchaseRequests,
     quotes,
+    quoteMaterials,
+    quoteMaterialCategories,
     isLoadingProjects, 
     isLoadingTeamMembers, 
     isLoadingAppointments,
@@ -887,6 +950,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     isLoadingMovements,
     isLoadingPurchaseRequests,
     isLoadingQuotes,
+    isLoadingQuoteMaterials,
+    isLoadingQuoteMaterialCategories,
     addProject, 
     updateProject, 
     deleteProject, 
@@ -917,6 +982,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     deletePurchaseRequest,
     addQuote,
     updateQuote,
+    addQuoteMaterial,
+    updateQuoteMaterial,
+    deleteQuoteMaterial,
+    addQuoteMaterialCategory,
+    deleteQuoteMaterialCategory,
   ]);
 
 
