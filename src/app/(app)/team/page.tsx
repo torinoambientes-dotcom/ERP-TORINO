@@ -10,7 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { AppContext } from '@/context/app-context';
 import { PageHeader } from '@/components/layout/page-header';
-import { PlusCircle, Edit, Trash2 } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Cake } from 'lucide-react';
 import { RegisterTeamModal } from '@/components/modals/register-team-modal';
 import {
   AlertDialog,
@@ -26,6 +26,8 @@ import type { TeamMember } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { getInitials } from '@/lib/utils';
+import { format, parse } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 export default function TeamPage() {
   const { teamMembers, deleteTeamMember, isLoading } = useContext(AppContext);
@@ -81,6 +83,15 @@ export default function TeamPage() {
     }
     handleCloseAlert();
   };
+  
+  const formatBirthday = (birthday: string) => {
+    try {
+      const date = parse(birthday, 'MM-dd', new Date());
+      return format(date, "dd 'de' MMMM", { locale: ptBR });
+    } catch {
+      return birthday; // fallback to raw value
+    }
+  };
 
   const renderMemberList = (members: TeamMember[]) => {
     if (members.length === 0) {
@@ -111,6 +122,12 @@ export default function TeamPage() {
                 <p className="font-medium">{member.name}</p>
                 <p className="text-sm text-muted-foreground">{member.role}</p>
                 <p className="text-xs text-muted-foreground">{member.email}</p>
+                {member.birthday && (
+                   <p className="text-xs text-primary font-semibold mt-1 flex items-center gap-1.5">
+                    <Cake className="h-3.5 w-3.5" />
+                    {formatBirthday(member.birthday)}
+                   </p>
+                )}
               </div>
             </div>
             <div className="flex gap-2">

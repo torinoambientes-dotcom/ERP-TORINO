@@ -20,7 +20,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, User, Users, X, Flag } from 'lucide-react';
+import { PlusCircle, User, Users, X, Flag, Cake } from 'lucide-react';
 import { NewAppointmentModal } from '@/components/modals/new-appointment-modal';
 import { AppointmentDetailsModal } from '@/components/modals/appointment-details-modal';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -30,7 +30,7 @@ import { CSS } from '@dnd-kit/utilities';
 
 export interface CalendarTask {
   id: string;
-  type: 'project' | 'appointment';
+  type: 'project' | 'appointment' | 'birthday';
   title: string;
   subtitle?: string;
   link?: string;
@@ -45,6 +45,7 @@ export interface CalendarTask {
     furId?: string;
     stageKey?: keyof typeof STAGE_STATUSES;
     appointmentId?: string;
+    memberId?: string;
   }
 }
 
@@ -74,6 +75,7 @@ export default function CalendarPage() {
     const tasks: { [key: string]: CalendarTask[] } = {};
     if (isLoading) return tasks;
     
+    // Project Stages
     projects.forEach(project => {
       project.environments.forEach(env => {
         env.furniture.forEach(fur => {
@@ -109,6 +111,7 @@ export default function CalendarPage() {
       });
     });
 
+    // Appointments
     appointments.forEach(appointment => {
       if (appointment.start && appointment.memberIds) {
         const responsibleMembers = appointment.memberIds
@@ -134,12 +137,44 @@ export default function CalendarPage() {
       }
     });
 
+    // Birthdays
+    const currentYear = new Date().getFullYear();
+    teamMembers.forEach(member => {
+        if (member.birthday) {
+            const matchesFilter = selectedMemberId === 'all' || member.id === selectedMemberId;
+            if(matchesFilter) {
+                const [month, day] = member.birthday.split('-');
+                const birthdayDate = new Date(currentYear, parseInt(month) - 1, parseInt(day));
+                const dayKey = format(birthdayDate, 'yyyy-MM-dd');
+
+                if (!tasks[dayKey]) tasks[dayKey] = [];
+
+                if (!tasks[dayKey].some(t => t.rawData.memberId === member.id)) {
+                    tasks[dayKey].push({
+                        id: `birthday-${member.id}`,
+                        type: 'birthday',
+                        title: `Aniversário de ${member.name}`,
+                        responsible: [member],
+                        date: birthdayDate,
+                        start: birthdayDate,
+                        end: birthdayDate,
+                        rawData: { memberId: member.id },
+                    });
+                }
+            }
+        }
+    });
+
     Object.keys(tasks).forEach(dayKey => {
-        tasks[dayKey].sort((a, b) => a.start.getTime() - b.start.getTime());
+        tasks[dayKey].sort((a, b) => {
+            if (a.type === 'birthday') return -1;
+            if (b.type === 'birthday') return 1;
+            return a.start.getTime() - b.start.getTime();
+        });
     });
 
     return tasks;
-  }, [projects, appointments, isLoading, memberMap, selectedMemberId]);
+  }, [projects, appointments, teamMembers, isLoading, memberMap, selectedMemberId]);
 
   const defaultMonth = useMemo(() => {
     if (selectedDate) return selectedDate;
@@ -160,6 +195,7 @@ export default function CalendarPage() {
   }, [selectedDate, defaultMonth]);
 
   const handleTaskClick = (task: CalendarTask) => {
+    if (task.type === 'birthday') return;
     setSelectedTask(task);
     setDetailsModalOpen(true);
   };
@@ -209,7 +245,7 @@ export default function CalendarPage() {
 
   const getTaskTime = (task: CalendarTask) => {
     const isAllDay = task.start.getHours() === 0 && task.end.getHours() === 23;
-    if (isAllDay || task.type === 'project') {
+    if (isAllDay || task.type === 'project' || task.type === 'birthday') {
       return 'Dia inteiro';
     }
     return `${format(task.start, 'HH:mm')} - ${format(task.end, 'HH:mm')}`;
@@ -235,7 +271,7 @@ export default function CalendarPage() {
         
         if (sourceDayKey && destinationDayKey && sourceDayKey !== destinationDayKey) {
             const taskToMove = (tasksByDay[sourceDayKey] || []).find(t => t.id === active.id);
-            if (taskToMove) {
+            if (taskToMove && taskToMove.type !== 'birthday') {
                 const newDate = parseISO(destinationDayKey);
                 handleReschedule(taskToMove, newDate);
             }
@@ -380,7 +416,8 @@ function DailyTaskList({ day, tasks, dayKey, handleTaskClick, getTaskTime }: { d
 }
 
 function SortableTaskItem({ task, dayKey, handleTaskClick, getTaskTime }: { task: CalendarTask, dayKey: string, handleTaskClick: (task: CalendarTask) => void, getTaskTime: (task: CalendarTask) => string }) {
-    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: task.id, data: { dayKey } });
+    const isBirthday = task.type === 'birthday';
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: task.id, data: { dayKey }, disabled: isBirthday });
 
     const style = {
         transform: CSS.Transform.toString(transform),
@@ -388,6 +425,8 @@ function SortableTaskItem({ task, dayKey, handleTaskClick, getTaskTime }: { task
         zIndex: isDragging ? 10 : 'auto',
         opacity: isDragging ? 0.8 : 1,
     };
+    
+    const cursorClass = isBirthday ? 'cursor-default' : 'cursor-grab active:cursor-grabbing';
 
     return (
         <li
@@ -395,36 +434,42 @@ function SortableTaskItem({ task, dayKey, handleTaskClick, getTaskTime }: { task
             style={style}
             {...attributes}
             {...listeners}
-            className="flex items-start gap-3 rounded-lg p-3 hover:bg-muted/50 cursor-grab active:cursor-grabbing bg-background border"
+            className={cn("flex items-start gap-3 rounded-lg p-3 hover:bg-muted/50 bg-background border", cursorClass, isBirthday && 'bg-amber-50 border-amber-200')}
             onClick={() => handleTaskClick(task)}
         >
             <div className="w-24 text-sm font-medium text-right flex-shrink-0 pt-0.5">
                 {getTaskTime(task)}
             </div>
-            <div className="w-1.5 h-auto self-stretch rounded-full" style={{ backgroundColor: task.responsible[0]?.color || '#ccc' }}></div>
+            {isBirthday ? (
+                <div className="w-1.5 h-auto self-stretch rounded-full bg-amber-400"></div>
+            ) : (
+                <div className="w-1.5 h-auto self-stretch rounded-full" style={{ backgroundColor: task.responsible[0]?.color || '#ccc' }}></div>
+            )}
             <div className="flex-grow overflow-hidden">
-                <p className="font-semibold truncate">{task.title}</p>
+                <p className={cn("font-semibold truncate", isBirthday && "text-amber-800")}>{isBirthday ? <Cake className='inline-block mr-2 h-4 w-4' /> : null}{task.title}</p>
                 {task.subtitle && <p className="text-sm text-muted-foreground truncate">{task.subtitle}</p>}
             </div>
             <div className="flex items-center gap-2">
                 {task.priority && <Flag className={cn("h-4 w-4", priorityMap[task.priority].className)} />}
-                <div className="flex items-center -space-x-2">
-                    {task.responsible.map(member => (
-                        <Tooltip key={member.id}>
-                            <TooltipTrigger asChild>
-                                <Avatar className="h-8 w-8 border-2 border-background">
-                                    {member.avatarUrl && <AvatarImage src={member.avatarUrl} alt={member.name} />}
-                                    <AvatarFallback style={{ backgroundColor: member.color }}>
-                                        {getInitials(member.name)}
-                                    </AvatarFallback>
-                                </Avatar>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                                <p>{member.name}</p>
-                            </TooltipContent>
-                        </Tooltip>
-                    ))}
-                </div>
+                {!isBirthday && task.responsible.length > 0 && (
+                    <div className="flex items-center -space-x-2">
+                        {task.responsible.map(member => (
+                            <Tooltip key={member.id}>
+                                <TooltipTrigger asChild>
+                                    <Avatar className="h-8 w-8 border-2 border-background">
+                                        {member.avatarUrl && <AvatarImage src={member.avatarUrl} alt={member.name} />}
+                                        <AvatarFallback style={{ backgroundColor: member.color }}>
+                                            {getInitials(member.name)}
+                                        </AvatarFallback>
+                                    </Avatar>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    <p>{member.name}</p>
+                                </TooltipContent>
+                            </Tooltip>
+                        ))}
+                    </div>
+                )}
                 {task.link && (
                     <Button asChild variant="ghost" size="sm" onClick={(e) => e.stopPropagation()}>
                         <Link href={task.link}>Ver Projeto</Link>

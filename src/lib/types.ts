@@ -7,6 +7,7 @@ export interface TeamMember {
   color: string;
   role: string;
   avatarUrl?: string;
+  birthday?: string; // MM-DD format
 }
 
 export const STAGE_STATUSES = {

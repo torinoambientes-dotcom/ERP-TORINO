@@ -44,6 +44,7 @@ const teamMemberSchema = z.object({
   email: z.string().email('Formato de e-mail inválido.'),
   password: z.string().min(6, 'A senha deve ter pelo menos 6 caracteres.'),
   avatarUrl: z.string().url('URL do avatar inválida.').optional().or(z.literal('')),
+  birthday: z.string().regex(/^(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/, 'Formato de aniversário inválido. Use MM-DD.').optional().or(z.literal('')),
 });
 
 const teamMemberEditSchema = teamMemberSchema.omit({ email: true, password: true });
@@ -92,6 +93,7 @@ export function RegisterTeamModal({
       email: '',
       password: '',
       avatarUrl: '',
+      birthday: '',
     },
   });
 
@@ -104,6 +106,7 @@ export function RegisterTeamModal({
           color: memberToEdit.color,
           email: memberToEdit.email,
           avatarUrl: memberToEdit.avatarUrl || '',
+          birthday: memberToEdit.birthday || '',
         });
       } else {
         form.reset({
@@ -113,6 +116,7 @@ export function RegisterTeamModal({
           email: '',
           password: '',
           avatarUrl: '',
+          birthday: '',
         });
       }
     }
@@ -253,6 +257,20 @@ export function RegisterTeamModal({
                 </FormItem>
               )}
             />
+            <FormField
+              control={form.control}
+              name="birthday"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Aniversário (MM-DD)</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Ex: 12-25" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
 
             {!isEditMode && (
               <>

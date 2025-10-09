@@ -212,7 +212,8 @@
         "email": { "type": "string", "format": "email" },
         "color": { "type": "string", "description": "A hex color code for the member's label." },
         "role": { "type": "string", "description": "The role of the team member (e.g., 'Marceneiro', 'Projetista')." },
-        "avatarUrl": { "type": "string", "format": "uri", "description": "URL of the team member's avatar image. Can be updated by the user." }
+        "avatarUrl": { "type": "string", "format": "uri", "description": "URL of the team member's avatar image. Can be updated by the user." },
+        "birthday": { "type": "string", "description": "The member's birthday in MM-DD format."}
       },
       "required": ["id", "name", "email", "color", "role"]
     },
