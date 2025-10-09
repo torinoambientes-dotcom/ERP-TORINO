@@ -854,13 +854,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const itemId = generateId('qmat');
         const newItem = { ...itemData, id: itemId };
         const itemRef = doc(firestore, 'quote_materials', itemId);
-        setDocumentNonBlocking(itemRef, newItem, { merge: false });
+        addDocumentNonBlocking(itemRef.parent, newItem);
     }, [firestore]);
 
     const updateQuoteMaterial = useCallback((updatedItem: QuoteMaterial) => {
         if (!firestore) return;
         const itemRef = doc(firestore, 'quote_materials', updatedItem.id);
-        setDocumentNonBlocking(itemRef, updatedItem, { merge: true });
+        updateDocumentNonBlocking(itemRef, updatedItem);
     }, [firestore]);
 
     const deleteQuoteMaterial = useCallback((itemId: string) => {
@@ -874,7 +874,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const categoryId = generateId('qcat');
         const newCategory = { ...categoryData, id: categoryId };
         const categoryRef = doc(firestore, 'quote_material_categories', categoryId);
-        setDocumentNonBlocking(categoryRef, newCategory, { merge: false });
+        addDocumentNonBlocking(categoryRef.parent, newCategory);
     }, [firestore]);
 
     const deleteQuoteMaterialCategory = useCallback((categoryId: string) => {

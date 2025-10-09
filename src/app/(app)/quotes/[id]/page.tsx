@@ -5,7 +5,7 @@ import { AppContext } from '@/context/app-context';
 import type { Quote, StageStatus, TeamMember, QuoteStage, QuoteFurniture, QuoteEnvironment } from '@/lib/types';
 import { PageHeader } from '@/components/layout/page-header';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, User, Package, ListTodo, MessageSquare } from 'lucide-react';
+import { ChevronLeft, User, Package, ListTodo, MessageSquare, Pencil } from 'lucide-react';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -18,6 +18,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Separator } from '@/components/ui/separator';
 import { QuoteMaterialsModal } from '@/components/modals/quote-materials-modal';
+import { RegisterQuoteModal } from '@/components/modals/register-quote-modal';
 
 
 type StageKey = 'internalProjectStage' | 'materialSurveyStage' | 'descriptiveStage';
@@ -46,6 +47,7 @@ export default function QuoteDetailsPage() {
   const id = params.id as string;
 
   const [quote, setQuote] = useState<Quote | null | undefined>(undefined);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isMaterialsModalOpen, setMaterialsModalOpen] = useState(false);
   const [selectedFurniture, setSelectedFurniture] = useState<QuoteFurniture | null>(null);
   const [selectedEnvironmentId, setSelectedEnvironmentId] = useState<string | null>(null);
@@ -235,7 +237,6 @@ export default function QuoteDetailsPage() {
   return (
     <>
     <div className="space-y-8">
-      <div className="flex items-center justify-between">
         <div>
           <Button variant="ghost" asChild className="-ml-4">
             <Link href="/quotes">
@@ -243,12 +244,17 @@ export default function QuoteDetailsPage() {
               Voltar para orçamentos
             </Link>
           </Button>
-          <PageHeader
-            title={quote.clientName}
-            description="Detalhes do orçamento e acompanhamento das etapas."
-          />
+           <div className="flex items-center gap-4">
+              <PageHeader
+                title={quote.clientName}
+                description="Detalhes do orçamento e acompanhamento das etapas."
+              />
+              <Button variant="outline" size="sm" onClick={() => setIsEditModalOpen(true)}>
+                  <Pencil className="mr-2 h-4 w-4" />
+                  Editar Orçamento
+              </Button>
+           </div>
         </div>
-      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card className="lg:col-span-2">
@@ -315,7 +321,7 @@ export default function QuoteDetailsPage() {
         <div>
             <h2 className="text-2xl font-headline font-semibold mb-4">Ambientes e Móveis do Orçamento</h2>
             {quote.environments?.length > 0 ? (
-                <Accordion type="multiple" className="space-y-4">
+                <Accordion type="multiple" className="space-y-4" defaultValue={quote.environments.map(e => e.id)}>
                 {quote.environments.map((env) => (
                     <AccordionItem key={env.id} value={env.id} className="border-none">
                     <div className="bg-card rounded-lg overflow-hidden border">
@@ -325,7 +331,7 @@ export default function QuoteDetailsPage() {
                         </div>
                         </AccordionTrigger>
                         <AccordionContent className="p-4 sm:p-6 space-y-6">
-                        {env.furniture?.map((fur, index) => {
+                        {(env.furniture || []).map((fur, index) => {
                           const totalCost = (fur.materials || []).reduce((acc, mat) => acc + (mat.quantity * (mat.cost || 0)), 0);
                           return (
                             <div key={fur.id}>
@@ -364,6 +370,13 @@ export default function QuoteDetailsPage() {
             furniture={getFurnitureForModal()!}
             onUpdate={handleFurnitureUpdateInModal}
             clientName={quote.clientName}
+        />
+      )}
+       {isEditModalOpen && (
+        <RegisterQuoteModal
+          isOpen={isEditModalOpen}
+          onClose={() => setIsEditModalOpen(false)}
+          quoteToEdit={quote}
         />
       )}
     </>

@@ -27,12 +27,16 @@ import { AppContext } from '@/context/app-context';
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from '../ui/separator';
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
+import type { Quote, QuoteEnvironment } from '@/lib/types';
+import { generateId } from '@/lib/utils';
 
 const furnitureSchema = z.object({
+  id: z.string().optional(),
   name: z.string().min(1, 'Nome do móvel é obrigatório.'),
 });
 
 const environmentSchema = z.object({
+  id: z.string().optional(),
   name: z.string().min(1, 'Nome do ambiente é obrigatório.'),
   furniture: z.array(furnitureSchema).min(1, 'Adicione ao menos um móvel.'),
 });
@@ -52,20 +56,24 @@ type QuoteFormValues = z.infer<typeof quoteSchema>;
 interface RegisterQuoteModalProps {
   isOpen: boolean;
   onClose: () => void;
+  quoteToEdit?: Quote | null;
 }
 
 export function RegisterQuoteModal({
   isOpen,
   onClose,
+  quoteToEdit,
 }: RegisterQuoteModalProps) {
-  const { addQuote } = useContext(AppContext);
+  const { addQuote, updateQuote } = useContext(AppContext);
   const { toast } = useToast();
+  
+  const isEditMode = !!quoteToEdit;
 
   const getDefaultValues = useCallback((): QuoteFormValues => ({
     clientName: '',
     clientContact: '',
     projectOrigin: 'client_provided',
-    environments: [{ name: '', furniture: [{ name: '' }] }],
+    environments: [{ id: generateId('env'), name: '', furniture: [{ id: generateId('fur'), name: '' }] }],
   }), []);
 
 
@@ -85,17 +93,73 @@ export function RegisterQuoteModal({
   
   useEffect(() => {
     if (isOpen) {
+      if (isEditMode && quoteToEdit) {
+        form.reset({
+          clientName: quoteToEdit.clientName,
+          clientContact: quoteToEdit.clientContact || '',
+          projectOrigin: quoteToEdit.projectOrigin,
+          environments: quoteToEdit.environments.length > 0 ? quoteToEdit.environments : [{id: generateId('env'), name: '', furniture: [{id: generateId('fur'), name: ''}]}],
+        });
+      } else {
         form.reset(getDefaultValues());
+      }
     }
-  }, [isOpen, form, getDefaultValues]);
+  }, [isOpen, isEditMode, quoteToEdit, form, getDefaultValues]);
 
 
   const onSubmit = (data: QuoteFormValues) => {
-    addQuote(data);
-    toast({
-        title: 'Orçamento Registado!',
-        description: `O orçamento para "${data.clientName}" foi criado com sucesso.`,
-    });
+    const cleanedEnvironments = data.environments
+      .filter(env => env.name.trim() !== '')
+      .map(env => ({
+        ...env,
+        id: env.id || generateId('env'),
+        furniture: env.furniture
+          .filter(fur => fur.name.trim() !== '')
+          .map(fur => ({
+            ...fur,
+            id: fur.id || generateId('fur'),
+          })),
+      }));
+
+    if (isEditMode && quoteToEdit) {
+      const finalEnvironments: QuoteEnvironment[] = cleanedEnvironments.map(env => {
+        const existingEnv = quoteToEdit.environments.find(e => e.id === env.id);
+        return {
+          ...env,
+          furniture: env.furniture.map(fur => {
+            const existingFur = existingEnv?.furniture.find(f => f.id === fur.id);
+            return existingFur ? existingFur : {
+              ...fur,
+              materials: [],
+              glassItems: [],
+              profileDoors: []
+            };
+          })
+        };
+      }) as QuoteEnvironment[];
+
+      updateQuote(quoteToEdit.id, {
+        clientName: data.clientName,
+        clientContact: data.clientContact,
+        projectOrigin: data.projectOrigin,
+        environments: finalEnvironments,
+      });
+
+      toast({
+          title: 'Orçamento atualizado!',
+          description: `O orçamento de "${data.clientName}" foi atualizado.`,
+      });
+
+    } else {
+      addQuote({
+        ...data,
+        environments: cleanedEnvironments as any,
+      });
+      toast({
+          title: 'Orçamento Registado!',
+          description: `O orçamento para "${data.clientName}" foi criado com sucesso.`,
+      });
+    }
     onClose();
   };
 
@@ -103,9 +167,9 @@ export function RegisterQuoteModal({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle className="font-headline">Criar Novo Orçamento</DialogTitle>
+          <DialogTitle className="font-headline">{isEditMode ? "Editar Orçamento" : "Criar Novo Orçamento"}</DialogTitle>
           <DialogDescription>
-            Preencha os dados do cliente e a estrutura de ambientes e móveis para gerar um novo orçamento.
+             {isEditMode ? 'Edite os detalhes do orçamento.' : 'Preencha os dados do cliente e a estrutura de ambientes e móveis para gerar um novo orçamento.'}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -177,7 +241,7 @@ export function RegisterQuoteModal({
             <Separator />
 
              <div>
-              <h3 className="text-lg font-medium mb-2 font-headline">Ambientes e Móveis</h3>
+              <h3 className="text-lg font-medium mb-2 font-headline">{isEditMode ? "Editar Ambientes" : "Ambientes e Móveis"}</h3>
               {envFields.map((envField, envIndex) => (
                 <div key={envField.id} className="p-4 border rounded-lg mb-4 space-y-4 bg-muted/50 relative">
                    <Button
@@ -210,7 +274,7 @@ export function RegisterQuoteModal({
                 variant="outline"
                 size="sm"
                 onClick={() =>
-                  appendEnv({ name: '', furniture: [{ name: '' }] })
+                  appendEnv({ id: generateId('env'), name: '', furniture: [{ id: generateId('fur'), name: '' }] })
                 }
               >
                 <PlusCircle className="mr-2 h-4 w-4" />
@@ -271,7 +335,7 @@ function FurnitureArray({ control, envIndex }: { control: any, envIndex: number 
         type="button"
         variant="outline"
         size="sm"
-        onClick={() => append({ name: '' })}
+        onClick={() => append({ id: generateId('fur'), name: '' })}
         className="mt-2"
       >
         <PlusCircle className="mr-2 h-4 w-4" />
