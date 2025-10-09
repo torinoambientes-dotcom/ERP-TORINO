@@ -27,20 +27,17 @@ import { AppContext } from '@/context/app-context';
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from '../ui/separator';
 
-const furnitureSchema = z.object({
-  name: z.string().min(1, 'Nome do móvel é obrigatório.'),
-});
-
-const environmentSchema = z.object({
-  name: z.string().min(1, 'Nome do ambiente é obrigatório.'),
-  furniture: z.array(furnitureSchema).min(1, 'Adicione ao menos um móvel.'),
+const quoteItemSchema = z.object({
+  description: z.string().min(1, 'Descrição do item é obrigatória.'),
+  quantity: z.coerce.number().min(1, 'Quantidade deve ser no mínimo 1.'),
+  unitPrice: z.coerce.number().min(0, 'Preço unitário não pode ser negativo.'),
 });
 
 const quoteSchema = z.object({
   clientName: z.string().min(1, 'Nome do cliente é obrigatório.'),
-  environments: z
-    .array(environmentSchema)
-    .min(1, 'Adicione ao menos um ambiente.'),
+  clientContact: z.string().optional(),
+  notes: z.string().optional(),
+  items: z.array(quoteItemSchema).min(1, 'Adicione pelo menos um item ao orçamento.'),
 });
 
 type QuoteFormValues = z.infer<typeof quoteSchema>;
@@ -54,12 +51,14 @@ export function RegisterQuoteModal({
   isOpen,
   onClose,
 }: RegisterQuoteModalProps) {
-  // const { addQuote } = useContext(AppContext);
+  const { addQuote } = useContext(AppContext);
   const { toast } = useToast();
 
   const defaultValues: QuoteFormValues = {
     clientName: '',
-    environments: [{ name: '', furniture: [{ name: '' }] }],
+    clientContact: '',
+    notes: '',
+    items: [{ description: '', quantity: 1, unitPrice: 0 }],
   };
 
   const form = useForm<QuoteFormValues>({
@@ -67,13 +66,9 @@ export function RegisterQuoteModal({
     defaultValues: defaultValues,
   });
 
-  const {
-    fields: envFields,
-    append: appendEnv,
-    remove: removeEnv,
-  } = useFieldArray({
+  const { fields, append, remove } = useFieldArray({
     control: form.control,
-    name: 'environments',
+    name: 'items',
   });
   
   useEffect(() => {
@@ -84,26 +79,25 @@ export function RegisterQuoteModal({
 
 
   const onSubmit = (data: QuoteFormValues) => {
-    // TODO: Implement addQuote in context
-    console.log(data);
+    addQuote(data);
     toast({
-        title: 'Orçamento Registado (Simulação)',
-        description: `O orçamento para "${data.clientName}" foi criado localmente.`,
+        title: 'Orçamento Registado!',
+        description: `O orçamento para "${data.clientName}" foi criado com sucesso.`,
     });
     onClose();
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[700px] max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="font-headline">Criar Novo Orçamento</DialogTitle>
           <DialogDescription>
-            Preencha os dados do cliente e a estrutura de ambientes e móveis para gerar um novo orçamento.
+            Preencha os dados do cliente e os itens para gerar um novo orçamento.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 flex-grow overflow-y-auto pr-2">
             <FormField
               control={form.control}
               name="clientName"
@@ -117,52 +111,98 @@ export function RegisterQuoteModal({
                 </FormItem>
               )}
             />
+            
+            <FormField
+              control={form.control}
+              name="clientContact"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Contato do Cliente (Email/Telefone)</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Ex: (11) 99999-9999" {...field} value={field.value || ''} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <Separator />
 
             <div>
-              <h3 className="text-lg font-medium mb-2 font-headline">Ambientes e Móveis</h3>
-              {envFields.map((envField, envIndex) => (
-                <div key={envField.id} className="p-4 border rounded-lg mb-4 space-y-4 bg-muted/50 relative">
-                   <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => removeEnv(envIndex)}
-                      className="absolute top-2 right-2 h-7 w-7 text-muted-foreground hover:text-destructive"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  <FormField
-                    control={form.control}
-                    name={`environments.${envIndex}.name`}
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Nome do Ambiente</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Ex: Cozinha" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FurnitureArray control={form.control} envIndex={envIndex} />
-                </div>
-              ))}
+              <h3 className="text-lg font-medium mb-2 font-headline">Itens do Orçamento</h3>
+              <div className="space-y-3">
+                  {fields.map((itemField, index) => (
+                    <div key={itemField.id} className="p-3 border rounded-lg space-y-2 bg-muted/50">
+                        <div className="flex justify-between items-center">
+                            <p className="font-medium text-sm">Item {index + 1}</p>
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => remove(index)}
+                                className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                            >
+                                <Trash2 className="h-4 w-4" />
+                            </Button>
+                        </div>
+                        <FormField
+                            control={form.control}
+                            name={`items.${index}.description`}
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Descrição</FormLabel>
+                                <FormControl>
+                                <Input placeholder="Ex: Cozinha Planejada Completa" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
+                        <div className="flex gap-4">
+                            <FormField
+                                control={form.control}
+                                name={`items.${index}.quantity`}
+                                render={({ field }) => (
+                                <FormItem className="w-1/3">
+                                    <FormLabel>Qtd.</FormLabel>
+                                    <FormControl>
+                                    <Input type="number" {...field} />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name={`items.${index}.unitPrice`}
+                                render={({ field }) => (
+                                <FormItem className="w-2/3">
+                                    <FormLabel>Preço Unitário (R$)</FormLabel>
+                                    <FormControl>
+                                    <Input type="number" step="0.01" {...field} />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                                )}
+                            />
+                        </div>
+                    </div>
+                  ))}
+               </div>
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
                 onClick={() =>
-                  appendEnv({ name: '', furniture: [{ name: '' }] })
+                  append({ description: '', quantity: 1, unitPrice: 0 })
                 }
+                className="mt-4"
               >
                 <PlusCircle className="mr-2 h-4 w-4" />
-                Adicionar Ambiente
+                Adicionar Item
               </Button>
             </div>
-
-            <DialogFooter>
+             <DialogFooter className="sticky bottom-0 bg-background pt-4 z-10">
               <Button type="button" variant="ghost" onClick={onClose}>
                 Cancelar
               </Button>
@@ -172,54 +212,5 @@ export function RegisterQuoteModal({
         </Form>
       </DialogContent>
     </Dialog>
-  );
-}
-
-
-function FurnitureArray({ control, envIndex }: { control: any, envIndex: number }) {
-  const { fields, append, remove } = useFieldArray({
-    control,
-    name: `environments.${envIndex}.furniture`,
-  });
-
-  return (
-    <div className="space-y-2">
-      <FormLabel>Móveis</FormLabel>
-      {fields.map((field, furIndex) => (
-        <div key={field.id} className="flex items-center gap-2">
-          <FormField
-            control={control}
-            name={`environments.${envIndex}.furniture.${furIndex}.name`}
-            render={({ field }) => (
-              <FormItem className="flex-1">
-                <FormControl>
-                  <Input placeholder="Ex: Armário aéreo" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            onClick={() => remove(furIndex)}
-            className="h-9 w-9 text-muted-foreground hover:text-destructive"
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        </div>
-      ))}
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        onClick={() => append({ name: '' })}
-        className="mt-2"
-      >
-        <PlusCircle className="mr-2 h-4 w-4" />
-        Adicionar Móvel
-      </Button>
-    </div>
   );
 }

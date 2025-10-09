@@ -1,18 +1,18 @@
 'use client';
 
 import { useState, useContext } from 'react';
+import Link from 'next/link';
 import { PageHeader } from '@/components/layout/page-header';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { PlusCircle } from 'lucide-react';
+import { PlusCircle, FileText } from 'lucide-react';
 import { AppContext } from '@/context/app-context';
 import { RegisterQuoteModal } from '@/components/modals/register-quote-modal';
+import type { QuoteStatus } from '@/lib/types';
 
-type QuoteStatus = 'draft' | 'sent' | 'approved' | 'rejected' | 'all';
-
-const statusMap: Record<QuoteStatus, { label: string; color: string }> = {
+const statusMap: Record<QuoteStatus | 'all', { label: string; color: string }> = {
   draft: { label: 'Rascunho', color: 'bg-gray-500' },
   sent: { label: 'Enviado', color: 'bg-blue-500' },
   approved: { label: 'Aprovado', color: 'bg-green-500' },
@@ -21,13 +21,10 @@ const statusMap: Record<QuoteStatus, { label: string; color: string }> = {
 };
 
 export default function QuotesPage() {
-    const { isLoading, projects } = useContext(AppContext); // Usando projects como dummy data por enquanto
+    const { quotes, isLoading } = useContext(AppContext);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
-    const [statusFilter, setStatusFilter] = useState<QuoteStatus>('all');
-    
-    // Dummy data for now
-    const quotes: any[] = [];
+    const [statusFilter, setStatusFilter] = useState<QuoteStatus | 'all'>('all');
 
     if (isLoading) {
         return (
@@ -36,6 +33,12 @@ export default function QuotesPage() {
           </div>
         );
     }
+
+    const filteredQuotes = (quotes || []).filter(quote => {
+        const matchesSearch = quote.clientName.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesStatus = statusFilter === 'all' || quote.status === statusFilter;
+        return matchesSearch && matchesStatus;
+    });
 
   return (
     <>
@@ -76,18 +79,31 @@ export default function QuotesPage() {
             </CardContent>
           </Card>
 
-           {quotes.length > 0 ? (
+           {filteredQuotes.length > 0 ? (
                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                  {/* Map over quotes here */}
+                  {filteredQuotes.map(quote => (
+                    <Link href={`/quotes/${quote.id}`} key={quote.id}>
+                        <Card className="h-full hover:shadow-lg transition-shadow">
+                            <CardHeader>
+                                <CardTitle>{quote.clientName}</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <p>Status: {statusMap[quote.status].label}</p>
+                                <p>Valor: R$ {quote.totalValue.toFixed(2)}</p>
+                            </CardContent>
+                        </Card>
+                    </Link>
+                  ))}
                </div>
            ) : (
               <div className="flex h-64 items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/20 bg-muted/30">
                   <div className="text-center p-4">
-                  <h3 className="font-headline text-xl font-semibold text-muted-foreground/80">
+                  <FileText className="mx-auto h-12 w-12 text-muted-foreground" />
+                  <h3 className="mt-4 font-headline text-xl font-semibold text-muted-foreground/80">
                       Nenhum orçamento encontrado
                   </h3>
                   <p className="mt-2 text-sm text-muted-foreground">
-                      Crie um novo orçamento para começar.
+                      Crie um novo orçamento para começar a gerir as suas propostas.
                   </p>
                   </div>
               </div>

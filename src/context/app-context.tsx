@@ -3,7 +3,7 @@
 import { createContext, type ReactNode, useCallback, useMemo, useEffect, useState } from 'react';
 import { collection, doc, serverTimestamp, deleteField, writeBatch, getDocs, runTransaction } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useAuth, useUser } from '@/firebase';
-import type { Project, TeamMember, StageStatus, StockItem, StockMovement, StockCategory, Furniture, Environment, MaterialItem, StockReservation, ProductionStage, Appointment, PurchaseRequest, PurchaseRequestStatus } from '@/lib/types';
+import type { Project, TeamMember, StageStatus, StockItem, StockMovement, StockCategory, Furniture, Environment, MaterialItem, StockReservation, ProductionStage, Appointment, PurchaseRequest, PurchaseRequestStatus, Quote, QuoteItem } from '@/lib/types';
 import { generateId } from '@/lib/utils';
 import { setDocumentNonBlocking, deleteDocumentNonBlocking, addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
@@ -17,6 +17,7 @@ interface AppContextType {
   stockCategories: StockCategory[];
   stockMovements: StockMovement[];
   purchaseRequests: PurchaseRequest[];
+  quotes: Quote[];
   isLoading: boolean;
   addProject: (projectData: any) => void;
   updateProject: (updatedProject: Project, originalProject?: Project) => void;
@@ -46,6 +47,7 @@ interface AppContextType {
   updatePurchaseRequest: (requestData: PurchaseRequest) => void;
   updatePurchaseRequestStatus: (requestId: string, status: PurchaseRequestStatus, notes?: string) => void;
   deletePurchaseRequest: (requestId: string) => void;
+  addQuote: (quoteData: Omit<Quote, 'id' | 'createdAt' | 'updatedAt' | 'status' | 'totalValue'>) => void;
 }
 
 export const AppContext = createContext<AppContextType>({
@@ -56,6 +58,7 @@ export const AppContext = createContext<AppContextType>({
   stockCategories: [],
   stockMovements: [],
   purchaseRequests: [],
+  quotes: [],
   isLoading: true,
   addProject: () => {},
   updateProject: () => {},
@@ -85,6 +88,7 @@ export const AppContext = createContext<AppContextType>({
   updatePurchaseRequest: () => {},
   updatePurchaseRequestStatus: () => {},
   deletePurchaseRequest: () => {},
+  addQuote: () => {},
 });
 
 const isProjectComplete = (project: Project): boolean => {
@@ -136,6 +140,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const stockCategoriesQuery = useMemoFirebase(() => collection(firestore, 'stock_categories'), [firestore]);
   const stockMovementsQuery = useMemoFirebase(() => collection(firestore, 'stock_movements'), [firestore]);
   const purchaseRequestsQuery = useMemoFirebase(() => collection(firestore, 'purchase_requests'), [firestore]);
+  const quotesQuery = useMemoFirebase(() => collection(firestore, 'quotes'), [firestore]);
 
   const { data: projects, isLoading: isLoadingProjects } = useCollection<Project>(projectsQuery);
   const { data: teamMembers, isLoading: isLoadingTeamMembers } = useCollection<TeamMember>(teamMembersQuery);
@@ -144,6 +149,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const { data: stockCategoriesData, isLoading: isLoadingStockCategories } = useCollection<StockCategory>(stockCategoriesQuery);
   const { data: stockMovements, isLoading: isLoadingMovements } = useCollection<StockMovement>(stockMovementsQuery);
   const { data: purchaseRequests, isLoading: isLoadingPurchaseRequests } = useCollection<PurchaseRequest>(purchaseRequestsQuery);
+  const { data: quotes, isLoading: isLoadingQuotes } = useCollection<Quote>(quotesQuery);
 
   const stockCategories = useMemo(() => stockCategoriesData || [], [stockCategoriesData]);
   
@@ -776,6 +782,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
         deleteDocumentNonBlocking(requestRef);
     }, [firestore]);
 
+    const addQuote = useCallback((quoteData: Omit<Quote, 'id' | 'createdAt' | 'updatedAt' | 'status' | 'totalValue'>) => {
+      if (!firestore) return;
+      const now = new Date().toISOString();
+      const totalValue = quoteData.items.reduce((acc, item) => acc + (item.quantity * item.unitPrice), 0);
+      
+      const newQuote: Quote = {
+        ...quoteData,
+        id: generateId('quote'),
+        status: 'draft',
+        totalValue: totalValue,
+        createdAt: now,
+        updatedAt: now,
+      };
+      
+      const quoteRef = doc(firestore, 'quotes', newQuote.id);
+      setDocumentNonBlocking(quoteRef, newQuote, { merge: false });
+    }, [firestore]);
+
 
   const value = useMemo(() => ({
     projects: projects || [],
@@ -785,7 +809,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     stockCategories: stockCategories,
     stockMovements: stockMovements || [],
     purchaseRequests: purchaseRequests || [],
-    isLoading: isLoadingProjects || isLoadingTeamMembers || isLoadingAppointments || isLoadingStockItems || isLoadingStockCategories || isLoadingMovements || isLoadingPurchaseRequests,
+    quotes: quotes || [],
+    isLoading: isLoadingProjects || isLoadingTeamMembers || isLoadingAppointments || isLoadingStockItems || isLoadingStockCategories || isLoadingMovements || isLoadingPurchaseRequests || isLoadingQuotes,
     addProject,
     updateProject,
     deleteProject,
@@ -814,6 +839,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     updatePurchaseRequest,
     updatePurchaseRequestStatus,
     deletePurchaseRequest,
+    addQuote,
   }), [
     projects, 
     teamMembers, 
@@ -822,6 +848,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     stockCategories,
     stockMovements,
     purchaseRequests,
+    quotes,
     isLoadingProjects, 
     isLoadingTeamMembers, 
     isLoadingAppointments,
@@ -829,6 +856,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     isLoadingStockCategories,
     isLoadingMovements,
     isLoadingPurchaseRequests,
+    isLoadingQuotes,
     addProject, 
     updateProject, 
     deleteProject, 
@@ -857,6 +885,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     updatePurchaseRequest,
     updatePurchaseRequestStatus,
     deletePurchaseRequest,
+    addQuote,
   ]);
 
 

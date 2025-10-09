@@ -203,3 +203,26 @@ export interface PurchaseRequest {
     updatedAt: string; // ISO date string
     notes?: string;
 }
+
+export type QuoteStatus = 'draft' | 'sent' | 'approved' | 'rejected';
+
+export interface QuoteItem {
+  id: string;
+  description: string;
+  quantity: number;
+  unitPrice: number;
+  totalPrice: number;
+}
+
+export interface Quote {
+  id: string;
+  clientName: string;
+  clientContact?: string;
+  status: QuoteStatus;
+  items: QuoteItem[];
+  totalValue: number;
+  notes?: string;
+  createdAt: string; // ISO date string
+  updatedAt: string; // ISO date string
+  validUntil?: string; // ISO date string
+}
