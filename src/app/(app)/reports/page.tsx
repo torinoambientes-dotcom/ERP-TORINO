@@ -1,5 +1,6 @@
 'use client';
-import { useContext, useMemo, useState } from 'react';
+import { useContext, useMemo, useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   Card,
@@ -44,6 +45,7 @@ import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { useUser } from '@/firebase';
 
 
 interface GeneralPendency extends Pendency {
@@ -81,11 +83,24 @@ interface ConsumptionRecord {
 }
 
 export default function ReportsPage() {
+  const router = useRouter();
   const context = useContext(AppContext);
   if (!context) {
     throw new Error('ReportsPage must be used within an AppProvider');
   }
-  const { projects, teamMembers, stockMovements, stockItems } = context;
+  const { projects, teamMembers, stockMovements, stockItems, isLoading } = context;
+  const { user } = useUser();
+
+  const loggedInMember = useMemo(() => {
+    if (!user || !teamMembers) return null;
+    return teamMembers.find(member => member.id === user.uid);
+  }, [user, teamMembers]);
+
+  useEffect(() => {
+    if (!isLoading && loggedInMember && loggedInMember.role === 'Projetista') {
+      router.push('/');
+    }
+  }, [isLoading, loggedInMember, router]);
 
   const [isPendenciesOpen, setIsPendenciesOpen] = useState(true);
   const [isProductivityOpen, setIsProductivityOpen] = useState(true);
@@ -422,6 +437,18 @@ export default function ReportsPage() {
       </div>
     );
   };
+
+  if (isLoading || !loggedInMember) {
+    return (
+      <div className="flex h-full w-full items-center justify-center">
+        <p>A carregar...</p>
+      </div>
+    );
+  }
+
+  if (loggedInMember.role === 'Projetista') {
+    return null;
+  }
 
   return (
     <div className="space-y-8">

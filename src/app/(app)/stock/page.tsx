@@ -1,5 +1,6 @@
 'use client';
-import { useContext, useState, useMemo, useCallback } from 'react';
+import { useContext, useState, useMemo, useCallback, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Card,
   CardContent,
@@ -41,9 +42,21 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 export default function StockPage() {
-  const { stockItems, stockCategories, deleteStockItem, deleteStockCategory, isLoading, clearAllReservations, markItemAsSeparated, dispatchItemToProduction, confirmStockReceipt } = useContext(AppContext);
+  const router = useRouter();
+  const { stockItems, stockCategories, deleteStockItem, deleteStockCategory, isLoading, clearAllReservations, markItemAsSeparated, dispatchItemToProduction, confirmStockReceipt, teamMembers } = useContext(AppContext);
   const { toast } = useToast();
   const { user } = useUser();
+
+  const loggedInMember = useMemo(() => {
+    if (!user || !teamMembers) return null;
+    return teamMembers.find(member => member.id === user.uid);
+  }, [user, teamMembers]);
+
+  useEffect(() => {
+    if (!isLoading && loggedInMember && loggedInMember.role === 'Projetista') {
+      router.push('/');
+    }
+  }, [isLoading, loggedInMember, router]);
 
   const [isRegisterModalOpen, setRegisterModalOpen] = useState(false);
   const [itemToEdit, setItemToEdit] = useState<StockItem | null>(null);
@@ -343,12 +356,16 @@ export default function StockPage() {
     );
   };
 
-  if (isLoading) {
+  if (isLoading || !loggedInMember) {
     return (
       <div className="flex h-full w-full items-center justify-center">
-        <p>Carregando estoque...</p>
+        <p>A carregar...</p>
       </div>
     );
+  }
+
+  if (loggedInMember.role === 'Projetista') {
+    return null;
   }
 
   return (

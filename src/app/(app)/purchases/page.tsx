@@ -1,5 +1,6 @@
 'use client';
-import { useContext, useMemo, useState, useCallback } from 'react';
+import { useContext, useMemo, useState, useCallback, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Card,
   CardContent,
@@ -113,6 +114,7 @@ const handlePositions: Record<string, string> = {
 
 
 export default function PurchasesPage() {
+  const router = useRouter();
   const context = useContext(AppContext);
   if (!context) {
     throw new Error('PurchasesPage must be used within an AppProvider');
@@ -127,9 +129,21 @@ export default function PurchasesPage() {
     teamMembers,
     updatePurchaseRequestStatus,
     deletePurchaseRequest,
+    isLoading
   } = context;
   const { toast } = useToast();
   const { user } = useUser();
+
+  const loggedInMember = useMemo(() => {
+    if (!user || !teamMembers) return null;
+    return teamMembers.find(member => member.id === user.uid);
+  }, [user, teamMembers]);
+
+  useEffect(() => {
+    if (!isLoading && loggedInMember && loggedInMember.role === 'Projetista') {
+      router.push('/');
+    }
+  }, [isLoading, loggedInMember, router]);
 
   const [isStockAlertOpen, setIsStockAlertOpen] = useState(true);
 
@@ -595,6 +609,18 @@ export default function PurchasesPage() {
             setRequestToDelete(null);
         }
     }
+
+  if (isLoading || !loggedInMember) {
+    return (
+      <div className="flex h-full w-full items-center justify-center">
+        <p>A carregar...</p>
+      </div>
+    );
+  }
+
+  if (loggedInMember.role === 'Projetista') {
+    return null; 
+  }
 
 
   return (

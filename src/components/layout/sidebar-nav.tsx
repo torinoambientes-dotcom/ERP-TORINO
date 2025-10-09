@@ -40,10 +40,10 @@ const menuItems = [
   { href: '/projects', label: 'Projetos', icon: LayoutGrid, adminOnly: false },
   { href: '/quotes', label: 'Orçamentos', icon: FileText, adminOnly: false },
   { href: '/calendar', label: 'Calendário', icon: Calendar, adminOnly: false },
-  { href: '/purchases', label: 'Compras', icon: ShoppingCart, adminOnly: false },
-  { href: '/reports', label: 'Relatórios', icon: BarChart3, adminOnly: false },
+  { href: '/purchases', label: 'Compras', icon: ShoppingCart, adminOnly: false, restrictedRoles: ['Projetista'] },
+  { href: '/reports', label: 'Relatórios', icon: BarChart3, adminOnly: false, restrictedRoles: ['Projetista'] },
   { href: '/team', label: 'Equipe', icon: Users, adminOnly: true },
-  { href: '/stock', label: 'Estoque', icon: Boxes, adminOnly: false },
+  { href: '/stock', label: 'Estoque', icon: Boxes, adminOnly: false, restrictedRoles: ['Projetista'] },
 ];
 
 const defaultColors = [
@@ -127,10 +127,20 @@ export function SidebarNav() {
     setAvatarPopoverOpen(false);
   };
   
-  const visibleMenuItems = menuItems.filter(item => !item.adminOnly || isAdmin).sort((a, b) => {
-    const order = ['Dashboard', 'Projetos', 'Orçamentos', 'Calendário', 'Compras', 'Estoque', 'Relatórios', 'Equipe'];
-    return order.indexOf(a.label) - order.indexOf(b.label);
-  });
+  const visibleMenuItems = useMemo(() => {
+    return menuItems
+      .filter(item => {
+        if (item.adminOnly && !isAdmin) return false;
+        if (item.restrictedRoles && loggedInMember && item.restrictedRoles.includes(loggedInMember.role)) {
+          return false;
+        }
+        return true;
+      })
+      .sort((a, b) => {
+        const order = ['Dashboard', 'Projetos', 'Orçamentos', 'Calendário', 'Compras', 'Estoque', 'Relatórios', 'Equipe'];
+        return order.indexOf(a.label) - order.indexOf(b.label);
+      });
+  }, [isAdmin, loggedInMember]);
 
   return (
     <>
