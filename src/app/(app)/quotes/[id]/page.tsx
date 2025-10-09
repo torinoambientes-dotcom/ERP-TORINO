@@ -159,18 +159,17 @@ export default function QuoteDetailsPage() {
   
     // --- Header ---
     doc.setFont('Helvetica', 'normal');
-    
-    // TORINO
     doc.setFontSize(20);
     doc.setTextColor(41, 37, 36);
     doc.text('TORINO', margin, y, { align: 'left' });
     
-    // AMBIENTES
+    // Calculate width of TORINO to align AMBIENTES
+    const torinoWidth = doc.getStringUnitWidth('TORINO') * doc.getFontSize() / doc.internal.scaleFactor;
+
     doc.setFontSize(8);
-    doc.setCharSpace(3);
-    doc.setTextColor(150, 150, 150); // Lighter gray color
-    doc.text('AMBIENTES', margin, y + 6, { align: 'left' });
-    
+    doc.setTextColor(150, 150, 150);
+    doc.text('AMBIENTES', margin, y + 6, { align: 'left', charSpace: 3.1 });
+
     // Reset text settings
     doc.setCharSpace(0);
     doc.setTextColor(41, 37, 36);
