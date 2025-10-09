@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { PlusCircle, FileText } from 'lucide-react';
+import { PlusCircle, FileText, Database } from 'lucide-react';
 import { AppContext } from '@/context/app-context';
 import { RegisterQuoteModal } from '@/components/modals/register-quote-modal';
 import type { Quote } from '@/lib/types';
@@ -36,6 +36,7 @@ const statusDisplayMap: Record<string, { label: string; variant: 'default' | 'se
     rejected: { label: 'Recusado', variant: 'destructive' },
     pending_send: { label: 'A Enviar', variant: 'secondary' },
     sent: { label: 'Enviado', variant: 'secondary' },
+    revision: { label: 'Revisão', variant: 'outline'},
 };
 
 
@@ -48,7 +49,7 @@ export default function QuotesPage() {
     const groupedQuotes = useMemo(() => {
         const filtered = (quotes || []).filter((quote: Quote) => {
             const matchesSearch = quote.clientName.toLowerCase().includes(searchTerm.toLowerCase());
-            const matchesStatus = statusFilter === 'all' || quote.clientFeedback === statusFilter || quote.presentationStatus === statusFilter;
+            const matchesStatus = statusFilter === 'all' || quote.clientFeedback === statusFilter || (statusFilter === 'pending_send' && quote.presentationStatus === 'pending_send');
             return matchesSearch && matchesStatus;
         });
 
@@ -117,10 +118,18 @@ export default function QuotesPage() {
             title="Orçamentos"
             description="Crie, gerencie e acompanhe suas propostas comerciais."
           />
-          <Button onClick={() => setIsModalOpen(true)} className="w-full sm:w-auto">
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Novo Orçamento
-          </Button>
+          <div className="flex gap-2 w-full sm:w-auto">
+            <Button asChild variant="outline" className="w-full sm:w-auto">
+              <Link href="/quotes/materials">
+                <Database className="mr-2 h-4 w-4" />
+                Gerir Materiais
+              </Link>
+            </Button>
+            <Button onClick={() => setIsModalOpen(true)} className="w-full sm:w-auto">
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Novo Orçamento
+            </Button>
+          </div>
         </div>
 
          <Card>
