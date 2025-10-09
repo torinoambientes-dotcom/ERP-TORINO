@@ -21,10 +21,10 @@ import { QuoteMaterialsModal } from '@/components/modals/quote-materials-modal';
 import { RegisterQuoteModal } from '@/components/modals/register-quote-modal';
 import { QuoteFurnitureDescriptionModal } from '@/components/modals/quote-furniture-description-modal';
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
 import { Calendar } from '@/components/ui/calendar';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
+import { logoSvgString } from '@/components/logo';
 
 
 type StageKey = 'internalProjectStage' | 'materialSurveyStage' | 'descriptiveStage';
@@ -150,37 +150,48 @@ export default function QuoteDetailsPage() {
   };
 
   const handleDeliveryDeadlineChange = (date: Date | undefined) => {
-      if (!quote || !date) return;
-      const updates = { deliveryDeadline: date.toISOString() };
-      
-      if (!quote.relatedProjectId) {
-          const newProjectId = addProject({
-              clientName: quote.clientName,
-              deliveryDeadline: date.toISOString(),
-              environments: quote.environments.map(env => ({
-                  name: env.name,
-                  furniture: env.furniture.map(fur => ({
-                      name: fur.name,
-                      materials: fur.materials,
-                      glassItems: fur.glassItems,
-                      profileDoors: fur.profileDoors,
-                  }))
-              }))
-          });
-          updates.relatedProjectId = newProjectId;
-
-          toast({
-              title: "Projeto Criado com Sucesso!",
-              description: `O projeto para ${quote.clientName} foi gerado a partir deste orçamento.`,
-          });
-      }
-
-      setQuote(currentQuote => {
-          if (!currentQuote) return null;
-          const newQuote = { ...currentQuote, ...updates };
-          updateQuote(newQuote.id, updates);
-          return newQuote;
+    if (!quote || !date) return;
+  
+    let updates: Partial<Quote> = { deliveryDeadline: date.toISOString() };
+  
+    if (!quote.relatedProjectId) {
+      const newProjectId = addProject({
+        clientName: quote.clientName,
+        deliveryDeadline: date.toISOString(),
+        environments: quote.environments.map(env => ({
+          name: env.name,
+          furniture: env.furniture.map(fur => ({
+            name: fur.name,
+            materials: fur.materials,
+            glassItems: fur.glassItems,
+            profileDoors: fur.profileDoors,
+          })),
+        })),
       });
+  
+      if (newProjectId) {
+        updates.relatedProjectId = newProjectId;
+  
+        toast({
+          title: "Projeto Criado com Sucesso!",
+          description: `O projeto para ${quote.clientName} foi gerado a partir deste orçamento.`,
+        });
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Erro ao criar projeto",
+          description: "Não foi possível obter o ID do novo projeto.",
+        });
+        return; // Stop if project creation failed
+      }
+    }
+  
+    setQuote(currentQuote => {
+      if (!currentQuote) return null;
+      const newQuote = { ...currentQuote, ...updates };
+      updateQuote(newQuote.id, updates);
+      return newQuote;
+    });
   };
 
   const memberMap = useMemo(() => {
@@ -190,27 +201,26 @@ export default function QuoteDetailsPage() {
 
   const generatePDF = (isQuote: boolean) => {
     if (!quote) return;
-
+  
     const doc = new jsPDF('p', 'mm', 'a4');
     const pageHeight = doc.internal.pageSize.height || doc.internal.pageSize.getHeight();
     const pageWidth = doc.internal.pageSize.width || doc.internal.pageSize.getWidth();
     const margin = 20;
-    let y = 35; // Start y position after header
-
+    let y = 35;
+  
     const addHeader = (pageNumber: number) => {
-      doc.setFont('Helvetica', 'normal');
-      doc.setFontSize(16);
-      doc.text('TORINO', margin, 18);
-      doc.setFontSize(7);
-      doc.text('AMBIENTES', margin, 22, { charSpace: 2 });
-
+      const parser = new DOMParser();
+      const svgDoc = parser.parseFromString(logoSvgString, "image/svg+xml");
+      const svgElement = svgDoc.getElementsByTagName('svg')[0];
+      doc.svg(svgElement, { x: margin, y: 12, width: 30, height: 10 });
+  
       const title = isQuote ? 'Proposta Comercial' : 'Memorial Descritivo';
       doc.setFont('Helvetica', 'bold');
       doc.setFontSize(14);
       const titleWidth = doc.getStringUnitWidth(title) * doc.getFontSize() / doc.internal.scaleFactor;
       doc.text(title, pageWidth - margin - titleWidth, 20);
     };
-
+  
     const addFooter = (pageNumber: number, totalPages: number) => {
         const footerY = pageHeight - 15;
         doc.setDrawColor(220, 220, 220);
@@ -222,88 +232,108 @@ export default function QuoteDetailsPage() {
         
         const footerText = "Torino Ambientes | torinoambientes@gmail.com";
         doc.text(footerText, margin, footerY);
-
+  
         const pageText = `Página ${pageNumber} de ${totalPages}`;
         const pageTextWidth = doc.getStringUnitWidth(pageText) * doc.getFontSize() / doc.internal.scaleFactor;
         doc.text(pageText, pageWidth - margin - pageTextWidth, footerY);
     };
-
-    const checkPageBreak = (requiredHeight: number) => {
-      if (y + requiredHeight > pageHeight - 25) { // 25mm margin for footer
-        doc.addPage();
-        y = 35;
-        return true;
-      }
-      return false;
+  
+    const checkPageBreak = (requiredHeight: number, isContentBlock = false) => {
+        const footerMargin = isContentBlock ? 40 : 25;
+        if (y + requiredHeight > pageHeight - footerMargin) {
+            doc.addPage();
+            y = 35;
+            return true;
+        }
+        return false;
     };
-
-    // Initial Page
+  
     addHeader(1);
-
+  
     doc.setFont('Helvetica', 'bold');
     doc.setFontSize(12);
     doc.text(`Cliente:`, margin, y);
     doc.setFont('Helvetica', 'normal');
     doc.text(`${quote.clientName}`, margin + 20, y);
-
+  
     const dateText = `Data: ${new Date().toLocaleDateString('pt-BR')}`;
     const dateWidth = doc.getStringUnitWidth(dateText) * doc.getFontSize() / doc.internal.scaleFactor;
     doc.text(dateText, pageWidth - margin - dateWidth, y);
     y += 12;
-
+  
     let totalQuoteValue = 0;
-
-    for (const env of quote.environments) {
-      if (checkPageBreak(20)) {
-        // Space for env header
-      }
-      
-      doc.setFont('Helvetica', 'bold');
-      doc.setFontSize(14);
-      const envNameText = env.name;
-      doc.text(envNameText, margin, y);
-      
-      if(isQuote){
-        const environmentValue = (env.furniture || []).reduce((envAcc, fur) => envAcc + (fur.materials || []).reduce((matAcc, mat) => matAcc + (mat.quantity * (mat.cost || 0) * (mat.markup || 1)), 0), 0);
-        totalQuoteValue += environmentValue;
-        const envValueText = `- R$ ${environmentValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-        doc.setFont('Helvetica', 'normal');
-        doc.text(envValueText, margin + doc.getStringUnitWidth(envNameText) * doc.getFontSize() / doc.internal.scaleFactor + 3, y);
-      }
-
-      y += 4;
-      doc.setDrawColor(220, 220, 220);
-      doc.line(margin, y, pageWidth - margin, y);
-      y += 8;
-
-      for (const fur of (env.furniture || [])) {
-        const furNameHeight = 6;
-        const descriptionLines = doc.splitTextToSize(fur.description || 'Nenhum descritivo fornecido.', pageWidth - (margin * 2) - 5);
-        const descHeight = descriptionLines.length * 4;
-        const furBlockHeight = furNameHeight + descHeight + 8;
-
-        if (checkPageBreak(furBlockHeight)) {
-          // New page
+  
+    const processEnvironment = (env: QuoteEnvironment, isFirstOnPage: boolean) => {
+        const lineHeight = doc.getLineHeight() / doc.internal.scaleFactor;
+        
+        const envNameText = env.name;
+        let environmentValue = 0;
+        if(isQuote){
+            environmentValue = (env.furniture || []).reduce((envAcc, fur) => envAcc + (fur.materials || []).reduce((matAcc, mat) => matAcc + (mat.quantity * (mat.cost || 0) * (mat.markup || 1)), 0), 0);
+            totalQuoteValue += environmentValue;
         }
-
+        const envValueText = isQuote ? `- R$ ${environmentValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '';
+  
+        let requiredHeight = lineHeight + (isFirstOnPage ? 10 : 8); // Extra space for a new section
+        
+        const furnituresContent = (env.furniture || []).map(fur => {
+            const furNameHeight = lineHeight;
+            const descriptionLines = doc.splitTextToSize(fur.description || 'Nenhum descritivo fornecido.', pageWidth - (margin * 2));
+            const descHeight = descriptionLines.length * (lineHeight * 0.9);
+            const furBlockHeight = furNameHeight + descHeight + 6;
+            return { fur, furBlockHeight, descriptionLines };
+        });
+  
+        requiredHeight += furnituresContent.reduce((acc, content) => acc + content.furBlockHeight, 0);
+  
+        if (checkPageBreak(requiredHeight, false)) {
+            // New page, redraw header for this env
+        }
+  
+        if (isFirstOnPage) {
+            y += 5;
+        } else {
+            y += 8;
+        }
+        
         doc.setFont('Helvetica', 'bold');
-        doc.setFontSize(11);
-        doc.text(fur.name, margin, y);
-        y += 6;
-
-        doc.setFont('Helvetica', 'normal');
-        doc.setFontSize(10);
-        doc.setTextColor('#666666');
-        doc.text(descriptionLines, margin, y);
-        y += descHeight + 6;
-        doc.setTextColor('#000000');
-      }
-      y += 5;
-    }
+        doc.setFontSize(14);
+        doc.text(envNameText, margin, y);
+  
+        if(isQuote){
+            doc.setFont('Helvetica', 'normal');
+            doc.text(envValueText, margin + doc.getStringUnitWidth(envNameText) * doc.getFontSize() / doc.internal.scaleFactor + 3, y);
+        }
+        y += 4;
+        doc.setDrawColor(220, 220, 220);
+        doc.line(margin, y, pageWidth - margin, y);
+        y += 8;
+  
+        furnituresContent.forEach(item => {
+            if (checkPageBreak(item.furBlockHeight, true)) {
+                // Continuation, no header needed
+            }
+            doc.setFont('Helvetica', 'bold');
+            doc.setFontSize(11);
+            doc.text(item.fur.name, margin, y);
+            y += 6;
+  
+            doc.setFont('Helvetica', 'normal');
+            doc.setFontSize(10);
+            doc.setTextColor('#666666');
+            doc.text(item.descriptionLines, margin, y);
+            y += item.descriptionLines.length * (lineHeight * 0.9) + 6;
+            doc.setTextColor('#000000');
+        });
+    };
+  
+    quote.environments.forEach((env, index) => {
+        processEnvironment(env, index === 0);
+    });
   
     if (isQuote) {
         if (checkPageBreak(30)) {
-          // new page
+           //
         }
         y += 10;
         doc.setFont('Helvetica', 'bold');
@@ -315,7 +345,7 @@ export default function QuoteDetailsPage() {
     }
     
     if (checkPageBreak(20)) {
-      // new page
+       //
     }
     doc.setFont('Helvetica', 'bold');
     doc.setFontSize(10);

@@ -21,7 +21,7 @@ interface AppContextType {
   quoteMaterials: QuoteMaterial[];
   quoteMaterialCategories: QuoteMaterialCategory[];
   isLoading: boolean;
-  addProject: (projectData: any) => void;
+  addProject: (projectData: any) => string | undefined;
   updateProject: (updatedProject: Project, originalProject?: Project) => void;
   deleteProject: (projectId: string) => void;
   addTeamMember: (memberData: Omit<TeamMember, 'id' | 'userId'> & { password?: string, email: string }) => Promise<void>;
@@ -70,7 +70,7 @@ export const AppContext = createContext<AppContextType>({
   quoteMaterials: [],
   quoteMaterialCategories: [],
   isLoading: true,
-  addProject: () => {},
+  addProject: () => undefined,
   updateProject: () => {},
   deleteProject: () => {},
   addTeamMember: async () => {},
@@ -201,6 +201,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     };
     const projectRef = doc(firestore, 'projects', projectId);
     setDocumentNonBlocking(projectRef, newProject, { merge: false });
+    return projectId;
   }, [firestore]);
   
     const updateProject = useCallback(async (updatedProject: Project, originalProject?: Project) => {
