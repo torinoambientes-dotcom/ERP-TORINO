@@ -154,38 +154,32 @@ export default function QuoteDetailsPage() {
     const pageHeight = doc.internal.pageSize.height || doc.internal.pageSize.getHeight();
     const pageWidth = doc.internal.pageSize.width || doc.internal.pageSize.getWidth();
     const margin = 20;
-    let y = 25;
+    let y = 20;
     let totalQuoteValue = 0;
   
     // --- Header ---
     doc.setFont('Helvetica', 'bold');
     doc.setFontSize(22);
-    const torinoText = 'TORINO';
-    const torinoWidth = doc.getStringUnitWidth(torinoText) * doc.getFontSize() / doc.internal.scaleFactor;
-    const torinoStartX = (pageWidth - torinoWidth) / 2;
-    doc.text(torinoText, torinoStartX, y);
-    
+    doc.text('TORINO', margin, y);
     y += 7;
     doc.setFont('Helvetica', 'normal');
     doc.setFontSize(8);
     doc.setCharSpace(3);
-    const ambientesText = 'AMBIENTES';
-    const ambientesWidth = doc.getStringUnitWidth(ambientesText) * doc.getFontSize() / doc.internal.scaleFactor + (ambientesText.length -1) * 3;
-    const ambientesStartX = torinoStartX + (torinoWidth - ambientesWidth) / 2;
-    doc.text(ambientesText, ambientesStartX, y);
+    doc.text('AMBIENTES', margin, y);
     doc.setCharSpace(0);
-  
+
+    doc.setFont('Helvetica', 'bold');
+    doc.setFontSize(18);
+    const title = isQuote ? 'Proposta Comercial' : 'Descritivo do Orçamento';
+    const titleWidth = doc.getStringUnitWidth(title) * doc.getFontSize() / doc.internal.scaleFactor;
+    doc.text(title, pageWidth - margin - titleWidth, y - 5);
+
+
     y += 10;
     doc.setDrawColor(220, 220, 220);
     doc.line(margin, y, pageWidth - margin, y); // Horizontal line
   
     y += 15;
-  
-    // --- Title ---
-    doc.setFont('Helvetica', 'bold');
-    doc.setFontSize(16);
-    doc.text(isQuote ? 'Orçamento' : 'Descritivo do Orçamento', margin, y);
-    y += 8;
     
     // --- Client and Date ---
     const generationDate = new Date().toLocaleDateString('pt-BR');
@@ -279,8 +273,8 @@ export default function QuoteDetailsPage() {
     }
     
     // --- Footer Notes ---
-    const finalY = (isQuote ? y : pageHeight - 50); // Position notes at bottom if no total value
-    if (finalY > pageHeight - 50) { 
+    const finalY = pageHeight - 40;
+    if (y > finalY) { 
       doc.addPage();
       y = margin;
     } else {
@@ -296,9 +290,6 @@ export default function QuoteDetailsPage() {
     doc.setFontSize(8);
     const notes = [
       '- Orçamento válido por 15 dias.',
-      '- Condições de pagamento: 50% de entrada, 50% na entrega.',
-      '- Prazo de entrega: A combinar.',
-      '- Não incluso: frete, instalação de pedras, cubas e eletrodomésticos.',
     ];
     notes.forEach(note => {
       doc.text(note, margin, y);
