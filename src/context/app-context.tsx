@@ -3,7 +3,7 @@
 import { createContext, type ReactNode, useCallback, useMemo, useEffect, useState } from 'react';
 import { collection, doc, serverTimestamp, deleteField, writeBatch, getDocs, runTransaction } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useAuth, useUser } from '@/firebase';
-import type { Project, TeamMember, StageStatus, StockItem, StockMovement, StockCategory, Furniture, Environment, MaterialItem, StockReservation, ProductionStage, Appointment, PurchaseRequest, PurchaseRequestStatus, Quote } from '@/lib/types';
+import type { Project, TeamMember, StageStatus, StockItem, StockMovement, StockCategory, Furniture, Environment, MaterialItem, StockReservation, ProductionStage, Appointment, PurchaseRequest, PurchaseRequestStatus, Quote, QuoteStage } from '@/lib/types';
 import { generateId } from '@/lib/utils';
 import { setDocumentNonBlocking, deleteDocumentNonBlocking, addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
@@ -48,6 +48,7 @@ interface AppContextType {
   updatePurchaseRequestStatus: (requestId: string, status: PurchaseRequestStatus, notes?: string) => void;
   deletePurchaseRequest: (requestId: string) => void;
   addQuote: (quoteData: Pick<Quote, 'clientName' | 'clientContact' | 'environments' | 'projectOrigin'>) => void;
+  updateQuote: (quoteId: string, updates: Partial<Quote>) => void;
 }
 
 export const AppContext = createContext<AppContextType>({
@@ -89,6 +90,7 @@ export const AppContext = createContext<AppContextType>({
   updatePurchaseRequestStatus: () => {},
   deletePurchaseRequest: () => {},
   addQuote: () => {},
+  updateQuote: () => {},
 });
 
 const isProjectComplete = (project: Project): boolean => {
@@ -787,7 +789,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const now = new Date().toISOString();
       const quoteId = generateId('quote');
       
-      const newQuote: Omit<Quote, 'totalValue' | 'notes'> & { totalValue?: number, notes?: string } = {
+      const newQuote: Quote = {
         id: quoteId,
         clientName: quoteData.clientName,
         clientContact: quoteData.clientContact,
@@ -799,16 +801,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
         })),
         createdAt: now,
         updatedAt: now,
-        materialSurveyStage: { status: 'todo' },
-        descriptiveStage: { status: 'todo' },
+        internalProjectStage: { status: 'todo', responsibleIds: [] },
+        materialSurveyStage: { status: 'todo', responsibleIds: [] },
+        descriptiveStage: { status: 'todo', responsibleIds: [] },
         presentationStatus: 'pending_send',
         clientFeedback: 'analyzing',
         totalValue: 0,
-        notes: '',
       };
       
       const quoteRef = doc(firestore, 'quotes', quoteId);
       setDocumentNonBlocking(quoteRef, newQuote, { merge: false });
+    }, [firestore]);
+
+    const updateQuote = useCallback((quoteId: string, updates: Partial<Quote>) => {
+      if (!firestore) return;
+      const quoteRef = doc(firestore, 'quotes', quoteId);
+      const dataWithTimestamp = { ...updates, updatedAt: new Date().toISOString() };
+      updateDocumentNonBlocking(quoteRef, dataWithTimestamp);
     }, [firestore]);
 
 
@@ -851,6 +860,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     updatePurchaseRequestStatus,
     deletePurchaseRequest,
     addQuote,
+    updateQuote,
   }), [
     projects, 
     teamMembers, 
@@ -897,6 +907,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     updatePurchaseRequestStatus,
     deletePurchaseRequest,
     addQuote,
+    updateQuote,
   ]);
 
 

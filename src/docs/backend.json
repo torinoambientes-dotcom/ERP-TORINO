@@ -1,0 +1,412 @@
+{
+  "entities": {
+    "Project": {
+      "title": "Project",
+      "type": "object",
+      "description": "Represents a project with a client and multiple environments.",
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier for the project." },
+        "clientName": { "type": "string", "description": "The name of the client." },
+        "environments": {
+          "type": "array",
+          "items": { "$ref": "#/entities/Environment" }
+        },
+        "completedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The timestamp when the project was completed."
+        }
+      },
+      "required": ["id", "clientName", "environments"]
+    },
+    "Environment": {
+      "title": "Environment",
+      "type": "object",
+      "description": "An environment within a project, containing multiple pieces of furniture.",
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier for the environment." },
+        "name": { "type": "string", "description": "The name of the environment (e.g., 'Kitchen')." },
+        "furniture": {
+          "type": "array",
+          "items": { "$ref": "#/entities/Furniture" }
+        }
+      },
+      "required": ["id", "name", "furniture"]
+    },
+    "Furniture": {
+      "title": "Furniture",
+      "type": "object",
+      "description": "A single piece of furniture with its production stages.",
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier for the furniture." },
+        "name": { "type": "string", "description": "The name of the furniture (e.g., 'Top Cabinet')." },
+        "measurement": { "$ref": "#/entities/ProductionStage" },
+        "cutting": { "$ref": "#/entities/ProductionStage" },
+        "purchase": { "$ref": "#/entities/ProductionStage" },
+        "assembly": { "$ref": "#/entities/ProductionStage" },
+        "comments": {
+          "type": "array",
+          "items": { "$ref": "#/entities/Comment" }
+        },
+        "pendencies": {
+          "type": "array",
+          "items": { "$ref": "#/entities/Pendency" }
+        },
+        "materials": {
+          "type": "array",
+          "items": { "$ref": "#/entities/MaterialItem" }
+        },
+        "glassItems": {
+          "type": "array",
+          "items": { "$ref": "#/entities/GlassItem" }
+        },
+        "profileDoors": {
+          "type": "array",
+          "items": { "$ref": "#/entities/ProfileDoorItem" }
+        }
+      },
+      "required": ["id", "name", "measurement", "cutting", "purchase", "assembly"]
+    },
+    "ProductionStage": {
+      "title": "Production Stage",
+      "type": "object",
+      "description": "Represents a single stage of production for a piece of furniture.",
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["todo", "in_progress", "done"]
+        },
+        "responsibleIds": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "A list of team member IDs responsible for this stage."
+        },
+        "startedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when the stage started."
+        },
+        "completedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when the stage was completed."
+        },
+        "scheduledFor": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The date the task is scheduled to be worked on."
+        },
+        "priority": {
+          "type": "string",
+          "enum": ["low", "medium", "high"]
+        }
+      },
+      "required": ["status"]
+    },
+    "Comment": {
+      "title": "Comment",
+      "type": "object",
+      "description": "A comment made by a team member on a piece of furniture.",
+      "properties": {
+        "id": { "type": "string" },
+        "memberId": { "type": "string", "description": "ID of the team member who made the comment." },
+        "text": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "memberId", "text", "timestamp"]
+    },
+    "Pendency": {
+      "title": "Pendency",
+      "type": "object",
+      "description": "A task or issue that needs to be resolved for a piece of furniture.",
+      "properties": {
+        "id": { "type": "string" },
+        "text": { "type": "string" },
+        "isResolved": { "type": "boolean" },
+        "authorId": { "type": "string", "description": "ID of the team member who created the pendency." }
+      },
+      "required": ["id", "text", "isResolved", "authorId"]
+    },
+    "MaterialItem": {
+      "title": "MaterialItem",
+      "type": "object",
+      "description": "Represents a single material item required for a piece of furniture.",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "quantity": { "type": "number" },
+        "unit": { "type": "string" },
+        "stockItemId": { "type": "string", "description": "Link to the stock item" },
+        "addedAt": { "type": "string", "format": "date-time" },
+        "purchased": { "type": "boolean" }
+      },
+      "required": ["id", "name", "quantity", "unit"]
+    },
+    "GlassItem": {
+      "title": "GlassItem",
+      "type": "object",
+      "description": "Represents a single glass item required for a piece of furniture.",
+      "properties": {
+        "id": { "type": "string" },
+        "shape": { "type": "string", "enum": ["rectangle", "circle"]},
+        "type": { "type": "string", "enum": ["Vidro Incolor", "Espelho", "Vidro Reflecta Incolor", "Vidro Reflecta Bronze", "Vidro Reflecta Fume", "Espelho Fumê", "Espelho Bronze"]},
+        "height": { "type": "number" },
+        "width": { "type": "number" },
+        "diameter": { "type": "number" },
+        "quantity": { "type": "number" },
+        "cornerRadiusTopLeft": { "type": "number" },
+        "cornerRadiusTopRight": { "type": "number" },
+        "cornerRadiusBottomLeft": { "type": "number" },
+        "cornerRadiusBottomRight": { "type": "number" },
+        "isBeveled": { "type": "boolean" },
+        "hasFrostedStrips": { "type": "boolean" },
+        "frostedStripTop": { "type": "number" },
+        "frostedStripBottom": { "type": "number" },
+        "frostedStripLeft": { "type": "number" },
+        "frostedStripRight": { "type": "number" },
+        "frostedStripWidth": { "type": "number" },
+        "frostedStripCircularOffset": { "type": "number" },
+        "addedAt": { "type": "string", "format": "date-time" },
+        "purchased": { "type": "boolean" }
+      },
+      "required": ["id", "type", "quantity"]
+    },
+    "ProfileDoorItem": {
+      "title": "ProfileDoorItem",
+      "type": "object",
+      "description": "Represents a single profile door required for a piece of furniture.",
+      "properties": {
+        "id": { "type": "string" },
+        "doorType": { "type": "string", "enum": ["Giro", "Correr", "Escamoteavel", "Frente de gaveta"] },
+        "slidingSystem": { "type": "string" },
+        "profileColor": { "type": "string", "enum": ["Preto", "Aluminio", "Inox"]},
+        "glassType": { "type": "string", "enum": ["Incolor", "Fume", "Bronze", "Espelho Fume", "Espelho Bronze", "Espelho Prata", "Reflecta Incolor", "Reflecta Fume", "Reflecta Prata"]},
+        "handleType": { "type": "string", "enum": ["Linear inteiro", "Aba Usinada", "Sem Puxador"]},
+        "height": { "type": "number" },
+        "width": { "type": "number" },
+        "quantity": { "type": "number" },
+        "hinges": { "type": "array", "items": { "type": "object", "properties": { "position": { "type": "number" } } } },
+        "isPair": { "type": "boolean" },
+        "handlePosition": { "type": "string", "enum": ["top", "bottom", "left", "right"] },
+        "handleWidth": { "type": "number" },
+        "handleOffset": { "type": "number" },
+        "addedAt": { "type": "string", "format": "date-time" },
+        "purchased": { "type": "boolean" }
+      },
+      "required": ["id", "profileColor", "glassType", "handleType", "height", "width", "quantity"]
+    },
+    "TeamMember": {
+      "title": "TeamMember",
+      "type": "object",
+      "description": "Represents a team member.",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string", "description": "The user ID from Firebase Authentication." },
+        "name": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "color": { "type": "string", "description": "A hex color code for the member's label." },
+        "role": { "type": "string", "description": "The role of the team member (e.g., 'Marceneiro', 'Projetista')." },
+        "avatarUrl": { "type": "string", "format": "uri", "description": "URL of the team member's avatar image. Can be updated by the user." }
+      },
+      "required": ["id", "name", "email", "color", "role"]
+    },
+    "Appointment": {
+      "title": "Appointment",
+      "type": "object",
+      "description": "Represents a generic calendar event or task not tied to a specific project stage.",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "start": { "type": "string", "format": "date-time", "description": "The start date and time of the appointment." },
+        "end": { "type": "string", "format": "date-time", "description": "The end date and time of the appointment." },
+        "memberIds": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "A list of team member IDs assigned to this appointment."
+        }
+      },
+      "required": ["id", "title", "start", "end", "memberIds"]
+    },
+    "StockItem": {
+      "title": "StockItem",
+      "type": "object",
+      "description": "Represents an item in the inventory.",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "quantity": { "type": "number" },
+        "unit": { "type": "string" },
+        "minStock": { "type": "number", "description": "The minimum stock quantity to trigger an alert." },
+        "category": { "type": "string", "description": "The category of the stock item." },
+        "alertHandledAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp for when a low stock alert was handled."
+        },
+        "reservations": {
+            "type": "array",
+            "items": { "$ref": "#/entities/StockReservation" }
+        },
+        "awaitingReceipt": {
+            "type": "object",
+            "properties": {
+                "quantity": { "type": "number" },
+                "supplier": { "type": "string" },
+                "registeredAt": { "type": "string", "format": "date-time" }
+            }
+        }
+      },
+      "required": ["id", "name", "quantity", "unit", "category"]
+    },
+    "StockMovement": {
+      "title": "StockMovement",
+      "type": "object",
+      "description": "Represents a single movement (entry or exit) of a stock item.",
+      "properties": {
+        "id": { "type": "string" },
+        "stockItemId": { "type": "string", "description": "The ID of the stock item this movement belongs to." },
+        "type": { "type": "string", "enum": ["entry", "exit"] },
+        "quantity": { "type": "number" },
+        "reason": { "type": "string" },
+        "details": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "memberId": { "type": "string" }
+      },
+      "required": ["id", "stockItemId", "type", "quantity", "timestamp", "memberId"]
+    },
+    "StockCategory": {
+      "title": "StockCategory",
+      "type": "object",
+      "description": "Represents a category for stock items.",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" }
+      },
+      "required": ["id", "name"]
+    },
+    "StockReservation": {
+      "title": "StockReservation",
+      "type": "object",
+      "description": "Represents a reservation of a stock item for a project.",
+      "properties": {
+        "projectId": { "type": "string" },
+        "projectName": { "type": "string" },
+        "environmentId": { "type": "string" },
+        "environmentName": { "type": "string" },
+        "furnitureId": { "type": "string" },
+        "furnitureName": { "type": "string" },
+        "materialId": { "type": "string" },
+        "quantity": { "type": "number" },
+        "status": { "type": "string", "enum": ["reservado", "separado"] }
+      },
+      "required": ["projectId", "projectName", "environmentId", "environmentName", "furnitureId", "furnitureName", "materialId", "quantity", "status"]
+    },
+    "PurchaseRequest": {
+        "title": "PurchaseRequest",
+        "type": "object",
+        "description": "Represents a request for purchasing an item not in stock or project lists.",
+        "properties": {
+            "id": { "type": "string" },
+            "description": { "type": "string", "description": "Description of the item to be purchased." },
+            "quantity": { "type": "number" },
+            "unit": { "type": "string" },
+            "reason": { "type": "string", "description": "Reason for the purchase request." },
+            "requesterId": { "type": "string", "description": "ID of the team member who made the request." },
+            "requesterName": { "type": "string" },
+            "status": { "type": "string", "enum": ["pending", "approved", "purchased", "rejected"], "description": "The current status of the purchase request." },
+            "createdAt": { "type": "string", "format": "date-time" },
+            "updatedAt": { "type": "string", "format": "date-time" },
+            "notes": { "type": "string", "description": "Notes from the purchasing team." }
+        },
+        "required": ["id", "description", "quantity", "unit", "reason", "requesterId", "requesterName", "status", "createdAt"]
+    },
+    "QuoteStage": {
+      "title": "Quote Stage",
+      "type": "object",
+      "description": "Represents a single stage of a quote's workflow.",
+      "properties": {
+        "status": { "type": "string", "enum": ["todo", "in_progress", "done"] },
+        "responsibleIds": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "A list of team member IDs responsible for this stage."
+        }
+      },
+      "required": ["status"]
+    },
+    "Quote": {
+      "title": "Quote",
+      "description": "Represents a sales quote or budget for a client, with workflow stages.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "clientName": { "type": "string" },
+        "clientContact": { "type": "string" },
+        "environments": { "type": "array", "items": { "$ref": "#/entities/Environment" } },
+        "totalValue": { "type": "number" },
+        "notes": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "projectOrigin": {
+          "type": "string",
+          "enum": ["client_provided", "internal_development"],
+          "description": "Whether the project design is from the client or internal."
+        },
+        "internalProjectStage": { "$ref": "#/entities/QuoteStage" },
+        "materialSurveyStage": { "$ref": "#/entities/QuoteStage" },
+        "descriptiveStage": { "$ref": "#/entities/QuoteStage" },
+        "presentationStatus": {
+          "type": "string",
+          "enum": ["pending_send", "sent"],
+          "description": "Status of the quote presentation to the client."
+        },
+        "clientFeedback": {
+          "type": "string",
+          "enum": ["analyzing", "approved", "rejected", "revision"],
+          "description": "Client's feedback on the quote."
+        }
+      },
+      "required": ["id", "clientName", "environments", "createdAt", "updatedAt", "projectOrigin", "materialSurveyStage", "descriptiveStage", "presentationStatus", "clientFeedback"]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password"
+    ]
+  },
+  "firestore": {
+    "/projects/{projectId}": {
+      "schema": { "$ref": "#/entities/Project" },
+      "description": "Stores all project data."
+    },
+    "/team_members/{teamMemberId}": {
+      "schema": { "$ref": "#/entities/TeamMember" },
+      "description": "Stores information about team members."
+    },
+    "/appointments/{appointmentId}": {
+      "schema": { "$ref": "#/entities/Appointment" },
+      "description": "Stores general appointments and tasks for the calendar."
+    },
+    "/stock_items/{stockItemId}": {
+      "schema": { "$ref": "#/entities/StockItem" },
+      "description": "Stores inventory items."
+    },
+    "/stock_movements/{movementId}": {
+      "schema": { "$ref": "#/entities/StockMovement" },
+      "description": "Stores the movement history for all stock items."
+    },
+    "/stock_categories/{stockCategoryId}": {
+      "schema": { "$ref": "#/entities/StockCategory" },
+      "description": "Stores the available categories for stock items."
+    },
+    "/purchase_requests/{purchaseRequestId}": {
+        "schema": { "$ref": "#/entities/PurchaseRequest" },
+        "description": "Stores ad-hoc purchase requests."
+    },
+    "/quotes/{quoteId}": {
+      "schema": { "$ref": "#/entities/Quote" },
+      "description": "Stores all quotes."
+    }
+  }
+}

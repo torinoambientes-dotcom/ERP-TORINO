@@ -229,8 +229,10 @@ export interface Quote {
   createdAt: string;
   updatedAt: string;
   projectOrigin: 'client_provided' | 'internal_development';
+  // New stages
+  internalProjectStage?: QuoteStage;
   materialSurveyStage: QuoteStage;
   descriptiveStage: QuoteStage;
   presentationStatus: 'pending_send' | 'sent';
-  clientFeedback: 'analyzing' | 'approved' | 'rejected';
+  clientFeedback: 'analyzing' | 'approved' | 'rejected' | 'revision';
 }
