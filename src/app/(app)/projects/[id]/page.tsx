@@ -33,6 +33,8 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { Progress } from '@/components/ui/progress';
+import { Badge } from '@/components/ui/badge';
 
 
 type StageKey = 'measurement' | 'cutting' | 'purchase' | 'assembly';
@@ -242,12 +244,42 @@ export default function ProjectDetailsPage() {
         </div>
 
         {defaultOpenAccordionItems.length > 0 && (
-          <Accordion type="multiple" defaultValue={defaultOpenAccordionItems} className="space-y-6">
-            {project.environments?.map((env) => (
+          <Accordion type="multiple" defaultValue={defaultOpenAccordionItems} className="space-y-4">
+            {project.environments?.map((env) => {
+              
+              let totalTasks = 0;
+              let doneTasks = 0;
+              let unresolvedPendenciesCount = 0;
+              const furnitureCount = env.furniture?.length || 0;
+
+              env.furniture?.forEach(fur => {
+                totalTasks += stages.length;
+                stages.forEach(stage => {
+                  if (fur[stage.key]?.status === 'done') {
+                    doneTasks++;
+                  }
+                });
+                unresolvedPendenciesCount += (fur.pendencies || []).filter(p => !p.isResolved).length;
+              });
+
+              const progress = totalTasks > 0 ? (doneTasks / totalTasks) * 100 : 0;
+
+              return (
               <AccordionItem key={env.id} value={env.id} className="border-none">
                  <div className="bg-card rounded-lg overflow-hidden border">
-                    <AccordionTrigger className="p-4 bg-muted/50 hover:no-underline">
-                        <h3 className="font-headline text-xl">{env.name}</h3>
+                    <AccordionTrigger className="p-4 bg-muted/50 hover:no-underline [&[data-state=closed]>div>div]:opacity-0 [&[data-state=closed]>div>div]:h-0 [&[data-state=open]>div>div]:opacity-100 [&[data-state=open]>div>div]:h-auto">
+                        <div className="flex-grow flex flex-col items-start text-left gap-2">
+                           <h3 className="font-headline text-xl">{env.name}</h3>
+                           <div className="flex items-center gap-4 transition-all duration-300 ease-in-out w-full">
+                              <Progress value={progress} className="w-1/2 h-1.5" />
+                              <div className='flex gap-2 items-center'>
+                                <Badge variant="secondary" className="text-xs">{furnitureCount} móvel(eis)</Badge>
+                                {unresolvedPendenciesCount > 0 && (
+                                  <Badge variant="destructive" className="text-xs">{unresolvedPendenciesCount} pendência(s)</Badge>
+                                )}
+                              </div>
+                           </div>
+                        </div>
                     </AccordionTrigger>
                     <AccordionContent className="p-4 sm:p-6 space-y-6">
                         {env.furniture?.map((fur, index) => {
@@ -424,7 +456,7 @@ export default function ProjectDetailsPage() {
                     </AccordionContent>
                  </div>
               </AccordionItem>
-            ))}
+            )})}
           </Accordion>
         )}
       </div>
