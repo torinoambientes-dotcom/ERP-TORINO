@@ -1,5 +1,5 @@
 'use client';
-import { useContext, useEffect } from 'react';
+import { useContext, useEffect, useCallback } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -61,16 +61,17 @@ export function RegisterQuoteModal({
   const { addQuote } = useContext(AppContext);
   const { toast } = useToast();
 
-  const defaultValues: QuoteFormValues = {
+  const getDefaultValues = useCallback((): QuoteFormValues => ({
     clientName: '',
     clientContact: '',
     projectOrigin: 'client_provided',
     environments: [{ name: '', furniture: [{ name: '' }] }],
-  };
+  }), []);
+
 
   const form = useForm<QuoteFormValues>({
     resolver: zodResolver(quoteSchema),
-    defaultValues: defaultValues,
+    defaultValues: getDefaultValues(),
   });
 
   const {
@@ -84,9 +85,9 @@ export function RegisterQuoteModal({
   
   useEffect(() => {
     if (isOpen) {
-        form.reset(defaultValues);
+        form.reset(getDefaultValues());
     }
-  }, [isOpen, form, defaultValues]);
+  }, [isOpen, form, getDefaultValues]);
 
 
   const onSubmit = (data: QuoteFormValues) => {
