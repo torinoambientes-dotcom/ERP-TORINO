@@ -239,14 +239,6 @@ export default function QuoteDetailsPage() {
         if (y + cardTotalHeight > pageHeight - margin) {
             doc.addPage();
             y = margin;
-            doc.setFont('Helvetica', 'bold');
-            doc.setFontSize(14);
-            doc.text(envNameText, margin, y);
-             if (isQuote) {
-                doc.setFont('Helvetica', 'normal');
-                doc.text(envValueText, margin + doc.getStringUnitWidth(envNameText) * doc.getFontSize() / doc.internal.scaleFactor + 2, y);
-            }
-            y += 10;
         }
   
         doc.setDrawColor(230, 230, 230);
@@ -585,7 +577,3 @@ export default function QuoteDetailsPage() {
 
     
 }
-
-    
-
-    
