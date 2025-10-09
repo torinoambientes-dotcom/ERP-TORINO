@@ -266,15 +266,16 @@ export function QuoteMaterialsModal({ isOpen, onClose, furniture, onUpdate }: Qu
     onClose();
   };
   
-  const createNewItem = (unit: string, name: string) => ({
+  const createNewItem = (unit: string, name: string, cost: number) => ({
       id: generateId('qmat'),
       name: name,
       quantity: 1,
       unit: unit,
-      cost: 0,
+      cost: cost,
       markup: 2.5,
       addedAt: new Date().toISOString(),
-      ...(unit === 'm²' && { width: 0, height: 0 }),
+      width: 0,
+      height: 0,
   });
 
 
@@ -301,7 +302,7 @@ export function QuoteMaterialsModal({ isOpen, onClose, furniture, onUpdate }: Qu
                   <div className="space-y-2">
                     {profileDoorFields.map((field, index) => <ItemRow key={field.id} index={index} control={form.control} remove={removeProfileDoor} update={updateProfileDoor} quoteMaterials={quoteMaterials} listName="profileDoors" /> )}
                   </div>
-                   <Button type="button" variant="outline" size="sm" className="mt-4" onClick={() => appendProfileDoor(createNewItem('m²', profileDoorTypes[0]))}><PlusCircle className="mr-2 h-4 w-4" />Adicionar Porta</Button>
+                   <Button type="button" variant="outline" size="sm" className="mt-4" onClick={() => appendProfileDoor(createNewItem('m²', profileDoorTypes[0], 550))}><PlusCircle className="mr-2 h-4 w-4" />Adicionar Porta</Button>
                 </div>
 
                 <Separator />
@@ -311,7 +312,7 @@ export function QuoteMaterialsModal({ isOpen, onClose, furniture, onUpdate }: Qu
                    <div className="space-y-2">
                     {glassFields.map((field, index) => <ItemRow key={field.id} index={index} control={form.control} remove={removeGlass} update={updateGlass} quoteMaterials={quoteMaterials} listName="glassItems" /> )}
                   </div>
-                   <Button type="button" variant="outline" size="sm" className="mt-4" onClick={() => appendGlass(createNewItem('m²', glassTypes[0]))}><PlusCircle className="mr-2 h-4 w-4" />Adicionar Vidro/Espelho</Button>
+                   <Button type="button" variant="outline" size="sm" className="mt-4" onClick={() => appendGlass(createNewItem('m²', glassTypes[0], 300))}><PlusCircle className="mr-2 h-4 w-4" />Adicionar Vidro/Espelho</Button>
                 </div>
 
                 <Separator />
@@ -321,7 +322,7 @@ export function QuoteMaterialsModal({ isOpen, onClose, furniture, onUpdate }: Qu
                    <div className="space-y-4">
                     {materialFields.map((field, index) => <ItemRow key={field.id} index={index} control={form.control} remove={removeMaterial} update={updateMaterial} quoteMaterials={quoteMaterials} listName="materials" /> )}
                   </div>
-                   <Button type="button" variant="outline" size="sm" className="mt-4" onClick={() => appendMaterial(createNewItem('un', ''))}><PlusCircle className="mr-2 h-4 w-4" />Adicionar Material Geral</Button>
+                   <Button type="button" variant="outline" size="sm" className="mt-4" onClick={() => appendMaterial(createNewItem('un', '', 0))}><PlusCircle className="mr-2 h-4 w-4" />Adicionar Material Geral</Button>
                 </div>
               </div>
             </ScrollArea>
