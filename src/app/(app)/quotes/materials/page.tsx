@@ -1,5 +1,6 @@
 'use client';
-import { useContext, useState, useMemo, useCallback } from 'react';
+import { useContext, useState, useMemo, useCallback, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Card,
   CardContent,
@@ -27,6 +28,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { RegisterQuoteCategoryModal } from '@/components/modals/register-quote-category-modal';
 import { RegisterQuoteItemModal } from '@/components/modals/register-quote-item-modal';
 import Link from 'next/link';
+import { useUser } from '@/firebase';
 
 export default function QuoteMaterialsPage() {
   const { 
@@ -34,9 +36,24 @@ export default function QuoteMaterialsPage() {
     quoteMaterialCategories, 
     deleteQuoteMaterial, 
     deleteQuoteMaterialCategory, 
-    isLoading 
+    isLoading,
+    teamMembers
   } = useContext(AppContext);
   const { toast } = useToast();
+  const { user } = useUser();
+  const router = useRouter();
+
+  const loggedInMember = useMemo(() => {
+    if (!user || !teamMembers) return null;
+    return teamMembers.find(member => member.id === user.uid);
+  }, [user, teamMembers]);
+
+  useEffect(() => {
+    // Redirect if user is not admin and data has loaded
+    if (!isLoading && loggedInMember && loggedInMember.role !== 'Administrativo') {
+      router.push('/');
+    }
+  }, [isLoading, loggedInMember, router]);
 
   const [isCategoryModalOpen, setCategoryModalOpen] = useState(false);
   const [categoryToDelete, setCategoryToDelete] = useState<QuoteMaterialCategory | null>(null);
@@ -154,10 +171,10 @@ export default function QuoteMaterialsPage() {
     );
   };
 
-  if (isLoading) {
+  if (isLoading || !loggedInMember || loggedInMember.role !== 'Administrativo') {
     return (
       <div className="flex h-full w-full items-center justify-center">
-        <p>Carregando materiais...</p>
+        <p>A carregar...</p>
       </div>
     );
   }

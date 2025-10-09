@@ -13,6 +13,7 @@ import { RegisterQuoteModal } from '@/components/modals/register-quote-modal';
 import type { Quote } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import { DeleteProjectAlert } from '@/components/modals/delete-project-alert';
+import { useUser } from '@/firebase';
 
 
 type QuoteGroup = 'inProgress' | 'approved' | 'rejected' | 'archived';
@@ -44,7 +45,16 @@ const statusDisplayMap: Record<string, { label: string; variant: 'default' | 'se
 
 
 export default function QuotesPage() {
-    const { quotes, deleteQuote, updateQuote, isLoading } = useContext(AppContext);
+    const { quotes, deleteQuote, updateQuote, isLoading, teamMembers } = useContext(AppContext);
+    const { user } = useUser();
+
+    const loggedInMember = useMemo(() => {
+      if (!user || !teamMembers) return null;
+      return teamMembers.find(member => member.id === user.uid);
+    }, [user, teamMembers]);
+
+    const isAdmin = useMemo(() => loggedInMember?.role === 'Administrativo', [loggedInMember]);
+
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -99,7 +109,7 @@ export default function QuotesPage() {
 
     }, [quotes, searchTerm, statusFilter, showArchived]);
 
-    if (isLoading) {
+    if (isLoading || !loggedInMember) {
         return (
           <div className="flex h-full w-full items-center justify-center">
             <p>Carregando orçamentos...</p>
@@ -168,12 +178,14 @@ export default function QuotesPage() {
               <Archive className="mr-2 h-4 w-4" />
               {showArchived ? "Ver Ativos" : "Ver Arquivados"}
             </Button>
-            <Button asChild variant="outline" className="w-full sm:w-auto">
-              <Link href="/quotes/materials">
-                <Database className="mr-2 h-4 w-4" />
-                Gerir Materiais
-              </Link>
-            </Button>
+            {isAdmin && (
+                <Button asChild variant="outline" className="w-full sm:w-auto">
+                <Link href="/quotes/materials">
+                    <Database className="mr-2 h-4 w-4" />
+                    Gerir Materiais
+                </Link>
+                </Button>
+            )}
             <Button onClick={() => setIsModalOpen(true)} className="w-full sm:w-auto">
               <PlusCircle className="mr-2 h-4 w-4" />
               Novo Orçamento

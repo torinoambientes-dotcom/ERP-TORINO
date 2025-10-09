@@ -37,6 +37,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { useUser } from '@/firebase';
 
 
 const materialSchema = z.object({
@@ -52,7 +53,6 @@ const materialSchema = z.object({
 const glassTypes = ['Vidro Incolor', 'Espelho', 'Vidro Reflecta Incolor', 'Vidro Reflecta Bronze', 'Vidro Reflecta Fume', 'Espelho Fumê', 'Espelho Bronze'];
 const profileDoorTypes = ['Perfil Preto', 'Perfil Aluminio', 'Perfil Inox'];
 
-// Simplified schemas for quote context
 const glassSchema = materialSchema.extend({
     name: z.string().min(1, 'O tipo de vidro é obrigatório.'),
     width: z.coerce.number().optional(),
@@ -74,7 +74,7 @@ const formSchema = z.object({
 
 type MaterialFormValues = z.infer<typeof formSchema>;
 
-const ItemRow = ({ index, control, remove, update, quoteMaterials, listName }: any) => {
+const ItemRow = ({ index, control, remove, update, quoteMaterials, listName, isAdmin }: any) => {
   const field = useWatch({
     control,
     name: `${listName}.${index}`
@@ -85,8 +85,7 @@ const ItemRow = ({ index, control, remove, update, quoteMaterials, listName }: a
   if (isAreaBased) {
     return (
       <div className="p-3 rounded-lg border bg-muted/50">
-        <div className="grid grid-cols-[1fr,80px,80px,80px,80px,80px,auto] items-end gap-2">
-            {/* Type */}
+        <div className={cn("grid items-end gap-2", isAdmin ? "grid-cols-[1fr,80px,80px,80px,80px,80px,auto]" : "grid-cols-[1fr,80px,80px,80px,auto]")}>
             <FormField
               control={control}
               name={`${listName}.${index}.name`}
@@ -109,29 +108,25 @@ const ItemRow = ({ index, control, remove, update, quoteMaterials, listName }: a
                 </FormItem>
               )}
             />
-            {/* Width */}
             <FormField control={control} name={`${listName}.${index}.width`} render={({ field: formField }) => ( <FormItem><FormLabel className="text-xs">Largura (mm)</FormLabel><FormControl><Input type="number" {...formField} /></FormControl></FormItem> )}/>
-            {/* Height */}
             <FormField control={control} name={`${listName}.${index}.height`} render={({ field: formField }) => ( <FormItem><FormLabel className="text-xs">Altura (mm)</FormLabel><FormControl><Input type="number" {...formField} /></FormControl></FormItem> )}/>
-            {/* Quantity */}
             <FormField control={control} name={`${listName}.${index}.quantity`} render={({ field: formField }) => ( <FormItem><FormLabel>Qtd.</FormLabel><FormControl><Input type="number" {...formField} /></FormControl></FormItem> )}/>
-            {/* Cost */}
-            <FormField control={control} name={`${listName}.${index}.cost`} render={({ field: formField }) => ( <FormItem><FormLabel>Custo/m²</FormLabel><FormControl><Input type="number" {...formField} /></FormControl></FormItem> )}/>
-            {/* Markup */}
-            <FormField control={control} name={`${listName}.${index}.markup`} render={({ field: formField }) => ( <FormItem><FormLabel>Mark-up</FormLabel><FormControl><Input type="number" {...formField} /></FormControl></FormItem> )}/>
-            {/* Actions */}
+            {isAdmin && (
+              <>
+                <FormField control={control} name={`${listName}.${index}.cost`} render={({ field: formField }) => ( <FormItem><FormLabel>Custo/m²</FormLabel><FormControl><Input type="number" {...formField} /></FormControl></FormItem> )}/>
+                <FormField control={control} name={`${listName}.${index}.markup`} render={({ field: formField }) => ( <FormItem><FormLabel>Mark-up</FormLabel><FormControl><Input type="number" {...formField} /></FormControl></FormItem> )}/>
+              </>
+            )}
             <Button type="button" variant="ghost" size="icon" className="text-destructive/80 hover:text-destructive h-10 w-10 flex-shrink-0" onClick={() => remove(index)}><Trash2 className="h-4 w-4" /></Button>
         </div>
       </div>
     );
   }
 
-  // Fallback for general materials
   const [popoverOpen, setPopoverOpen] = useState(false);
   return (
     <div className="p-3 rounded-lg border bg-muted/50">
-        <div className="grid grid-cols-[1fr,80px,80px,80px,auto] items-end gap-2">
-            {/* Name */}
+        <div className={cn("grid items-end gap-2", isAdmin ? "grid-cols-[1fr,80px,80px,80px,auto]" : "grid-cols-[1fr,80px,auto]")}>
             <Controller
                 control={control}
                 name={`${listName}.${index}`}
@@ -165,7 +160,7 @@ const ItemRow = ({ index, control, remove, update, quoteMaterials, listName }: a
                                     update(index, {...field, name: item.name, unit: item.unit, cost: item.cost, markup: 2.5 });
                                     setPopoverOpen(false);
                                 }}>
-                                {item.name} (R$ {item.cost}/{item.unit})
+                                {item.name} {isAdmin ? `(R$ ${item.cost}/${item.unit})` : ''}
                                 </CommandItem>
                             ))}
                             </CommandGroup>
@@ -176,13 +171,13 @@ const ItemRow = ({ index, control, remove, update, quoteMaterials, listName }: a
                 </FormItem>
                 )}
             />
-            {/* Quantity */}
             <FormField control={control} name={`${listName}.${index}.quantity`} render={({ field: formField }) => ( <FormItem><FormLabel>Qtd.</FormLabel><FormControl><Input type="number" {...formField} /></FormControl></FormItem> )}/>
-            {/* Cost */}
-             <FormField control={control} name={`${listName}.${index}.cost`} render={({ field: formField }) => ( <FormItem><FormLabel>Custo Unit.</FormLabel><FormControl><Input type="number" {...formField} /></FormControl></FormItem> )}/>
-            {/* Markup */}
-            <FormField control={control} name={`${listName}.${index}.markup`} render={({ field: formField }) => ( <FormItem><FormLabel>Mark-up</FormLabel><FormControl><Input type="number" {...formField} /></FormControl></FormItem> )}/>
-            {/* Actions */}
+            {isAdmin && (
+              <>
+                <FormField control={control} name={`${listName}.${index}.cost`} render={({ field: formField }) => ( <FormItem><FormLabel>Custo Unit.</FormLabel><FormControl><Input type="number" {...formField} /></FormControl></FormItem> )}/>
+                <FormField control={control} name={`${listName}.${index}.markup`} render={({ field: formField }) => ( <FormItem><FormLabel>Mark-up</FormLabel><FormControl><Input type="number" {...formField} /></FormControl></FormItem> )}/>
+              </>
+            )}
             <Button type="button" variant="ghost" size="icon" className="text-destructive/80 hover:text-destructive h-10 w-10 flex-shrink-0" onClick={() => remove(index)}><Trash2 className="h-4 w-4" /></Button>
         </div>
     </div>
@@ -192,8 +187,16 @@ const ItemRow = ({ index, control, remove, update, quoteMaterials, listName }: a
 
 export function QuoteMaterialsModal({ isOpen, onClose, furniture, onUpdate }: QuoteMaterialsModalProps) {
   const { toast } = useToast();
-  const { quoteMaterials } = useContext(AppContext);
+  const { quoteMaterials, teamMembers } = useContext(AppContext);
+  const { user } = useUser();
+
+  const loggedInMember = useMemo(() => {
+    if (!user || !teamMembers) return null;
+    return teamMembers.find(member => member.id === user.uid);
+  }, [user, teamMembers]);
   
+  const isAdmin = useMemo(() => loggedInMember?.role === 'Administrativo', [loggedInMember]);
+
   const [totalCost, setTotalCost] = useState(0);
   const [totalBudgetValue, setTotalBudgetValue] = useState(0);
 
@@ -300,7 +303,7 @@ export function QuoteMaterialsModal({ isOpen, onClose, furniture, onUpdate }: Qu
                 <div>
                   <h3 className="text-lg font-semibold mb-2">Portas de Perfil (por m²)</h3>
                   <div className="space-y-2">
-                    {profileDoorFields.map((field, index) => <ItemRow key={field.id} index={index} control={form.control} remove={removeProfileDoor} update={updateProfileDoor} quoteMaterials={quoteMaterials} listName="profileDoors" /> )}
+                    {profileDoorFields.map((field, index) => <ItemRow key={field.id} index={index} control={form.control} remove={removeProfileDoor} update={updateProfileDoor} quoteMaterials={quoteMaterials} listName="profileDoors" isAdmin={isAdmin} /> )}
                   </div>
                    <Button type="button" variant="outline" size="sm" className="mt-4" onClick={() => appendProfileDoor(createNewItem('m²', profileDoorTypes[0], 550, 1.5))}><PlusCircle className="mr-2 h-4 w-4" />Adicionar Porta</Button>
                 </div>
@@ -310,7 +313,7 @@ export function QuoteMaterialsModal({ isOpen, onClose, furniture, onUpdate }: Qu
                 <div>
                   <h3 className="text-lg font-semibold mb-2">Vidraçaria (por m²)</h3>
                    <div className="space-y-2">
-                    {glassFields.map((field, index) => <ItemRow key={field.id} index={index} control={form.control} remove={removeGlass} update={updateGlass} quoteMaterials={quoteMaterials} listName="glassItems" /> )}
+                    {glassFields.map((field, index) => <ItemRow key={field.id} index={index} control={form.control} remove={removeGlass} update={updateGlass} quoteMaterials={quoteMaterials} listName="glassItems" isAdmin={isAdmin} /> )}
                   </div>
                    <Button type="button" variant="outline" size="sm" className="mt-4" onClick={() => appendGlass(createNewItem('m²', glassTypes[0], 300, 1.5))}><PlusCircle className="mr-2 h-4 w-4" />Adicionar Vidro/Espelho</Button>
                 </div>
@@ -320,7 +323,7 @@ export function QuoteMaterialsModal({ isOpen, onClose, furniture, onUpdate }: Qu
                 <div>
                   <h3 className="text-lg font-semibold mb-2">Materiais Gerais</h3>
                    <div className="space-y-4">
-                    {materialFields.map((field, index) => <ItemRow key={field.id} index={index} control={form.control} remove={removeMaterial} update={updateMaterial} quoteMaterials={quoteMaterials} listName="materials" /> )}
+                    {materialFields.map((field, index) => <ItemRow key={field.id} index={index} control={form.control} remove={removeMaterial} update={updateMaterial} quoteMaterials={quoteMaterials} listName="materials" isAdmin={isAdmin} /> )}
                   </div>
                    <Button type="button" variant="outline" size="sm" className="mt-4" onClick={() => appendMaterial(createNewItem('un', '', 0, 2.5))}><PlusCircle className="mr-2 h-4 w-4" />Adicionar Material Geral</Button>
                 </div>
@@ -328,20 +331,24 @@ export function QuoteMaterialsModal({ isOpen, onClose, furniture, onUpdate }: Qu
             </ScrollArea>
             
             <DialogFooter className="mt-4 pt-4 border-t items-center gap-4">
-                <Button type="button" onClick={() => handleCalculate()} className="mr-auto bg-green-600 hover:bg-green-700 text-white">
-                    <Calculator className="mr-2 h-4 w-4" />
-                    Calcular
-                </Button>
-              <div className='flex flex-col text-right'>
-                <p className='text-sm text-muted-foreground'>Custo Total dos Materiais</p>
-                <p className='text-lg font-semibold'>R$ {totalCost.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-              </div>
-              <div className='flex flex-col text-right'>
-                <p className='text-sm text-muted-foreground'>Valor do Orçamento</p>
-                <p className='text-xl font-bold text-primary'>R$ {totalBudgetValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-              </div>
+              {isAdmin && (
+                <>
+                  <Button type="button" onClick={() => handleCalculate()} className="mr-auto bg-green-600 hover:bg-green-700 text-white">
+                      <Calculator className="mr-2 h-4 w-4" />
+                      Calcular
+                  </Button>
+                  <div className='flex flex-col text-right'>
+                    <p className='text-sm text-muted-foreground'>Custo Total dos Materiais</p>
+                    <p className='text-lg font-semibold'>R$ {totalCost.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                  </div>
+                  <div className='flex flex-col text-right'>
+                    <p className='text-sm text-muted-foreground'>Valor do Orçamento</p>
+                    <p className='text-xl font-bold text-primary'>R$ {totalBudgetValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                  </div>
+                </>
+              )}
               
-              <Button type="button" variant="ghost" onClick={onClose}>
+              <Button type="button" variant="ghost" onClick={onClose} className={!isAdmin ? 'ml-auto' : ''}>
                 Cancelar
               </Button>
               <Button type="submit">Salvar Alterações</Button>

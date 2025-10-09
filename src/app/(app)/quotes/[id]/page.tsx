@@ -25,6 +25,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { logoSvgString } from '@/components/logo';
+import { useUser } from '@/firebase';
 
 
 type StageKey = 'internalProjectStage' | 'materialSurveyStage' | 'descriptiveStage';
@@ -53,6 +54,15 @@ export default function QuoteDetailsPage() {
   const id = params.id as string;
   const router = useRouter();
   const { toast } = useToast();
+  const { user } = useUser();
+
+  const loggedInMember = useMemo(() => {
+    if (!user || !teamMembers) return null;
+    return teamMembers.find(member => member.id === user.uid);
+  }, [user, teamMembers]);
+
+  const isAdmin = useMemo(() => loggedInMember?.role === 'Administrativo', [loggedInMember]);
+
 
   const [quote, setQuote] = useState<Quote | null | undefined>(undefined);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -152,46 +162,46 @@ export default function QuoteDetailsPage() {
   const handleDeliveryDeadlineChange = (date: Date | undefined) => {
     if (!quote || !date) return;
   
-    let updates: Partial<Quote> = { deliveryDeadline: date.toISOString() };
-  
-    if (!quote.relatedProjectId) {
-      const newProjectId = addProject({
-        clientName: quote.clientName,
-        deliveryDeadline: date.toISOString(),
-        environments: quote.environments.map(env => ({
-          name: env.name,
-          furniture: env.furniture.map(fur => ({
-            name: fur.name,
-            materials: fur.materials,
-            glassItems: fur.glassItems,
-            profileDoors: fur.profileDoors,
-          })),
+    const newProjectId = addProject({
+      clientName: quote.clientName,
+      deliveryDeadline: date.toISOString(),
+      environments: quote.environments.map(env => ({
+        name: env.name,
+        furniture: env.furniture.map(fur => ({
+          name: fur.name,
+          materials: fur.materials,
+          glassItems: fur.glassItems,
+          profileDoors: fur.profileDoors,
         })),
-      });
+      })),
+    });
   
-      if (newProjectId) {
-        updates.relatedProjectId = newProjectId;
-  
+    if (newProjectId) {
+        let updates: Partial<Quote> = { 
+            deliveryDeadline: date.toISOString(),
+            relatedProjectId: newProjectId
+        };
+        
         toast({
           title: "Projeto Criado com Sucesso!",
           description: `O projeto para ${quote.clientName} foi gerado a partir deste orçamento.`,
         });
-      } else {
-        toast({
-          variant: "destructive",
-          title: "Erro ao criar projeto",
-          description: "Não foi possível obter o ID do novo projeto.",
+
+        setQuote(currentQuote => {
+            if (!currentQuote) return null;
+            const newQuote = { ...currentQuote, ...updates };
+            updateQuote(newQuote.id, updates);
+            return newQuote;
         });
-        return; // Stop if project creation failed
-      }
+
+    } else {
+      toast({
+        variant: "destructive",
+        title: "Erro ao criar projeto",
+        description: "Não foi possível obter o ID do novo projeto.",
+      });
+      return; 
     }
-  
-    setQuote(currentQuote => {
-      if (!currentQuote) return null;
-      const newQuote = { ...currentQuote, ...updates };
-      updateQuote(newQuote.id, updates);
-      return newQuote;
-    });
   };
 
   const memberMap = useMemo(() => {
@@ -272,9 +282,9 @@ export default function QuoteDetailsPage() {
             environmentValue = (env.furniture || []).reduce((envAcc, fur) => envAcc + (fur.materials || []).reduce((matAcc, mat) => matAcc + (mat.quantity * (mat.cost || 0) * (mat.markup || 1)), 0), 0);
             totalQuoteValue += environmentValue;
         }
-        const envValueText = isQuote ? `- R$ ${environmentValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '';
+        const envValueText = `- R$ ${environmentValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   
-        let requiredHeight = lineHeight + (isFirstOnPage ? 10 : 8); // Extra space for a new section
+        let requiredHeight = lineHeight + (isFirstOnPage ? 10 : 8); 
         
         const furnituresContent = (env.furniture || []).map(fur => {
             const furNameHeight = lineHeight;
@@ -287,7 +297,6 @@ export default function QuoteDetailsPage() {
         requiredHeight += furnituresContent.reduce((acc, content) => acc + content.furBlockHeight, 0);
   
         if (checkPageBreak(requiredHeight, false)) {
-            // New page, redraw header for this env
         }
   
         if (isFirstOnPage) {
@@ -311,7 +320,6 @@ export default function QuoteDetailsPage() {
   
         furnituresContent.forEach(item => {
             if (checkPageBreak(item.furBlockHeight, true)) {
-                // Continuation, no header needed
             }
             doc.setFont('Helvetica', 'bold');
             doc.setFontSize(11);
@@ -333,7 +341,6 @@ export default function QuoteDetailsPage() {
   
     if (isQuote) {
         if (checkPageBreak(30)) {
-           //
         }
         y += 10;
         doc.setFont('Helvetica', 'bold');
@@ -345,7 +352,6 @@ export default function QuoteDetailsPage() {
     }
     
     if (checkPageBreak(20)) {
-       //
     }
     doc.setFont('Helvetica', 'bold');
     doc.setFontSize(10);
@@ -368,7 +374,7 @@ export default function QuoteDetailsPage() {
   };
   
 
-  if (quote === undefined || isLoading) {
+  if (quote === undefined || isLoading || !loggedInMember) {
     return (
       <div className="flex h-full w-full items-center justify-center">
         <p>Carregando orçamento...</p>
@@ -478,10 +484,12 @@ export default function QuoteDetailsPage() {
                 title={quote.clientName}
                 description="Detalhes do orçamento e acompanhamento das etapas."
               />
-              <Button variant="outline" size="sm" onClick={() => setIsEditModalOpen(true)}>
-                  <Pencil className="mr-2 h-4 w-4" />
-                  Editar Orçamento
-              </Button>
+              {isAdmin && (
+                <Button variant="outline" size="sm" onClick={() => setIsEditModalOpen(true)}>
+                    <Pencil className="mr-2 h-4 w-4" />
+                    Editar Orçamento
+                </Button>
+              )}
            </div>
         </div>
 
@@ -540,7 +548,7 @@ export default function QuoteDetailsPage() {
                       ))}
                     </SelectContent>
                 </Select>
-                {quote.clientFeedback === 'approved' && (
+                {quote.clientFeedback === 'approved' && isAdmin && (
                     <div className="space-y-2">
                         <label className="text-sm font-medium">Prazo de Entrega</label>
                         <Popover>
@@ -603,7 +611,9 @@ export default function QuoteDetailsPage() {
                         <AccordionTrigger className="p-4 bg-muted/50 hover:no-underline">
                         <div className="flex-grow flex flex-col items-start text-left gap-2">
                             <h3 className="font-headline text-xl">{env.name}</h3>
-                            <p className="text-sm text-primary font-semibold">Valor do Orçamento (Ambiente): R$ {totalCost.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                            {isAdmin && (
+                              <p className="text-sm text-primary font-semibold">Valor do Orçamento (Ambiente): R$ {totalCost.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                            )}
                         </div>
                         </AccordionTrigger>
                         <AccordionContent className="p-4 sm:p-6 space-y-6">
@@ -615,7 +625,9 @@ export default function QuoteDetailsPage() {
                             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
                                 <div className="flex-grow">
                                   <h4 className="font-semibold text-lg">{fur.name}</h4>
-                                  <p className="text-sm text-primary font-semibold">Valor Orçado: R$ {furnitureCost.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                                  {isAdmin && (
+                                    <p className="text-sm text-primary font-semibold">Valor Orçado: R$ {furnitureCost.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                                  )}
                                 </div>
                                 <div className="flex gap-2 w-full sm:w-auto">
                                     <Button variant="outline" size="sm" onClick={() => openDescriptionModal(fur, env.id)} className="w-full sm:w-auto flex-1">
@@ -624,7 +636,7 @@ export default function QuoteDetailsPage() {
                                     </Button>
                                     <Button variant="outline" size="sm" onClick={() => openMaterialsModal(fur, env.id)} className="w-full sm:w-auto flex-1">
                                         <Package className="mr-2 h-4 w-4" />
-                                        Custos
+                                        {isAdmin ? "Custos" : "Materiais"}
                                     </Button>
                                 </div>
                             </div>
@@ -642,16 +654,18 @@ export default function QuoteDetailsPage() {
             )}
         </div>
         
-        <div className="mt-8 flex justify-center gap-4">
-            <Button size="lg" onClick={() => generatePDF(false)}>
-                <Download className="mr-2 h-5 w-5" />
-                Gerar Descritivo PDF
-            </Button>
-            <Button size="lg" variant="default" onClick={() => generatePDF(true)}>
-                <Download className="mr-2 h-5 w-5" />
-                Gerar Orçamento PDF
-            </Button>
-        </div>
+        {isAdmin && (
+            <div className="mt-8 flex justify-center gap-4">
+                <Button size="lg" onClick={() => generatePDF(false)}>
+                    <Download className="mr-2 h-5 w-5" />
+                    Gerar Descritivo PDF
+                </Button>
+                <Button size="lg" variant="default" onClick={() => generatePDF(true)}>
+                    <Download className="mr-2 h-5 w-5" />
+                    Gerar Orçamento PDF
+                </Button>
+            </div>
+        )}
 
     </div>
     {getFurnitureForModal() && (
