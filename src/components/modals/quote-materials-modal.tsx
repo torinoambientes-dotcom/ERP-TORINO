@@ -30,6 +30,13 @@ import { useToast } from '@/hooks/use-toast';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { AppContext } from '@/context/app-context';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 
 const materialSchema = z.object({
@@ -42,13 +49,18 @@ const materialSchema = z.object({
   addedAt: z.string().optional(),
 });
 
+const glassTypes = ['Vidro Incolor', 'Espelho', 'Vidro Reflecta Incolor', 'Vidro Reflecta Bronze', 'Vidro Reflecta Fume', 'Espelho Fumê', 'Espelho Bronze'];
+const profileDoorTypes = ['Perfil Preto', 'Perfil Aluminio', 'Perfil Inox'];
+
 // Simplified schemas for quote context
 const glassSchema = materialSchema.extend({
+    name: z.string().min(1, 'O tipo de vidro é obrigatório.'),
     width: z.coerce.number().optional(),
     height: z.coerce.number().optional(),
 });
 
 const profileDoorSchema = materialSchema.extend({
+    name: z.string().min(1, 'O tipo de porta é obrigatório.'),
     width: z.coerce.number().optional(),
     height: z.coerce.number().optional(),
 });
@@ -63,13 +75,59 @@ const formSchema = z.object({
 type MaterialFormValues = z.infer<typeof formSchema>;
 
 const ItemRow = ({ index, control, remove, update, quoteMaterials, listName }: any) => {
-  const [popoverOpen, setPopoverOpen] = useState(false);
   const field = useWatch({
     control,
     name: `${listName}.${index}`
   });
   const isAreaBased = listName !== 'materials';
+  const typeOptions = listName === 'glassItems' ? glassTypes : profileDoorTypes;
 
+  if (isAreaBased) {
+    return (
+      <div className="p-3 rounded-lg border bg-muted/50">
+        <div className="grid grid-cols-[1fr,80px,80px,80px,80px,80px,auto] items-end gap-2">
+            {/* Type */}
+            <FormField
+              control={control}
+              name={`${listName}.${index}.name`}
+              render={({ field }) => (
+                <FormItem>
+                    <FormLabel>Tipo</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                            <SelectTrigger>
+                                <SelectValue placeholder="Selecione o tipo" />
+                            </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                            {typeOptions.map((type: string) => (
+                                <SelectItem key={type} value={type}>{type}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                    <FormMessage />
+                </FormItem>
+              )}
+            />
+            {/* Width */}
+            <FormField control={control} name={`${listName}.${index}.width`} render={({ field: formField }) => ( <FormItem><FormLabel className="text-xs">Largura (mm)</FormLabel><FormControl><Input type="number" {...formField} /></FormControl></FormItem> )}/>
+            {/* Height */}
+            <FormField control={control} name={`${listName}.${index}.height`} render={({ field: formField }) => ( <FormItem><FormLabel className="text-xs">Altura (mm)</FormLabel><FormControl><Input type="number" {...formField} /></FormControl></FormItem> )}/>
+            {/* Quantity */}
+            <FormField control={control} name={`${listName}.${index}.quantity`} render={({ field: formField }) => ( <FormItem><FormLabel>Qtd.</FormLabel><FormControl><Input type="number" {...formField} /></FormControl></FormItem> )}/>
+            {/* Cost */}
+            <FormField control={control} name={`${listName}.${index}.cost`} render={({ field: formField }) => ( <FormItem><FormLabel>Custo/m²</FormLabel><FormControl><Input type="number" {...formField} /></FormControl></FormItem> )}/>
+            {/* Markup */}
+            <FormField control={control} name={`${listName}.${index}.markup`} render={({ field: formField }) => ( <FormItem><FormLabel>Mark-up</FormLabel><FormControl><Input type="number" {...formField} /></FormControl></FormItem> )}/>
+            {/* Actions */}
+            <Button type="button" variant="ghost" size="icon" className="text-destructive/80 hover:text-destructive h-10 w-10 flex-shrink-0" onClick={() => remove(index)}><Trash2 className="h-4 w-4" /></Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Fallback for general materials
+  const [popoverOpen, setPopoverOpen] = useState(false);
   return (
     <div className="p-3 rounded-lg border bg-muted/50">
         <div className="grid grid-cols-[1fr,80px,80px,80px,auto] items-end gap-2">
@@ -95,7 +153,7 @@ const ItemRow = ({ index, control, remove, update, quoteMaterials, listName }: a
                             <CommandEmpty>
                             <div className="p-2 cursor-pointer hover:bg-accent" onClick={() => {
                                 const inputValue = (document.querySelector(`[cmdk-input]`) as HTMLInputElement).value;
-                                update(index, {...field, name: inputValue, unit: isAreaBased ? 'm²' : 'un', cost: 0, markup: 2.5 });
+                                update(index, {...field, name: inputValue, unit: 'un', cost: 0, markup: 2.5 });
                                 setPopoverOpen(false);
                             }}>
                                 Adicionar: "{ (document.querySelector(`[cmdk-input]`) as HTMLInputElement)?.value }"
@@ -127,13 +185,6 @@ const ItemRow = ({ index, control, remove, update, quoteMaterials, listName }: a
             {/* Actions */}
             <Button type="button" variant="ghost" size="icon" className="text-destructive/80 hover:text-destructive h-10 w-10 flex-shrink-0" onClick={() => remove(index)}><Trash2 className="h-4 w-4" /></Button>
         </div>
-        {isAreaBased && (
-             <div className="grid grid-cols-3 items-end gap-2 mt-2">
-                 <FormField control={control} name={`${listName}.${index}.width`} render={({ field: formField }) => ( <FormItem><FormLabel className="text-xs">Largura (mm)</FormLabel><FormControl><Input type="number" {...formField} /></FormControl></FormItem> )}/>
-                 <FormField control={control} name={`${listName}.${index}.height`} render={({ field: formField }) => ( <FormItem><FormLabel className="text-xs">Altura (mm)</FormLabel><FormControl><Input type="number" {...formField} /></FormControl></FormItem> )}/>
-                 <FormItem><FormLabel className="text-xs">Unidade</FormLabel><Input value={field.unit} disabled /></FormItem>
-             </div>
-        )}
     </div>
   );
 };
@@ -215,9 +266,9 @@ export function QuoteMaterialsModal({ isOpen, onClose, furniture, onUpdate }: Qu
     onClose();
   };
   
-  const createNewItem = (unit: string) => ({
+  const createNewItem = (unit: string, name: string) => ({
       id: generateId('qmat'),
-      name: '',
+      name: name,
       quantity: 1,
       unit: unit,
       cost: 0,
@@ -250,7 +301,7 @@ export function QuoteMaterialsModal({ isOpen, onClose, furniture, onUpdate }: Qu
                   <div className="space-y-2">
                     {profileDoorFields.map((field, index) => <ItemRow key={field.id} index={index} control={form.control} remove={removeProfileDoor} update={updateProfileDoor} quoteMaterials={quoteMaterials} listName="profileDoors" /> )}
                   </div>
-                   <Button type="button" variant="outline" size="sm" className="mt-4" onClick={() => appendProfileDoor(createNewItem('m²'))}><PlusCircle className="mr-2 h-4 w-4" />Adicionar Porta</Button>
+                   <Button type="button" variant="outline" size="sm" className="mt-4" onClick={() => appendProfileDoor(createNewItem('m²', profileDoorTypes[0]))}><PlusCircle className="mr-2 h-4 w-4" />Adicionar Porta</Button>
                 </div>
 
                 <Separator />
@@ -260,7 +311,7 @@ export function QuoteMaterialsModal({ isOpen, onClose, furniture, onUpdate }: Qu
                    <div className="space-y-2">
                     {glassFields.map((field, index) => <ItemRow key={field.id} index={index} control={form.control} remove={removeGlass} update={updateGlass} quoteMaterials={quoteMaterials} listName="glassItems" /> )}
                   </div>
-                   <Button type="button" variant="outline" size="sm" className="mt-4" onClick={() => appendGlass(createNewItem('m²'))}><PlusCircle className="mr-2 h-4 w-4" />Adicionar Vidro/Espelho</Button>
+                   <Button type="button" variant="outline" size="sm" className="mt-4" onClick={() => appendGlass(createNewItem('m²', glassTypes[0]))}><PlusCircle className="mr-2 h-4 w-4" />Adicionar Vidro/Espelho</Button>
                 </div>
 
                 <Separator />
@@ -270,7 +321,7 @@ export function QuoteMaterialsModal({ isOpen, onClose, furniture, onUpdate }: Qu
                    <div className="space-y-4">
                     {materialFields.map((field, index) => <ItemRow key={field.id} index={index} control={form.control} remove={removeMaterial} update={updateMaterial} quoteMaterials={quoteMaterials} listName="materials" /> )}
                   </div>
-                   <Button type="button" variant="outline" size="sm" className="mt-4" onClick={() => appendMaterial(createNewItem('un'))}><PlusCircle className="mr-2 h-4 w-4" />Adicionar Material Geral</Button>
+                   <Button type="button" variant="outline" size="sm" className="mt-4" onClick={() => appendMaterial(createNewItem('un', ''))}><PlusCircle className="mr-2 h-4 w-4" />Adicionar Material Geral</Button>
                 </div>
               </div>
             </ScrollArea>
