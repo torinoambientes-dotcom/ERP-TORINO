@@ -162,22 +162,27 @@ export default function QuoteDetailsPage() {
     doc.setFont('Helvetica', 'normal');
     doc.setFontSize(20);
     doc.text('TORINO', margin, y);
-
+  
+    const torinoWidth = doc.getStringUnitWidth('TORINO') * doc.getFontSize() / doc.internal.scaleFactor;
+    const ambientesWidth = doc.getStringUnitWidth('AMBIENTES') * 8 / doc.internal.scaleFactor;
+    const charSpacing = (torinoWidth - ambientesWidth) / ('AMBIENTES'.length - 1);
+  
     doc.setFontSize(8);
+    doc.setCharSpace(charSpacing);
     doc.setTextColor('#969696');
     doc.text('AMBIENTES', margin, y + 5);
-
+    
     // Reset styles
+    doc.setCharSpace(0);
     doc.setTextColor('#000000');
-
-
+  
     doc.setFont('Helvetica', 'bold');
     doc.setFontSize(18);
     const title = isQuote ? 'Proposta Comercial' : 'Descritivo do Orçamento';
     const titleWidth = doc.getStringUnitWidth(title) * doc.getFontSize() / doc.internal.scaleFactor;
     doc.text(title, pageWidth - margin - titleWidth, y);
-
-
+  
+  
     y += 15;
     doc.setDrawColor(220, 220, 220);
     doc.line(margin, y, pageWidth - margin, y); // Horizontal line
@@ -192,7 +197,7 @@ export default function QuoteDetailsPage() {
     y += 7;
     doc.setFontSize(10);
     doc.text(`Data: ${generationDate}`, margin, y);
-    y += 10;
+    y += 15;
   
     // --- Content ---
     quote.environments.forEach(env => {
@@ -206,7 +211,7 @@ export default function QuoteDetailsPage() {
         totalQuoteValue += environmentValue;
       }
   
-      if (y > pageHeight - 40) { 
+      if (y > pageHeight - 60) { 
         doc.addPage();
         y = margin;
       }
@@ -221,14 +226,14 @@ export default function QuoteDetailsPage() {
           doc.setFont('Helvetica', 'normal');
           doc.text(envValueText, margin + doc.getStringUnitWidth(envNameText) * doc.getFontSize() / doc.internal.scaleFactor + 2, y);
       }
-      y += 8;
+      y += 10;
   
       (env.furniture || []).forEach(fur => {
         const descriptionLines = doc.splitTextToSize(fur.description || 'Nenhum descritivo fornecido.', pageWidth - (margin * 2) - 20); // Content width inside card
         
         const cardHeaderHeight = 8;
-        const cardContentHeight = descriptionLines.length * 5;
-        const cardPadding = 8;
+        const cardContentHeight = descriptionLines.length * 5 + (descriptionLines.length > 1 ? (descriptionLines.length - 1) * 2 : 0);
+        const cardPadding = 10;
         const cardTotalHeight = cardHeaderHeight + cardContentHeight + cardPadding;
         
         if (y + cardTotalHeight > pageHeight - margin) {
@@ -241,7 +246,7 @@ export default function QuoteDetailsPage() {
                 doc.setFont('Helvetica', 'normal');
                 doc.text(envValueText, margin + doc.getStringUnitWidth(envNameText) * doc.getFontSize() / doc.internal.scaleFactor + 2, y);
             }
-            y += 8;
+            y += 10;
         }
   
         doc.setDrawColor(230, 230, 230);
@@ -253,19 +258,21 @@ export default function QuoteDetailsPage() {
         doc.setFont('Helvetica', 'bold');
         doc.setFontSize(12);
         doc.text(fur.name, margin + 10, contentY);
-        contentY += 6;
+        contentY += 8;
   
         doc.setFont('Helvetica', 'normal');
         doc.setFontSize(10);
+        doc.setTextColor('#666666');
         doc.text(descriptionLines, margin + 10, contentY);
+        doc.setTextColor('#000000');
         
         y += cardTotalHeight + 5;
       });
       y += 10;
     });
-
+  
     if (isQuote) {
-      if (y > pageHeight - 60) { // Increased space for notes and total
+      if (y > pageHeight - 60) {
         doc.addPage();
         y = margin;
       }
@@ -288,7 +295,7 @@ export default function QuoteDetailsPage() {
     doc.setFontSize(10);
     doc.text('Observações:', margin, y);
     y += 5;
-
+  
     doc.setFont('Helvetica', 'normal');
     doc.setFontSize(8);
     const notes = [
