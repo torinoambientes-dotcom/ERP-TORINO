@@ -1,25 +1,27 @@
 'use client';
 
-import { useState, useContext, useMemo } from 'react';
+import { useState, useContext, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import { PageHeader } from '@/components/layout/page-header';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { PlusCircle, FileText, Database } from 'lucide-react';
+import { PlusCircle, FileText, Database, Archive, Trash2 } from 'lucide-react';
 import { AppContext } from '@/context/app-context';
 import { RegisterQuoteModal } from '@/components/modals/register-quote-modal';
 import type { Quote } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
+import { DeleteProjectAlert } from '@/components/modals/delete-project-alert';
 
-type QuoteGroup = 'inProgress' | 'approved' | 'rejected';
+
+type QuoteGroup = 'inProgress' | 'approved' | 'rejected' | 'archived';
 
 const statusGroupMap: Record<string, QuoteGroup> = {
   analyzing: 'inProgress',
   pending_send: 'inProgress',
   sent: 'inProgress',
+  revision: 'inProgress',
   approved: 'approved',
   rejected: 'rejected',
 };
@@ -28,6 +30,7 @@ const groupTitles: Record<QuoteGroup, string> = {
   inProgress: 'Em Andamento',
   approved: 'Fechados',
   rejected: 'Recusados',
+  archived: 'Arquivados'
 };
 
 const statusDisplayMap: Record<string, { label: string; variant: 'default' | 'secondary' | 'outline' | 'destructive' }> = {
@@ -41,34 +44,60 @@ const statusDisplayMap: Record<string, { label: string; variant: 'default' | 'se
 
 
 export default function QuotesPage() {
-    const { quotes, isLoading } = useContext(AppContext);
+    const { quotes, deleteQuote, updateQuote, isLoading } = useContext(AppContext);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState<string>('all');
+    const [showArchived, setShowArchived] = useState(false);
+
+    const [quoteToDelete, setQuoteToDelete] = useState<Quote | null>(null);
+
+    const handleArchiveToggle = useCallback((e: React.MouseEvent, quote: Quote) => {
+        e.preventDefault();
+        e.stopPropagation();
+        updateQuote(quote.id, { isArchived: !quote.isArchived });
+    }, [updateQuote]);
+
+    const openDeleteModal = useCallback((e: React.MouseEvent, quote: Quote) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setQuoteToDelete(quote);
+    }, []);
+
+    const confirmDelete = useCallback(() => {
+        if(quoteToDelete) {
+            deleteQuote(quoteToDelete.id);
+            setQuoteToDelete(null);
+        }
+    }, [quoteToDelete, deleteQuote]);
 
     const groupedQuotes = useMemo(() => {
         const filtered = (quotes || []).filter((quote: Quote) => {
             const matchesSearch = quote.clientName.toLowerCase().includes(searchTerm.toLowerCase());
             const matchesStatus = statusFilter === 'all' || quote.clientFeedback === statusFilter || (statusFilter === 'pending_send' && quote.presentationStatus === 'pending_send');
-            return matchesSearch && matchesStatus;
+            const matchesArchived = showArchived ? quote.isArchived === true : !quote.isArchived;
+            return matchesSearch && matchesStatus && matchesArchived;
         });
 
         const groups: Record<QuoteGroup, Quote[]> = {
             inProgress: [],
             approved: [],
             rejected: [],
+            archived: [],
         };
-
+        
         filtered.forEach(quote => {
-            const groupKey = statusGroupMap[quote.clientFeedback] || statusGroupMap[quote.presentationStatus];
-            if (groupKey) {
-                groups[groupKey].push(quote);
-            }
+          if (quote.isArchived) {
+              groups.archived.push(quote);
+          } else {
+              const groupKey = statusGroupMap[quote.clientFeedback] || statusGroupMap[quote.presentationStatus] || 'inProgress';
+              groups[groupKey].push(quote);
+          }
         });
         
         return groups;
 
-    }, [quotes, searchTerm, statusFilter]);
+    }, [quotes, searchTerm, statusFilter, showArchived]);
 
     if (isLoading) {
         return (
@@ -90,17 +119,33 @@ export default function QuotesPage() {
                 </div>
                 <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                     {quotes.map(quote => {
-                        const statusKey = quote.clientFeedback || quote.presentationStatus;
+                        const statusKey = quote.isArchived ? 'archived' : (quote.clientFeedback || quote.presentationStatus);
                         const displayStatus = statusDisplayMap[statusKey];
                         return (
-                            <Link href={`/quotes/${quote.id}`} key={quote.id}>
+                           <div key={quote.id} className="relative group">
+                             <Link href={`/quotes/${quote.id}`}>
                                 <Card className="h-full hover:shadow-lg transition-shadow">
                                     <CardHeader className="flex flex-row items-start justify-between">
                                         <CardTitle>{quote.clientName}</CardTitle>
                                         {displayStatus && <Badge variant={displayStatus.variant}>{displayStatus.label}</Badge>}
+                                        {quote.isArchived && <Badge variant="outline">Arquivado</Badge>}
                                     </CardHeader>
+                                    <CardContent>
+                                        <p className="text-sm text-muted-foreground">{quote.environments.length} ambiente(s)</p>
+                                    </CardContent>
                                 </Card>
-                            </Link>
+                              </Link>
+                              <CardFooter className="absolute bottom-2 right-2 flex justify-end gap-1 bg-card/50 backdrop-blur-sm rounded-full p-1 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-300">
+                                  <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={(e) => handleArchiveToggle(e, quote)}>
+                                      <Archive className="h-4 w-4" />
+                                      <span className="sr-only">{quote.isArchived ? 'Desarquivar' : 'Arquivar'}</span>
+                                  </Button>
+                                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive/80 hover:text-destructive" onClick={(e) => openDeleteModal(e, quote)}>
+                                      <Trash2 className="h-4 w-4" />
+                                      <span className="sr-only">Remover</span>
+                                  </Button>
+                              </CardFooter>
+                           </div>
                         )
                     })}
                 </div>
@@ -108,7 +153,7 @@ export default function QuotesPage() {
         );
     };
 
-    const allQuotes = Object.values(groupedQuotes).flat();
+    const allVisibleQuotes = Object.values(groupedQuotes).flat();
 
   return (
     <>
@@ -119,6 +164,10 @@ export default function QuotesPage() {
             description="Crie, gerencie e acompanhe suas propostas comerciais."
           />
           <div className="flex gap-2 w-full sm:w-auto">
+            <Button onClick={() => setShowArchived(!showArchived)} variant="outline" className="w-full sm:w-auto">
+              <Archive className="mr-2 h-4 w-4" />
+              {showArchived ? "Ver Ativos" : "Ver Arquivados"}
+            </Button>
             <Button asChild variant="outline" className="w-full sm:w-auto">
               <Link href="/quotes/materials">
                 <Database className="mr-2 h-4 w-4" />
@@ -143,6 +192,7 @@ export default function QuotesPage() {
               <Select
                 value={statusFilter}
                 onValueChange={(value) => setStatusFilter(value as string)}
+                disabled={showArchived}
               >
                 <SelectTrigger className="w-full sm:w-[200px]">
                   <SelectValue placeholder="Filtrar por status" />
@@ -157,11 +207,17 @@ export default function QuotesPage() {
             </CardContent>
           </Card>
 
-           {allQuotes.length > 0 ? (
+           {allVisibleQuotes.length > 0 ? (
                <div className="space-y-8">
-                  <QuoteGroup title={groupTitles.inProgress} quotes={groupedQuotes.inProgress} />
-                  <QuoteGroup title={groupTitles.approved} quotes={groupedQuotes.approved} />
-                  <QuoteGroup title={groupTitles.rejected} quotes={groupedQuotes.rejected} />
+                  {showArchived ? (
+                    <QuoteGroup title={groupTitles.archived} quotes={groupedQuotes.archived} />
+                  ) : (
+                    <>
+                      <QuoteGroup title={groupTitles.inProgress} quotes={groupedQuotes.inProgress} />
+                      <QuoteGroup title={groupTitles.approved} quotes={groupedQuotes.approved} />
+                      <QuoteGroup title={groupTitles.rejected} quotes={groupedQuotes.rejected} />
+                    </>
+                  )}
                </div>
            ) : (
               <div className="flex h-64 items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/20 bg-muted/30">
@@ -171,7 +227,7 @@ export default function QuotesPage() {
                       Nenhum orçamento encontrado
                   </h3>
                   <p className="mt-2 text-sm text-muted-foreground">
-                      Crie um novo orçamento para começar a gerir as suas propostas.
+                      {showArchived ? "Não há orçamentos arquivados." : "Crie um novo orçamento para começar a gerir as suas propostas."}
                   </p>
                   </div>
               </div>
@@ -180,6 +236,12 @@ export default function QuotesPage() {
       <RegisterQuoteModal 
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
+      />
+      <DeleteProjectAlert 
+        isOpen={!!quoteToDelete}
+        onClose={() => setQuoteToDelete(null)}
+        onConfirm={confirmDelete}
+        projectName={quoteToDelete?.clientName || ''}
       />
     </>
   );

@@ -258,6 +258,7 @@ export interface Quote {
   clientFeedback: 'analyzing' | 'approved' | 'rejected' | 'revision';
   deliveryDeadline?: string;
   relatedProjectId?: string;
+  isArchived?: boolean;
 }
 
 export interface QuoteMaterialCategory {

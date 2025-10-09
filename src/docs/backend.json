@@ -380,6 +380,10 @@
         "relatedProjectId": {
             "type": "string",
             "description": "The ID of the project created from this quote."
+        },
+        "isArchived": {
+            "type": "boolean",
+            "description": "Whether the quote is archived and hidden from the main view."
         }
       },
       "required": ["id", "clientName", "environments", "createdAt", "updatedAt", "projectOrigin", "materialSurveyStage", "descriptiveStage", "presentationStatus", "clientFeedback"]

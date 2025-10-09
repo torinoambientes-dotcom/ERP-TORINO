@@ -51,6 +51,7 @@ interface AppContextType {
   deletePurchaseRequest: (requestId: string) => void;
   addQuote: (quoteData: Pick<Quote, 'clientName' | 'clientContact' | 'environments' | 'projectOrigin'>) => void;
   updateQuote: (quoteId: string, updates: Partial<Quote>) => void;
+  deleteQuote: (quoteId: string) => void;
   addQuoteMaterial: (itemData: Omit<QuoteMaterial, 'id'>) => void;
   updateQuoteMaterial: (updatedItem: QuoteMaterial) => void;
   deleteQuoteMaterial: (itemId: string) => void;
@@ -100,6 +101,7 @@ export const AppContext = createContext<AppContextType>({
   deletePurchaseRequest: () => {},
   addQuote: () => {},
   updateQuote: () => {},
+  deleteQuote: () => {},
   addQuoteMaterial: () => {},
   updateQuoteMaterial: () => {},
   deleteQuoteMaterial: () => {},
@@ -849,6 +851,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const dataWithTimestamp = { ...updates, updatedAt: new Date().toISOString() };
       updateDocumentNonBlocking(quoteRef, dataWithTimestamp);
     }, [firestore]);
+
+    const deleteQuote = useCallback((quoteId: string) => {
+      if (!firestore) return;
+      const quoteRef = doc(firestore, 'quotes', quoteId);
+      deleteDocumentNonBlocking(quoteRef);
+    }, [firestore]);
     
     const addQuoteMaterial = useCallback((itemData: Omit<QuoteMaterial, 'id'>) => {
         if (!firestore) return;
@@ -927,6 +935,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     deletePurchaseRequest,
     addQuote,
     updateQuote,
+    deleteQuote,
     addQuoteMaterial,
     updateQuoteMaterial,
     deleteQuoteMaterial,
@@ -983,6 +992,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     deletePurchaseRequest,
     addQuote,
     updateQuote,
+    deleteQuote,
     addQuoteMaterial,
     updateQuoteMaterial,
     deleteQuoteMaterial,
