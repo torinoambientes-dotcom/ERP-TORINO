@@ -5,7 +5,7 @@ import { AppContext } from '@/context/app-context';
 import type { Quote, StageStatus, TeamMember, QuoteStage, QuoteFurniture, QuoteEnvironment } from '@/lib/types';
 import { PageHeader } from '@/components/layout/page-header';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, User, Package, ListTodo, MessageSquare, Pencil, FileText } from 'lucide-react';
+import { ChevronLeft, User, Package, ListTodo, MessageSquare, Pencil, FileText, Download } from 'lucide-react';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -20,7 +20,8 @@ import { Separator } from '@/components/ui/separator';
 import { QuoteMaterialsModal } from '@/components/modals/quote-materials-modal';
 import { RegisterQuoteModal } from '@/components/modals/register-quote-modal';
 import { QuoteFurnitureDescriptionModal } from '@/components/modals/quote-furniture-description-modal';
-
+import jsPDF from 'jspdf';
+import 'jspdf/dist/polyfills.js'; // Required for some environments
 
 type StageKey = 'internalProjectStage' | 'materialSurveyStage' | 'descriptiveStage';
 
@@ -146,6 +147,70 @@ export default function QuoteDetailsPage() {
     if (!teamMembers) return new Map();
     return new Map(teamMembers.map(m => [m.id, m]));
   }, [teamMembers]);
+  
+  const generateDescriptionPDF = () => {
+    if (!quote) return;
+
+    const doc = new jsPDF();
+    const pageHeight = doc.internal.pageSize.height || doc.internal.pageSize.getHeight();
+    const pageWidth = doc.internal.pageSize.width || doc.internal.pageSize.getWidth();
+    const margin = 20;
+    let y = 20;
+
+    // Cabeçalho com Logo
+    doc.setFont('Poppins', 'normal');
+    doc.setFontSize(22);
+    doc.text('TORINO', pageWidth / 2, y, { align: 'center' });
+    y += 7;
+    doc.setFontSize(8);
+    doc.setCharSpace(3);
+    doc.text('AMBIENTES', pageWidth / 2, y, { align: 'center' });
+    y += 15;
+    doc.setCharSpace(0);
+
+    // Título
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(16);
+    doc.text('Descritivo do Orçamento', pageWidth / 2, y, { align: 'center' });
+    y += 10;
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Cliente: ${quote.clientName}`, margin, y);
+    y += 15;
+
+    // Conteúdo
+    quote.environments.forEach(env => {
+      if (y > pageHeight - 30) {
+        doc.addPage();
+        y = margin;
+      }
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(14);
+      doc.text(env.name, margin, y);
+      y += 8;
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(11);
+      (env.furniture || []).forEach(fur => {
+        if (y > pageHeight - 20) {
+            doc.addPage();
+            y = margin;
+        }
+        const descriptionLines = doc.splitTextToSize(`- ${fur.name}: ${fur.description || 'Nenhum descritivo fornecido.'}`, pageWidth - (margin * 2) - 5);
+        
+        if (y + (descriptionLines.length * 5) > pageHeight - 20) {
+            doc.addPage();
+            y = margin;
+        }
+
+        doc.text(descriptionLines, margin + 5, y);
+        y += descriptionLines.length * 5 + 3;
+      });
+      y += 5; // Espaço extra entre ambientes
+    });
+    
+    doc.save(`Descritivo_${quote.clientName.replace(/\s+/g, '_')}.pdf`);
+  };
 
   if (quote === undefined || isLoading) {
     return (
@@ -373,6 +438,13 @@ export default function QuoteDetailsPage() {
                 <p>Nenhum ambiente cadastrado para este orçamento.</p>
             )}
         </div>
+        
+        <div className="mt-8 text-center">
+            <Button size="lg" onClick={generateDescriptionPDF}>
+                <Download className="mr-2 h-5 w-5" />
+                Gerar Descritivo PDF
+            </Button>
+        </div>
 
     </div>
     {getFurnitureForModal() && (
@@ -389,7 +461,7 @@ export default function QuoteDetailsPage() {
             isOpen={isDescriptionModalOpen}
             onClose={() => setDescriptionModalOpen(false)}
             furniture={getFurnitureForModal()!}
-            onUpdate={handleFurnitureUpdateInModal}
+            onUpdate={handleFurnitureUpdateInodal}
         />
       )}
        {isEditModalOpen && (
