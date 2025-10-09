@@ -146,16 +146,17 @@ export default function QuoteDetailsPage() {
     if (!teamMembers) return new Map();
     return new Map(teamMembers.map(m => [m.id, m]));
   }, [teamMembers]);
-  
-  const generateDescriptionPDF = () => {
-    if (!quote) return;
 
+  const generatePDF = (isQuote: boolean) => {
+    if (!quote) return;
+  
     const doc = new jsPDF();
     const pageHeight = doc.internal.pageSize.height || doc.internal.pageSize.getHeight();
     const pageWidth = doc.internal.pageSize.width || doc.internal.pageSize.getWidth();
     const margin = 20;
     let y = 25;
-
+    let totalQuoteValue = 0;
+  
     // --- Header ---
     doc.setFont('Helvetica', 'bold');
     doc.setFontSize(22);
@@ -173,17 +174,17 @@ export default function QuoteDetailsPage() {
     const ambientesStartX = torinoStartX + (torinoWidth - ambientesWidth) / 2;
     doc.text(ambientesText, ambientesStartX, y);
     doc.setCharSpace(0);
-
+  
     y += 10;
     doc.setDrawColor(220, 220, 220);
     doc.line(margin, y, pageWidth - margin, y); // Horizontal line
-
+  
     y += 15;
-
+  
     // --- Title ---
     doc.setFont('Helvetica', 'bold');
     doc.setFontSize(16);
-    doc.text('Descritivo do Orçamento', margin, y);
+    doc.text(isQuote ? 'Orçamento' : 'Descritivo do Orçamento', margin, y);
     y += 8;
     
     // --- Client ---
@@ -191,19 +192,36 @@ export default function QuoteDetailsPage() {
     doc.setFontSize(12);
     doc.text(`Cliente: ${quote.clientName}`, margin, y);
     y += 15;
-
+  
     // --- Content ---
     quote.environments.forEach(env => {
-      // Check for space before adding environment
+      let environmentValue = 0;
+      if (isQuote) {
+        environmentValue = (env.furniture || []).reduce((envAcc, fur) => {
+          return envAcc + (fur.materials || []).reduce((furAcc, mat) => {
+            return furAcc + ((mat.quantity || 0) * (mat.cost || 0) * (mat.markup || 1));
+          }, 0);
+        }, 0);
+        totalQuoteValue += environmentValue;
+      }
+  
       if (y > pageHeight - 40) { 
         doc.addPage();
         y = margin;
       }
       doc.setFont('Helvetica', 'bold');
       doc.setFontSize(14);
-      doc.text(env.name, margin, y);
+      
+      const envNameText = env.name;
+      const envValueText = isQuote ? ` - R$ ${environmentValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '';
+      
+      doc.text(envNameText, margin, y);
+      if (isQuote) {
+          doc.setFont('Helvetica', 'normal');
+          doc.text(envValueText, margin + doc.getStringUnitWidth(envNameText) * doc.getFontSize() / doc.internal.scaleFactor + 2, y);
+      }
       y += 8;
-
+  
       (env.furniture || []).forEach(fur => {
         const descriptionLines = doc.splitTextToSize(fur.description || 'Nenhum descritivo fornecido.', pageWidth - (margin * 2) - 20); // Content width inside card
         
@@ -215,37 +233,50 @@ export default function QuoteDetailsPage() {
         if (y + cardTotalHeight > pageHeight - margin) {
             doc.addPage();
             y = margin;
-            // Redraw environment title on new page
             doc.setFont('Helvetica', 'bold');
             doc.setFontSize(14);
-            doc.text(env.name, margin, y);
+            doc.text(envNameText, margin, y);
+             if (isQuote) {
+                doc.setFont('Helvetica', 'normal');
+                doc.text(envValueText, margin + doc.getStringUnitWidth(envNameText) * doc.getFontSize() / doc.internal.scaleFactor + 2, y);
+            }
             y += 8;
         }
-
-        // Draw card
+  
         doc.setDrawColor(230, 230, 230);
         doc.setFillColor(248, 248, 248);
         doc.roundedRect(margin, y, pageWidth - (margin * 2), cardTotalHeight, 3, 3, 'FD');
-
+  
         let contentY = y + cardPadding;
-
+  
         doc.setFont('Helvetica', 'bold');
         doc.setFontSize(12);
         doc.text(fur.name, margin + 10, contentY);
         contentY += 6;
-
+  
         doc.setFont('Helvetica', 'normal');
         doc.setFontSize(10);
         doc.text(descriptionLines, margin + 10, contentY);
         
-        y += cardTotalHeight + 5; // Move Y for the next card
+        y += cardTotalHeight + 5;
       });
-      y += 10; // Extra space between environments
+      y += 10;
     });
-    
-    doc.save(`Descritivo_${quote.clientName.replace(/\s+/g, '_')}.pdf`);
-  };
 
+    if (isQuote) {
+      if (y > pageHeight - 30) { 
+        doc.addPage();
+        y = margin;
+      }
+      doc.setFont('Helvetica', 'bold');
+      doc.setFontSize(16);
+      doc.text(`Valor Total do Orçamento: R$ ${totalQuoteValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, margin, y);
+    }
+    
+    const fileName = `${isQuote ? 'Orcamento' : 'Descritivo'}_${quote.clientName.replace(/\s+/g, '_')}.pdf`;
+    doc.save(fileName);
+  };
+  
 
   if (quote === undefined || isLoading) {
     return (
@@ -480,10 +511,14 @@ export default function QuoteDetailsPage() {
             )}
         </div>
         
-        <div className="mt-8 text-center">
-            <Button size="lg" onClick={generateDescriptionPDF}>
+        <div className="mt-8 flex justify-center gap-4">
+            <Button size="lg" onClick={() => generatePDF(false)}>
                 <Download className="mr-2 h-5 w-5" />
                 Gerar Descritivo PDF
+            </Button>
+            <Button size="lg" variant="default" onClick={() => generatePDF(true)}>
+                <Download className="mr-2 h-5 w-5" />
+                Gerar Orçamento PDF
             </Button>
         </div>
 
