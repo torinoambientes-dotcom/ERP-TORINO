@@ -156,8 +156,11 @@ export default function QuoteDetailsPage() {
     const margin = 20;
     let y = 20;
 
-    // Cabeçalho com Logo
-    doc.setFont('Poppins', 'normal');
+    // --- Cabeçalho com Logo ---
+    // A fonte 'Poppins' precisa estar carregada no jsPDF, se não estiver, ele usará uma fonte padrão.
+    // Para simplificar, usaremos as fontes padrão do PDF (Helvetica, Times, Courier),
+    // mas a lógica para fontes customizadas está aqui caso queira adicionar.
+    doc.setFont('helvetica', 'normal');
     doc.setFontSize(22);
     doc.text('TORINO', pageWidth / 2, y, { align: 'center' });
     y += 7;
@@ -167,19 +170,21 @@ export default function QuoteDetailsPage() {
     y += 15;
     doc.setCharSpace(0);
 
-    // Título
+    // --- Título ---
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(16);
-    doc.text('Descritivo do Orçamento', pageWidth / 2, y, { align: 'center' });
-    y += 10;
-    doc.setFontSize(12);
+    doc.text('Descritivo do Orçamento', margin, y);
+    y += 8;
+    
+    // --- Cliente ---
     doc.setFont('helvetica', 'normal');
+    doc.setFontSize(12);
     doc.text(`Cliente: ${quote.clientName}`, margin, y);
     y += 15;
 
-    // Conteúdo
+    // --- Conteúdo ---
     quote.environments.forEach(env => {
-      if (y > pageHeight - 30) {
+      if (y > pageHeight - 40) { // Check for space before adding environment
         doc.addPage();
         y = margin;
       }
@@ -191,21 +196,25 @@ export default function QuoteDetailsPage() {
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(11);
       (env.furniture || []).forEach(fur => {
-        if (y > pageHeight - 20) {
+        if (y > pageHeight - 20) { // Check space for each furniture item
             doc.addPage();
             y = margin;
         }
-        const descriptionLines = doc.splitTextToSize(`- ${fur.name}: ${fur.description || 'Nenhum descritivo fornecido.'}`, pageWidth - (margin * 2) - 5);
+
+        const description = `- ${fur.name}: ${fur.description || 'Nenhum descritivo fornecido.'}`;
+        // The splitTextToSize handles line breaks automatically.
+        const descriptionLines = doc.splitTextToSize(description, pageWidth - (margin * 2) - 5);
         
+        // Check if the full description block fits on the current page
         if (y + (descriptionLines.length * 5) > pageHeight - 20) {
             doc.addPage();
             y = margin;
         }
 
         doc.text(descriptionLines, margin + 5, y);
-        y += descriptionLines.length * 5 + 3;
+        y += descriptionLines.length * 5 + 3; // Add extra padding after each item
       });
-      y += 5; // Espaço extra entre ambientes
+      y += 7; // Espaço extra entre ambientes
     });
     
     doc.save(`Descritivo_${quote.clientName.replace(/\s+/g, '_')}.pdf`);
@@ -394,24 +403,30 @@ export default function QuoteDetailsPage() {
             <h2 className="text-2xl font-headline font-semibold mb-4">Ambientes e Móveis do Orçamento</h2>
             {quote.environments?.length > 0 ? (
                 <Accordion type="multiple" className="space-y-4" defaultValue={quote.environments.map(e => e.id)}>
-                {quote.environments.map((env) => (
+                {quote.environments.map((env) => {
+                  const totalCost = (env.furniture || []).reduce((envAcc, fur) => {
+                    return envAcc + (fur.materials || []).reduce((furAcc, mat) => furAcc + (mat.quantity * (mat.cost || 0)), 0);
+                  }, 0);
+
+                  return (
                     <AccordionItem key={env.id} value={env.id} className="border-none">
                     <div className="bg-card rounded-lg overflow-hidden border">
                         <AccordionTrigger className="p-4 bg-muted/50 hover:no-underline">
                         <div className="flex-grow flex flex-col items-start text-left gap-2">
                             <h3 className="font-headline text-xl">{env.name}</h3>
+                            <p className="text-sm text-primary font-semibold">Custo Total de Materiais (Ambiente): R$ {totalCost.toFixed(2)}</p>
                         </div>
                         </AccordionTrigger>
                         <AccordionContent className="p-4 sm:p-6 space-y-6">
                         {(env.furniture || []).map((fur, index) => {
-                          const totalCost = (fur.materials || []).reduce((acc, mat) => acc + (mat.quantity * (mat.cost || 0)), 0);
+                          const furnitureCost = (fur.materials || []).reduce((acc, mat) => acc + (mat.quantity * (mat.cost || 0)), 0);
                           return (
                             <div key={fur.id}>
                             {index > 0 && <Separator className="mb-6" />}
                             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
                                 <div className="flex-grow">
                                   <h4 className="font-semibold text-lg">{fur.name}</h4>
-                                  <p className="text-sm text-primary font-semibold">Custo Materiais: R$ {totalCost.toFixed(2)}</p>
+                                  <p className="text-sm text-primary font-semibold">Custo Materiais: R$ {furnitureCost.toFixed(2)}</p>
                                 </div>
                                 <div className="flex gap-2 w-full sm:w-auto">
                                     <Button variant="outline" size="sm" onClick={() => openDescriptionModal(fur, env.id)} className="w-full sm:w-auto flex-1">
@@ -431,7 +446,7 @@ export default function QuoteDetailsPage() {
                         </AccordionContent>
                     </div>
                     </AccordionItem>
-                ))}
+                )})}
                 </Accordion>
             ) : (
                 <p>Nenhum ambiente cadastrado para este orçamento.</p>
