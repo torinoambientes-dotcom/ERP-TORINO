@@ -157,16 +157,19 @@ export default function QuoteDetailsPage() {
     let y = 20;
 
     // --- Cabeçalho com Logo ---
-    // A fonte 'Poppins' precisa estar carregada no jsPDF, se não estiver, ele usará uma fonte padrão.
-    // Para simplificar, usaremos as fontes padrão do PDF (Helvetica, Times, Courier),
-    // mas a lógica para fontes customizadas está aqui caso queira adicionar.
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(22);
-    doc.text('TORINO', pageWidth / 2, y, { align: 'center' });
+    const torinoText = 'TORINO';
+    const torinoWidth = doc.getStringUnitWidth(torinoText) * doc.getFontSize() / doc.internal.scaleFactor;
+    doc.text(torinoText, (pageWidth - torinoWidth) / 2, y);
+
     y += 7;
     doc.setFontSize(8);
     doc.setCharSpace(3);
-    doc.text('AMBIENTES', pageWidth / 2, y, { align: 'center' });
+    const ambientesText = 'AMBIENTES';
+    const ambientesWidth = doc.getStringUnitWidth(ambientesText) * doc.getFontSize() / doc.internal.scaleFactor + (ambientesText.length -1) * 3;
+    doc.text(ambientesText, (pageWidth - ambientesWidth) / 2, y);
+    
     y += 15;
     doc.setCharSpace(0);
 
