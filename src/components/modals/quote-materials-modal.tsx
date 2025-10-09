@@ -180,7 +180,8 @@ export function QuoteMaterialsModal({
   const { toast } = useToast();
   const { quoteMaterials } = useContext(AppContext);
   
-  const [totals, setTotals] = useState({ cost: 0, budget: 0 });
+  const [totalCost, setTotalCost] = useState(0);
+  const [totalBudgetValue, setTotalBudgetValue] = useState(0);
 
   const form = useForm<MaterialFormValues>({
     resolver: zodResolver(formSchema),
@@ -193,19 +194,6 @@ export function QuoteMaterialsModal({
     control: form.control,
     name: 'materials',
   });
-
-  const calculateTotals = (materials: MaterialFormValues['materials']) => {
-    return (materials || []).reduce((acc, material) => {
-      const quantity = Number(material.quantity) || 0;
-      const cost = Number(material.cost) || 0;
-      const markup = Number(material.markup) || 1;
-      
-      acc.cost += quantity * cost;
-      acc.budget += quantity * cost * markup;
-
-      return acc;
-    }, { cost: 0, budget: 0 });
-  };
   
   useEffect(() => {
     if (isOpen) {
@@ -213,15 +201,28 @@ export function QuoteMaterialsModal({
       form.reset({
         materials: initialMaterials,
       });
-      setTotals(calculateTotals(initialMaterials));
+      handleCalculate(initialMaterials); // Calculate initial totals
     }
   }, [isOpen, furniture, form]);
 
-  const handleCalculate = () => {
-    const currentMaterials = form.getValues('materials');
-    setTotals(calculateTotals(currentMaterials));
-  };
+  const handleCalculate = (materialsToCalc?: MaterialFormValues['materials']) => {
+    const materials = materialsToCalc || form.getValues('materials');
+    const { cost, budget } = (materials || []).reduce(
+      (acc, material) => {
+        const quantity = Number(material.quantity) || 0;
+        const cost = Number(material.cost) || 0;
+        const markup = Number(material.markup) || 1;
 
+        acc.cost += quantity * cost;
+        acc.budget += quantity * cost * markup;
+        
+        return acc;
+      },
+      { cost: 0, budget: 0 }
+    );
+    setTotalCost(cost);
+    setTotalBudgetValue(budget);
+  };
 
   const onSubmit = () => {
     const data = form.getValues();
@@ -304,17 +305,17 @@ export function QuoteMaterialsModal({
             </ScrollArea>
             
             <DialogFooter className="mt-4 pt-4 border-t items-center gap-4">
-                <Button type="button" variant="secondary" onClick={handleCalculate} className="mr-auto">
+                <Button type="button" onClick={() => handleCalculate()} className="mr-auto bg-green-600 hover:bg-green-700 text-white">
                     <Calculator className="mr-2 h-4 w-4" />
                     Calcular
                 </Button>
               <div className='flex flex-col text-right'>
                 <p className='text-sm text-muted-foreground'>Custo Total dos Materiais</p>
-                <p className='text-lg font-semibold'>R$ {totals.cost.toFixed(2)}</p>
+                <p className='text-lg font-semibold'>R$ {totalCost.toFixed(2)}</p>
               </div>
               <div className='flex flex-col text-right'>
                 <p className='text-sm text-muted-foreground'>Valor do Orçamento</p>
-                <p className='text-xl font-bold text-primary'>R$ {totals.budget.toFixed(2)}</p>
+                <p className='text-xl font-bold text-primary'>R$ {totalBudgetValue.toFixed(2)}</p>
               </div>
               
               <Button type="button" variant="ghost" onClick={onClose}>
