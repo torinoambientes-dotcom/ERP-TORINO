@@ -154,10 +154,15 @@ export default function QuoteDetailsPage() {
     const pageHeight = doc.internal.pageSize.height || doc.internal.pageSize.getHeight();
     const pageWidth = doc.internal.pageSize.width || doc.internal.pageSize.getWidth();
     const margin = 20;
-    let y = 20;
+    let y = 30;
 
-    // --- Cabeçalho com Logo ---
-    doc.setFont('helvetica', 'normal');
+    // Load fonts
+    doc.addFont('https://fonts.gstatic.com/s/poppins/v20/pxiByp8kv8JHgFVrLBT5Z1xlFQ.ttf', 'Poppins', 'normal');
+    doc.addFont('https://fonts.gstatic.com/s/poppins/v20/pxiByp8kv8JHgFVrLEj6Z1xlFQ.ttf', 'Poppins', '600');
+    doc.addFont('https://fonts.gstatic.com/s/ptsans/v17/jizaRExUiTo99u79D0-ExdGM.ttf', 'PT Sans', 'normal');
+
+    // --- Header ---
+    doc.setFont('Poppins', 'normal');
     doc.setFontSize(22);
     const torinoText = 'TORINO';
     const torinoWidth = doc.getStringUnitWidth(torinoText) * doc.getFontSize() / doc.internal.scaleFactor;
@@ -171,55 +176,56 @@ export default function QuoteDetailsPage() {
     const ambientesWidth = doc.getStringUnitWidth(ambientesText) * doc.getFontSize() / doc.internal.scaleFactor + (ambientesText.length -1) * 3;
     const ambientesStartX = torinoStartX + (torinoWidth - ambientesWidth) / 2;
     doc.text(ambientesText, ambientesStartX, y);
-    
-    y += 15;
     doc.setCharSpace(0);
 
-    // --- Título ---
-    doc.setFont('helvetica', 'bold');
+    y += 10;
+    doc.setDrawColor(220, 220, 220);
+    doc.line(margin, y, pageWidth - margin, y); // Horizontal line
+
+    y += 20;
+
+    // --- Title ---
+    doc.setFont('Poppins', '600');
     doc.setFontSize(16);
     doc.text('Descritivo do Orçamento', margin, y);
     y += 8;
     
-    // --- Cliente ---
-    doc.setFont('helvetica', 'normal');
+    // --- Client ---
+    doc.setFont('PT Sans', 'normal');
     doc.setFontSize(12);
     doc.text(`Cliente: ${quote.clientName}`, margin, y);
-    y += 15;
+    y += 18;
 
-    // --- Conteúdo ---
+    // --- Content ---
     quote.environments.forEach(env => {
       if (y > pageHeight - 40) { // Check for space before adding environment
         doc.addPage();
         y = margin;
       }
-      doc.setFont('helvetica', 'bold');
+      doc.setFont('Poppins', '600');
       doc.setFontSize(14);
       doc.text(env.name, margin, y);
-      y += 8;
+      y += 10;
 
-      doc.setFont('helvetica', 'normal');
+      doc.setFont('PT Sans', 'normal');
       doc.setFontSize(11);
       (env.furniture || []).forEach(fur => {
-        if (y > pageHeight - 20) { // Check space for each furniture item
+        const descriptionLines = doc.splitTextToSize(fur.description || 'Nenhum descritivo fornecido.', pageWidth - margin - (margin + 5));
+
+        if (y + (descriptionLines.length * 6) + 10 > pageHeight - 20) {
             doc.addPage();
             y = margin;
         }
 
-        const description = `- ${fur.name}: ${fur.description || 'Nenhum descritivo fornecido.'}`;
-        // The splitTextToSize handles line breaks automatically.
-        const descriptionLines = doc.splitTextToSize(description, pageWidth - (margin * 2) - 5);
-        
-        // Check if the full description block fits on the current page
-        if (y + (descriptionLines.length * 5) > pageHeight - 20) {
-            doc.addPage();
-            y = margin;
-        }
+        doc.setFont('Poppins', '600');
+        doc.text(`${fur.name}:`, margin, y);
+        y += 6;
 
+        doc.setFont('PT Sans', 'normal');
         doc.text(descriptionLines, margin + 5, y);
-        y += descriptionLines.length * 5 + 3; // Add extra padding after each item
+        y += descriptionLines.length * 5 + 8; // Add extra padding after each item
       });
-      y += 7; // Espaço extra entre ambientes
+      y += 10; // Extra space between environments
     });
     
     doc.save(`Descritivo_${quote.clientName.replace(/\s+/g, '_')}.pdf`);
