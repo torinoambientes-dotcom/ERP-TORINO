@@ -52,6 +52,7 @@ export interface MaterialItem {
   addedAt?: string; // ISO date string
   purchased?: boolean;
   cost?: number; // Cost per unit for quote materials
+  markup?: number;
 }
 
 export interface GlassItem {

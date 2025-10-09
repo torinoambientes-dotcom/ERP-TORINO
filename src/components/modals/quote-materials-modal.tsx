@@ -45,8 +45,10 @@ const materialSchema = z.object({
   quantity: z.coerce.number().min(0.01, 'Quantidade deve ser positiva.'),
   unit: z.string().min(1, 'Unidade é obrigatória.'),
   cost: z.coerce.number().optional(), // Custo por unidade
+  markup: z.coerce.number().optional(), // Mark-up multiplier
   addedAt: z.string().optional(),
 });
+
 
 const formSchema = z.object({
   materials: z.array(materialSchema),
@@ -58,12 +60,12 @@ const MaterialRow = ({ index, control, field, remove, update, quoteMaterials }: 
   const [popoverOpen, setPopoverOpen] = useState(false);
 
   return (
-    <div className="flex items-end gap-2 p-3 rounded-lg border bg-muted/50">
+    <div className="grid grid-cols-[1fr,80px,80px,80px,auto] items-end gap-2 p-3 rounded-lg border bg-muted/50">
       <Controller
         control={control}
         name={`materials.${index}`}
         render={({ field: controllerField }) => (
-          <FormItem className="flex-grow">
+          <FormItem>
             <FormLabel>Material</FormLabel>
             <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
               <PopoverTrigger asChild>
@@ -87,7 +89,7 @@ const MaterialRow = ({ index, control, field, remove, update, quoteMaterials }: 
                     <CommandEmpty>
                        <div className="p-2 cursor-pointer hover:bg-accent" onClick={() => {
                             const inputValue = (document.querySelector(`[cmdk-input]`) as HTMLInputElement).value;
-                            update(index, {...field, name: inputValue, unit: 'unidade', cost: 0 });
+                            update(index, {...field, name: inputValue, unit: 'unidade', cost: 0, markup: 1 });
                             setPopoverOpen(false);
                        }}>
                             Adicionar novo material: "{ (document.querySelector(`[cmdk-input]`) as HTMLInputElement)?.value }"
@@ -99,7 +101,7 @@ const MaterialRow = ({ index, control, field, remove, update, quoteMaterials }: 
                           key={item.id}
                           value={item.name}
                           onSelect={() => {
-                            update(index, {...field, name: item.name, unit: item.unit, cost: item.cost });
+                            update(index, {...field, name: item.name, unit: item.unit, cost: item.cost, markup: 1 });
                             setPopoverOpen(false);
                           }}
                         >
@@ -119,7 +121,7 @@ const MaterialRow = ({ index, control, field, remove, update, quoteMaterials }: 
         control={control}
         name={`materials.${index}.quantity`}
         render={({ field: formField }) => (
-          <FormItem className="w-24">
+          <FormItem>
             <FormLabel>Qtd.</FormLabel>
             <FormControl>
               <Input type="number" {...formField} value={formField.value || 0} />
@@ -130,25 +132,25 @@ const MaterialRow = ({ index, control, field, remove, update, quoteMaterials }: 
       />
       <FormField
         control={control}
-        name={`materials.${index}.unit`}
+        name={`materials.${index}.cost`}
         render={({ field: formField }) => (
-          <FormItem className="w-32">
-            <FormLabel>Unidade</FormLabel>
+          <FormItem>
+            <FormLabel>Custo Unit.</FormLabel>
             <FormControl>
-              <Input placeholder="Unid." {...formField} value={formField.value || ''} />
+              <Input type="number" {...formField} value={formField.value || 0} />
             </FormControl>
             <FormMessage />
           </FormItem>
         )}
       />
-      <FormField
+       <FormField
         control={control}
-        name={`materials.${index}.cost`}
+        name={`materials.${index}.markup`}
         render={({ field: formField }) => (
-          <FormItem className="w-32">
-            <FormLabel>Custo Unit. (R$)</FormLabel>
+          <FormItem>
+            <FormLabel>Mark-up</FormLabel>
             <FormControl>
-              <Input type="number" {...formField} value={formField.value || 0} />
+              <Input type="number" {...formField} value={formField.value || 1} />
             </FormControl>
             <FormMessage />
           </FormItem>
@@ -199,11 +201,16 @@ export function QuoteMaterialsModal({
   }, [isOpen, furniture, form]);
 
   const watchedMaterials = form.watch('materials');
-  const totalCost = (watchedMaterials || []).reduce((acc, material) => {
-    const quantity = Number(material.quantity) || 0;
-    const cost = Number(material.cost) || 0;
-    return acc + quantity * cost;
-  }, 0);
+  const { totalCost, totalBudgetValue } = useMemo(() => {
+    return (watchedMaterials || []).reduce((acc, material) => {
+      const quantity = Number(material.quantity) || 0;
+      const cost = Number(material.cost) || 0;
+      const markup = Number(material.markup) || 1;
+      acc.cost += quantity * cost;
+      acc.budget += quantity * cost * markup;
+      return acc;
+    }, { cost: 0, budget: 0 });
+  }, [watchedMaterials]);
 
 
   const onSubmit = () => {
@@ -227,6 +234,7 @@ export function QuoteMaterialsModal({
         quantity: 1,
         unit: 'unidade',
         cost: 0,
+        markup: 1,
         addedAt: new Date().toISOString()
     });
   };
@@ -234,7 +242,7 @@ export function QuoteMaterialsModal({
   return (
     <>
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="w-[95vw] max-w-4xl h-[85vh] flex flex-col">
+      <DialogContent className="w-[95vw] max-w-5xl h-[85vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="font-headline">
             Custos de Material - {furniture.name}
@@ -285,9 +293,14 @@ export function QuoteMaterialsModal({
               </div>
             </ScrollArea>
             
-            <DialogFooter className="mt-4 pt-4 border-t items-center">
-              <div className='text-lg font-semibold'>
-                Custo Total dos Materiais: <span className='text-primary'>R$ {totalCost.toFixed(2)}</span>
+            <DialogFooter className="mt-4 pt-4 border-t items-end gap-4">
+              <div className='flex flex-col text-right'>
+                <p className='text-sm text-muted-foreground'>Custo Total dos Materiais</p>
+                <p className='text-lg font-semibold'>R$ {totalCost.toFixed(2)}</p>
+              </div>
+              <div className='flex flex-col text-right'>
+                <p className='text-sm text-muted-foreground'>Valor do Orçamento</p>
+                <p className='text-xl font-bold text-primary'>R$ {totalBudgetValue.toFixed(2)}</p>
               </div>
               <div className='flex-grow' />
               <Button type="button" variant="ghost" onClick={onClose}>

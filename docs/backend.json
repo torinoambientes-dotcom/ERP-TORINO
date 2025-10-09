@@ -138,7 +138,8 @@
         "unit": { "type": "string" },
         "stockItemId": { "type": "string", "description": "Link to the stock item" },
         "addedAt": { "type": "string", "format": "date-time" },
-        "purchased": { "type": "boolean" }
+        "purchased": { "type": "boolean" },
+        "markup": { "type": "number", "description": "The markup multiplier for the item's cost." }
       },
       "required": ["id", "name", "quantity", "unit"]
     },
@@ -353,6 +354,7 @@
           "enum": ["client_provided", "internal_development"],
           "description": "Whether the project design is from the client or internal."
         },
+        "internalProjectStage": { "$ref": "#/entities/QuoteStage" },
         "materialSurveyStage": { "$ref": "#/entities/QuoteStage" },
         "descriptiveStage": { "$ref": "#/entities/QuoteStage" },
         "presentationStatus": {
@@ -362,7 +364,7 @@
         },
         "clientFeedback": {
           "type": "string",
-          "enum": ["analyzing", "approved", "rejected"],
+          "enum": ["analyzing", "approved", "rejected", "revision"],
           "description": "Client's feedback on the quote."
         }
       },
