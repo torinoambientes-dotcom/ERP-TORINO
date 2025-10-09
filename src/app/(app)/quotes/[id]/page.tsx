@@ -158,24 +158,25 @@ export default function QuoteDetailsPage() {
     let totalQuoteValue = 0;
   
     // --- Header ---
-    doc.setFont('Helvetica', 'bold');
-    doc.setFontSize(22);
+    doc.setFont('Poppins', 'normal');
+    doc.setFontSize(20);
     doc.text('TORINO', margin, y);
-    y += 7;
-    doc.setFont('Helvetica', 'normal');
+    
     doc.setFontSize(8);
     doc.setCharSpace(3);
-    doc.text('AMBIENTES', margin, y);
+    doc.setOpacity(0.7);
+    doc.text('AMBIENTES', margin, y + 6);
     doc.setCharSpace(0);
+    doc.setOpacity(1);
 
     doc.setFont('Helvetica', 'bold');
     doc.setFontSize(18);
     const title = isQuote ? 'Proposta Comercial' : 'Descritivo do Orçamento';
     const titleWidth = doc.getStringUnitWidth(title) * doc.getFontSize() / doc.internal.scaleFactor;
-    doc.text(title, pageWidth - margin - titleWidth, y - 5);
+    doc.text(title, pageWidth - margin - titleWidth, y);
 
 
-    y += 10;
+    y += 15;
     doc.setDrawColor(220, 220, 220);
     doc.line(margin, y, pageWidth - margin, y); // Horizontal line
   
