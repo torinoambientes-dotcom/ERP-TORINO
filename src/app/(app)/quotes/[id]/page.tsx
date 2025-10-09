@@ -248,7 +248,7 @@ export default function QuoteDetailsPage() {
         doc.setFont('Helvetica', 'bold');
         doc.setFontSize(12);
         doc.text(fur.name, margin + 10, contentY);
-        contentY += 8;
+        contentY += 6;
   
         doc.setFont('Helvetica', 'normal');
         doc.setFontSize(10);
