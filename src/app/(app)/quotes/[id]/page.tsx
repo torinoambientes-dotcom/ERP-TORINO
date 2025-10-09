@@ -160,14 +160,15 @@ export default function QuoteDetailsPage() {
     // --- Header ---
     doc.setFont('Poppins', 'normal');
     doc.setFontSize(20);
+    doc.setTextColor(41, 37, 36); // Dark color for TORINO
     doc.text('TORINO', margin, y);
     
     doc.setFontSize(8);
     doc.setCharSpace(3);
-    doc.setOpacity(0.7);
+    doc.setTextColor(150, 150, 150); // Lighter color for AMBIENTES
     doc.text('AMBIENTES', margin, y + 6);
     doc.setCharSpace(0);
-    doc.setOpacity(1);
+    doc.setTextColor(41, 37, 36); // Reset to default
 
     doc.setFont('Helvetica', 'bold');
     doc.setFontSize(18);
