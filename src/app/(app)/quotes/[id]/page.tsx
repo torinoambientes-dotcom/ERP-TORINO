@@ -5,7 +5,7 @@ import { AppContext } from '@/context/app-context';
 import type { Quote, StageStatus, TeamMember, QuoteStage, QuoteFurniture, QuoteEnvironment } from '@/lib/types';
 import { PageHeader } from '@/components/layout/page-header';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, User, Package, ListTodo, MessageSquare, Pencil, FileText, Download } from 'lucide-react';
+import { ChevronLeft, User, Package, Pencil, FileText, Download } from 'lucide-react';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -154,10 +154,10 @@ export default function QuoteDetailsPage() {
     const pageHeight = doc.internal.pageSize.height || doc.internal.pageSize.getHeight();
     const pageWidth = doc.internal.pageSize.width || doc.internal.pageSize.getWidth();
     const margin = 20;
-    let y = 30;
+    let y = 25;
 
     // --- Header ---
-    doc.setFont('helvetica', 'normal');
+    doc.setFont('Helvetica', 'bold');
     doc.setFontSize(22);
     const torinoText = 'TORINO';
     const torinoWidth = doc.getStringUnitWidth(torinoText) * doc.getFontSize() / doc.internal.scaleFactor;
@@ -165,6 +165,7 @@ export default function QuoteDetailsPage() {
     doc.text(torinoText, torinoStartX, y);
     
     y += 7;
+    doc.setFont('Helvetica', 'normal');
     doc.setFontSize(8);
     doc.setCharSpace(3);
     const ambientesText = 'AMBIENTES';
@@ -177,54 +178,74 @@ export default function QuoteDetailsPage() {
     doc.setDrawColor(220, 220, 220);
     doc.line(margin, y, pageWidth - margin, y); // Horizontal line
 
-    y += 20;
+    y += 15;
 
     // --- Title ---
-    doc.setFont('helvetica', 'bold');
+    doc.setFont('Helvetica', 'bold');
     doc.setFontSize(16);
     doc.text('Descritivo do Orçamento', margin, y);
     y += 8;
     
     // --- Client ---
-    doc.setFont('helvetica', 'normal');
+    doc.setFont('Helvetica', 'normal');
     doc.setFontSize(12);
     doc.text(`Cliente: ${quote.clientName}`, margin, y);
-    y += 18;
+    y += 15;
 
     // --- Content ---
     quote.environments.forEach(env => {
-      if (y > pageHeight - 40) { // Check for space before adding environment
+      // Check for space before adding environment
+      if (y > pageHeight - 40) { 
         doc.addPage();
         y = margin;
       }
-      doc.setFont('helvetica', 'bold');
+      doc.setFont('Helvetica', 'bold');
       doc.setFontSize(14);
       doc.text(env.name, margin, y);
-      y += 10;
+      y += 8;
 
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(11);
       (env.furniture || []).forEach(fur => {
-        const descriptionLines = doc.splitTextToSize(fur.description || 'Nenhum descritivo fornecido.', pageWidth - margin - (margin + 5));
-
-        if (y + (descriptionLines.length * 6) + 10 > pageHeight - 20) {
+        const descriptionLines = doc.splitTextToSize(fur.description || 'Nenhum descritivo fornecido.', pageWidth - (margin * 2) - 20); // Content width inside card
+        
+        const cardHeaderHeight = 8;
+        const cardContentHeight = descriptionLines.length * 5;
+        const cardPadding = 8;
+        const cardTotalHeight = cardHeaderHeight + cardContentHeight + cardPadding;
+        
+        if (y + cardTotalHeight > pageHeight - margin) {
             doc.addPage();
             y = margin;
+            // Redraw environment title on new page
+            doc.setFont('Helvetica', 'bold');
+            doc.setFontSize(14);
+            doc.text(env.name, margin, y);
+            y += 8;
         }
 
-        doc.setFont('helvetica', 'bold');
-        doc.text(`${fur.name}:`, margin, y);
-        y += 6;
+        // Draw card
+        doc.setDrawColor(230, 230, 230);
+        doc.setFillColor(248, 248, 248);
+        doc.roundedRect(margin, y, pageWidth - (margin * 2), cardTotalHeight, 3, 3, 'FD');
 
-        doc.setFont('helvetica', 'normal');
-        doc.text(descriptionLines, margin + 5, y);
-        y += descriptionLines.length * 5 + 8; // Add extra padding after each item
+        let contentY = y + cardPadding;
+
+        doc.setFont('Helvetica', 'bold');
+        doc.setFontSize(12);
+        doc.text(fur.name, margin + 10, contentY);
+        contentY += 6;
+
+        doc.setFont('Helvetica', 'normal');
+        doc.setFontSize(10);
+        doc.text(descriptionLines, margin + 10, contentY);
+        
+        y += cardTotalHeight + 5; // Move Y for the next card
       });
       y += 10; // Extra space between environments
     });
     
     doc.save(`Descritivo_${quote.clientName.replace(/\s+/g, '_')}.pdf`);
   };
+
 
   if (quote === undefined || isLoading) {
     return (
@@ -495,3 +516,4 @@ export default function QuoteDetailsPage() {
   );
 
     
+}
