@@ -156,13 +156,8 @@ export default function QuoteDetailsPage() {
     const margin = 20;
     let y = 30;
 
-    // Load fonts
-    doc.addFont('https://fonts.gstatic.com/s/poppins/v20/pxiByp8kv8JHgFVrLBT5Z1xlFQ.ttf', 'Poppins', 'normal');
-    doc.addFont('https://fonts.gstatic.com/s/poppins/v20/pxiByp8kv8JHgFVrLEj6Z1xlFQ.ttf', 'Poppins', '600');
-    doc.addFont('https://fonts.gstatic.com/s/ptsans/v17/jizaRExUiTo99u79D0-ExdGM.ttf', 'PT Sans', 'normal');
-
     // --- Header ---
-    doc.setFont('Poppins', 'normal');
+    doc.setFont('helvetica', 'normal');
     doc.setFontSize(22);
     const torinoText = 'TORINO';
     const torinoWidth = doc.getStringUnitWidth(torinoText) * doc.getFontSize() / doc.internal.scaleFactor;
@@ -185,13 +180,13 @@ export default function QuoteDetailsPage() {
     y += 20;
 
     // --- Title ---
-    doc.setFont('Poppins', '600');
+    doc.setFont('helvetica', 'bold');
     doc.setFontSize(16);
     doc.text('Descritivo do Orçamento', margin, y);
     y += 8;
     
     // --- Client ---
-    doc.setFont('PT Sans', 'normal');
+    doc.setFont('helvetica', 'normal');
     doc.setFontSize(12);
     doc.text(`Cliente: ${quote.clientName}`, margin, y);
     y += 18;
@@ -202,12 +197,12 @@ export default function QuoteDetailsPage() {
         doc.addPage();
         y = margin;
       }
-      doc.setFont('Poppins', '600');
+      doc.setFont('helvetica', 'bold');
       doc.setFontSize(14);
       doc.text(env.name, margin, y);
       y += 10;
 
-      doc.setFont('PT Sans', 'normal');
+      doc.setFont('helvetica', 'normal');
       doc.setFontSize(11);
       (env.furniture || []).forEach(fur => {
         const descriptionLines = doc.splitTextToSize(fur.description || 'Nenhum descritivo fornecido.', pageWidth - margin - (margin + 5));
@@ -217,11 +212,11 @@ export default function QuoteDetailsPage() {
             y = margin;
         }
 
-        doc.setFont('Poppins', '600');
+        doc.setFont('helvetica', 'bold');
         doc.text(`${fur.name}:`, margin, y);
         y += 6;
 
-        doc.setFont('PT Sans', 'normal');
+        doc.setFont('helvetica', 'normal');
         doc.text(descriptionLines, margin + 5, y);
         y += descriptionLines.length * 5 + 8; // Add extra padding after each item
       });
@@ -498,4 +493,5 @@ export default function QuoteDetailsPage() {
       )}
     </>
   );
-}
+
+    
