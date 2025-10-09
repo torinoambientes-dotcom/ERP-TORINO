@@ -131,6 +131,7 @@ export interface Project {
   clientName: string;
   environments: Environment[];
   completedAt?: string; // ISO date string
+  deliveryDeadline?: string;
 }
 
 export interface Appointment {
@@ -255,6 +256,8 @@ export interface Quote {
   descriptiveStage: QuoteStage;
   presentationStatus: 'pending_send' | 'sent';
   clientFeedback: 'analyzing' | 'approved' | 'rejected' | 'revision';
+  deliveryDeadline?: string;
+  relatedProjectId?: string;
 }
 
 export interface QuoteMaterialCategory {

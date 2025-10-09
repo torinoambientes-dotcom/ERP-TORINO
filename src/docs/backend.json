@@ -15,6 +15,11 @@
           "type": "string",
           "format": "date-time",
           "description": "The timestamp when the project was completed."
+        },
+        "deliveryDeadline": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The agreed delivery date for the project."
         }
       },
       "required": ["id", "clientName", "environments"]
@@ -138,7 +143,8 @@
         "unit": { "type": "string" },
         "stockItemId": { "type": "string", "description": "Link to the stock item" },
         "addedAt": { "type": "string", "format": "date-time" },
-        "purchased": { "type": "boolean" }
+        "purchased": { "type": "boolean" },
+        "markup": { "type": "number", "description": "The markup multiplier for the item's cost." }
       },
       "required": ["id", "name", "quantity", "unit"]
     },
@@ -343,7 +349,7 @@
         "id": { "type": "string" },
         "clientName": { "type": "string" },
         "clientContact": { "type": "string" },
-        "environments": { "type": "array", "items": { "$ref": "#/entities/Environment" } },
+        "environments": { "type": "array", "items": { "$ref": "#/entities/QuoteEnvironment" } },
         "totalValue": { "type": "number" },
         "notes": { "type": "string" },
         "createdAt": { "type": "string", "format": "date-time" },
@@ -365,9 +371,55 @@
           "type": "string",
           "enum": ["analyzing", "approved", "rejected", "revision"],
           "description": "Client's feedback on the quote."
+        },
+        "deliveryDeadline": {
+            "type": "string",
+            "format": "date-time",
+            "description": "The delivery date agreed upon with the client."
+        },
+        "relatedProjectId": {
+            "type": "string",
+            "description": "The ID of the project created from this quote."
         }
       },
       "required": ["id", "clientName", "environments", "createdAt", "updatedAt", "projectOrigin", "materialSurveyStage", "descriptiveStage", "presentationStatus", "clientFeedback"]
+    },
+    "QuoteEnvironment": {
+      "title": "QuoteEnvironment",
+      "type": "object",
+      "description": "An environment within a quote, containing multiple pieces of furniture.",
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier for the environment." },
+        "name": { "type": "string", "description": "The name of the environment (e.g., 'Kitchen')." },
+        "furniture": {
+          "type": "array",
+          "items": { "$ref": "#/entities/QuoteFurniture" }
+        }
+      },
+      "required": ["id", "name", "furniture"]
+    },
+    "QuoteFurniture": {
+      "title": "QuoteFurniture",
+      "type": "object",
+      "description": "A single piece of furniture within a quote.",
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier for the furniture." },
+        "name": { "type": "string", "description": "The name of the furniture (e.g., 'Top Cabinet')." },
+        "description": { "type": "string", "description": "A detailed description for the quote PDF." },
+        "materials": {
+          "type": "array",
+          "items": { "$ref": "#/entities/MaterialItem" }
+        },
+        "glassItems": {
+          "type": "array",
+          "items": { "$ref": "#/entities/GlassItem" }
+        },
+        "profileDoors": {
+          "type": "array",
+          "items": { "$ref": "#/entities/ProfileDoorItem" }
+        }
+      },
+      "required": ["id", "name"]
     },
     "QuoteMaterial": {
       "title": "QuoteMaterial",

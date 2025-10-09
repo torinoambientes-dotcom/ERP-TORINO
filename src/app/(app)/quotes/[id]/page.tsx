@@ -1,11 +1,11 @@
 'use client';
 import { useContext, useState, useEffect, useMemo, useCallback } from 'react';
-import { notFound, useParams } from 'next/navigation';
+import { notFound, useParams, useRouter } from 'next/navigation';
 import { AppContext } from '@/context/app-context';
 import type { Quote, StageStatus, TeamMember, QuoteStage, QuoteFurniture, QuoteEnvironment } from '@/lib/types';
 import { PageHeader } from '@/components/layout/page-header';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, User, Package, Pencil, FileText, Download } from 'lucide-react';
+import { ChevronLeft, User, Package, Pencil, FileText, Download, CalendarIcon, CheckCircle } from 'lucide-react';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -22,6 +22,10 @@ import { RegisterQuoteModal } from '@/components/modals/register-quote-modal';
 import { QuoteFurnitureDescriptionModal } from '@/components/modals/quote-furniture-description-modal';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
+import { Calendar } from '@/components/ui/calendar';
+import { format } from 'date-fns';
+import { useToast } from '@/hooks/use-toast';
+
 
 type StageKey = 'internalProjectStage' | 'materialSurveyStage' | 'descriptiveStage';
 
@@ -44,9 +48,11 @@ const clientFeedbackMap = {
 };
 
 export default function QuoteDetailsPage() {
-  const { quotes, teamMembers, updateQuote, isLoading, quoteMaterials } = useContext(AppContext);
+  const { quotes, teamMembers, updateQuote, isLoading, quoteMaterials, addProject } = useContext(AppContext);
   const params = useParams();
   const id = params.id as string;
+  const router = useRouter();
+  const { toast } = useToast();
 
   const [quote, setQuote] = useState<Quote | null | undefined>(undefined);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -143,6 +149,40 @@ export default function QuoteDetailsPage() {
     });
   };
 
+  const handleDeliveryDeadlineChange = (date: Date | undefined) => {
+      if (!quote || !date) return;
+      const updates = { deliveryDeadline: date.toISOString() };
+      
+      if (!quote.relatedProjectId) {
+          const newProjectId = addProject({
+              clientName: quote.clientName,
+              deliveryDeadline: date.toISOString(),
+              environments: quote.environments.map(env => ({
+                  name: env.name,
+                  furniture: env.furniture.map(fur => ({
+                      name: fur.name,
+                      materials: fur.materials,
+                      glassItems: fur.glassItems,
+                      profileDoors: fur.profileDoors,
+                  }))
+              }))
+          });
+          updates.relatedProjectId = newProjectId;
+
+          toast({
+              title: "Projeto Criado com Sucesso!",
+              description: `O projeto para ${quote.clientName} foi gerado a partir deste orçamento.`,
+          });
+      }
+
+      setQuote(currentQuote => {
+          if (!currentQuote) return null;
+          const newQuote = { ...currentQuote, ...updates };
+          updateQuote(newQuote.id, updates);
+          return newQuote;
+      });
+  };
+
   const memberMap = useMemo(() => {
     if (!teamMembers) return new Map();
     return new Map(teamMembers.map(m => [m.id, m]));
@@ -158,18 +198,17 @@ export default function QuoteDetailsPage() {
     let y = 35; // Start y position after header
 
     const addHeader = (pageNumber: number) => {
-        // Logo
-        doc.setFont('Helvetica', 'normal');
-        doc.setFontSize(16);
-        doc.text('TORINO', margin, 18);
-        doc.setFontSize(7);
-        doc.text('AMBIENTES', margin, 22, { charSpace: 2 });
-    
-        const title = isQuote ? 'Proposta Comercial' : 'Memorial Descritivo';
-        doc.setFont('Helvetica', 'bold');
-        doc.setFontSize(14);
-        const titleWidth = doc.getStringUnitWidth(title) * doc.getFontSize() / doc.internal.scaleFactor;
-        doc.text(title, pageWidth - margin - titleWidth, 20);
+      doc.setFont('Helvetica', 'normal');
+      doc.setFontSize(16);
+      doc.text('TORINO', margin, 18);
+      doc.setFontSize(7);
+      doc.text('AMBIENTES', margin, 22, { charSpace: 2 });
+
+      const title = isQuote ? 'Proposta Comercial' : 'Memorial Descritivo';
+      doc.setFont('Helvetica', 'bold');
+      doc.setFontSize(14);
+      const titleWidth = doc.getStringUnitWidth(title) * doc.getFontSize() / doc.internal.scaleFactor;
+      doc.text(title, pageWidth - margin - titleWidth, 20);
     };
 
     const addFooter = (pageNumber: number, totalPages: number) => {
@@ -190,105 +229,81 @@ export default function QuoteDetailsPage() {
     };
 
     const checkPageBreak = (requiredHeight: number) => {
-        if (y + requiredHeight > pageHeight - 25) { // 25mm margin for footer
-            doc.addPage();
-            y = 35; // Reset y for new page
-            return true;
-        }
-        return false;
+      if (y + requiredHeight > pageHeight - 25) { // 25mm margin for footer
+        doc.addPage();
+        y = 35;
+        return true;
+      }
+      return false;
     };
-    
+
     // Initial Page
     addHeader(1);
-    
-    // --- Client and Date Info ---
+
     doc.setFont('Helvetica', 'bold');
     doc.setFontSize(12);
     doc.text(`Cliente:`, margin, y);
     doc.setFont('Helvetica', 'normal');
     doc.text(`${quote.clientName}`, margin + 20, y);
-    
+
     const dateText = `Data: ${new Date().toLocaleDateString('pt-BR')}`;
     const dateWidth = doc.getStringUnitWidth(dateText) * doc.getFontSize() / doc.internal.scaleFactor;
     doc.text(dateText, pageWidth - margin - dateWidth, y);
     y += 12;
-  
+
     let totalQuoteValue = 0;
 
-    // --- Content ---
     for (const env of quote.environments) {
-        
-        const furnitureTextBlocks = (env.furniture || []).map(fur => ({
-            name: fur.name,
-            description: fur.description || 'Nenhum descritivo fornecido.',
-        }));
-        
-        const envNameHeight = 10; // Height for env name and separator
-        let requiredHeight = envNameHeight;
+      if (checkPageBreak(20)) {
+        // Space for env header
+      }
+      
+      doc.setFont('Helvetica', 'bold');
+      doc.setFontSize(14);
+      const envNameText = env.name;
+      doc.text(envNameText, margin, y);
+      
+      if(isQuote){
+        const environmentValue = (env.furniture || []).reduce((envAcc, fur) => envAcc + (fur.materials || []).reduce((matAcc, mat) => matAcc + (mat.quantity * (mat.cost || 0) * (mat.markup || 1)), 0), 0);
+        totalQuoteValue += environmentValue;
+        const envValueText = `- R$ ${environmentValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        doc.setFont('Helvetica', 'normal');
+        doc.text(envValueText, margin + doc.getStringUnitWidth(envNameText) * doc.getFontSize() / doc.internal.scaleFactor + 3, y);
+      }
 
-        for (const block of furnitureTextBlocks) {
-            const nameHeight = doc.getLineHeight() * 0.4; // approx for font 11
-            const descLines = doc.splitTextToSize(block.description, pageWidth - (margin * 2));
-            const descHeight = descLines.length * (doc.getLineHeight() * 0.35); // approx for font 10
-            requiredHeight += nameHeight + descHeight + 8; // 8 for spacing
+      y += 4;
+      doc.setDrawColor(220, 220, 220);
+      doc.line(margin, y, pageWidth - margin, y);
+      y += 8;
+
+      for (const fur of (env.furniture || [])) {
+        const furNameHeight = 6;
+        const descriptionLines = doc.splitTextToSize(fur.description || 'Nenhum descritivo fornecido.', pageWidth - (margin * 2) - 5);
+        const descHeight = descriptionLines.length * 4;
+        const furBlockHeight = furNameHeight + descHeight + 8;
+
+        if (checkPageBreak(furBlockHeight)) {
+          // New page
         }
 
-        if (checkPageBreak(envNameHeight)) {
-           // New page was added
-        }
-        
-        // --- Draw Environment Name ---
         doc.setFont('Helvetica', 'bold');
-        doc.setFontSize(14);
-        const envNameText = env.name;
-        doc.text(envNameText, margin, y);
+        doc.setFontSize(11);
+        doc.text(fur.name, margin, y);
+        y += 6;
 
-        if(isQuote){
-            const environmentValue = (env.furniture || []).reduce((envAcc, fur) => {
-                const furnitureValue = (fur.materials || []).reduce((matAcc, mat) => {
-                    return matAcc + (mat.quantity * (mat.cost || 0) * (mat.markup || 1));
-                }, 0);
-                return envAcc + furnitureValue;
-            }, 0);
-            totalQuoteValue += environmentValue;
-            const envValueText = `- R$ ${environmentValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-            doc.setFont('Helvetica', 'normal');
-            doc.text(envValueText, margin + doc.getStringUnitWidth(envNameText) * doc.getFontSize() / doc.internal.scaleFactor + 3, y);
-        }
-
-        y += 4;
-        doc.setDrawColor(220, 220, 220);
-        doc.line(margin, y, pageWidth - margin, y);
-        y += 8;
-
-        for (const fur of (env.furniture || [])) {
-            const furNameHeight = doc.getLineHeight() * 0.4;
-            const descriptionLines = doc.splitTextToSize(fur.description || 'Nenhum descritivo fornecido.', pageWidth - (margin * 2) - 5);
-            const descHeight = descriptionLines.length * (doc.getLineHeight() * 0.35);
-            const furBlockHeight = furNameHeight + descHeight + 8;
-
-            if (checkPageBreak(furBlockHeight)) {
-                // New page was added
-            }
-
-            doc.setFont('Helvetica', 'bold');
-            doc.setFontSize(11);
-            doc.text(fur.name, margin, y);
-            y += 6;
-
-            doc.setFont('Helvetica', 'normal');
-            doc.setFontSize(10);
-            doc.setTextColor('#666666');
-            doc.text(descriptionLines, margin, y);
-            y += descHeight + 6;
-            doc.setTextColor('#000000');
-        }
-        y += 5; // Extra space after an environment block
+        doc.setFont('Helvetica', 'normal');
+        doc.setFontSize(10);
+        doc.setTextColor('#666666');
+        doc.text(descriptionLines, margin, y);
+        y += descHeight + 6;
+        doc.setTextColor('#000000');
+      }
+      y += 5;
     }
   
     if (isQuote) {
         if (checkPageBreak(30)) {
-           // New page
+          // new page
         }
         y += 10;
         doc.setFont('Helvetica', 'bold');
@@ -300,7 +315,7 @@ export default function QuoteDetailsPage() {
     }
     
     if (checkPageBreak(20)) {
-        // new page
+      // new page
     }
     doc.setFont('Helvetica', 'bold');
     doc.setFontSize(10);
@@ -314,7 +329,7 @@ export default function QuoteDetailsPage() {
     const totalPages = (doc as any).internal.getNumberOfPages();
     for (let i = 1; i <= totalPages; i++) {
       doc.setPage(i);
-      if (i > 1) addHeader(i); // Add header again to new pages
+      if (i > 1) addHeader(i);
       addFooter(i, totalPages);
     }
     
@@ -486,7 +501,7 @@ export default function QuoteDetailsPage() {
 
         <Card>
             <CardHeader><CardTitle>Devolutiva do Cliente</CardTitle></CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
                  <Select value={quote.clientFeedback} onValueChange={(value) => handleSimpleStatusChange('clientFeedback', value)}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
@@ -495,6 +510,44 @@ export default function QuoteDetailsPage() {
                       ))}
                     </SelectContent>
                 </Select>
+                {quote.clientFeedback === 'approved' && (
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium">Prazo de Entrega</label>
+                        <Popover>
+                            <PopoverTrigger asChild>
+                                <Button
+                                    variant={"outline"}
+                                    className={cn(
+                                        "w-full justify-start text-left font-normal",
+                                        !quote.deliveryDeadline && "text-muted-foreground"
+                                    )}
+                                >
+                                    <CalendarIcon className="mr-2 h-4 w-4" />
+                                    {quote.deliveryDeadline
+                                        ? format(new Date(quote.deliveryDeadline), "PPP")
+                                        : <span>Definir prazo</span>}
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0">
+                                <Calendar
+                                    mode="single"
+                                    selected={quote.deliveryDeadline ? new Date(quote.deliveryDeadline) : undefined}
+                                    onSelect={handleDeliveryDeadlineChange}
+                                    disabled={(date) => date < new Date()}
+                                    initialFocus
+                                />
+                            </PopoverContent>
+                        </Popover>
+                         {quote.relatedProjectId && (
+                            <Button asChild variant="outline" size="sm" className="w-full mt-2">
+                                <Link href={`/projects/${quote.relatedProjectId}`}>
+                                    <CheckCircle className="mr-2 h-4 w-4 text-green-600" />
+                                    Projeto Criado. Ver Projeto
+                                </Link>
+                            </Button>
+                        )}
+                    </div>
+                )}
             </CardContent>
         </Card>
 
