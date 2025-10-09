@@ -225,6 +225,7 @@ export interface QuoteStage {
 export interface QuoteFurniture {
     id: string;
     name: string;
+    description?: string;
     materials?: MaterialItem[];
     glassItems?: GlassItem[];
     profileDoors?: ProfileDoorItem[];

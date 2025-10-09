@@ -5,7 +5,7 @@ import { AppContext } from '@/context/app-context';
 import type { Quote, StageStatus, TeamMember, QuoteStage, QuoteFurniture, QuoteEnvironment } from '@/lib/types';
 import { PageHeader } from '@/components/layout/page-header';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, User, Package, ListTodo, MessageSquare, Pencil } from 'lucide-react';
+import { ChevronLeft, User, Package, ListTodo, MessageSquare, Pencil, FileText } from 'lucide-react';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -19,6 +19,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { Separator } from '@/components/ui/separator';
 import { QuoteMaterialsModal } from '@/components/modals/quote-materials-modal';
 import { RegisterQuoteModal } from '@/components/modals/register-quote-modal';
+import { QuoteFurnitureDescriptionModal } from '@/components/modals/quote-furniture-description-modal';
 
 
 type StageKey = 'internalProjectStage' | 'materialSurveyStage' | 'descriptiveStage';
@@ -49,6 +50,7 @@ export default function QuoteDetailsPage() {
   const [quote, setQuote] = useState<Quote | null | undefined>(undefined);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isMaterialsModalOpen, setMaterialsModalOpen] = useState(false);
+  const [isDescriptionModalOpen, setDescriptionModalOpen] = useState(false);
   const [selectedFurniture, setSelectedFurniture] = useState<QuoteFurniture | null>(null);
   const [selectedEnvironmentId, setSelectedEnvironmentId] = useState<string | null>(null);
 
@@ -113,6 +115,12 @@ export default function QuoteDetailsPage() {
     setSelectedFurniture(furniture);
     setSelectedEnvironmentId(envId);
     setMaterialsModalOpen(true);
+  }, []);
+  
+  const openDescriptionModal = useCallback((furniture: QuoteFurniture, envId: string) => {
+    setSelectedFurniture(furniture);
+    setSelectedEnvironmentId(envId);
+    setDescriptionModalOpen(true);
   }, []);
 
   const getFurnitureForModal = () => {
@@ -342,13 +350,17 @@ export default function QuoteDetailsPage() {
                                   <p className="text-sm text-primary font-semibold">Custo Materiais: R$ {totalCost.toFixed(2)}</p>
                                 </div>
                                 <div className="flex gap-2 w-full sm:w-auto">
-                                <Button variant="outline" size="sm" onClick={() => openMaterialsModal(fur, env.id)} className="w-full sm:w-auto flex-1">
-                                    <Package className="mr-2 h-4 w-4" />
-                                    Materiais
-                                </Button>
-                                {/* Placeholder for other actions if needed */}
+                                    <Button variant="outline" size="sm" onClick={() => openDescriptionModal(fur, env.id)} className="w-full sm:w-auto flex-1">
+                                        <FileText className="mr-2 h-4 w-4" />
+                                        Descritivo
+                                    </Button>
+                                    <Button variant="outline" size="sm" onClick={() => openMaterialsModal(fur, env.id)} className="w-full sm:w-auto flex-1">
+                                        <Package className="mr-2 h-4 w-4" />
+                                        Materiais
+                                    </Button>
                                 </div>
                             </div>
+                            {fur.description && <p className="text-sm text-muted-foreground -mt-2 mb-4 italic p-3 border-l-2">{fur.description}</p>}
                             </div>
                           );
                         })}
@@ -370,6 +382,14 @@ export default function QuoteDetailsPage() {
             furniture={getFurnitureForModal()!}
             onUpdate={handleFurnitureUpdateInModal}
             clientName={quote.clientName}
+        />
+      )}
+       {getFurnitureForModal() && (
+        <QuoteFurnitureDescriptionModal
+            isOpen={isDescriptionModalOpen}
+            onClose={() => setDescriptionModalOpen(false)}
+            furniture={getFurnitureForModal()!}
+            onUpdate={handleFurnitureUpdateInModal}
         />
       )}
        {isEditModalOpen && (
