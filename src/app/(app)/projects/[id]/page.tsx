@@ -27,7 +27,12 @@ import { format } from 'date-fns';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 
 
 type StageKey = 'measurement' | 'cutting' | 'purchase' | 'assembly';
@@ -63,6 +68,13 @@ export default function ProjectDetailsPage() {
   const [isMaterialsModalOpen, setMaterialsModalOpen] = useState(false);
   const [selectedFurniture, setSelectedFurniture] = useState<Furniture | null>(null);
   const [selectedEnvironmentId, setSelectedEnvironmentId] = useState<string | null>(null);
+  
+  const defaultOpenAccordionItems = useMemo(() => {
+    if (project?.environments) {
+      return project.environments.map(env => env.id);
+    }
+    return [];
+  }, [project]);
 
   useEffect(() => {
     if (!isLoading && projects) {
@@ -229,188 +241,192 @@ export default function ProjectDetailsPage() {
           </div>
         </div>
 
-        <div className="space-y-6">
-          {project.environments?.map((env) => (
-            <Card key={env.id} className="overflow-hidden">
-                <CardHeader className="bg-muted/50 border-b">
-                    <CardTitle className="font-headline text-xl">{env.name}</CardTitle>
-                </CardHeader>
-                <CardContent className="p-4 sm:p-6 space-y-6">
-                    {env.furniture?.map((fur, index) => {
-                        const unresolvedPendencies = fur.pendencies?.filter(p => !p.isResolved).length || 0;
-                        const commentsCount = fur.comments?.length || 0;
-                        return (
-                        <div key={fur.id}>
-                            {index > 0 && <Separator className="mb-6" />}
-                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
-                                <h4 className="font-semibold text-lg">{fur.name}</h4>
-                                <div className="flex gap-2 w-full sm:w-auto">
-                                    <Button variant="outline" size="sm" onClick={() => openMaterialsModal(fur, env.id)} className="w-full sm:w-auto flex-1">
-                                        <Package className="mr-2 h-4 w-4" />
-                                        Materiais
-                                    </Button>
-                                    <Button variant="outline" size="sm" onClick={() => openPendencyModal(fur, env.id)} className="w-full sm:w-auto relative flex-1">
-                                        <ListTodo className="mr-2 h-4 w-4" />
-                                        Pendências
-                                        {unresolvedPendencies > 0 && (
-                                            <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-xs font-bold text-destructive-foreground">
-                                            {unresolvedPendencies}
-                                            </span>
-                                        )}
-                                    </Button>
-                                    <Button variant="outline" size="sm" onClick={() => openConversationModal(fur, env.id)} className="w-full sm:w-auto relative flex-1">
-                                        <MessageSquare className="mr-2 h-4 w-4" />
-                                        Conversa
-                                        {commentsCount > 0 && (
-                                            <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white">
-                                            {commentsCount}
-                                            </span>
-                                        )}
-                                    </Button>
+        {defaultOpenAccordionItems.length > 0 && (
+          <Accordion type="multiple" defaultValue={defaultOpenAccordionItems} className="space-y-6">
+            {project.environments?.map((env) => (
+              <AccordionItem key={env.id} value={env.id} className="border-none">
+                 <div className="bg-card rounded-lg overflow-hidden border">
+                    <AccordionTrigger className="p-4 bg-muted/50 hover:no-underline">
+                        <h3 className="font-headline text-xl">{env.name}</h3>
+                    </AccordionTrigger>
+                    <AccordionContent className="p-4 sm:p-6 space-y-6">
+                        {env.furniture?.map((fur, index) => {
+                            const unresolvedPendencies = fur.pendencies?.filter(p => !p.isResolved).length || 0;
+                            const commentsCount = fur.comments?.length || 0;
+                            return (
+                            <div key={fur.id}>
+                                {index > 0 && <Separator className="mb-6" />}
+                                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
+                                    <h4 className="font-semibold text-lg">{fur.name}</h4>
+                                    <div className="flex gap-2 w-full sm:w-auto">
+                                        <Button variant="outline" size="sm" onClick={() => openMaterialsModal(fur, env.id)} className="w-full sm:w-auto flex-1">
+                                            <Package className="mr-2 h-4 w-4" />
+                                            Materiais
+                                        </Button>
+                                        <Button variant="outline" size="sm" onClick={() => openPendencyModal(fur, env.id)} className="w-full sm:w-auto relative flex-1">
+                                            <ListTodo className="mr-2 h-4 w-4" />
+                                            Pendências
+                                            {unresolvedPendencies > 0 && (
+                                                <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-xs font-bold text-destructive-foreground">
+                                                {unresolvedPendencies}
+                                                </span>
+                                            )}
+                                        </Button>
+                                        <Button variant="outline" size="sm" onClick={() => openConversationModal(fur, env.id)} className="w-full sm:w-auto relative flex-1">
+                                            <MessageSquare className="mr-2 h-4 w-4" />
+                                            Conversa
+                                            {commentsCount > 0 && (
+                                                <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white">
+                                                {commentsCount}
+                                                </span>
+                                            )}
+                                        </Button>
+                                    </div>
                                 </div>
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                                {stages.map((stage) => {
-                                const stageData = fur[stage.key] || { status: 'todo' };
-                                const responsibleMembers = (stageData.responsibleIds || [])
-                                    .map(id => memberMap.get(id))
-                                    .filter((m): m is TeamMember => !!m);
-                                
-                                const responsibleList = stage.key === 'assembly' ? marceneiros : outrosMembros;
-                                const currentPriority = stageData.priority || 'medium';
-                                
-                                return (
-                                <div key={stage.key} className="space-y-2">
-                                    <label className="text-sm font-medium">{stage.label}</label>
-                                    <Select
-                                    value={stageData.status}
-                                    onValueChange={(value: StageStatus) =>
-                                        handleStageChange(env.id, fur.id, stage.key, 'status', value)
-                                    }
-                                    >
-                                    <SelectTrigger className={cn("font-semibold", statusColors[stageData.status])}>
-                                        <SelectValue placeholder="Status" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {Object.entries(STAGE_STATUSES).map(([key, label]) => (
-                                        <SelectItem key={key} value={key}>
-                                            {label}
-                                        </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                    </Select>
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                                    {stages.map((stage) => {
+                                    const stageData = fur[stage.key] || { status: 'todo' };
+                                    const responsibleMembers = (stageData.responsibleIds || [])
+                                        .map(id => memberMap.get(id))
+                                        .filter((m): m is TeamMember => !!m);
                                     
-                                    <div className="flex items-center gap-1">
-                                    <Popover>
-                                        <PopoverTrigger asChild>
-                                            <Button variant="outline" className="w-full justify-start h-10">
-                                                <div className="flex items-center gap-2 truncate">
-                                                    {responsibleMembers.length > 0 ? (
-                                                        <div className="flex items-center -space-x-2">
-                                                            {responsibleMembers.slice(0, 2).map(member => (
-                                                                <Avatar key={member.id} className="h-6 w-6 border-background">
-                                                                    <AvatarImage src={member.avatarUrl} />
-                                                                    <AvatarFallback style={{ backgroundColor: member.color }} className="text-xs">{getInitials(member.name)}</AvatarFallback>
-                                                                </Avatar>
-                                                            ))}
-                                                        </div>
-                                                    ) : (
-                                                        <User className="h-5 w-5 text-muted-foreground" />
-                                                    )}
-                                                    <span className='truncate text-sm text-muted-foreground'>
-                                                        {responsibleMembers.length > 0
-                                                            ? responsibleMembers.map(m => m.name.split(' ')[0]).join(', ')
-                                                            : 'Não atribuído'}
-                                                    </span>
-                                                    {responsibleMembers.length > 2 && (
-                                                        <span className='text-xs text-muted-foreground'>+{responsibleMembers.length - 2}</span>
-                                                    )}
-                                                </div>
-                                            </Button>
-                                        </PopoverTrigger>
-                                        <PopoverContent className="w-[300px] p-0">
-                                            <Command>
-                                                <CommandInput placeholder="Buscar membro..." />
-                                                <CommandList>
-                                                    <CommandEmpty>Nenhum membro encontrado.</CommandEmpty>
-                                                    <CommandGroup>
-                                                    {responsibleList?.map((member) => (
-                                                        <CommandItem
-                                                            key={member.id}
-                                                            onSelect={() => handleStageChange(env.id, fur.id, stage.key, 'responsibleIds', member.id)}
-                                                            className="cursor-pointer"
-                                                        >
-                                                            <Checkbox
-                                                                className='mr-2'
-                                                                checked={(stageData.responsibleIds || []).includes(member.id)}
-                                                            />
-                                                            <Avatar className="h-6 w-6 mr-2">
-                                                                {member.avatarUrl && <AvatarImage src={member.avatarUrl} alt={member.name} />}
-                                                                <AvatarFallback style={{ backgroundColor: member.color }} className='text-xs'>{getInitials(member.name)}</AvatarFallback>
-                                                            </Avatar>
-                                                            <span>{member.name}</span>
-                                                        </CommandItem>
-                                                    ))}
-                                                    </CommandGroup>
-                                                </CommandList>
-                                            </Command>
-                                        </PopoverContent>
-                                    </Popover>
-
-                                    <Popover>
-                                        <PopoverTrigger asChild>
-                                        <Button variant={"outline"} size="icon" className={cn("w-10 h-10", !stageData.scheduledFor && "text-muted-foreground")}>
-                                            <CalendarIcon className="h-4 w-4" />
-                                        </Button>
-                                        </PopoverTrigger>
-                                        <PopoverContent className="w-auto p-0">
-                                        <Calendar
-                                            mode="single"
-                                            selected={stageData.scheduledFor ? new Date(stageData.scheduledFor) : undefined}
-                                            onSelect={(date) => handleStageChange(env.id, fur.id, stage.key, 'scheduledFor', date)}
-                                            initialFocus
-                                        />
-                                        </PopoverContent>
-                                    </Popover>
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                            <Button variant={"outline"} size="icon" className={cn("w-10 h-10", priorityMap[currentPriority].className)}>
-                                                <Flag className="h-4 w-4" />
-                                            </Button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent>
-                                            {(Object.keys(priorityMap) as Priority[]).map(p => (
-                                                <DropdownMenuItem key={p} onClick={() => handleStageChange(env.id, fur.id, stage.key, 'priority', p)}>
-                                                    <Flag className={cn("mr-2 h-4 w-4", priorityMap[p].className)} />
-                                                    <span>{priorityMap[p].label}</span>
-                                                </DropdownMenuItem>
-                                            ))}
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
-                                    </div>
-                                    {stageData.scheduledFor && (
-                                    <div className="flex items-center justify-center gap-1 text-xs text-muted-foreground">
-                                        <span>Agendado: {format(new Date(stageData.scheduledFor), "dd/MM/yy")}</span>
-                                        <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-5 w-5 text-destructive/50 hover:text-destructive"
-                                        onClick={() => handleStageChange(env.id, fur.id, stage.key, 'scheduledFor', undefined)}
+                                    const responsibleList = stage.key === 'assembly' ? marceneiros : outrosMembros;
+                                    const currentPriority = stageData.priority || 'medium';
+                                    
+                                    return (
+                                    <div key={stage.key} className="space-y-2">
+                                        <label className="text-sm font-medium">{stage.label}</label>
+                                        <Select
+                                        value={stageData.status}
+                                        onValueChange={(value: StageStatus) =>
+                                            handleStageChange(env.id, fur.id, stage.key, 'status', value)
+                                        }
                                         >
-                                        <XCircle className="h-3.5 w-3.5" />
-                                        </Button>
+                                        <SelectTrigger className={cn("font-semibold", statusColors[stageData.status])}>
+                                            <SelectValue placeholder="Status" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {Object.entries(STAGE_STATUSES).map(([key, label]) => (
+                                            <SelectItem key={key} value={key}>
+                                                {label}
+                                            </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                        </Select>
+                                        
+                                        <div className="flex items-center gap-1">
+                                        <Popover>
+                                            <PopoverTrigger asChild>
+                                                <Button variant="outline" className="w-full justify-start h-10">
+                                                    <div className="flex items-center gap-2 truncate">
+                                                        {responsibleMembers.length > 0 ? (
+                                                            <div className="flex items-center -space-x-2">
+                                                                {responsibleMembers.slice(0, 2).map(member => (
+                                                                    <Avatar key={member.id} className="h-6 w-6 border-background">
+                                                                        <AvatarImage src={member.avatarUrl} />
+                                                                        <AvatarFallback style={{ backgroundColor: member.color }} className="text-xs">{getInitials(member.name)}</AvatarFallback>
+                                                                    </Avatar>
+                                                                ))}
+                                                            </div>
+                                                        ) : (
+                                                            <User className="h-5 w-5 text-muted-foreground" />
+                                                        )}
+                                                        <span className='truncate text-sm text-muted-foreground'>
+                                                            {responsibleMembers.length > 0
+                                                                ? responsibleMembers.map(m => m.name.split(' ')[0]).join(', ')
+                                                                : 'Não atribuído'}
+                                                        </span>
+                                                        {responsibleMembers.length > 2 && (
+                                                            <span className='text-xs text-muted-foreground'>+{responsibleMembers.length - 2}</span>
+                                                        )}
+                                                    </div>
+                                                </Button>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-[300px] p-0">
+                                                <Command>
+                                                    <CommandInput placeholder="Buscar membro..." />
+                                                    <CommandList>
+                                                        <CommandEmpty>Nenhum membro encontrado.</CommandEmpty>
+                                                        <CommandGroup>
+                                                        {responsibleList?.map((member) => (
+                                                            <CommandItem
+                                                                key={member.id}
+                                                                onSelect={() => handleStageChange(env.id, fur.id, stage.key, 'responsibleIds', member.id)}
+                                                                className="cursor-pointer"
+                                                            >
+                                                                <Checkbox
+                                                                    className='mr-2'
+                                                                    checked={(stageData.responsibleIds || []).includes(member.id)}
+                                                                />
+                                                                <Avatar className="h-6 w-6 mr-2">
+                                                                    {member.avatarUrl && <AvatarImage src={member.avatarUrl} alt={member.name} />}
+                                                                    <AvatarFallback style={{ backgroundColor: member.color }} className='text-xs'>{getInitials(member.name)}</AvatarFallback>
+                                                                </Avatar>
+                                                                <span>{member.name}</span>
+                                                            </CommandItem>
+                                                        ))}
+                                                        </CommandGroup>
+                                                    </CommandList>
+                                                </Command>
+                                            </PopoverContent>
+                                        </Popover>
+
+                                        <Popover>
+                                            <PopoverTrigger asChild>
+                                            <Button variant={"outline"} size="icon" className={cn("w-10 h-10", !stageData.scheduledFor && "text-muted-foreground")}>
+                                                <CalendarIcon className="h-4 w-4" />
+                                            </Button>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-auto p-0">
+                                            <Calendar
+                                                mode="single"
+                                                selected={stageData.scheduledFor ? new Date(stageData.scheduledFor) : undefined}
+                                                onSelect={(date) => handleStageChange(env.id, fur.id, stage.key, 'scheduledFor', date)}
+                                                initialFocus
+                                            />
+                                            </PopoverContent>
+                                        </Popover>
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button variant={"outline"} size="icon" className={cn("w-10 h-10", priorityMap[currentPriority].className)}>
+                                                    <Flag className="h-4 w-4" />
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent>
+                                                {(Object.keys(priorityMap) as Priority[]).map(p => (
+                                                    <DropdownMenuItem key={p} onClick={() => handleStageChange(env.id, fur.id, stage.key, 'priority', p)}>
+                                                        <Flag className={cn("mr-2 h-4 w-4", priorityMap[p].className)} />
+                                                        <span>{priorityMap[p].label}</span>
+                                                    </DropdownMenuItem>
+                                                ))}
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                        </div>
+                                        {stageData.scheduledFor && (
+                                        <div className="flex items-center justify-center gap-1 text-xs text-muted-foreground">
+                                            <span>Agendado: {format(new Date(stageData.scheduledFor), "dd/MM/yy")}</span>
+                                            <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-5 w-5 text-destructive/50 hover:text-destructive"
+                                            onClick={() => handleStageChange(env.id, fur.id, stage.key, 'scheduledFor', undefined)}
+                                            >
+                                            <XCircle className="h-3.5 w-3.5" />
+                                            </Button>
+                                        </div>
+                                        )}
                                     </div>
-                                    )}
+                                    )})}
                                 </div>
-                                )})}
                             </div>
-                        </div>
-                        )
-                    })}
-                </CardContent>
-            </Card>
-          ))}
-        </div>
+                            )
+                        })}
+                    </AccordionContent>
+                 </div>
+              </AccordionItem>
+            ))}
+          </Accordion>
+        )}
       </div>
 
        {getFurnitureForModal() && (
