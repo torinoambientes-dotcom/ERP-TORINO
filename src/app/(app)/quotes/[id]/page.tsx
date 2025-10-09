@@ -21,7 +21,6 @@ import { QuoteMaterialsModal } from '@/components/modals/quote-materials-modal';
 import { RegisterQuoteModal } from '@/components/modals/register-quote-modal';
 import { QuoteFurnitureDescriptionModal } from '@/components/modals/quote-furniture-description-modal';
 import jsPDF from 'jspdf';
-import 'jspdf-autotable'; // Ensure you have this import if you use autoTable
 
 type StageKey = 'internalProjectStage' | 'materialSurveyStage' | 'descriptiveStage';
 
@@ -148,24 +147,22 @@ export default function QuoteDetailsPage() {
     return new Map(teamMembers.map(m => [m.id, m]));
   }, [teamMembers]);
 
- const generatePDF = (isQuote: boolean) => {
+  const generatePDF = (isQuote: boolean) => {
     if (!quote) return;
-  
+
     const doc = new jsPDF('p', 'mm', 'a4');
     const pageHeight = doc.internal.pageSize.height || doc.internal.pageSize.getHeight();
     const pageWidth = doc.internal.pageSize.width || doc.internal.pageSize.getWidth();
     const margin = 15;
     let y = 30; // Start y position after header
-    let totalQuoteValue = 0;
-  
+
     const addHeader = (pageNumber: number) => {
-        // --- Header ---
         doc.setFont('Helvetica', 'normal');
         doc.setFontSize(16);
         doc.text('TORINO', margin, 18);
         doc.setFontSize(7);
         doc.text('AMBIENTES', margin, 22, { charSpace: 2 });
-
+    
         const title = isQuote ? 'Proposta Comercial' : 'Memorial Descritivo';
         doc.setFont('Helvetica', 'bold');
         doc.setFontSize(14);
@@ -173,9 +170,9 @@ export default function QuoteDetailsPage() {
         doc.text(title, pageWidth - margin - titleWidth, 20);
 
         doc.setDrawColor(220, 220, 220);
-        doc.line(margin, 28, pageWidth - margin, 28);
+        doc.line(margin, y - 2, pageWidth - margin, y - 2);
     };
-  
+
     const addFooter = (pageNumber: number, totalPages: number) => {
         const footerY = pageHeight - 15;
         doc.setDrawColor(220, 220, 220);
@@ -196,7 +193,7 @@ export default function QuoteDetailsPage() {
     const checkPageBreak = (requiredHeight: number) => {
         if (y + requiredHeight > pageHeight - 25) { // 25mm margin for footer
             doc.addPage();
-            y = 30; // Reset y for new page
+            y = 35; // Reset y for new page
             return true;
         }
         return false;
@@ -204,9 +201,9 @@ export default function QuoteDetailsPage() {
     
     // Initial Page
     addHeader(1);
+    y = 40;
   
     // --- Client and Date Info ---
-    y+= 10;
     doc.setFont('Helvetica', 'bold');
     doc.setFontSize(12);
     doc.text(`Cliente:`, margin, y);
@@ -216,75 +213,82 @@ export default function QuoteDetailsPage() {
     const dateText = `Data: ${new Date().toLocaleDateString('pt-BR')}`;
     const dateWidth = doc.getStringUnitWidth(dateText) * doc.getFontSize() / doc.internal.scaleFactor;
     doc.text(dateText, pageWidth - margin - dateWidth, y);
-    y += 15;
+    y += 12;
   
+    let totalQuoteValue = 0;
+
     // --- Content ---
     for (const env of quote.environments) {
-        if (isQuote) {
-          const environmentValue = (env.furniture || []).reduce((envAcc, fur) => {
-              return envAcc + (fur.materials || []).reduce((matAcc, mat) => {
-                  return matAcc + (mat.quantity * (mat.cost || 0) * (mat.markup || 1));
-              }, 0);
-          }, 0);
-          totalQuoteValue += environmentValue;
+        let envTextLines = doc.splitTextToSize(env.name, pageWidth - (margin * 2));
+        let requiredHeight = (envTextLines.length * 7) + 10;
+        
+        if (checkPageBreak(requiredHeight)) {
+            addHeader(doc.internal.pages.length);
         }
 
-        const envNameText = env.name;
-        const envValue = (env.furniture || []).reduce((envAcc, fur) => envAcc + (fur.materials || []).reduce((matAcc, mat) => matAcc + (mat.quantity * (mat.cost || 0) * (mat.markup || 1)), 0), 0);
-        const envValueText = isQuote ? `- R$ ${envValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '';
-        const environmentBlockHeight = 15; // Approx height for title
-        
-        checkPageBreak(environmentBlockHeight);
-
-        // Environment Title
         doc.setFont('Helvetica', 'bold');
         doc.setFontSize(14);
-        doc.text(envNameText, margin, y);
+        doc.text(env.name, margin, y);
+        y += 6;
         
         if (isQuote) {
+            const environmentValue = (env.furniture || []).reduce((envAcc, fur) => {
+                const furnitureValue = (fur.materials || []).reduce((matAcc, mat) => {
+                    return matAcc + (mat.quantity * (mat.cost || 0) * (mat.markup || 1));
+                }, 0);
+                return envAcc + furnitureValue;
+            }, 0);
+            totalQuoteValue += environmentValue;
+            
+            const envValueText = `R$ ${environmentValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
             doc.setFont('Helvetica', 'normal');
-            doc.text(envValueText, margin + doc.getStringUnitWidth(envNameText) * doc.getFontSize() / doc.internal.scaleFactor + 3, y);
+            doc.text(envValueText, pageWidth - margin - doc.getStringUnitWidth(envValueText) * doc.getFontSize() / doc.internal.scaleFactor, y - 6);
         }
-        y += 6;
+
         doc.setDrawColor(220, 220, 220);
         doc.line(margin, y, pageWidth - margin, y);
         y += 8;
 
-        // Furniture
         for (const fur of (env.furniture || [])) {
-            const descriptionText = fur.description || 'Nenhum descritivo fornecido.';
-            const descriptionLines = doc.splitTextToSize(descriptionText, pageWidth - (margin * 2) - 5); // Indent
-            const lineHeight = doc.getLineHeight() / doc.internal.scaleFactor;
-            const furnitureBlockHeight = 6 + (descriptionLines.length * lineHeight) + 4; // title + description + margin
-            
-            checkPageBreak(furnitureBlockHeight);
+            const furnitureNameLines = doc.splitTextToSize(fur.name, pageWidth - (margin * 2) - 5);
+            const descriptionLines = doc.splitTextToSize(fur.description || 'Nenhum descritivo fornecido.', pageWidth - (margin * 2) - 5);
+            const furnitureBlockHeight = (furnitureNameLines.length * 6) + (descriptionLines.length * 5) + 6;
 
+            if (checkPageBreak(furnitureBlockHeight)) {
+                addHeader(doc.internal.pages.length);
+            }
+            
             doc.setFont('Helvetica', 'bold');
             doc.setFontSize(11);
-            doc.text(fur.name, margin, y);
+            doc.text(fur.name, margin + 5, y);
             y += 6;
 
             doc.setFont('Helvetica', 'normal');
             doc.setFontSize(10);
             doc.setTextColor('#666666');
-            doc.text(descriptionLines, margin + 5, y); // Indent description
-            y += descriptionLines.length * lineHeight + 4;
+            doc.text(descriptionLines, margin + 5, y);
+            y += (descriptionLines.length * 5) + 6;
             doc.setTextColor('#000000');
         }
-        y+= 10; // Extra space after an environment block
+        y += 5; // Extra space after an environment block
     }
   
     if (isQuote) {
-        checkPageBreak(30);
-        y+= 5;
+        if (checkPageBreak(30)) {
+            addHeader(doc.internal.pages.length);
+        }
+        y += 10;
         doc.setFont('Helvetica', 'bold');
         doc.setFontSize(16);
         const totalText = `Valor Total do Orçamento: R$ ${totalQuoteValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-        doc.text(totalText, margin, y);
+        const totalTextWidth = doc.getStringUnitWidth(totalText) * doc.getFontSize() / doc.internal.scaleFactor;
+        doc.text(totalText, pageWidth - margin - totalTextWidth, y);
         y += 15;
     }
     
-    checkPageBreak(20);
+    if (checkPageBreak(20)) {
+        addHeader(doc.internal.pages.length);
+    }
     doc.setFont('Helvetica', 'bold');
     doc.setFontSize(10);
     doc.text('Observações:', margin, y);
@@ -297,7 +301,7 @@ export default function QuoteDetailsPage() {
     const totalPages = (doc as any).internal.getNumberOfPages();
     for (let i = 1; i <= totalPages; i++) {
       doc.setPage(i);
-      addHeader(i);
+      if (i > 1) addHeader(i); // Add header again to new pages
       addFooter(i, totalPages);
     }
     
