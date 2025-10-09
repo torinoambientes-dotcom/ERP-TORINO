@@ -2,7 +2,7 @@
 import { useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import { notFound, useParams } from 'next/navigation';
-import { ChevronLeft, MessageSquare, Package, ListTodo, CalendarIcon, XCircle, Flag, User, X } from 'lucide-react';
+import { ChevronLeft, MessageSquare, Package, ListTodo, CalendarIcon, XCircle, Flag, User, X, Pencil } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -13,7 +13,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/layout/page-header';
 import { AppContext } from '@/context/app-context';
-import type { Project, Furniture, StageStatus, TeamMember, ProductionStage, Priority } from '@/lib/types';
+import type { Project, Furniture, StageStatus, TeamMember, ProductionStage, Priority, Environment } from '@/lib/types';
 import { STAGE_STATUSES } from '@/lib/types';
 import { FurniturePendenciesModal } from '@/components/modals/furniture-pendencies-modal';
 import { FurnitureConversationModal } from '@/components/modals/furniture-conversation-modal';
@@ -35,6 +35,7 @@ import {
 } from "@/components/ui/accordion";
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
+import { RegisterProjectModal } from '@/components/modals/register-project-modal';
 
 
 type StageKey = 'measurement' | 'cutting' | 'purchase' | 'assembly';
@@ -64,7 +65,8 @@ export default function ProjectDetailsPage() {
   const id = params.id as string;
 
   const [project, setProject] = useState<Project | null | undefined>(undefined);
-
+  
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isPendencyModalOpen, setPendencyModalOpen] = useState(false);
   const [isConversationModalOpen, setConversationModalOpen] = useState(false);
   const [isMaterialsModalOpen, setMaterialsModalOpen] = useState(false);
@@ -224,6 +226,33 @@ export default function ProjectDetailsPage() {
     if (!env) return null;
     return env.furniture.find(f => f.id === selectedFurniture.id) || null;
   }
+  
+  const getEnvironmentStatus = (env: Environment) => {
+      let totalTasks = 0;
+      let doneTasks = 0;
+      let hasStarted = false;
+
+      (env.furniture || []).forEach(fur => {
+          stages.forEach(stage => {
+              totalTasks++;
+              if (fur[stage.key]?.status === 'done') {
+                  doneTasks++;
+              }
+              if (fur[stage.key]?.status === 'in_progress') {
+                  hasStarted = true;
+              }
+          });
+      });
+      
+      const progress = totalTasks > 0 ? (doneTasks / totalTasks) * 100 : 0;
+      
+      let status: 'Novo' | 'Em Andamento' | 'Concluído' = 'Novo';
+      if (progress === 100) status = 'Concluído';
+      else if (progress > 0 || hasStarted || doneTasks > 0) status = 'Em Andamento';
+      
+      return { status, progress };
+  };
+
 
   return (
     <>
@@ -236,10 +265,16 @@ export default function ProjectDetailsPage() {
                 Voltar para projetos
               </Link>
             </Button>
-            <PageHeader
-              title={project.clientName}
-              description="Detalhes do projeto, ambientes e status das etapas."
-            />
+            <div className="flex items-center gap-4">
+                <PageHeader
+                title={project.clientName}
+                description="Detalhes do projeto, ambientes e status das etapas."
+                />
+                 <Button variant="outline" size="sm" onClick={() => setIsEditModalOpen(true)}>
+                    <Pencil className="mr-2 h-4 w-4" />
+                    Editar Projeto
+                </Button>
+            </div>
           </div>
         </div>
 
@@ -247,22 +282,16 @@ export default function ProjectDetailsPage() {
           <Accordion type="multiple" defaultValue={defaultOpenAccordionItems} className="space-y-4">
             {project.environments?.map((env) => {
               
-              let totalTasks = 0;
-              let doneTasks = 0;
-              let unresolvedPendenciesCount = 0;
+              const {status, progress} = getEnvironmentStatus(env);
               const furnitureCount = env.furniture?.length || 0;
+              const unresolvedPendenciesCount = (env.furniture || []).reduce((acc, fur) => acc + (fur.pendencies || []).filter(p => !p.isResolved).length, 0);
+              
+              const statusConfig = {
+                    'Novo': { variant: 'secondary' as const, className: '' },
+                    'Em Andamento': { variant: 'outline' as const, className: 'text-blue-700 border-blue-600/30 bg-blue-600/10' },
+                    'Concluído': { variant: 'default' as const, className: 'bg-green-600/20 text-green-700 border-green-600/30' },
+              };
 
-              env.furniture?.forEach(fur => {
-                totalTasks += stages.length;
-                stages.forEach(stage => {
-                  if (fur[stage.key]?.status === 'done') {
-                    doneTasks++;
-                  }
-                });
-                unresolvedPendenciesCount += (fur.pendencies || []).filter(p => !p.isResolved).length;
-              });
-
-              const progress = totalTasks > 0 ? (doneTasks / totalTasks) * 100 : 0;
 
               return (
               <AccordionItem key={env.id} value={env.id} className="border-none">
@@ -273,6 +302,7 @@ export default function ProjectDetailsPage() {
                            <div className="flex items-center gap-4 transition-all duration-300 ease-in-out w-full">
                               <Progress value={progress} className="w-1/2 h-1.5" />
                               <div className='flex gap-2 items-center'>
+                                <Badge variant={statusConfig[status].variant} className={cn('text-xs', statusConfig[status].className)}>{status}</Badge>
                                 <Badge variant="secondary" className="text-xs">{furnitureCount} móvel(eis)</Badge>
                                 {unresolvedPendenciesCount > 0 && (
                                   <Badge variant="destructive" className="text-xs">{unresolvedPendenciesCount} pendência(s)</Badge>
@@ -486,6 +516,14 @@ export default function ProjectDetailsPage() {
             furniture={getFurnitureForModal()!}
             onUpdate={handleFurnitureUpdateInModal}
             clientName={project.clientName}
+        />
+      )}
+      
+      {isEditModalOpen && (
+        <RegisterProjectModal
+          isOpen={isEditModalOpen}
+          onClose={() => setIsEditModalOpen(false)}
+          projectToEdit={project}
         />
       )}
     </>
