@@ -158,7 +158,7 @@ export default function QuoteDetailsPage() {
     let totalQuoteValue = 0;
   
     // --- Header ---
-    doc.setFont('Poppins', 'normal');
+    doc.setFont('Helvetica', 'normal');
     
     // TORINO
     doc.setFontSize(20);
