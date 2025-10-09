@@ -82,13 +82,25 @@ export default function DashboardPage() {
     return tasks.sort((a, b) => a.start.getTime() - b.start.getTime());
   }, [projects, appointments, isLoading, loggedInMember]);
 
-  const activeProjects = useMemo(() => {
-    if (!projects) return [];
+  const ongoingProjectsForMember = useMemo(() => {
+    if (!projects || !loggedInMember) return [];
+
     return projects
-      .filter(project => !project.completedAt)
       .map(project => ({ project, statusInfo: getProjectStatus(project) }))
-      .slice(0, 5); // Limit to 5 for the dashboard
-  }, [projects]);
+      .filter(({ statusInfo }) => statusInfo.status === 'Em Andamento') // Filtra projetos "Em Andamento"
+      .filter(({ project }) => {
+        // Verifica se o membro logado é responsável por alguma tarefa no projeto
+        return project.environments.some(env =>
+          env.furniture.some(fur =>
+            (['measurement', 'cutting', 'purchase', 'assembly'] as const).some(stageKey => {
+              const stage = fur[stageKey];
+              return stage?.responsibleIds?.includes(loggedInMember.id);
+            })
+          )
+        );
+      })
+      .slice(0, 5); // Limita a 5 para a dashboard
+  }, [projects, loggedInMember]);
   
   const pendingPurchaseRequests = useMemo(() => {
     if (!purchaseRequests || !loggedInMember || loggedInMember.role !== 'Administrativo') {
@@ -288,12 +300,12 @@ export default function DashboardPage() {
 
             <Card>
                 <CardHeader>
-                    <CardTitle>Projetos Ativos</CardTitle>
-                    <CardDescription>Uma visão rápida dos projetos em andamento.</CardDescription>
+                    <CardTitle>Projetos em Andamento (Para Você)</CardTitle>
+                    <CardDescription>Uma visão rápida dos projetos que você está trabalhando.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <div className="space-y-4">
-                        {activeProjects.length > 0 ? activeProjects.map(({ project }) => (
+                        {ongoingProjectsForMember.length > 0 ? ongoingProjectsForMember.map(({ project }) => (
                             <Link href={`/projects/${project.id}`} key={project.id}>
                                 <div className="p-4 rounded-lg border bg-card/80 hover:bg-muted transition-colors flex justify-between items-center">
                                     <p className="font-semibold">{project.clientName}</p>
@@ -303,7 +315,7 @@ export default function DashboardPage() {
                                 </div>
                             </Link>
                         )) : (
-                           <p className="text-sm text-muted-foreground text-center py-4">Nenhum projeto ativo.</p>
+                           <p className="text-sm text-muted-foreground text-center py-4">Nenhum projeto em andamento atribuído a você.</p>
                         )}
                     </div>
                 </CardContent>
