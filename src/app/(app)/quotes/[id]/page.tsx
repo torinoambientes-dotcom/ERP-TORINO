@@ -2,10 +2,10 @@
 import { useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import { notFound, useParams } from 'next/navigation';
 import { AppContext } from '@/context/app-context';
-import type { Quote, StageStatus, TeamMember, QuoteStage } from '@/lib/types';
+import type { Quote, StageStatus, TeamMember, QuoteStage, Furniture, Environment } from '@/lib/types';
 import { PageHeader } from '@/components/layout/page-header';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, User } from 'lucide-react';
+import { ChevronLeft, User, Package, ListTodo, MessageSquare } from 'lucide-react';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -15,6 +15,9 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn, getInitials } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Separator } from '@/components/ui/separator';
+import { FurnitureMaterialsModal } from '@/components/modals/furniture-materials-modal';
 
 
 type StageKey = 'internalProjectStage' | 'materialSurveyStage' | 'descriptiveStage';
@@ -43,6 +46,9 @@ export default function QuoteDetailsPage() {
   const id = params.id as string;
 
   const [quote, setQuote] = useState<Quote | null | undefined>(undefined);
+  const [isMaterialsModalOpen, setMaterialsModalOpen] = useState(false);
+  const [selectedFurniture, setSelectedFurniture] = useState<Furniture | null>(null);
+  const [selectedEnvironmentId, setSelectedEnvironmentId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isLoading && quotes) {
@@ -58,21 +64,21 @@ export default function QuoteDetailsPage() {
   ) => {
     setQuote(currentQuote => {
       if (!currentQuote) return null;
-      const newQuote = { ...currentQuote };
+      const newQuote = JSON.parse(JSON.stringify(currentQuote));
       
       if (!newQuote[stageKey]) {
         newQuote[stageKey] = { status: 'todo', responsibleIds: [] };
       }
 
       if (field === 'status') {
-        newQuote[stageKey]!.status = value;
+        (newQuote[stageKey] as QuoteStage).status = value;
       } else if (field === 'responsibleIds') {
-        const currentIds = newQuote[stageKey]!.responsibleIds || [];
+        const currentIds = (newQuote[stageKey] as QuoteStage).responsibleIds || [];
         const memberId = value;
         if (currentIds.includes(memberId)) {
-            newQuote[stageKey]!.responsibleIds = currentIds.filter((id: string) => id !== memberId);
+            (newQuote[stageKey] as QuoteStage).responsibleIds = currentIds.filter((id: string) => id !== memberId);
         } else {
-            newQuote[stageKey]!.responsibleIds = [...currentIds, memberId];
+            (newQuote[stageKey] as QuoteStage).responsibleIds = [...currentIds, memberId];
         }
       }
       
@@ -80,6 +86,39 @@ export default function QuoteDetailsPage() {
       return newQuote;
     });
   };
+  
+    const handleFurnitureUpdateInModal = useCallback((updatedFurniture: Furniture) => {
+        setQuote(currentQuote => {
+            if (!currentQuote || !selectedEnvironmentId) return currentQuote;
+
+            const newQuote = JSON.parse(JSON.stringify(currentQuote));
+            
+            const envIndex = newQuote.environments.findIndex((e: Environment) => e.id === selectedEnvironmentId);
+            if (envIndex === -1) return currentQuote;
+
+            const furIndex = newQuote.environments[envIndex].furniture.findIndex((f: Furniture) => f.id === updatedFurniture.id);
+            if (furIndex === -1) return currentQuote;
+            
+            newQuote.environments[envIndex].furniture[furIndex] = updatedFurniture;
+
+            updateQuote(newQuote.id, { environments: newQuote.environments });
+            return newQuote;
+        });
+    }, [selectedEnvironmentId, updateQuote]);
+
+
+  const openMaterialsModal = useCallback((furniture: Furniture, envId: string) => {
+    setSelectedFurniture(furniture);
+    setSelectedEnvironmentId(envId);
+    setMaterialsModalOpen(true);
+  }, []);
+
+  const getFurnitureForModal = () => {
+    if (!quote || !selectedEnvironmentId || !selectedFurniture) return null;
+    const env = quote.environments.find(e => e.id === selectedEnvironmentId);
+    if (!env) return null;
+    return env.furniture.find(f => f.id === selectedFurniture.id) || null;
+  }
 
   const handleSimpleStatusChange = (
     field: 'presentationStatus' | 'clientFeedback',
@@ -194,6 +233,7 @@ export default function QuoteDetailsPage() {
 
 
   return (
+    <>
     <div className="space-y-8">
       <div className="flex items-center justify-between">
         <div>
@@ -269,6 +309,57 @@ export default function QuoteDetailsPage() {
         </Card>
 
       </div>
+      
+        <Separator />
+
+        <div>
+            <h2 className="text-2xl font-headline font-semibold mb-4">Ambientes e Móveis do Orçamento</h2>
+            {quote.environments?.length > 0 ? (
+                <Accordion type="multiple" className="space-y-4">
+                {quote.environments.map((env) => (
+                    <AccordionItem key={env.id} value={env.id} className="border-none">
+                    <div className="bg-card rounded-lg overflow-hidden border">
+                        <AccordionTrigger className="p-4 bg-muted/50 hover:no-underline">
+                        <div className="flex-grow flex flex-col items-start text-left gap-2">
+                            <h3 className="font-headline text-xl">{env.name}</h3>
+                        </div>
+                        </AccordionTrigger>
+                        <AccordionContent className="p-4 sm:p-6 space-y-6">
+                        {env.furniture?.map((fur, index) => (
+                            <div key={fur.id}>
+                            {index > 0 && <Separator className="mb-6" />}
+                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
+                                <h4 className="font-semibold text-lg">{fur.name}</h4>
+                                <div className="flex gap-2 w-full sm:w-auto">
+                                <Button variant="outline" size="sm" onClick={() => openMaterialsModal(fur, env.id)} className="w-full sm:w-auto flex-1">
+                                    <Package className="mr-2 h-4 w-4" />
+                                    Materiais
+                                </Button>
+                                {/* Placeholder for other actions if needed */}
+                                </div>
+                            </div>
+                            </div>
+                        ))}
+                        </AccordionContent>
+                    </div>
+                    </AccordionItem>
+                ))}
+                </Accordion>
+            ) : (
+                <p>Nenhum ambiente cadastrado para este orçamento.</p>
+            )}
+        </div>
+
     </div>
+    {getFurnitureForModal() && (
+        <FurnitureMaterialsModal
+            isOpen={isMaterialsModalOpen}
+            onClose={() => setMaterialsModalOpen(false)}
+            furniture={getFurnitureForModal()!}
+            onUpdate={handleFurnitureUpdateInModal}
+            clientName={quote.clientName}
+        />
+      )}
+    </>
   );
 }

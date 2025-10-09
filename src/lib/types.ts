@@ -219,11 +219,28 @@ export interface QuoteStage {
   responsibleIds?: string[];
 }
 
+// A Furniture object inside a Quote will not have production stages,
+// but will have material lists.
+export interface QuoteFurniture {
+    id: string;
+    name: string;
+    materials?: MaterialItem[];
+    glassItems?: GlassItem[];
+    profileDoors?: ProfileDoorItem[];
+}
+
+export interface QuoteEnvironment {
+    id: string;
+    name: string;
+    furniture: QuoteFurniture[];
+}
+
+
 export interface Quote {
   id: string;
   clientName: string;
   clientContact?: string;
-  environments: Environment[];
+  environments: QuoteEnvironment[];
   totalValue: number;
   notes?: string;
   createdAt: string;

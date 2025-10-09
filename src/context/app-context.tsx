@@ -3,7 +3,7 @@
 import { createContext, type ReactNode, useCallback, useMemo, useEffect, useState } from 'react';
 import { collection, doc, serverTimestamp, deleteField, writeBatch, getDocs, runTransaction } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useAuth, useUser } from '@/firebase';
-import type { Project, TeamMember, StageStatus, StockItem, StockMovement, StockCategory, Furniture, Environment, MaterialItem, StockReservation, ProductionStage, Appointment, PurchaseRequest, PurchaseRequestStatus, Quote, QuoteStage } from '@/lib/types';
+import type { Project, TeamMember, StageStatus, StockItem, StockMovement, StockCategory, Furniture, Environment, MaterialItem, StockReservation, ProductionStage, Appointment, PurchaseRequest, PurchaseRequestStatus, Quote, QuoteStage, QuoteEnvironment, QuoteFurniture } from '@/lib/types';
 import { generateId } from '@/lib/utils';
 import { setDocumentNonBlocking, deleteDocumentNonBlocking, addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
@@ -789,16 +789,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const now = new Date().toISOString();
       const quoteId = generateId('quote');
       
+      // We need to cast the environments here to ensure they match the Quote's structure
+      const quoteEnvironments: QuoteEnvironment[] = quoteData.environments.map((env: any) => ({
+        id: generateId('env'),
+        name: env.name,
+        furniture: env.furniture.map((fur: any) => ({
+          id: generateId('fur'),
+          name: fur.name,
+          materials: [],
+          glassItems: [],
+          profileDoors: [],
+        }))
+      }));
+
       const newQuote: Quote = {
         id: quoteId,
         clientName: quoteData.clientName,
         clientContact: quoteData.clientContact,
         projectOrigin: quoteData.projectOrigin,
-        environments: quoteData.environments.map((env: any) => ({
-          ...env,
-          id: generateId('env'),
-          furniture: env.furniture.map((fur: any) => ({ ...fur, id: generateId('fur') }))
-        })),
+        environments: quoteEnvironments,
         createdAt: now,
         updatedAt: now,
         internalProjectStage: { status: 'todo', responsibleIds: [] },
