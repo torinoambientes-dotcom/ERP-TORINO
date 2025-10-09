@@ -21,6 +21,7 @@ import { QuoteMaterialsModal } from '@/components/modals/quote-materials-modal';
 import { RegisterQuoteModal } from '@/components/modals/register-quote-modal';
 import { QuoteFurnitureDescriptionModal } from '@/components/modals/quote-furniture-description-modal';
 import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 
 type StageKey = 'internalProjectStage' | 'materialSurveyStage' | 'descriptiveStage';
 
@@ -43,7 +44,7 @@ const clientFeedbackMap = {
 };
 
 export default function QuoteDetailsPage() {
-  const { quotes, teamMembers, updateQuote, isLoading } = useContext(AppContext);
+  const { quotes, teamMembers, updateQuote, isLoading, quoteMaterials } = useContext(AppContext);
   const params = useParams();
   const id = params.id as string;
 
@@ -153,10 +154,11 @@ export default function QuoteDetailsPage() {
     const doc = new jsPDF('p', 'mm', 'a4');
     const pageHeight = doc.internal.pageSize.height || doc.internal.pageSize.getHeight();
     const pageWidth = doc.internal.pageSize.width || doc.internal.pageSize.getWidth();
-    const margin = 15;
-    let y = 30; // Start y position after header
+    const margin = 20;
+    let y = 35; // Start y position after header
 
     const addHeader = (pageNumber: number) => {
+        // Logo
         doc.setFont('Helvetica', 'normal');
         doc.setFontSize(16);
         doc.text('TORINO', margin, 18);
@@ -168,9 +170,6 @@ export default function QuoteDetailsPage() {
         doc.setFontSize(14);
         const titleWidth = doc.getStringUnitWidth(title) * doc.getFontSize() / doc.internal.scaleFactor;
         doc.text(title, pageWidth - margin - titleWidth, 20);
-
-        doc.setDrawColor(220, 220, 220);
-        doc.line(margin, y - 2, pageWidth - margin, y - 2);
     };
 
     const addFooter = (pageNumber: number, totalPages: number) => {
@@ -182,7 +181,7 @@ export default function QuoteDetailsPage() {
         doc.setFontSize(8);
         doc.setTextColor('#666666');
         
-        const footerText = "Torino Ambientes Planejados | contato@torinoambientes.com.br";
+        const footerText = "Torino Ambientes | torinoambientes@gmail.com";
         doc.text(footerText, margin, footerY);
 
         const pageText = `Página ${pageNumber} de ${totalPages}`;
@@ -201,8 +200,7 @@ export default function QuoteDetailsPage() {
     
     // Initial Page
     addHeader(1);
-    y = 40;
-  
+    
     // --- Client and Date Info ---
     doc.setFont('Helvetica', 'bold');
     doc.setFontSize(12);
@@ -219,19 +217,33 @@ export default function QuoteDetailsPage() {
 
     // --- Content ---
     for (const env of quote.environments) {
-        let envTextLines = doc.splitTextToSize(env.name, pageWidth - (margin * 2));
-        let requiredHeight = (envTextLines.length * 7) + 10;
         
-        if (checkPageBreak(requiredHeight)) {
-            addHeader(doc.internal.pages.length);
+        const furnitureTextBlocks = (env.furniture || []).map(fur => ({
+            name: fur.name,
+            description: fur.description || 'Nenhum descritivo fornecido.',
+        }));
+        
+        const envNameHeight = 10; // Height for env name and separator
+        let requiredHeight = envNameHeight;
+
+        for (const block of furnitureTextBlocks) {
+            const nameHeight = doc.getLineHeight() * 0.4; // approx for font 11
+            const descLines = doc.splitTextToSize(block.description, pageWidth - (margin * 2));
+            const descHeight = descLines.length * (doc.getLineHeight() * 0.35); // approx for font 10
+            requiredHeight += nameHeight + descHeight + 8; // 8 for spacing
         }
 
+        if (checkPageBreak(envNameHeight)) {
+           // New page was added
+        }
+        
+        // --- Draw Environment Name ---
         doc.setFont('Helvetica', 'bold');
         doc.setFontSize(14);
-        doc.text(env.name, margin, y);
-        y += 6;
-        
-        if (isQuote) {
+        const envNameText = env.name;
+        doc.text(envNameText, margin, y);
+
+        if(isQuote){
             const environmentValue = (env.furniture || []).reduce((envAcc, fur) => {
                 const furnitureValue = (fur.materials || []).reduce((matAcc, mat) => {
                     return matAcc + (mat.quantity * (mat.cost || 0) * (mat.markup || 1));
@@ -239,35 +251,36 @@ export default function QuoteDetailsPage() {
                 return envAcc + furnitureValue;
             }, 0);
             totalQuoteValue += environmentValue;
-            
-            const envValueText = `R$ ${environmentValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            const envValueText = `- R$ ${environmentValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
             doc.setFont('Helvetica', 'normal');
-            doc.text(envValueText, pageWidth - margin - doc.getStringUnitWidth(envValueText) * doc.getFontSize() / doc.internal.scaleFactor, y - 6);
+            doc.text(envValueText, margin + doc.getStringUnitWidth(envNameText) * doc.getFontSize() / doc.internal.scaleFactor + 3, y);
         }
 
+        y += 4;
         doc.setDrawColor(220, 220, 220);
         doc.line(margin, y, pageWidth - margin, y);
         y += 8;
 
         for (const fur of (env.furniture || [])) {
-            const furnitureNameLines = doc.splitTextToSize(fur.name, pageWidth - (margin * 2) - 5);
+            const furNameHeight = doc.getLineHeight() * 0.4;
             const descriptionLines = doc.splitTextToSize(fur.description || 'Nenhum descritivo fornecido.', pageWidth - (margin * 2) - 5);
-            const furnitureBlockHeight = (furnitureNameLines.length * 6) + (descriptionLines.length * 5) + 6;
+            const descHeight = descriptionLines.length * (doc.getLineHeight() * 0.35);
+            const furBlockHeight = furNameHeight + descHeight + 8;
 
-            if (checkPageBreak(furnitureBlockHeight)) {
-                addHeader(doc.internal.pages.length);
+            if (checkPageBreak(furBlockHeight)) {
+                // New page was added
             }
-            
+
             doc.setFont('Helvetica', 'bold');
             doc.setFontSize(11);
-            doc.text(fur.name, margin + 5, y);
+            doc.text(fur.name, margin, y);
             y += 6;
 
             doc.setFont('Helvetica', 'normal');
             doc.setFontSize(10);
             doc.setTextColor('#666666');
-            doc.text(descriptionLines, margin + 5, y);
-            y += (descriptionLines.length * 5) + 6;
+            doc.text(descriptionLines, margin, y);
+            y += descHeight + 6;
             doc.setTextColor('#000000');
         }
         y += 5; // Extra space after an environment block
@@ -275,7 +288,7 @@ export default function QuoteDetailsPage() {
   
     if (isQuote) {
         if (checkPageBreak(30)) {
-            addHeader(doc.internal.pages.length);
+           // New page
         }
         y += 10;
         doc.setFont('Helvetica', 'bold');
@@ -287,7 +300,7 @@ export default function QuoteDetailsPage() {
     }
     
     if (checkPageBreak(20)) {
-        addHeader(doc.internal.pages.length);
+        // new page
     }
     doc.setFont('Helvetica', 'bold');
     doc.setFontSize(10);
@@ -495,7 +508,10 @@ export default function QuoteDetailsPage() {
                 <Accordion type="multiple" className="space-y-4" defaultValue={quote.environments.map(e => e.id)}>
                 {quote.environments.map((env) => {
                   const totalCost = (env.furniture || []).reduce((envAcc, fur) => {
-                    return envAcc + (fur.materials || []).reduce((furAcc, mat) => furAcc + (mat.quantity * (mat.cost || 0)), 0);
+                    const furnitureValue = (fur.materials || []).reduce((matAcc, mat) => {
+                        return matAcc + (mat.quantity * (mat.cost || 0) * (mat.markup || 1));
+                    }, 0);
+                    return envAcc + furnitureValue;
                   }, 0);
 
                   return (
@@ -504,19 +520,19 @@ export default function QuoteDetailsPage() {
                         <AccordionTrigger className="p-4 bg-muted/50 hover:no-underline">
                         <div className="flex-grow flex flex-col items-start text-left gap-2">
                             <h3 className="font-headline text-xl">{env.name}</h3>
-                            <p className="text-sm text-primary font-semibold">Custo Total de Materiais (Ambiente): R$ {totalCost.toFixed(2)}</p>
+                            <p className="text-sm text-primary font-semibold">Valor do Orçamento (Ambiente): R$ {totalCost.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                         </div>
                         </AccordionTrigger>
                         <AccordionContent className="p-4 sm:p-6 space-y-6">
                         {(env.furniture || []).map((fur, index) => {
-                          const furnitureCost = (fur.materials || []).reduce((acc, mat) => acc + (mat.quantity * (mat.cost || 0)), 0);
+                          const furnitureCost = (fur.materials || []).reduce((acc, mat) => acc + (mat.quantity * (mat.cost || 0) * (mat.markup || 1)), 0);
                           return (
                             <div key={fur.id}>
                             {index > 0 && <Separator className="mb-6" />}
                             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
                                 <div className="flex-grow">
                                   <h4 className="font-semibold text-lg">{fur.name}</h4>
-                                  <p className="text-sm text-primary font-semibold">Custo Materiais: R$ {furnitureCost.toFixed(2)}</p>
+                                  <p className="text-sm text-primary font-semibold">Valor Orçado: R$ {furnitureCost.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                                 </div>
                                 <div className="flex gap-2 w-full sm:w-auto">
                                     <Button variant="outline" size="sm" onClick={() => openDescriptionModal(fur, env.id)} className="w-full sm:w-auto flex-1">
@@ -525,7 +541,7 @@ export default function QuoteDetailsPage() {
                                     </Button>
                                     <Button variant="outline" size="sm" onClick={() => openMaterialsModal(fur, env.id)} className="w-full sm:w-auto flex-1">
                                         <Package className="mr-2 h-4 w-4" />
-                                        Materiais
+                                        Custos
                                     </Button>
                                 </div>
                             </div>
@@ -562,6 +578,7 @@ export default function QuoteDetailsPage() {
             furniture={getFurnitureForModal()!}
             onUpdate={handleFurnitureUpdateInModal}
             clientName={quote.clientName}
+            quoteMaterials={quoteMaterials}
         />
       )}
        {getFurnitureForModal() && (
