@@ -197,7 +197,7 @@ export default function QuoteDetailsPage() {
     y += 6;
     doc.setFontSize(10);
     doc.text(`Data: ${generationDate}`, margin, y);
-    y += 8;
+    y += 10;
   
     // --- Content ---
     for (const [envIndex, env] of quote.environments.entries()) {
@@ -231,49 +231,39 @@ export default function QuoteDetailsPage() {
           doc.setFont('Helvetica', 'normal');
           doc.text(envValueText, margin + doc.getStringUnitWidth(envNameText) * doc.getFontSize() / doc.internal.scaleFactor + 2, y);
       }
-      y += 6;
+      y += 8;
   
       for (const fur of (env.furniture || [])) {
-        
         doc.setFontSize(12);
-        const titleLines = doc.splitTextToSize(fur.name, pageWidth - (margin * 2) - 20);
+        const titleLines = doc.splitTextToSize(fur.name, pageWidth - (margin * 2));
         
         doc.setFontSize(10);
         const descriptionText = fur.description || 'Nenhum descritivo fornecido.';
-        const descriptionLines = doc.splitTextToSize(descriptionText, pageWidth - (margin * 2) - 20);
+        const descriptionLines = doc.splitTextToSize(descriptionText, pageWidth - (margin * 2));
         
-        const titleHeight = (titleLines.length) * doc.getLineHeight() / doc.internal.scaleFactor;
-        const descriptionHeight = (descriptionLines.length) * doc.getLineHeight() / doc.internal.scaleFactor;
-        const spacing = 3; 
-
-        const contentHeight = titleHeight + spacing + descriptionHeight;
+        const titleHeight = (titleLines.length) * (doc.getLineHeight() / doc.internal.scaleFactor);
+        const descriptionHeight = (descriptionLines.length) * (doc.getLineHeight() / doc.internal.scaleFactor);
+        const spacing = 3;
         
-        const cardPadding = 12;
-        const cardTotalHeight = contentHeight + cardPadding;
-
-        if (y + cardTotalHeight > pageHeight - margin) {
+        const contentHeight = titleHeight + spacing + descriptionHeight + 5; // Add extra space after description
+        
+        if (y + contentHeight > pageHeight - margin) {
             doc.addPage();
             y = margin;
         }
-  
-        doc.setDrawColor(230, 230, 230);
-        doc.setFillColor(248, 248, 248);
-        doc.roundedRect(margin, y, pageWidth - (margin * 2), cardTotalHeight, 3, 3, 'FD');
-  
-        let contentY = y + (cardPadding / 2);
-  
+        
         doc.setFont('Helvetica', 'bold');
         doc.setFontSize(12);
-        doc.text(titleLines, margin + 10, contentY + 3);
-        contentY += titleHeight + spacing;
-  
+        doc.text(titleLines, margin, y);
+        y += titleHeight + 2;
+        
         doc.setFont('Helvetica', 'normal');
         doc.setFontSize(10);
         doc.setTextColor('#666666');
-        doc.text(descriptionLines, margin + 10, contentY);
+        doc.text(descriptionLines, margin, y);
         doc.setTextColor('#000000');
         
-        y += cardTotalHeight + 5;
+        y += descriptionHeight + 5; // Space after this furniture item
       }
     }
   
@@ -305,7 +295,6 @@ export default function QuoteDetailsPage() {
     doc.setFont('Helvetica', 'normal');
     doc.setFontSize(8);
     doc.text('- Orçamento válido por 15 dias.', margin, y);
-    y += 4;
     
     const fileName = `${isQuote ? 'Orcamento' : 'Descritivo'}_${quote.clientName.replace(/\s+/g, '_')}.pdf`;
     doc.save(fileName);
