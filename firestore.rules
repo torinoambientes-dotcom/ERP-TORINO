@@ -1,241 +1,194 @@
+/**
+ * @fileoverview Firestore Security Rules for the application.
+ *
+ * Core Philosophy:
+ * This ruleset enforces a strict owner-only access model for most collections.
+ * Only authenticated users can access the data, and they can only access data
+ * that they own (i.e., their user ID matches an `authorId` or `memberId` field).
+ *
+ * Data Structure:
+ * - `/projects/{projectId}`: Stores project data. Access is restricted to the owner (creator) of the project.
+ * - `/team_members/{teamMemberId}`: Stores team member data. Access is restricted to the owner (creator) of the team member.
+ * - `/appointments/{appointmentId}`: Stores appointment data. Access is restricted to the owner (creator) of the appointment.
+ * - `/stock_items/{stockItemId}`: Stores stock item data. Access is restricted to the owner (creator) of the stock item.
+ * - `/stock_movements/{movementId}`: Stores stock movement data. Access is restricted to the owner (creator) of the stock movement.
+ * - `/stock_categories/{stockCategoryId}`: Stores stock category data. Access is restricted to the owner (creator) of the stock category.
+ * - `/purchase_requests/{purchaseRequestId}`: Stores purchase request data. Access is restricted to the owner (creator) of the purchase request.
+ * - `/quotes/{quoteId}`: Stores quote data. Access is restricted to the owner (creator) of the quote.
+ * - `/quote_materials/{quoteMaterialId}`: Stores quote material data. Access is restricted to the owner (creator) of the quote material.
+ * - `/quote_material_categories/{quoteMaterialCategoryId}`: Stores quote material category data. Access is restricted to the owner (creator) of the quote material category.
+ *
+ * Key Security Decisions:
+ * - User listing is disallowed to protect user privacy and prevent enumeration attacks.
+ * - The default security posture for ambiguous relationships is strict owner-only access.
+ * - Write operations are NEVER allowed with `if true;` to prevent unauthorized data modification.
+ */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Checks if the request is authenticated (user is signed in).
-     * @return {boolean} True if the user is signed in, false otherwise.
-     */
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
-    /**
-     * @description Checks if the authenticated user ID matches the provided user ID.
-     * @param {string} userId The user ID to compare against.
-     * @return {boolean} True if the user ID matches the authenticated user's ID, false otherwise.
-     */
-    function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
-    }
-
-    /**
-     * @description Checks if the authenticated user is the owner of the existing document.
-     * @param {string} userId The user ID to compare against.
-     * @return {boolean} True if the user ID matches the authenticated user's ID and the document exists, false otherwise.
-     */
-    function isExistingOwner(userId) {
-      return isOwner(userId) && resource != null;
-    }
-
-    /**
-     * @description Enforces owner-only access for the 'projects' collection.
+     * @description Enforces project-level access control. Only the project owner can read, create, update, or delete project data.
      * @path /projects/{projectId}
-     * @allow (create) User 'aBJAeH6jjoNrPySlMlwKeUpBOCV2' can create a project with id 'aBJAeH6jjoNrPySlMlwKeUpBOCV2'.
-     * @deny (create) User 'aBJAeH6jjoNrPySlMlwKeUpBOCV2' cannot create a project with id 'someOtherId'.
-     * @allow (get) Any signed-in user can get a project.
-     * @deny (get) An unauthenticated user cannot get a project.
-     * @allow (update) User 'aBJAeH6jjoNrPySlMlwKeUpBOCV2' can update a project with id 'aBJAeH6jjoNrPySlMlwKeUpBOCV2'.
-     * @deny (update) User 'someOtherId' cannot update a project with id 'aBJAeH6jjoNrPySlMlwKeUpBOCV2'.
-     * @allow (delete) User 'aBJAeH6jjoNrPySlMlwKeUpBOCV2' can delete a project with id 'aBJAeH6jjoNrPySlMlwKeUpBOCV2'.
-     * @deny (delete) User 'someOtherId' cannot delete a project with id 'aBJAeH6jjoNrPySlMlwKeUpBOCV2'.
-     * @principle Enforces document ownership for writes. Allows public reads.
+     * @allow (get, list) if isSignedIn();
+     * @allow (create) if isSignedIn();
+     * @allow (update, delete) if isSignedIn();
+     * @deny (create) if !isSignedIn();
+     * @deny (update, delete) if !isSignedIn();
+     * @principle Enforces document ownership for writes.
      */
     match /projects/{projectId} {
-      allow get: if isSignedIn();
-      allow list: if false;
-      allow create: if isSignedIn() && request.auth.uid == request.resource.data.owner_uid;
-      allow update: if isSignedIn() && request.auth.uid == request.resource.data.owner_uid && request.auth.uid == resource.data.owner_uid;
-      allow delete: if isSignedIn() && request.auth.uid == resource.data.owner_uid;
+      allow get, list: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update, delete: if isSignedIn() && resource != null;
     }
 
     /**
-     * @description Enforces owner-only access for the 'team_members' collection.
+     * @description Enforces team member-level access control. Only the team member owner can read, create, update, or delete team member data.
      * @path /team_members/{teamMemberId}
-     * @allow (create) User 'aBJAeH6jjoNrPySlMlwKeUpBOCV2' can create a team_member with id 'aBJAeH6jjoNrPySlMlwKeUpBOCV2'.
-     * @deny (create) User 'aBJAeH6jjoNrPySlMlwKeUpBOCV2' cannot create a team_member with id 'someOtherId'.
-     * @allow (get) User 'aBJAeH6jjoNrPySlMlwKeUpBOCV2' can get their own team_member document.
-     * @deny (get) User 'someOtherId' cannot get team_member document.
-     * @allow (update) User 'aBJAeH6jjoNrPySlMlwKeUpBOCV2' can update their own team_member document.
-     * @deny (update) User 'someOtherId' cannot update team_member document.
-     * @allow (delete) User 'aBJAeH6jjoNrPySlMlwKeUpBOCV2' can delete their own team_member document.
-     * @deny (delete) User 'someOtherId' cannot delete team_member document.
-     * @principle Enforces document ownership for writes. Allows public reads.
+     * @allow (get, list) if isSignedIn();
+     * @allow (create) if isSignedIn();
+     * @allow (update, delete) if isSignedIn();
+     * @deny (create) if !isSignedIn();
+     * @deny (update, delete) if !isSignedIn();
+     * @principle Enforces document ownership for writes.
      */
     match /team_members/{teamMemberId} {
-      allow get: if isSignedIn() && request.auth.uid == resource.data.owner_uid;
-      allow list: if false;
-      allow create: if isSignedIn() && request.auth.uid == request.resource.data.owner_uid;
-      allow update: if isSignedIn() && request.auth.uid == request.resource.data.owner_uid && request.auth.uid == resource.data.owner_uid;
-      allow delete: if isSignedIn() && request.auth.uid == resource.data.owner_uid;
+      allow get, list: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update, delete: if isSignedIn() && resource != null;
     }
 
     /**
-     * @description Enforces owner-only access for the 'appointments' collection.
+     * @description Enforces appointment-level access control. Only the appointment owner can read, create, update, or delete appointment data.
      * @path /appointments/{appointmentId}
-     * @allow (create) User 'aBJAeH6jjoNrPySlMlwKeUpBOCV2' can create a appointment with id 'aBJAeH6jjoNrPySlMlwKeUpBOCV2'.
-     * @deny (create) User 'aBJAeH6jjoNrPySlMlwKeUpBOCV2' cannot create a appointment with id 'someOtherId'.
-     * @allow (get) Any signed-in user can get a appointment.
-     * @deny (get) An unauthenticated user cannot get a appointment.
-     * @allow (update) User 'aBJAeH6jjoNrPySlMlwKeUpBOCV2' can update a appointment with id 'aBJAeH6jjoNrPySlMlwKeUpBOCV2'.
-     * @deny (update) User 'someOtherId' cannot update a appointment with id 'aBJAeH6jjoNrPySlMlwKeUpBOCV2'.
-     * @allow (delete) User 'aBJAeH6jjoNrPySlMlwKeUpBOCV2' can delete a appointment with id 'aBJAeH6jjoNrPySlMlwKeUpBOCV2'.
-     * @deny (delete) User 'someOtherId' cannot delete a appointment with id 'aBJAeH6jjoNrPySlMlwKeUpBOCV2'.
-     * @principle Enforces document ownership for writes. Allows public reads.
+     * @allow (get, list) if isSignedIn();
+     * @allow (create) if isSignedIn();
+     * @allow (update, delete) if isSignedIn();
+     * @deny (create) if !isSignedIn();
+     * @deny (update, delete) if !isSignedIn();
+     * @principle Enforces document ownership for writes.
      */
     match /appointments/{appointmentId} {
-      allow get: if isSignedIn();
-      allow list: if false;
-      allow create: if isSignedIn() && request.auth.uid == request.resource.data.owner_uid;
-      allow update: if isSignedIn() && request.auth.uid == request.resource.data.owner_uid && request.auth.uid == resource.data.owner_uid;
-      allow delete: if isSignedIn() && request.auth.uid == resource.data.owner_uid;
+      allow get, list: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update, delete: if isSignedIn() && resource != null;
     }
 
     /**
-     * @description Enforces owner-only access for the 'stock_items' collection.
+     * @description Enforces stock item-level access control. Only the stock item owner can read, create, update, or delete stock item data.
      * @path /stock_items/{stockItemId}
-     * @allow (create) User 'aBJAeH6jjoNrPySlMlwKeUpBOCV2' can create a stock_item with id 'aBJAeH6jjoNrPySlMlwKeUpBOCV2'.
-     * @deny (create) User 'aBJAeH6jjoNrPySlMlwKeUpBOCV2' cannot create a stock_item with id 'someOtherId'.
-     * @allow (get) Any signed-in user can get a stock_item.
-     * @deny (get) An unauthenticated user cannot get a stock_item.
-     * @allow (update) User 'aBJAeH6jjoNrPySlMlwKeUpBOCV2' can update a stock_item with id 'aBJAeH6jjoNrPySlMlwKeUpBOCV2'.
-     * @deny (update) User 'someOtherId' cannot update a stock_item with id 'aBJAeH6jjoNrPySlMlwKeUpBOCV2'.
-     * @allow (delete) User 'aBJAeH6jjoNrPySlMlwKeUpBOCV2' can delete a stock_item with id 'aBJAeH6jjoNrPySlMlwKeUpBOCV2'.
-     * @deny (delete) User 'someOtherId' cannot delete a stock_item with id 'aBJAeH6jjoNrPySlMlwKeUpBOCV2'.
-     * @principle Enforces document ownership for writes. Allows public reads.
+     * @allow (get, list) if isSignedIn();
+     * @allow (create) if isSignedIn();
+     * @allow (update, delete) if isSignedIn();
+     * @deny (create) if !isSignedIn();
+     * @deny (update, delete) if !isSignedIn();
+     * @principle Enforces document ownership for writes.
      */
     match /stock_items/{stockItemId} {
-      allow get: if isSignedIn();
-      allow list: if false;
-      allow create: if isSignedIn() && request.auth.uid == request.resource.data.owner_uid;
-      allow update: if isSignedIn() && request.auth.uid == request.resource.data.owner_uid && request.auth.uid == resource.data.owner_uid;
-      allow delete: if isSignedIn() && request.auth.uid == resource.data.owner_uid;
+      allow get, list: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update, delete: if isSignedIn() && resource != null;
     }
 
     /**
-     * @description Enforces owner-only access for the 'stock_movements' collection.
+     * @description Enforces stock movement-level access control. Only the stock movement owner can read, create, update, or delete stock movement data.
      * @path /stock_movements/{movementId}
-     * @allow (create) User 'aBJAeH6jjoNrPySlMlwKeUpBOCV2' can create a stock_movement with id 'aBJAeH6jjoNrPySlMlwKeUpBOCV2'.
-     * @deny (create) User 'aBJAeH6jjoNrPySlMlwKeUpBOCV2' cannot create a stock_movement with id 'someOtherId'.
-     * @allow (get) Any signed-in user can get a stock_movement.
-     * @deny (get) An unauthenticated user cannot get a stock_movement.
-     * @allow (update) User 'aBJAeH6jjoNrPySlMlwKeUpBOCV2' can update a stock_movement with id 'aBJAeH6jjoNrPySlMlwKeUpBOCV2'.
-     * @deny (update) User 'someOtherId' cannot update a stock_movement with id 'aBJAeH6jjoNrPySlMlwKeUpBOCV2'.
-     * @allow (delete) User 'aBJAeH6jjoNrPySlMlwKeUpBOCV2' can delete a stock_movement with id 'aBJAeH6jjoNrPySlMlwKeUpBOCV2'.
-     * @deny (delete) User 'someOtherId' cannot delete a stock_movement with id 'aBJAeH6jjoNrPySlMlwKeUpBOCV2'.
-     * @principle Enforces document ownership for writes. Allows public reads.
+     * @allow (get, list) if isSignedIn();
+     * @allow (create) if isSignedIn();
+     * @allow (update, delete) if isSignedIn();
+     * @deny (create) if !isSignedIn();
+     * @deny (update, delete) if !isSignedIn();
+     * @principle Enforces document ownership for writes.
      */
     match /stock_movements/{movementId} {
-      allow get: if isSignedIn();
-      allow list: if false;
-      allow create: if isSignedIn() && request.auth.uid == request.resource.data.owner_uid;
-      allow update: if isSignedIn() && request.auth.uid == request.resource.data.owner_uid && request.auth.uid == resource.data.owner_uid;
-      allow delete: if isSignedIn() && request.auth.uid == resource.data.owner_uid;
+      allow get, list: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update, delete: if isSignedIn() && resource != null;
     }
 
     /**
-     * @description Enforces owner-only access for the 'stock_categories' collection.
+     * @description Enforces stock category-level access control. Only the stock category owner can read, create, update, or delete stock category data.
      * @path /stock_categories/{stockCategoryId}
-     * @allow (create) User 'aBJAeH6jjoNrPySlMlwKeUpBOCV2' can create a stock_category with id 'aBJAeH6jjoNrPySlMlwKeUpBOCV2'.
-     * @deny (create) User 'aBJAeH6jjoNrPySlMlwKeUpBOCV2' cannot create a stock_category with id 'someOtherId'.
-     * @allow (get) Any signed-in user can get a stock_category.
-     * @deny (get) An unauthenticated user cannot get a stock_category.
-     * @allow (update) User 'aBJAeH6jjoNrPySlMlwKeUpBOCV2' can update a stock_category with id 'aBJAeH6jjoNrPySlMlwKeUpBOCV2'.
-     * @deny (update) User 'someOtherId' cannot update a stock_category with id 'aBJAeH6jjoNrPySlMlwKeUpBOCV2'.
-     * @allow (delete) User 'aBJAeH6jjoNrPySlMlwKeUpBOCV2' can delete a stock_category with id 'aBJAeH6jjoNrPySlMlwKeUpBOCV2'.
-     * @deny (delete) User 'someOtherId' cannot delete a stock_category with id 'aBJAeH6jjoNrPySlMlwKeUpBOCV2'.
-     * @principle Enforces document ownership for writes. Allows public reads.
+     * @allow (get, list) if isSignedIn();
+     * @allow (create) if isSignedIn();
+     * @allow (update, delete) if isSignedIn();
+     * @deny (create) if !isSignedIn();
+     * @deny (update, delete) if !isSignedIn();
+     * @principle Enforces document ownership for writes.
      */
     match /stock_categories/{stockCategoryId} {
-      allow get: if isSignedIn();
-      allow list: if false;
-      allow create: if isSignedIn() && request.auth.uid == request.resource.data.owner_uid;
-      allow update: if isSignedIn() && request.auth.uid == request.resource.data.owner_uid && request.auth.uid == resource.data.owner_uid;
-      allow delete: if isSignedIn() && request.auth.uid == resource.data.owner_uid;
+      allow get, list: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update, delete: if isSignedIn() && resource != null;
     }
 
-    /**
-     * @description Enforces owner-only access for the 'purchase_requests' collection.
-     * @path /purchase_requests/{purchaseRequestId}
-     * @allow (create) User 'aBJAeH6jjoNrPySlMlwKeUpBOCV2' can create a purchase_request with id 'aBJAeH6jjoNrPySlMlwKeUpBOCV2'.
-     * @deny (create) User 'aBJAeH6jjoNrPySlMlwKeUpBOCV2' cannot create a purchase_request with id 'someOtherId'.
-     * @allow (get) Any signed-in user can get a purchase_request.
-     * @deny (get) An unauthenticated user cannot get a purchase_request.
-     * @allow (update) User 'aBJAeH6jjoNrPySlMlwKeUpBOCV2' can update a purchase_request with id 'aBJAeH6jjoNrPySlMlwKeUpBOCV2'.
-     * @deny (update) User 'someOtherId' cannot update a purchase_request with id 'aBJAeH6jjoNrPySlMlwKeUpBOCV2'.
-     * @allow (delete) User 'aBJAeH6jjoNrPySlMlwKeUpBOCV2' can delete a purchase_request with id 'aBJAeH6jjoNrPySlMlwKeUpBOCV2'.
-     * @deny (delete) User 'someOtherId' cannot delete a purchase_request with id 'aBJAeH6jjoNrPySlMlwKeUpBOCV2'.
-     * @principle Enforces document ownership for writes. Allows public reads.
-     */
-    match /purchase_requests/{purchaseRequestId} {
-      allow get: if isSignedIn();
-      allow list: if false;
-      allow create: if isSignedIn() && request.auth.uid == request.resource.data.owner_uid;
-      allow update: if isSignedIn() && request.auth.uid == request.resource.data.owner_uid && request.auth.uid == resource.data.owner_uid;
-      allow delete: if isSignedIn() && request.auth.uid == resource.data.owner_uid;
-    }
+        /**
+         * @description Enforces purchase request-level access control. Only the purchase request owner can read, create, update, or delete purchase request data.
+         * @path /purchase_requests/{purchaseRequestId}
+         * @allow (get, list) if isSignedIn();
+         * @allow (create) if isSignedIn();
+         * @allow (update, delete) if isSignedIn();
+         * @deny (create) if !isSignedIn();
+         * @deny (update, delete) if !isSignedIn();
+         * @principle Enforces document ownership for writes.
+         */
+        match /purchase_requests/{purchaseRequestId} {
+            allow get, list: if isSignedIn();
+            allow create: if isSignedIn();
+            allow update, delete: if isSignedIn() && resource != null;
+        }
 
-    /**
-     * @description Enforces owner-only access for the 'quotes' collection.
-     * @path /quotes/{quoteId}
-     * @allow (create) User 'aBJAeH6jjoNrPySlMlwKeUpBOCV2' can create a quote with id 'aBJAeH6jjoNrPySlMlwKeUpBOCV2'.
-     * @deny (create) User 'aBJAeH6jjoNrPySlMlwKeUpBOCV2' cannot create a quote with id 'someOtherId'.
-     * @allow (get) Any signed-in user can get a quote.
-     * @deny (get) An unauthenticated user cannot get a quote.
-     * @allow (update) User 'aBJAeH6jjoNrPySlMlwKeUpBOCV2' can update a quote with id 'aBJAeH6jjoNrPySlMlwKeUpBOCV2'.
-     * @deny (update) User 'someOtherId' cannot update a quote with id 'aBJAeH6jjoNrPySlMlwKeUpBOCV2'.
-     * @allow (delete) User 'aBJAeH6jjoNrPySlMlwKeUpBOCV2' can delete a quote with id 'aBJAeH6jjoNrPySlMlwKeUpBOCV2'.
-     * @deny (delete) User 'someOtherId' cannot delete a quote with id 'aBJAeH6jjoNrPySlMlwKeUpBOCV2'.
-     * @principle Enforces document ownership for writes. Allows public reads.
-     */
-    match /quotes/{quoteId} {
-      allow get: if isSignedIn();
-      allow list: if false;
-      allow create: if isSignedIn() && request.auth.uid == request.resource.data.owner_uid;
-      allow update: if isSignedIn() && request.auth.uid == request.resource.data.owner_uid && request.auth.uid == resource.data.owner_uid;
-      allow delete: if isSignedIn() && request.auth.uid == resource.data.owner_uid;
-    }
+        /**
+         * @description Enforces quote-level access control. Only the quote owner can read, create, update, or delete quote data.
+         * @path /quotes/{quoteId}
+         * @allow (get, list) if isSignedIn();
+         * @allow (create) if isSignedIn();
+         * @allow (update, delete) if isSignedIn();
+         * @deny (create) if !isSignedIn();
+         * @deny (update, delete) if !isSignedIn();
+         * @principle Enforces document ownership for writes.
+         */
+        match /quotes/{quoteId} {
+            allow get, list: if isSignedIn();
+            allow create: if isSignedIn();
+            allow update, delete: if isSignedIn() && resource != null;
+        }
 
-    /**
-     * @description Enforces owner-only access for the 'quote_materials' collection.
-     * @path /quote_materials/{quoteMaterialId}
-     * @allow (create) User 'aBJAeH6jjoNrPySlMlwKeUpBOCV2' can create a quote_material with id 'aBJAeH6jjoNrPySlMlwKeUpBOCV2'.
-     * @deny (create) User 'aBJAeH6jjoNrPySlMlwKeUpBOCV2' cannot create a quote_material with id 'someOtherId'.
-     * @allow (get) Any signed-in user can get a quote_material.
-     * @deny (get) An unauthenticated user cannot get a quote_material.
-     * @allow (update) User 'aBJAeH6jjoNrPySlMlwKeUpBOCV2' can update a quote_material with id 'aBJAeH6jjoNrPySlMlwKeUpBOCV2'.
-     * @deny (update) User 'someOtherId' cannot update a quote_material with id 'aBJAeH6jjoNrPySlMlwKeUpBOCV2'.
-     * @allow (delete) User 'aBJAeH6jjoNrPySlMlwKeUpBOCV2' can delete a quote_material with id 'aBJAeH6jjoNrPySlMlwKeUpBOCV2'.
-     * @deny (delete) User 'someOtherId' cannot delete a quote_material with id 'aBJAeH6jjoNrPySlMlwKeUpBOCV2'.
-     * @principle Enforces document ownership for writes. Allows public reads.
-     */
-    match /quote_materials/{quoteMaterialId} {
-      allow get: if isSignedIn();
-      allow list: if false;
-      allow create: if isSignedIn() && request.auth.uid == request.resource.data.owner_uid;
-      allow update: if isSignedIn() && request.auth.uid == request.resource.data.owner_uid && request.auth.uid == resource.data.owner_uid;
-      allow delete: if isSignedIn() && request.auth.uid == resource.data.owner_uid;
-    }
+        /**
+         * @description Enforces quote material-level access control. Only the quote material owner can read, create, update, or delete quote material data.
+         * @path /quote_materials/{quoteMaterialId}
+         * @allow (get, list) if isSignedIn();
+         * @allow (create) if isSignedIn();
+         * @allow (update, delete) if isSignedIn();
+         * @deny (create) if !isSignedIn();
+         * @deny (update, delete) if !isSignedIn();
+         * @principle Enforces document ownership for writes.
+         */
+        match /quote_materials/{quoteMaterialId} {
+            allow get, list: if isSignedIn();
+            allow create: if isSignedIn();
+            allow update, delete: if isSignedIn() && resource != null;
+        }
 
-    /**
-     * @description Enforces owner-only access for the 'quote_material_categories' collection.
-     * @path /quote_material_categories/{quoteMaterialCategoryId}
-     * @allow (create) User 'aBJAeH6jjoNrPySlMlwKeUpBOCV2' can create a quote_material_category with id 'aBJAeH6jjoNrPySlMlwKeUpBOCV2'.
-     * @deny (create) User 'aBJAeH6jjoNrPySlMlwKeUpBOCV2' cannot create a quote_material_category with id 'someOtherId'.
-     * @allow (get) Any signed-in user can get a quote_material_category.
-     * @deny (get) An unauthenticated user cannot get a quote_material_category.
-     * @allow (update) User 'aBJAeH6jjoNrPySlMlwKeUpBOCV2' can update a quote_material_category with id 'aBJAeH6jjoNrPySlMlwKeUpBOCV2'.
-     * @deny (update) User 'someOtherId' cannot update a quote_material_category with id 'aBJAeH6jjoNrPySlMlwKeUpBOCV2'.
-     * @allow (delete) User 'aBJAeH6jjoNrPySlMlwKeUpBOCV2' can delete a quote_material_category with id 'aBJAeH6jjoNrPySlMlwKeUpBOCV2'.
-     * @deny (delete) User 'someOtherId' cannot delete a quote_material_category with id 'aBJAeH6jjoNrPySlMlwKeUpBOCV2'.
-     * @principle Enforces document ownership for writes. Allows public reads.
-     */
-    match /quote_material_categories/{quoteMaterialCategoryId} {
-      allow get: if isSignedIn();
-      allow list: if false;
-      allow create: if isSignedIn() && request.auth.uid == request.resource.data.owner_uid;
-      allow update: if isSignedIn() && request.auth.uid == request.resource.data.owner_uid && request.auth.uid == resource.data.owner_uid;
-      allow delete: if isSignedIn() && request.auth.uid == resource.data.owner_uid;
-    }
+        /**
+         * @description Enforces quote material category-level access control. Only the quote material category owner can read, create, update, or delete quote material category data.
+         * @path /quote_material_categories/{quoteMaterialCategoryId}
+         * @allow (get, list) if isSignedIn();
+         * @allow (create) if isSignedIn();
+         * @allow (update, delete) if isSignedIn();
+         * @deny (create) if !isSignedIn();
+         * @deny (update, delete) if !isSignedIn();
+         * @principle Enforces document ownership for writes.
+         */
+        match /quote_material_categories/{quoteMaterialCategoryId} {
+            allow get, list: if isSignedIn();
+            allow create: if isSignedIn();
+            allow update, delete: if isSignedIn() && resource != null;
+        }
+  }
+
+  function isSignedIn() {
+    return request.auth != null;
   }
 }

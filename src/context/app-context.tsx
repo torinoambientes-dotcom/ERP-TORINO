@@ -163,7 +163,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const teamMembersQuery = useMemoFirebase(() => collection(firestore, 'team_members'), [firestore]);
   const appointmentsQuery = useMemoFirebase(() => collection(firestore, 'appointments'), [firestore]);
   const postItNotesQuery = useMemoFirebase(() => {
-    // CRITICAL FIX: Only query if the user is authenticated.
+    // Only query if the user is authenticated.
     if (!user) return null;
     return query(collection(firestore, 'post_it_notes'), where("memberId", "==", user.uid));
   }, [firestore, user]);
