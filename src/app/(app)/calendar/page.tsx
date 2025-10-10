@@ -272,25 +272,45 @@ export default function CalendarPage() {
     }
   };
 
-  const DayWithDot = ({ day, date }: {day: React.ReactNode, date: Date}) => {
-    const dayKey = format(date, 'yyyy-MM-dd');
-    const hasTask = tasksByDay[dayKey]?.some(t => t.type !== 'birthday');
-    const hasBirthday = tasksByDay[dayKey]?.some(t => t.type === 'birthday');
-    const hasHoliday = holidays.some(h => isSameDay(h.date, date));
-    
-    if(!hasTask && !hasBirthday && !hasHoliday) return <>{day}</>;
+  const dayModifiers = useMemo(() => {
+    const modifiers: Record<string, (date: Date) => boolean> = {
+      ...holidays.reduce((acc, h) => ({...acc, [h.name]: h.date }), {}),
+      inCurrentWeek: (date) => isWithinInterval(date, { start: startOfWeek(currentDate, { locale: ptBR }), end: endOfWeek(currentDate, { locale: ptBR }) })
+    };
 
-    return (
-        <div className='relative w-full h-full flex items-center justify-center'>
-            {day}
-            <div className='absolute bottom-1 flex gap-0.5'>
-                {hasTask && <Dot className="w-4 h-4 text-primary" />}
-                {hasBirthday && <Dot className="w-4 h-4 text-amber-500" />}
-                {hasHoliday && <Dot className="w-4 h-4 text-red-500" />}
-            </div>
-        </div>
-    )
-  }
+    Object.keys(tasksByDay).forEach(dayKey => {
+      const dayTasks = tasksByDay[dayKey];
+      const date = parseISO(dayKey);
+      if (dayTasks.some(t => t.type !== 'birthday')) {
+        modifiers[`hasTask-${dayKey}`] = date;
+      }
+      if (dayTasks.some(t => t.type === 'birthday')) {
+        modifiers[`hasBirthday-${dayKey}`] = date;
+      }
+    });
+
+    holidays.forEach(holiday => {
+      modifiers[`hasHoliday-${format(holiday.date, 'yyyy-MM-dd')}`] = holiday.date;
+    });
+
+    return modifiers;
+
+  }, [tasksByDay, holidays, currentDate]);
+
+  const dayModifiersClassNames = useMemo(() => {
+    const classNames: Record<string, string> = {
+      inCurrentWeek: 'bg-muted/50 rounded-none'
+    };
+    
+    Object.keys(dayModifiers).forEach(key => {
+      if (key.startsWith('hasTask-')) classNames[key] = 'has-task';
+      if (key.startsWith('hasBirthday-')) classNames[key] = 'has-birthday';
+      if (key.startsWith('hasHoliday-')) classNames[key] = 'has-holiday';
+    });
+
+    return classNames;
+  }, [dayModifiers]);
+
 
   if (isLoading) {
     return (
@@ -345,6 +365,16 @@ export default function CalendarPage() {
             <div className="lg:col-span-4 xl:col-span-3">
                 <Card>
                     <CardContent className="p-0">
+                      <style>{`
+                        .has-task .rdp-day_selected, .has-task .rdp-day_range_middle { background-color: hsl(var(--primary) / 0.8) !important; }
+                        .has-task:not(.rdp-day_selected):not(.rdp-day_range_middle) { background-color: hsl(var(--primary) / 0.1); }
+
+                        .has-birthday .rdp-day_selected, .has-birthday .rdp-day_range_middle { background-color: hsl(var(--yellow-500) / 0.8) !important; }
+                        .has-birthday:not(.rdp-day_selected):not(.rdp-day_range_middle) { background-color: hsl(43 96% 56% / 0.1); }
+                        
+                        .has-holiday .rdp-day_selected, .has-holiday .rdp-day_range_middle { background-color: hsl(var(--red-500) / 0.8) !important; }
+                        .has-holiday:not(.rdp-day_selected):not(.rdp-day_range_middle) { background-color: hsl(0 72% 51% / 0.1); }
+                      `}</style>
                       <Calendar
                           mode="single"
                           selected={selectedDate}
@@ -353,21 +383,13 @@ export default function CalendarPage() {
                           className="w-full"
                           month={currentDate}
                           onMonthChange={setCurrentDate}
-                          modifiers={{ 
-                            ...holidays.reduce((acc, h) => ({...acc, [h.name]: h.date }), {}),
-                            inCurrentWeek: (date) => isWithinInterval(date, { start: startOfWeek(currentDate, { locale: ptBR }), end: endOfWeek(currentDate, { locale: ptBR }) })
-                          }}
-                          modifiersClassNames={{
-                            inCurrentWeek: 'bg-muted/50 rounded-none'
-                          }}
-                          formatters={{
-                            formatDay: (date) => <DayWithDot day={format(date, 'd')} date={date} />
-                          }}
+                          modifiers={dayModifiers}
+                          modifiersClassNames={dayModifiersClassNames}
                           footer={
                             <div className='text-xs p-3 border-t space-y-1'>
-                              <div className='flex items-center gap-1'><Dot className="w-4 h-4 text-primary" /> Compromissos</div>
-                              <div className='flex items-center gap-1'><Dot className="w-4 h-4 text-amber-500" /> Aniversários</div>
-                              <div className='flex items-center gap-1'><Dot className="w-4 h-4 text-red-500" /> Feriados</div>
+                              <div className='flex items-center gap-2'><div className="w-3 h-3 rounded-full bg-primary/20 border border-primary"></div> Compromissos</div>
+                              <div className='flex items-center gap-2'><div className="w-3 h-3 rounded-full bg-amber-500/20 border border-amber-500"></div> Aniversários</div>
+                              <div className='flex items-center gap-2'><div className="w-3 h-3 rounded-full bg-red-500/20 border border-red-500"></div> Feriados</div>
                             </div>
                           }
                       />
