@@ -274,7 +274,7 @@ export default function CalendarPage() {
 
   const DayWithDot = ({ day, date }: {day: React.ReactNode, date: Date}) => {
     const dayKey = format(date, 'yyyy-MM-dd');
-    const hasTask = tasksByDay[dayKey]?.some(t => t.type !== 'birthday' && t.type !== 'holiday');
+    const hasTask = tasksByDay[dayKey]?.some(t => t.type !== 'birthday');
     const hasBirthday = tasksByDay[dayKey]?.some(t => t.type === 'birthday');
     const hasHoliday = holidays.some(h => isSameDay(h.date, date));
     
@@ -283,10 +283,10 @@ export default function CalendarPage() {
     return (
         <div className='relative w-full h-full flex items-center justify-center'>
             {day}
-            <div className='absolute bottom-1.5 flex gap-0.5'>
-                {hasTask && <Dot className="w-4 h-4 text-primary" />}
-                {hasBirthday && <Dot className="w-4 h-4 text-amber-500" />}
-                {hasHoliday && <Dot className="w-4 h-4 text-red-500" />}
+            <div className='absolute bottom-1 flex gap-0.5'>
+                {hasTask && <Dot className="w-3 h-3 text-primary" />}
+                {hasBirthday && <Dot className="w-3 h-3 text-amber-500" />}
+                {hasHoliday && <Dot className="w-3 h-3 text-red-500" />}
             </div>
         </div>
     )
