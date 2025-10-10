@@ -28,6 +28,7 @@ import { DndContext, closestCenter, type DragEndEvent } from '@dnd-kit/core';
 import { useSortable, SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { getHolidaysForYear } from '@/lib/holidays';
+import { PostItBoard } from '@/components/app/calendar/post-it-board';
 
 
 export interface CalendarTask {
@@ -362,18 +363,18 @@ export default function CalendarPage() {
 
         <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-            <div className="lg:col-span-4 xl:col-span-3">
+            <div className="lg:col-span-4 xl:col-span-3 space-y-6">
                 <Card>
                     <CardContent className="p-0">
                       <style>{`
-                        .has-task .rdp-day_selected, .has-task .rdp-day_range_middle { background-color: hsl(var(--primary) / 0.8) !important; }
-                        .has-task:not(.rdp-day_selected):not(.rdp-day_range_middle) { background-color: hsl(var(--primary) / 0.1); }
-
-                        .has-birthday .rdp-day_selected, .has-birthday .rdp-day_range_middle { background-color: hsl(var(--yellow-500) / 0.8) !important; }
-                        .has-birthday:not(.rdp-day_selected):not(.rdp-day_range_middle) { background-color: hsl(43 96% 56% / 0.1); }
+                        .has-task { background-color: hsl(var(--primary) / 0.1); }
+                        .rdp-day_selected.has-task { background-color: hsl(var(--primary) / 0.8) !important; color: hsl(var(--primary-foreground)) !important;}
                         
-                        .has-holiday .rdp-day_selected, .has-holiday .rdp-day_range_middle { background-color: hsl(var(--red-500) / 0.8) !important; }
-                        .has-holiday:not(.rdp-day_selected):not(.rdp-day_range_middle) { background-color: hsl(0 72% 51% / 0.1); }
+                        .has-birthday { background-color: hsl(43 96% 56% / 0.1); }
+                        .rdp-day_selected.has-birthday { background-color: hsl(43 96% 56% / 0.8) !important; color: hsl(var(--primary-foreground)) !important;}
+                        
+                        .has-holiday { background-color: hsl(0 72% 51% / 0.1); }
+                        .rdp-day_selected.has-holiday { background-color: hsl(0 72% 51% / 0.8) !important; color: hsl(var(--primary-foreground)) !important;}
                       `}</style>
                       <Calendar
                           mode="single"
@@ -395,6 +396,7 @@ export default function CalendarPage() {
                       />
                     </CardContent>
                 </Card>
+                <PostItBoard selectedDate={selectedDate} />
             </div>
             <div className="lg:col-span-8 xl:col-span-9">
                 <div className='flex items-center justify-between mb-4'>
