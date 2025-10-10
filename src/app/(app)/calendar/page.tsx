@@ -473,7 +473,7 @@ function SortableTaskItem({ task, dayKey, handleTaskClick, getTaskTime }: { task
                     <GripVertical className="h-5 w-5 text-muted-foreground" />
                 </div>
              )}
-            <div className="flex-grow flex items-start gap-3" onClick={() => handleTaskClick(task)}>
+            <div className="flex-grow flex items-start gap-3 cursor-pointer" onClick={() => handleTaskClick(task)}>
               <div className="w-24 text-sm font-medium text-right flex-shrink-0 pt-0.5">
                   {getTaskTime(task)}
               </div>
@@ -517,3 +517,5 @@ function SortableTaskItem({ task, dayKey, handleTaskClick, getTaskTime }: { task
         </li>
     );
 }
+
+    
