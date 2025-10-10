@@ -235,19 +235,6 @@
       },
       "required": ["id", "title", "start", "end", "memberIds"]
     },
-    "PostItNote": {
-      "title": "PostItNote",
-      "type": "object",
-      "description": "Represents a user-specific reminder note for a particular day.",
-      "properties": {
-        "id": { "type": "string" },
-        "memberId": { "type": "string", "description": "The ID of the team member who owns this note." },
-        "content": { "type": "string", "description": "The text content of the note." },
-        "color": { "type": "string", "description": "The background color of the note." },
-        "date": { "type": "string", "format": "date", "description": "The date the note is for (YYYY-MM-DD)." }
-      },
-      "required": ["id", "memberId", "content", "color", "date"]
-    },
     "StockItem": {
       "title": "StockItem",
       "type": "object",
@@ -480,10 +467,6 @@
     "/appointments/{appointmentId}": {
       "schema": { "$ref": "#/entities/Appointment" },
       "description": "Stores general appointments and tasks for the calendar."
-    },
-    "/post_it_notes/{noteId}": {
-      "schema": { "$ref": "#/entities/PostItNote" },
-      "description": "Stores user-specific post-it notes."
     },
     "/stock_items/{stockItemId}": {
       "schema": { "$ref": "#/entities/StockItem" },

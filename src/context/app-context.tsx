@@ -3,7 +3,7 @@
 import { createContext, type ReactNode, useCallback, useMemo, useEffect, useState } from 'react';
 import { collection, doc, serverTimestamp, deleteField, writeBatch, getDocs, runTransaction, query, where } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useAuth, useUser } from '@/firebase';
-import type { Project, TeamMember, StageStatus, StockItem, StockMovement, StockCategory, Furniture, Environment, MaterialItem, StockReservation, ProductionStage, Appointment, PurchaseRequest, PurchaseRequestStatus, Quote, QuoteStage, QuoteEnvironment, QuoteFurniture, QuoteMaterial, QuoteMaterialCategory, PostItNote } from '@/lib/types';
+import type { Project, TeamMember, StageStatus, StockItem, StockMovement, StockCategory, Furniture, Environment, MaterialItem, StockReservation, ProductionStage, Appointment, PurchaseRequest, PurchaseRequestStatus, Quote, QuoteStage, QuoteEnvironment, QuoteFurniture, QuoteMaterial, QuoteMaterialCategory } from '@/lib/types';
 import { generateId } from '@/lib/utils';
 import { setDocumentNonBlocking, deleteDocumentNonBlocking, addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
@@ -20,7 +20,6 @@ interface AppContextType {
   quotes: Quote[];
   quoteMaterials: QuoteMaterial[];
   quoteMaterialCategories: QuoteMaterialCategory[];
-  postItNotes: PostItNote[];
   isLoading: boolean;
   addProject: (projectData: any) => string | undefined;
   updateProject: (updatedProject: Project, originalProject?: Project) => void;
@@ -58,9 +57,6 @@ interface AppContextType {
   deleteQuoteMaterial: (itemId: string) => void;
   addQuoteMaterialCategory: (categoryData: Omit<QuoteMaterialCategory, 'id'>) => void;
   deleteQuoteMaterialCategory: (categoryId: string) => void;
-  addPostItNote: (noteData: Omit<PostItNote, 'id' | 'memberId'>) => void;
-  updatePostItNote: (noteId: string, updates: Partial<PostItNote>) => void;
-  deletePostItNote: (noteId: string) => void;
 }
 
 export const AppContext = createContext<AppContextType>({
@@ -74,7 +70,6 @@ export const AppContext = createContext<AppContextType>({
   quotes: [],
   quoteMaterials: [],
   quoteMaterialCategories: [],
-  postItNotes: [],
   isLoading: true,
   addProject: () => undefined,
   updateProject: () => {},
@@ -112,9 +107,6 @@ export const AppContext = createContext<AppContextType>({
   deleteQuoteMaterial: () => {},
   addQuoteMaterialCategory: () => {},
   deleteQuoteMaterialCategory: () => {},
-  addPostItNote: () => {},
-  updatePostItNote: () => {},
-  deletePostItNote: () => {},
 });
 
 const isProjectComplete = (project: Project): boolean => {
@@ -162,11 +154,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const projectsQuery = useMemoFirebase(() => collection(firestore, 'projects'), [firestore]);
   const teamMembersQuery = useMemoFirebase(() => collection(firestore, 'team_members'), [firestore]);
   const appointmentsQuery = useMemoFirebase(() => collection(firestore, 'appointments'), [firestore]);
-  const postItNotesQuery = useMemoFirebase(() => {
-    // Only query if the user is authenticated.
-    if (!user) return null;
-    return query(collection(firestore, 'post_it_notes'), where("memberId", "==", user.uid));
-  }, [firestore, user]);
   const stockItemsQuery = useMemoFirebase(() => collection(firestore, 'stock_items'), [firestore]);
   const stockCategoriesQuery = useMemoFirebase(() => collection(firestore, 'stock_categories'), [firestore]);
   const stockMovementsQuery = useMemoFirebase(() => collection(firestore, 'stock_movements'), [firestore]);
@@ -179,7 +166,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const { data: projects, isLoading: isLoadingProjects } = useCollection<Project>(projectsQuery);
   const { data: teamMembers, isLoading: isLoadingTeamMembers } = useCollection<TeamMember>(teamMembersQuery);
   const { data: appointments, isLoading: isLoadingAppointments } = useCollection<Appointment>(appointmentsQuery);
-  const { data: postItNotes, isLoading: isLoadingPostItNotes } = useCollection<PostItNote>(postItNotesQuery);
   const { data: stockItems, isLoading: isLoadingStockItems } = useCollection<StockItem>(stockItemsQuery);
   const { data: stockCategoriesData, isLoading: isLoadingStockCategories } = useCollection<StockCategory>(stockCategoriesQuery);
   const { data: stockMovements, isLoading: isLoadingMovements } = useCollection<StockMovement>(stockMovementsQuery);
@@ -429,30 +415,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (!firestore) return;
         const appointmentRef = doc(firestore, 'appointments', appointmentId);
         deleteDocumentNonBlocking(appointmentRef);
-    }, [firestore]);
-    
-    const addPostItNote = useCallback((noteData: Omit<PostItNote, 'id' | 'memberId'>) => {
-        if (!firestore || !user) return;
-        const noteId = generateId('postit');
-        const newNote: PostItNote = {
-            ...noteData,
-            id: noteId,
-            memberId: user.uid,
-        };
-        const noteRef = doc(firestore, 'post_it_notes', noteId);
-        setDocumentNonBlocking(noteRef, newNote, { merge: false });
-    }, [firestore, user]);
-
-    const updatePostItNote = useCallback((noteId: string, updates: Partial<PostItNote>) => {
-        if (!firestore) return;
-        const noteRef = doc(firestore, 'post_it_notes', noteId);
-        updateDocumentNonBlocking(noteRef, updates);
-    }, [firestore]);
-
-    const deletePostItNote = useCallback((noteId: string) => {
-        if (!firestore) return;
-        const noteRef = doc(firestore, 'post_it_notes', noteId);
-        deleteDocumentNonBlocking(noteRef);
     }, [firestore]);
 
 
@@ -936,7 +898,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     projects: projects || [],
     teamMembers: teamMembers || [],
     appointments: appointments || [],
-    postItNotes: postItNotes || [],
     stockItems: stockItems || [],
     stockCategories: stockCategories,
     stockMovements: stockMovements || [],
@@ -944,7 +905,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     quotes: quotes || [],
     quoteMaterials: quoteMaterials || [],
     quoteMaterialCategories: quoteMaterialCategories || [],
-    isLoading: isLoadingProjects || isLoadingTeamMembers || isLoadingAppointments || isLoadingStockItems || isLoadingStockCategories || isLoadingMovements || isLoadingPurchaseRequests || isLoadingQuotes || isLoadingQuoteMaterials || isLoadingQuoteMaterialCategories || isLoadingPostItNotes,
+    isLoading: isLoadingProjects || isLoadingTeamMembers || isLoadingAppointments || isLoadingStockItems || isLoadingStockCategories || isLoadingMovements || isLoadingPurchaseRequests || isLoadingQuotes || isLoadingQuoteMaterials || isLoadingQuoteMaterialCategories,
     addProject,
     updateProject,
     deleteProject,
@@ -954,9 +915,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addAppointment,
     updateAppointment,
     deleteAppointment,
-    addPostItNote,
-    updatePostItNote,
-    deletePostItNote,
     completeProjectStages,
     addStockItem,
     updateStockItem,
@@ -988,7 +946,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     projects, 
     teamMembers, 
     appointments, 
-    postItNotes,
     stockItems,
     stockCategories,
     stockMovements,
@@ -999,7 +956,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     isLoadingProjects, 
     isLoadingTeamMembers, 
     isLoadingAppointments,
-    isLoadingPostItNotes,
     isLoadingStockItems,
     isLoadingStockCategories,
     isLoadingMovements,
@@ -1016,9 +972,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addAppointment,
     updateAppointment,
     deleteAppointment,
-    addPostItNote,
-    updatePostItNote,
-    deletePostItNote,
     completeProjectStages,
     addStockItem,
     updateStockItem,

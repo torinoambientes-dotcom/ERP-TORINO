@@ -144,15 +144,6 @@ export interface Appointment {
   memberIds: string[];
 }
 
-export interface PostItNote {
-  id: string;
-  memberId: string;
-  content: string;
-  color: string;
-  date: string; // YYYY-MM-DD
-}
-
-
 export interface StockCategory {
   id: string;
   name: string;

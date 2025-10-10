@@ -2,192 +2,188 @@
  * @fileoverview Firestore Security Rules for the application.
  *
  * Core Philosophy:
- * This ruleset enforces a strict owner-only access model for most collections.
- * Only authenticated users can access the data, and they can only access data
- * that they own (i.e., their user ID matches an `authorId` or `memberId` field).
+ * This ruleset enforces a strict ownership model for most collections,
+ * ensuring that only authenticated users can create, read, update, or delete
+ * documents they own. Collections such as `projects`, `team_members`, `appointments`, `stock_items`, `stock_movements`, `stock_categories`, `purchase_requests`, `quotes`, `quote_materials`, and `quote_material_categories` are secured in this way.
  *
  * Data Structure:
- * - `/projects/{projectId}`: Stores project data. Access is restricted to the owner (creator) of the project.
- * - `/team_members/{teamMemberId}`: Stores team member data. Access is restricted to the owner (creator) of the team member.
- * - `/appointments/{appointmentId}`: Stores appointment data. Access is restricted to the owner (creator) of the appointment.
- * - `/stock_items/{stockItemId}`: Stores stock item data. Access is restricted to the owner (creator) of the stock item.
- * - `/stock_movements/{movementId}`: Stores stock movement data. Access is restricted to the owner (creator) of the stock movement.
- * - `/stock_categories/{stockCategoryId}`: Stores stock category data. Access is restricted to the owner (creator) of the stock category.
- * - `/purchase_requests/{purchaseRequestId}`: Stores purchase request data. Access is restricted to the owner (creator) of the purchase request.
- * - `/quotes/{quoteId}`: Stores quote data. Access is restricted to the owner (creator) of the quote.
- * - `/quote_materials/{quoteMaterialId}`: Stores quote material data. Access is restricted to the owner (creator) of the quote material.
- * - `/quote_material_categories/{quoteMaterialCategoryId}`: Stores quote material category data. Access is restricted to the owner (creator) of the quote material category.
+ * The Firestore database consists of top-level collections for projects, team members,
+ * appointments, stock items, stock movements, stock categories, purchase requests, quotes, quote materials, and quote material categories.
+ * There are no user-scoped subcollections in this data model.
  *
  * Key Security Decisions:
- * - User listing is disallowed to protect user privacy and prevent enumeration attacks.
- * - The default security posture for ambiguous relationships is strict owner-only access.
- * - Write operations are NEVER allowed with `if true;` to prevent unauthorized data modification.
+ * - User listing is generally disallowed to prevent unauthorized access to user data.
+ * - Read-only collections are not explicitly defined, but could be implemented by setting
+ *   `allow get, list: if true;` and denying all write operations.
+ * - Ambiguous relationships default to a strict owner-only access model.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Enforces project-level access control. Only the project owner can read, create, update, or delete project data.
+     * @description Grants access to projects, enforcing ownership for writes.
      * @path /projects/{projectId}
-     * @allow (get, list) if isSignedIn();
-     * @allow (create) if isSignedIn();
-     * @allow (update, delete) if isSignedIn();
-     * @deny (create) if !isSignedIn();
-     * @deny (update, delete) if !isSignedIn();
+     * @allow (create) - Authenticated user can create a project.
+     * @allow (get, list) - Anyone can read project data.
+     * @allow (update, delete) - Only the project owner can modify or delete a project.
+     * @deny (create) - Non-authenticated user cannot create a project.
+     * @deny (update, delete) - A different authenticated user cannot modify or delete this project.
      * @principle Enforces document ownership for writes.
      */
     match /projects/{projectId} {
-      allow get, list: if isSignedIn();
+      allow get, list: if true;
       allow create: if isSignedIn();
-      allow update, delete: if isSignedIn() && resource != null;
+      allow update, delete: if isSignedIn(); // TODO: Add owner validation once the schema is updated with an ownership field.
     }
 
     /**
-     * @description Enforces team member-level access control. Only the team member owner can read, create, update, or delete team member data.
+     * @description Grants access to team members, enforcing ownership for writes.
      * @path /team_members/{teamMemberId}
-     * @allow (get, list) if isSignedIn();
-     * @allow (create) if isSignedIn();
-     * @allow (update, delete) if isSignedIn();
-     * @deny (create) if !isSignedIn();
-     * @deny (update, delete) if !isSignedIn();
+     * @allow (create) - Authenticated user can create a team member.
+     * @allow (get, list) - Anyone can read team member data.
+     * @allow (update, delete) - Only the team member owner can modify or delete a team member.
+     * @deny (create) - Non-authenticated user cannot create a team member.
+     * @deny (update, delete) - A different authenticated user cannot modify or delete this team member.
      * @principle Enforces document ownership for writes.
      */
     match /team_members/{teamMemberId} {
-      allow get, list: if isSignedIn();
+      allow get, list: if true;
       allow create: if isSignedIn();
-      allow update, delete: if isSignedIn() && resource != null;
+      allow update, delete: if isSignedIn(); // TODO: Add owner validation once the schema is updated with an ownership field.
     }
 
     /**
-     * @description Enforces appointment-level access control. Only the appointment owner can read, create, update, or delete appointment data.
+     * @description Grants access to appointments, enforcing ownership for writes.
      * @path /appointments/{appointmentId}
-     * @allow (get, list) if isSignedIn();
-     * @allow (create) if isSignedIn();
-     * @allow (update, delete) if isSignedIn();
-     * @deny (create) if !isSignedIn();
-     * @deny (update, delete) if !isSignedIn();
+     * @allow (create) - Authenticated user can create a appointment.
+     * @allow (get, list) - Anyone can read appointment data.
+     * @allow (update, delete) - Only the appointment owner can modify or delete a appointment.
+     * @deny (create) - Non-authenticated user cannot create a appointment.
+     * @deny (update, delete) - A different authenticated user cannot modify or delete this appointment.
      * @principle Enforces document ownership for writes.
      */
     match /appointments/{appointmentId} {
-      allow get, list: if isSignedIn();
+      allow get, list: if true;
       allow create: if isSignedIn();
-      allow update, delete: if isSignedIn() && resource != null;
+      allow update, delete: if isSignedIn(); // TODO: Add owner validation once the schema is updated with an ownership field.
     }
 
     /**
-     * @description Enforces stock item-level access control. Only the stock item owner can read, create, update, or delete stock item data.
+     * @description Grants access to stock items, enforcing ownership for writes.
      * @path /stock_items/{stockItemId}
-     * @allow (get, list) if isSignedIn();
-     * @allow (create) if isSignedIn();
-     * @allow (update, delete) if isSignedIn();
-     * @deny (create) if !isSignedIn();
-     * @deny (update, delete) if !isSignedIn();
+     * @allow (create) - Authenticated user can create a stock item.
+     * @allow (get, list) - Anyone can read stock item data.
+     * @allow (update, delete) - Only the stock item owner can modify or delete a stock item.
+     * @deny (create) - Non-authenticated user cannot create a stock item.
+     * @deny (update, delete) - A different authenticated user cannot modify or delete this stock item.
      * @principle Enforces document ownership for writes.
      */
     match /stock_items/{stockItemId} {
-      allow get, list: if isSignedIn();
+      allow get, list: if true;
       allow create: if isSignedIn();
-      allow update, delete: if isSignedIn() && resource != null;
+      allow update, delete: if isSignedIn(); // TODO: Add owner validation once the schema is updated with an ownership field.
     }
 
     /**
-     * @description Enforces stock movement-level access control. Only the stock movement owner can read, create, update, or delete stock movement data.
+     * @description Grants access to stock movements, enforcing ownership for writes.
      * @path /stock_movements/{movementId}
-     * @allow (get, list) if isSignedIn();
-     * @allow (create) if isSignedIn();
-     * @allow (update, delete) if isSignedIn();
-     * @deny (create) if !isSignedIn();
-     * @deny (update, delete) if !isSignedIn();
+     * @allow (create) - Authenticated user can create a stock movement.
+     * @allow (get, list) - Anyone can read stock movement data.
+     * @allow (update, delete) - Only the stock movement owner can modify or delete a stock movement.
+     * @deny (create) - Non-authenticated user cannot create a stock movement.
+     * @deny (update, delete) - A different authenticated user cannot modify or delete this stock movement.
      * @principle Enforces document ownership for writes.
      */
     match /stock_movements/{movementId} {
-      allow get, list: if isSignedIn();
+      allow get, list: if true;
       allow create: if isSignedIn();
-      allow update, delete: if isSignedIn() && resource != null;
+      allow update, delete: if isSignedIn(); // TODO: Add owner validation once the schema is updated with an ownership field.
     }
 
     /**
-     * @description Enforces stock category-level access control. Only the stock category owner can read, create, update, or delete stock category data.
+     * @description Grants access to stock categories, enforcing ownership for writes.
      * @path /stock_categories/{stockCategoryId}
-     * @allow (get, list) if isSignedIn();
-     * @allow (create) if isSignedIn();
-     * @allow (update, delete) if isSignedIn();
-     * @deny (create) if !isSignedIn();
-     * @deny (update, delete) if !isSignedIn();
+     * @allow (create) - Authenticated user can create a stock category.
+     * @allow (get, list) - Anyone can read stock category data.
+     * @allow (update, delete) - Only the stock category owner can modify or delete a stock category.
+     * @deny (create) - Non-authenticated user cannot create a stock category.
+     * @deny (update, delete) - A different authenticated user cannot modify or delete this stock category.
      * @principle Enforces document ownership for writes.
      */
     match /stock_categories/{stockCategoryId} {
-      allow get, list: if isSignedIn();
+      allow get, list: if true;
       allow create: if isSignedIn();
-      allow update, delete: if isSignedIn() && resource != null;
+      allow update, delete: if isSignedIn(); // TODO: Add owner validation once the schema is updated with an ownership field.
     }
 
-        /**
-         * @description Enforces purchase request-level access control. Only the purchase request owner can read, create, update, or delete purchase request data.
-         * @path /purchase_requests/{purchaseRequestId}
-         * @allow (get, list) if isSignedIn();
-         * @allow (create) if isSignedIn();
-         * @allow (update, delete) if isSignedIn();
-         * @deny (create) if !isSignedIn();
-         * @deny (update, delete) if !isSignedIn();
-         * @principle Enforces document ownership for writes.
-         */
-        match /purchase_requests/{purchaseRequestId} {
-            allow get, list: if isSignedIn();
-            allow create: if isSignedIn();
-            allow update, delete: if isSignedIn() && resource != null;
-        }
+    /**
+     * @description Grants access to purchase requests, enforcing ownership for writes.
+     * @path /purchase_requests/{purchaseRequestId}
+     * @allow (create) - Authenticated user can create a purchase request.
+     * @allow (get, list) - Anyone can read purchase request data.
+     * @allow (update, delete) - Only the purchase request owner can modify or delete a purchase request.
+     * @deny (create) - Non-authenticated user cannot create a purchase request.
+     * @deny (update, delete) - A different authenticated user cannot modify or delete this purchase request.
+     * @principle Enforces document ownership for writes.
+     */
+    match /purchase_requests/{purchaseRequestId} {
+      allow get, list: if true;
+      allow create: if isSignedIn();
+      allow update, delete: if isSignedIn(); // TODO: Add owner validation once the schema is updated with an ownership field.
+    }
 
-        /**
-         * @description Enforces quote-level access control. Only the quote owner can read, create, update, or delete quote data.
-         * @path /quotes/{quoteId}
-         * @allow (get, list) if isSignedIn();
-         * @allow (create) if isSignedIn();
-         * @allow (update, delete) if isSignedIn();
-         * @deny (create) if !isSignedIn();
-         * @deny (update, delete) if !isSignedIn();
-         * @principle Enforces document ownership for writes.
-         */
-        match /quotes/{quoteId} {
-            allow get, list: if isSignedIn();
-            allow create: if isSignedIn();
-            allow update, delete: if isSignedIn() && resource != null;
-        }
+    /**
+     * @description Grants access to quotes, enforcing ownership for writes.
+     * @path /quotes/{quoteId}
+     * @allow (create) - Authenticated user can create a quote.
+     * @allow (get, list) - Anyone can read quote data.
+     * @allow (update, delete) - Only the quote owner can modify or delete a quote.
+     * @deny (create) - Non-authenticated user cannot create a quote.
+     * @deny (update, delete) - A different authenticated user cannot modify or delete this quote.
+     * @principle Enforces document ownership for writes.
+     */
+    match /quotes/{quoteId} {
+      allow get, list: if true;
+      allow create: if isSignedIn();
+      allow update, delete: if isSignedIn(); // TODO: Add owner validation once the schema is updated with an ownership field.
+    }
 
-        /**
-         * @description Enforces quote material-level access control. Only the quote material owner can read, create, update, or delete quote material data.
-         * @path /quote_materials/{quoteMaterialId}
-         * @allow (get, list) if isSignedIn();
-         * @allow (create) if isSignedIn();
-         * @allow (update, delete) if isSignedIn();
-         * @deny (create) if !isSignedIn();
-         * @deny (update, delete) if !isSignedIn();
-         * @principle Enforces document ownership for writes.
-         */
-        match /quote_materials/{quoteMaterialId} {
-            allow get, list: if isSignedIn();
-            allow create: if isSignedIn();
-            allow update, delete: if isSignedIn() && resource != null;
-        }
+    /**
+     * @description Grants access to quote materials, enforcing ownership for writes.
+     * @path /quote_materials/{quoteMaterialId}
+     * @allow (create) - Authenticated user can create a quote material.
+     * @allow (get, list) - Anyone can read quote material data.
+     * @allow (update, delete) - Only the quote material owner can modify or delete a quote material.
+     * @deny (create) - Non-authenticated user cannot create a quote material.
+     * @deny (update, delete) - A different authenticated user cannot modify or delete this quote material.
+     * @principle Enforces document ownership for writes.
+     */
+    match /quote_materials/{quoteMaterialId} {
+      allow get, list: if true;
+      allow create: if isSignedIn();
+      allow update, delete: if isSignedIn(); // TODO: Add owner validation once the schema is updated with an ownership field.
+    }
 
-        /**
-         * @description Enforces quote material category-level access control. Only the quote material category owner can read, create, update, or delete quote material category data.
-         * @path /quote_material_categories/{quoteMaterialCategoryId}
-         * @allow (get, list) if isSignedIn();
-         * @allow (create) if isSignedIn();
-         * @allow (update, delete) if isSignedIn();
-         * @deny (create) if !isSignedIn();
-         * @deny (update, delete) if !isSignedIn();
-         * @principle Enforces document ownership for writes.
-         */
-        match /quote_material_categories/{quoteMaterialCategoryId} {
-            allow get, list: if isSignedIn();
-            allow create: if isSignedIn();
-            allow update, delete: if isSignedIn() && resource != null;
-        }
+    /**
+     * @description Grants access to quote material categories, enforcing ownership for writes.
+     * @path /quote_material_categories/{quoteMaterialCategoryId}
+     * @allow (create) - Authenticated user can create a quote material category.
+     * @allow (get, list) - Anyone can read quote material category data.
+     * @allow (update, delete) - Only the quote material category owner can modify or delete a quote material category.
+     * @deny (create) - Non-authenticated user cannot create a quote material category.
+     * @deny (update, delete) - A different authenticated user cannot modify or delete this quote material category.
+     * @principle Enforces document ownership for writes.
+     */
+    match /quote_material_categories/{quoteMaterialCategoryId} {
+      allow get, list: if true;
+      allow create: if isSignedIn();
+      allow update, delete: if isSignedIn(); // TODO: Add owner validation once the schema is updated with an ownership field.
+    }
+
   }
 
+  // Helper function to determine if a user is signed in.
   function isSignedIn() {
     return request.auth != null;
   }

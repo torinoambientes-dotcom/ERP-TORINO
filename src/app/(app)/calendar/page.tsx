@@ -28,7 +28,6 @@ import { DndContext, closestCenter, type DragEndEvent } from '@dnd-kit/core';
 import { useSortable, SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { getHolidaysForYear } from '@/lib/holidays';
-import { PostItBoard } from '@/components/app/calendar/post-it-board';
 
 
 export interface CalendarTask {
@@ -396,7 +395,6 @@ export default function CalendarPage() {
                       />
                     </CardContent>
                 </Card>
-                <PostItBoard selectedDate={selectedDate} />
             </div>
             <div className="lg:col-span-8 xl:col-span-9">
                 <div className='flex items-center justify-between mb-4'>
@@ -541,7 +539,3 @@ function SortableTaskItem({ task, dayKey, handleTaskClick, getTaskTime }: { task
         </li>
     );
 }
-
-    
-
-    

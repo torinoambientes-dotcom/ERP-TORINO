@@ -14,7 +14,6 @@ import type { TeamMember, ProductionStage } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, ShoppingCart, RectangleHorizontal, DoorOpen, AlertTriangle, Cake, StickyNote } from 'lucide-react';
 import { getProjectStatus } from '@/lib/projects';
-import { PostItBoard } from '@/components/app/calendar/post-it-board';
 
 export default function DashboardPage() {
   const { user } = useUser();
@@ -369,17 +368,6 @@ export default function DashboardPage() {
               ) : (
                 <p className="text-sm text-muted-foreground text-center py-8">Nenhum compromisso para hoje.</p>
               )}
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                    <StickyNote className="h-5 w-5" />
-                    Lembretes do Dia (Post-its)
-                </CardTitle>
-            </CardHeader>
-            <CardContent>
-                <PostItBoard selectedDate={new Date()} isDashboard={true} />
             </CardContent>
           </Card>
         </div>
