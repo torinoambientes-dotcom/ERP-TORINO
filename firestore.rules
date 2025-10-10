@@ -1,162 +1,155 @@
 /**
- * @fileoverview Firestore Security Rules for the application.
+ * @file Firestore Security Rules
+ * @description This ruleset configures completely open access to all data for authenticated users.
  *
  * Core Philosophy:
- * This ruleset enforces a data-centric security model. Access is generally open for reads, but strictly controlled for writes.
- * All write operations require authentication and often, specific authorization criteria.
+ * The ruleset is designed to grant any logged-in user full access to all data, meaning any authenticated user can read, write, create, update, and delete any document in any collection.
  *
  * Data Structure:
- * The Firestore database consists of several top-level collections, each representing a core entity
- * such as `projects`, `team_members`, `stock_items`, `quotes`. Each collection contains documents representing
- * individual instances of these entities.
+ * The Firestore database contains several top-level collections, including `projects`, `team_members`, `appointments`, `stock_items`, `stock_movements`, `stock_categories`, `purchase_requests`, `quotes`, `quote_materials`, and `quote_material_categories`.
  *
  * Key Security Decisions:
- * - Public Read Access: Most collections allow public read access (`get` and `list`).
- * - Authentication Required for Writes: All write operations (`create`, `update`, `delete`) require a user to be authenticated.
- * - No User Listing: Listing all users is not permitted.
+ * - All authenticated users can read any data.
+ * - All authenticated users can create, update, and delete any data.
+ * - There are no restrictions based on roles, ownership, or any other criteria.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Allows read access to all documents in the 'projects' collection. Write access is restricted to authenticated users.
-     * @path /databases/{database}/documents/projects/{projectId}
-     * @allow (get, list): Always.
-     * @deny (create, update, delete): If the user is not signed in.
-     * @principle Allows public read access to projects but requires authentication for writes.
+     * @description Allows any authenticated user to read, create, update, and delete project data.
+     * @path /projects/{projectId}
+     * @allow (get, list) User is authenticated.
+     * @allow (create, update, delete) User is authenticated.
+     * @deny (create, update, delete) User is not authenticated.
+     * @principle Grants full access to project data for any authenticated user.
      */
     match /projects/{projectId} {
-      allow get, list: if true;
+      allow get, list: if isSignedIn();
       allow create, update, delete: if isSignedIn();
     }
 
     /**
-     * @description Allows read access to all documents in the 'team_members' collection. Write access is restricted to authenticated users.
-     * @path /databases/{database}/documents/team_members/{teamMemberId}
-     * @allow (get, list): Always.
-     * @deny (create, update, delete): If the user is not signed in.
-     * @principle Allows public read access to team members but requires authentication for writes.
+     * @description Allows any authenticated user to read, create, update, and delete team member data.
+     * @path /team_members/{teamMemberId}
+     * @allow (get, list) User is authenticated.
+     * @allow (create, update, delete) User is authenticated.
+     * @deny (create, update, delete) User is not authenticated.
+     * @principle Grants full access to team member data for any authenticated user.
      */
     match /team_members/{teamMemberId} {
-      allow get, list: if true;
+      allow get, list: if isSignedIn();
       allow create, update, delete: if isSignedIn();
     }
 
     /**
-     * @description Allows read access to all documents in the 'appointments' collection. Write access is restricted to authenticated users.
-     * @path /databases/{database}/documents/appointments/{appointmentId}
-     * @allow (get, list): Always.
-     * @deny (create, update, delete): If the user is not signed in.
-     * @principle Allows public read access to appointments but requires authentication for writes.
+     * @description Allows any authenticated user to read, create, update, and delete appointment data.
+     * @path /appointments/{appointmentId}
+     * @allow (get, list) User is authenticated.
+     * @allow (create, update, delete) User is authenticated.
+     * @deny (create, update, delete) User is not authenticated.
+     * @principle Grants full access to appointment data for any authenticated user.
      */
     match /appointments/{appointmentId} {
-      allow get, list: if true;
+      allow get, list: if isSignedIn();
       allow create, update, delete: if isSignedIn();
     }
 
     /**
-     * @description Allows read access to all documents in the 'stock_items' collection. Write access is restricted to authenticated users.
-     * @path /databases/{database}/documents/stock_items/{stockItemId}
-     * @allow (get, list): Always.
-     * @deny (create, update, delete): If the user is not signed in.
-     * @principle Allows public read access to stock items but requires authentication for writes.
+     * @description Allows any authenticated user to read, create, update, and delete stock item data.
+     * @path /stock_items/{stockItemId}
+     * @allow (get, list) User is authenticated.
+     * @allow (create, update, delete) User is authenticated.
+     * @deny (create, update, delete) User is not authenticated.
+     * @principle Grants full access to stock item data for any authenticated user.
      */
     match /stock_items/{stockItemId} {
-      allow get, list: if true;
+      allow get, list: if isSignedIn();
       allow create, update, delete: if isSignedIn();
     }
 
     /**
-     * @description Allows read access to all documents in the 'stock_movements' collection. Write access is restricted to authenticated users.
-     * @path /databases/{database}/documents/stock_movements/{movementId}
-     * @allow (get, list): Always.
-     * @deny (create, update, delete): If the user is not signed in.
-     * @principle Allows public read access to stock movements but requires authentication for writes.
+     * @description Allows any authenticated user to read, create, update, and delete stock movement data.
+     * @path /stock_movements/{movementId}
+     * @allow (get, list) User is authenticated.
+     * @allow (create, update, delete) User is authenticated.
+     * @deny (create, update, delete) User is not authenticated.
+     * @principle Grants full access to stock movement data for any authenticated user.
      */
     match /stock_movements/{movementId} {
-      allow get, list: if true;
+      allow get, list: if isSignedIn();
       allow create, update, delete: if isSignedIn();
     }
 
     /**
-     * @description Allows read access to all documents in the 'stock_categories' collection. Write access is restricted to authenticated users.
-     * @path /databases/{database}/documents/stock_categories/{stockCategoryId}
-     * @allow (get, list): Always.
-     * @deny (create, update, delete): If the user is not signed in.
-     * @principle Allows public read access to stock categories but requires authentication for writes.
+     * @description Allows any authenticated user to read, create, update, and delete stock category data.
+     * @path /stock_categories/{stockCategoryId}
+     * @allow (get, list) User is authenticated.
+     * @allow (create, update, delete) User is authenticated.
+     * @deny (create, update, delete) User is not authenticated.
+     * @principle Grants full access to stock category data for any authenticated user.
      */
     match /stock_categories/{stockCategoryId} {
-      allow get, list: if true;
+      allow get, list: if isSignedIn();
       allow create, update, delete: if isSignedIn();
     }
 
     /**
-     * @description Allows read access to all documents in the 'purchase_requests' collection. Write access is restricted to authenticated users.
-     * @path /databases/{database}/documents/purchase_requests/{purchaseRequestId}
-     * @allow (get, list): Always.
-     * @deny (create, update, delete): If the user is not signed in.
-     * @principle Allows public read access to purchase requests but requires authentication for writes.
+     * @description Allows any authenticated user to read, create, update, and delete purchase request data.
+     * @path /purchase_requests/{purchaseRequestId}
+     * @allow (get, list) User is authenticated.
+     * @allow (create, update, delete) User is authenticated.
+     * @deny (create, update, delete) User is not authenticated.
+     * @principle Grants full access to purchase request data for any authenticated user.
      */
     match /purchase_requests/{purchaseRequestId} {
-      allow get, list: if true;
+      allow get, list: if isSignedIn();
       allow create, update, delete: if isSignedIn();
     }
 
     /**
-     * @description Allows read access to all documents in the 'quotes' collection. Write access is restricted to authenticated users.
-     * @path /databases/{database}/documents/quotes/{quoteId}
-     * @allow (get, list): Always.
-     * @deny (create, update, delete): If the user is not signed in.
-     * @principle Allows public read access to quotes but requires authentication for writes.
+     * @description Allows any authenticated user to read, create, update, and delete quote data.
+     * @path /quotes/{quoteId}
+     * @allow (get, list) User is authenticated.
+     * @allow (create, update, delete) User is authenticated.
+     * @deny (create, update, delete) User is not authenticated.
+     * @principle Grants full access to quote data for any authenticated user.
      */
     match /quotes/{quoteId} {
-      allow get, list: if true;
+      allow get, list: if isSignedIn();
       allow create, update, delete: if isSignedIn();
     }
 
     /**
-     * @description Allows read access to all documents in the 'quote_materials' collection. Write access is restricted to authenticated users.
-     * @path /databases/{database}/documents/quote_materials/{quoteMaterialId}
-     * @allow (get, list): Always.
-     * @deny (create, update, delete): If the user is not signed in.
-     * @principle Allows public read access to quote materials but requires authentication for writes.
+     * @description Allows any authenticated user to read, create, update, and delete quote material data.
+     * @path /quote_materials/{quoteMaterialId}
+     * @allow (get, list) User is authenticated.
+     * @allow (create, update, delete) User is authenticated.
+     * @deny (create, update, delete) User is not authenticated.
+     * @principle Grants full access to quote material data for any authenticated user.
      */
     match /quote_materials/{quoteMaterialId} {
-      allow get, list: if true;
+      allow get, list: if isSignedIn();
       allow create, update, delete: if isSignedIn();
     }
 
     /**
-     * @description Allows read access to all documents in the 'quote_material_categories' collection. Write access is restricted to authenticated users.
-     * @path /databases/{database}/documents/quote_material_categories/{quoteMaterialCategoryId}
-     * @allow (get, list): Always.
-     * @deny (create, update, delete): If the user is not signed in.
-     * @principle Allows public read access to quote material categories but requires authentication for writes.
+     * @description Allows any authenticated user to read, create, update, and delete quote material category data.
+     * @path /quote_material_categories/{quoteMaterialCategoryId}
+     * @allow (get, list) User is authenticated.
+     * @allow (create, update, delete) User is authenticated.
+     * @deny (create, update, delete) User is not authenticated.
+     * @principle Grants full access to quote material category data for any authenticated user.
      */
     match /quote_material_categories/{quoteMaterialCategoryId} {
-      allow get, list: if true;
+      allow get, list: if isSignedIn();
       allow create, update, delete: if isSignedIn();
     }
-
-        /**
-     * @description post_it_notes needs write permissions for the user to create, update and delete notes
-     * @path /databases/{database}/documents/post_it_notes
-     * @allow (get, list): Always.
-     * @deny (create, update, delete): If the user is not signed in.
-     * @principle Allows public read access to purchase requests but requires authentication for writes.
-     */
-    match /post_it_notes/{postItNoteId} {
-      allow get, list: if true;
-      allow create, update, delete: if isSignedIn();
-    }
-
-
   }
 
   // Helper function to determine if a user is signed in.
   function isSignedIn() {
     return request.auth != null;
   }
-
 }
