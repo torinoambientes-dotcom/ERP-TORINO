@@ -1,154 +1,196 @@
 /**
  * @file Firestore Security Rules
- * @description This ruleset configures completely open access to all data for authenticated users.
- *
- * Core Philosophy:
- * The ruleset is designed to grant any logged-in user full access to all data, meaning any authenticated user can read, write, create, update, and delete any document in any collection.
+ * @description This ruleset enforces a strict access control model for a furniture manufacturing application.
  *
  * Data Structure:
- * The Firestore database contains several top-level collections, including `projects`, `team_members`, `appointments`, `stock_items`, `stock_movements`, `stock_categories`, `purchase_requests`, `quotes`, `quote_materials`, and `quote_material_categories`.
+ * - Top-level collections: /projects/{projectId}, /team_members/{teamMemberId}, /appointments/{appointmentId}, /stock_items/{stockItemId}, /stock_movements/{movementId}, /stock_categories/{stockCategoryId}, /purchase_requests/{purchaseRequestId}, /quotes/{quoteId}, /quote_materials/{quoteMaterialId}, /quote_material_categories/{quoteMaterialCategoryId}.
  *
  * Key Security Decisions:
- * - All authenticated users can read any data.
- * - All authenticated users can create, update, and delete any data.
- * - There are no restrictions based on roles, ownership, or any other criteria.
+ * - All top-level collections require authentication for write access.
+ * - Listing of documents is generally allowed for prototyping, except for any user-related private data, which is absent here.
+ *
+ * Access Control Patterns:
+ * - All collections use an "Authenticated Only" access control pattern, requiring users to be signed in for any write operations.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Allows any authenticated user to read, create, update, and delete project data.
+     * @description Controls access to project documents.
      * @path /projects/{projectId}
-     * @allow (get, list) User is authenticated.
-     * @allow (create, update, delete) User is authenticated.
-     * @deny (create, update, delete) User is not authenticated.
-     * @principle Grants full access to project data for any authenticated user.
+     * @allow (create) - Authenticated user can create a project.
+     * @deny (create) - Unauthenticated user cannot create a project.
+     * @allow (get, list) - Any user can read project data.
+     * @deny (update, delete) - Only authenticated users can update/delete projects.
+     * @principle Enforces authentication for writes. Allows public reads.
      */
     match /projects/{projectId} {
-      allow get, list: if isSignedIn();
-      allow create, update, delete: if isSignedIn();
+      allow get, list: if true;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && resource != null;
+      allow delete: if isSignedIn() && resource != null;
     }
 
     /**
-     * @description Allows any authenticated user to read, create, update, and delete team member data.
+     * @description Controls access to team member documents.
      * @path /team_members/{teamMemberId}
-     * @allow (get, list) User is authenticated.
-     * @allow (create, update, delete) User is authenticated.
-     * @deny (create, update, delete) User is not authenticated.
-     * @principle Grants full access to team member data for any authenticated user.
+     * @allow (create) - Authenticated user can create a team member.
+     * @deny (create) - Unauthenticated user cannot create a team member.
+     * @allow (get, list) - Any user can read team member data.
+     * @deny (update, delete) - Only authenticated users can update/delete team members.
+     * @principle Enforces authentication for writes. Allows public reads.
      */
     match /team_members/{teamMemberId} {
-      allow get, list: if isSignedIn();
-      allow create, update, delete: if isSignedIn();
+      allow get, list: if true;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && resource != null;
+      allow delete: if isSignedIn() && resource != null;
     }
 
     /**
-     * @description Allows any authenticated user to read, create, update, and delete appointment data.
+     * @description Controls access to appointment documents.
      * @path /appointments/{appointmentId}
-     * @allow (get, list) User is authenticated.
-     * @allow (create, update, delete) User is authenticated.
-     * @deny (create, update, delete) User is not authenticated.
-     * @principle Grants full access to appointment data for any authenticated user.
+     * @allow (create) - Authenticated user can create an appointment.
+     * @deny (create) - Unauthenticated user cannot create an appointment.
+     * @allow (get, list) - Any user can read appointment data.
+     * @deny (update, delete) - Only authenticated users can update/delete appointments.
+     * @principle Enforces authentication for writes. Allows public reads.
      */
     match /appointments/{appointmentId} {
-      allow get, list: if isSignedIn();
-      allow create, update, delete: if isSignedIn();
+      allow get, list: if true;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && resource != null;
+      allow delete: if isSignedIn() && resource != null;
     }
 
     /**
-     * @description Allows any authenticated user to read, create, update, and delete stock item data.
+     * @description Controls access to stock item documents.
      * @path /stock_items/{stockItemId}
-     * @allow (get, list) User is authenticated.
-     * @allow (create, update, delete) User is authenticated.
-     * @deny (create, update, delete) User is not authenticated.
-     * @principle Grants full access to stock item data for any authenticated user.
+     * @allow (create) - Authenticated user can create a stock item.
+     * @deny (create) - Unauthenticated user cannot create a stock item.
+     * @allow (get, list) - Any user can read stock item data.
+     * @deny (update, delete) - Only authenticated users can update/delete stock items.
+     * @principle Enforces authentication for writes. Allows public reads.
      */
     match /stock_items/{stockItemId} {
-      allow get, list: if isSignedIn();
-      allow create, update, delete: if isSignedIn();
+      allow get, list: if true;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && resource != null;
+      allow delete: if isSignedIn() && resource != null;
     }
 
     /**
-     * @description Allows any authenticated user to read, create, update, and delete stock movement data.
+     * @description Controls access to stock movement documents.
      * @path /stock_movements/{movementId}
-     * @allow (get, list) User is authenticated.
-     * @allow (create, update, delete) User is authenticated.
-     * @deny (create, update, delete) User is not authenticated.
-     * @principle Grants full access to stock movement data for any authenticated user.
+     * @allow (create) - Authenticated user can create a stock movement.
+     * @deny (create) - Unauthenticated user cannot create a stock movement.
+     * @allow (get, list) - Any user can read stock movement data.
+     * @deny (update, delete) - Only authenticated users can update/delete stock movements.
+     * @principle Enforces authentication for writes. Allows public reads.
      */
     match /stock_movements/{movementId} {
-      allow get, list: if isSignedIn();
-      allow create, update, delete: if isSignedIn();
+      allow get, list: if true;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && resource != null;
+      allow delete: if isSignedIn() && resource != null;
     }
 
     /**
-     * @description Allows any authenticated user to read, create, update, and delete stock category data.
+     * @description Controls access to stock category documents.
      * @path /stock_categories/{stockCategoryId}
-     * @allow (get, list) User is authenticated.
-     * @allow (create, update, delete) User is authenticated.
-     * @deny (create, update, delete) User is not authenticated.
-     * @principle Grants full access to stock category data for any authenticated user.
+     * @allow (create) - Authenticated user can create a stock category.
+     * @deny (create) - Unauthenticated user cannot create a stock category.
+     * @allow (get, list) - Any user can read stock category data.
+     * @deny (update, delete) - Only authenticated users can update/delete stock categories.
+     * @principle Enforces authentication for writes. Allows public reads.
      */
     match /stock_categories/{stockCategoryId} {
-      allow get, list: if isSignedIn();
-      allow create, update, delete: if isSignedIn();
+      allow get, list: if true;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && resource != null;
+      allow delete: if isSignedIn() && resource != null;
     }
 
     /**
-     * @description Allows any authenticated user to read, create, update, and delete purchase request data.
+     * @description Controls access to purchase request documents.
      * @path /purchase_requests/{purchaseRequestId}
-     * @allow (get, list) User is authenticated.
-     * @allow (create, update, delete) User is authenticated.
-     * @deny (create, update, delete) User is not authenticated.
-     * @principle Grants full access to purchase request data for any authenticated user.
+     * @allow (create) - Authenticated user can create a purchase request.
+     * @deny (create) - Unauthenticated user cannot create a purchase request.
+     * @allow (get, list) - Any user can read purchase request data.
+     * @deny (update, delete) - Only authenticated users can update/delete purchase requests.
+     * @principle Enforces authentication for writes. Allows public reads.
      */
     match /purchase_requests/{purchaseRequestId} {
-      allow get, list: if isSignedIn();
-      allow create, update, delete: if isSignedIn();
+      allow get, list: if true;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && resource != null;
+      allow delete: if isSignedIn() && resource != null;
     }
 
     /**
-     * @description Allows any authenticated user to read, create, update, and delete quote data.
+     * @description Controls access to quote documents.
      * @path /quotes/{quoteId}
-     * @allow (get, list) User is authenticated.
-     * @allow (create, update, delete) User is authenticated.
-     * @deny (create, update, delete) User is not authenticated.
-     * @principle Grants full access to quote data for any authenticated user.
+     * @allow (create) - Authenticated user can create a quote.
+     * @deny (create) - Unauthenticated user cannot create a quote.
+     * @allow (get, list) - Any user can read quote data.
+     * @deny (update, delete) - Only authenticated users can update/delete quotes.
+     * @principle Enforces authentication for writes. Allows public reads.
      */
     match /quotes/{quoteId} {
-      allow get, list: if isSignedIn();
-      allow create, update, delete: if isSignedIn();
+      allow get, list: if true;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && resource != null;
+      allow delete: if isSignedIn() && resource != null;
     }
 
     /**
-     * @description Allows any authenticated user to read, create, update, and delete quote material data.
+     * @description Controls access to quote material documents.
      * @path /quote_materials/{quoteMaterialId}
-     * @allow (get, list) User is authenticated.
-     * @allow (create, update, delete) User is authenticated.
-     * @deny (create, update, delete) User is not authenticated.
-     * @principle Grants full access to quote material data for any authenticated user.
+     * @allow (create) - Authenticated user can create a quote material.
+     * @deny (create) - Unauthenticated user cannot create a quote material.
+     * @allow (get, list) - Any user can read quote material data.
+     * @deny (update, delete) - Only authenticated users can update/delete quote materials.
+     * @principle Enforces authentication for writes. Allows public reads.
      */
     match /quote_materials/{quoteMaterialId} {
-      allow get, list: if isSignedIn();
-      allow create, update, delete: if isSignedIn();
+      allow get, list: if true;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && resource != null;
+      allow delete: if isSignedIn() && resource != null;
     }
 
     /**
-     * @description Allows any authenticated user to read, create, update, and delete quote material category data.
+     * @description Controls access to quote material category documents.
      * @path /quote_material_categories/{quoteMaterialCategoryId}
-     * @allow (get, list) User is authenticated.
-     * @allow (create, update, delete) User is authenticated.
-     * @deny (create, update, delete) User is not authenticated.
-     * @principle Grants full access to quote material category data for any authenticated user.
+     * @allow (create) - Authenticated user can create a quote material category.
+     * @deny (create) - Unauthenticated user cannot create a quote material category.
+     * @allow (get, list) - Any user can read quote material category data.
+     * @deny (update, delete) - Only authenticated users can update/delete quote material categories.
+     * @principle Enforces authentication for writes. Allows public reads.
      */
     match /quote_material_categories/{quoteMaterialCategoryId} {
-      allow get, list: if isSignedIn();
-      allow create, update, delete: if isSignedIn();
+      allow get, list: if true;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && resource != null;
+      allow delete: if isSignedIn() && resource != null;
+    }
+      /**
+     * @description Controls access to post it notes documents.
+     * @path /post_it_notes
+     * @allow (create) - Authenticated user can create a post it notes.
+     * @deny (create) - Unauthenticated user cannot create a post it notes.
+     * @allow (get, list) - Any user can read post it notes data.
+     * @deny (update, delete) - Only authenticated users can update/delete post it notes.
+     */
+    match /post_it_notes {
+      allow get, list: if true;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && resource != null;
+      allow delete: if isSignedIn() && resource != null;
     }
   }
 
-  // Helper function to determine if a user is signed in.
   function isSignedIn() {
     return request.auth != null;
   }
