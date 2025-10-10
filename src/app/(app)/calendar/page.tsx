@@ -187,11 +187,11 @@ export default function CalendarPage() {
   }, [selectedDate]);
 
   const weekDays = useMemo(() => {
-    const dateToUse = selectedDate || defaultMonth;
+    const dateToUse = selectedDate || new Date();
     const start = startOfWeek(dateToUse, { locale: ptBR });
     const end = endOfWeek(dateToUse, { locale: ptBR });
     return eachDayOfInterval({ start, end });
-  }, [selectedDate, defaultMonth]);
+  }, [selectedDate]);
 
   const handleTaskClick = (task: CalendarTask) => {
     if (task.type === 'birthday') return;
