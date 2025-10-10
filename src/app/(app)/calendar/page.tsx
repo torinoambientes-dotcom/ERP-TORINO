@@ -20,7 +20,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, User, Users, X, Flag, Cake } from 'lucide-react';
+import { PlusCircle, User, Users, X, Flag, Cake, GripVertical } from 'lucide-react';
 import { NewAppointmentModal } from '@/components/modals/new-appointment-modal';
 import { AppointmentDetailsModal } from '@/components/modals/appointment-details-modal';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -431,66 +431,59 @@ function SortableTaskItem({ task, dayKey, handleTaskClick, getTaskTime }: { task
         opacity: isDragging ? 0.8 : 1,
     };
     
-    const cursorClass = isBirthday ? 'cursor-default' : 'cursor-grab active:cursor-grabbing';
-
     return (
         <li
             ref={setNodeRef}
             style={style}
             {...attributes}
-            {...listeners}
-            className={cn("flex items-start gap-3 rounded-lg p-3 hover:bg-muted/50 bg-background border", cursorClass, isBirthday && 'bg-amber-50 border-amber-200')}
-            onClick={() => handleTaskClick(task)}
+            className={cn("flex items-start gap-3 rounded-lg p-3 bg-background border", isBirthday && 'bg-amber-50 border-amber-200')}
         >
-            <div className="w-24 text-sm font-medium text-right flex-shrink-0 pt-0.5">
-                {getTaskTime(task)}
-            </div>
-            {isBirthday ? (
-                <div className="w-1.5 h-auto self-stretch rounded-full bg-amber-400"></div>
-            ) : (
-                <div className="w-1.5 h-auto self-stretch rounded-full" style={{ backgroundColor: task.responsible[0]?.color || '#ccc' }}></div>
-            )}
-            <div className="flex-grow overflow-hidden">
-                <p className={cn("font-semibold truncate", isBirthday && "text-amber-800")}>{isBirthday ? <Cake className='inline-block mr-2 h-4 w-4' /> : null}{task.title}</p>
-                {task.subtitle && <p className="text-sm text-muted-foreground truncate">{task.subtitle}</p>}
-            </div>
-            <div className="flex items-center gap-2">
-                {task.priority && <Flag className={cn("h-4 w-4", priorityMap[task.priority].className)} />}
-                {!isBirthday && task.responsible.length > 0 && (
-                    <div className="flex items-center -space-x-2">
-                        {task.responsible.map(member => (
-                            <Tooltip key={member.id}>
-                                <TooltipTrigger asChild>
-                                    <Avatar className="h-8 w-8 border-2 border-background">
-                                        {member.avatarUrl && <AvatarImage src={member.avatarUrl} alt={member.name} />}
-                                        <AvatarFallback style={{ backgroundColor: member.color }}>
-                                            {getInitials(member.name)}
-                                        </AvatarFallback>
-                                    </Avatar>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                    <p>{member.name}</p>
-                                </TooltipContent>
-                            </Tooltip>
-                        ))}
-                    </div>
-                )}
-                {task.link && (
-                    <Button asChild variant="ghost" size="sm" onClick={(e) => e.stopPropagation()}>
-                        <Link href={task.link}>Ver Projeto</Link>
-                    </Button>
-                )}
+             {!isBirthday && (
+                <div {...listeners} className="cursor-grab touch-none p-1 -ml-1">
+                    <GripVertical className="h-5 w-5 text-muted-foreground" />
+                </div>
+             )}
+            <div className="flex-grow flex items-start gap-3" onClick={() => handleTaskClick(task)}>
+              <div className="w-24 text-sm font-medium text-right flex-shrink-0 pt-0.5">
+                  {getTaskTime(task)}
+              </div>
+              {isBirthday ? (
+                  <div className="w-1.5 h-auto self-stretch rounded-full bg-amber-400"></div>
+              ) : (
+                  <div className="w-1.5 h-auto self-stretch rounded-full" style={{ backgroundColor: task.responsible[0]?.color || '#ccc' }}></div>
+              )}
+              <div className="flex-grow overflow-hidden">
+                  <p className={cn("font-semibold truncate", isBirthday && "text-amber-800")}>{isBirthday ? <Cake className='inline-block mr-2 h-4 w-4' /> : null}{task.title}</p>
+                  {task.subtitle && <p className="text-sm text-muted-foreground truncate">{task.subtitle}</p>}
+              </div>
+              <div className="flex items-center gap-2">
+                  {task.priority && <Flag className={cn("h-4 w-4", priorityMap[task.priority].className)} />}
+                  {!isBirthday && task.responsible.length > 0 && (
+                      <div className="flex items-center -space-x-2">
+                          {task.responsible.map(member => (
+                              <Tooltip key={member.id}>
+                                  <TooltipTrigger asChild>
+                                      <Avatar className="h-8 w-8 border-2 border-background">
+                                          {member.avatarUrl && <AvatarImage src={member.avatarUrl} alt={member.name} />}
+                                          <AvatarFallback style={{ backgroundColor: member.color }}>
+                                              {getInitials(member.name)}
+                                          </AvatarFallback>
+                                      </Avatar>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                      <p>{member.name}</p>
+                                  </TooltipContent>
+                              </Tooltip>
+                          ))}
+                      </div>
+                  )}
+                  {task.link && (
+                      <Button asChild variant="ghost" size="sm" onClick={(e) => e.stopPropagation()}>
+                          <Link href={task.link}>Ver Projeto</Link>
+                      </Button>
+                  )}
+              </div>
             </div>
         </li>
     );
 }
-
-// Dummy useSortable hook when dnd-kit is not fully integrated
-// const useSortable = ({ id }: { id: string }) => ({
-//     attributes: {},
-//     listeners: {},
-//     setNodeRef: (node: HTMLElement | null) => {},
-//     transform: null,
-//     transition: null,
-//     isDragging: false,
-// });
