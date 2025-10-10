@@ -143,7 +143,7 @@ export default function CalendarPage() {
         if (member.birthday) {
             const matchesFilter = selectedMemberId === 'all' || member.id === selectedMemberId;
             if(matchesFilter) {
-                const [month, day] = member.birthday.split('-');
+                const [day, month] = member.birthday.split('-');
                 const birthdayDate = new Date(currentYear, parseInt(month) - 1, parseInt(day));
                 const dayKey = format(birthdayDate, 'yyyy-MM-dd');
 

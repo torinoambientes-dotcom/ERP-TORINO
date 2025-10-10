@@ -86,7 +86,7 @@ export default function TeamPage() {
   
   const formatBirthday = (birthday: string) => {
     try {
-      const date = parse(birthday, 'MM-dd', new Date());
+      const date = parse(birthday, 'dd-MM', new Date());
       return format(date, "dd 'de' MMMM", { locale: ptBR });
     } catch {
       return birthday; // fallback to raw value
