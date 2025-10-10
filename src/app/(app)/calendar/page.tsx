@@ -1,5 +1,5 @@
 'use client';
-import { useState, useMemo, useContext, useCallback } from 'react';
+import { useState, useMemo, useContext, useCallback, useEffect } from 'react';
 import {
   Card,
   CardContent,
@@ -11,7 +11,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { AppContext } from '@/context/app-context';
 import type { ProductionStage, TeamMember, Appointment, StageStatus, Priority } from '@/lib/types';
 import { PageHeader } from '@/components/layout/page-header';
-import { eachDayOfInterval, endOfWeek, format, isSameDay, startOfWeek, parseISO, add, set, sub } from 'date-fns';
+import { eachDayOfInterval, endOfWeek, format, isSameDay, startOfWeek, parseISO, add, set, sub, isWithinInterval } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { STAGE_STATUSES } from '@/lib/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -20,13 +20,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, User, Users, X, Flag, Cake, GripVertical, ChevronLeft, ChevronRight } from 'lucide-react';
+import { PlusCircle, User, Users, X, Flag, Cake, GripVertical, ChevronLeft, ChevronRight, Dot } from 'lucide-react';
 import { NewAppointmentModal } from '@/components/modals/new-appointment-modal';
 import { AppointmentDetailsModal } from '@/components/modals/appointment-details-modal';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { DndContext, closestCenter, type DragEndEvent } from '@dnd-kit/core';
 import { useSortable, SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { getHolidaysForYear } from '@/lib/holidays';
+
 
 export interface CalendarTask {
   id: string;
@@ -59,7 +61,7 @@ const priorityMap: Record<Priority, { label: string; className: string }> = {
 export default function CalendarPage() {
   const { projects, teamMembers, appointments, updateProject, updateAppointment, deleteAppointment, isLoading } = useContext(AppContext);
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [selectedDates, setSelectedDates] = useState<Date[]>([]);
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [selectedMemberId, setSelectedMemberId] = useState('all');
   const [isAppointmentModalOpen, setAppointmentModalOpen] = useState(false);
   const [isDetailsModalOpen, setDetailsModalOpen] = useState(false);
@@ -70,6 +72,8 @@ export default function CalendarPage() {
     teamMembers.forEach(member => map.set(member.id, member));
     return map;
   }, [teamMembers]);
+
+  const holidays = useMemo(() => getHolidaysForYear(currentDate.getFullYear()), [currentDate]);
 
   const tasksByDay = useMemo(() => {
     const tasks: { [key: string]: CalendarTask[] } = {};
@@ -138,7 +142,7 @@ export default function CalendarPage() {
     });
 
     // Birthdays
-    const currentYear = new Date().getFullYear();
+    const currentYear = currentDate.getFullYear();
     teamMembers.forEach(member => {
         if (member.birthday) {
             const matchesFilter = selectedMemberId === 'all' || member.id === selectedMemberId;
@@ -180,7 +184,7 @@ export default function CalendarPage() {
     });
 
     return tasks;
-  }, [projects, appointments, teamMembers, isLoading, memberMap, selectedMemberId]);
+  }, [projects, appointments, teamMembers, isLoading, memberMap, selectedMemberId, currentDate]);
 
 
   const weekDays = useMemo(() => {
@@ -268,6 +272,26 @@ export default function CalendarPage() {
     }
   };
 
+  const DayWithDot = ({ day, date }: {day: React.ReactNode, date: Date}) => {
+    const dayKey = format(date, 'yyyy-MM-dd');
+    const hasTask = tasksByDay[dayKey]?.some(t => t.type !== 'birthday' && t.type !== 'holiday');
+    const hasBirthday = tasksByDay[dayKey]?.some(t => t.type === 'birthday');
+    const hasHoliday = holidays.some(h => isSameDay(h.date, date));
+    
+    if(!hasTask && !hasBirthday && !hasHoliday) return <>{day}</>;
+
+    return (
+        <div className='relative w-full h-full flex items-center justify-center'>
+            {day}
+            <div className='absolute bottom-1.5 flex gap-0.5'>
+                {hasTask && <Dot className="w-4 h-4 text-primary" />}
+                {hasBirthday && <Dot className="w-4 h-4 text-amber-500" />}
+                {hasHoliday && <Dot className="w-4 h-4 text-red-500" />}
+            </div>
+        </div>
+    )
+  }
+
   if (isLoading) {
     return (
       <div className="flex h-full w-full items-center justify-center">
@@ -320,29 +344,34 @@ export default function CalendarPage() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
             <div className="lg:col-span-4 xl:col-span-3">
                 <Card>
-                    <CardContent className="p-2">
+                    <CardContent className="p-0">
                       <Calendar
-                          mode="multiple"
-                          min={0}
-                          selected={selectedDates}
-                          onSelect={(dates) => setSelectedDates(dates || [])}
+                          mode="single"
+                          selected={selectedDate}
+                          onSelect={setSelectedDate}
                           locale={ptBR}
                           className="w-full"
                           month={currentDate}
                           onMonthChange={setCurrentDate}
+                          modifiers={{ 
+                            ...holidays.reduce((acc, h) => ({...acc, [h.name]: h.date }), {}),
+                            inCurrentWeek: (date) => isWithinInterval(date, { start: startOfWeek(currentDate, { locale: ptBR }), end: endOfWeek(currentDate, { locale: ptBR }) })
+                          }}
+                          modifiersClassNames={{
+                            inCurrentWeek: 'bg-muted/50 rounded-none'
+                          }}
+                          formatters={{
+                            formatDay: (date) => <DayWithDot day={format(date, 'd')} date={date} />
+                          }}
+                          footer={
+                            <div className='text-xs p-3 border-t space-y-1'>
+                              <div className='flex items-center gap-1'><Dot className="w-4 h-4 text-primary" /> Compromissos</div>
+                              <div className='flex items-center gap-1'><Dot className="w-4 h-4 text-amber-500" /> Aniversários</div>
+                              <div className='flex items-center gap-1'><Dot className="w-4 h-4 text-red-500" /> Feriados</div>
+                            </div>
+                          }
                       />
                     </CardContent>
-                    {selectedDates.length > 0 && (
-                      <CardHeader className="p-3 border-t">
-                        <div className="flex justify-between items-center">
-                          <p className="text-sm font-medium">{selectedDates.length} dia(s) selecionado(s)</p>
-                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setSelectedDates([])}>
-                            <X className="h-4 w-4" />
-                            <span className="sr-only">Limpar seleção</span>
-                          </Button>
-                        </div>
-                      </CardHeader>
-                    )}
                 </Card>
             </div>
             <div className="lg:col-span-8 xl:col-span-9">
@@ -361,7 +390,12 @@ export default function CalendarPage() {
                 <div className="space-y-6">
                     {weekDays.map(day => {
                         const dayKey = format(day, 'yyyy-MM-dd');
-                        const dailyTasks = tasksByDay[dayKey] || [];
+                        const holiday = holidays.find(h => isSameDay(h.date, day));
+                        let dailyTasks = tasksByDay[dayKey] || [];
+                        if(holiday){
+                           dailyTasks = [{ id: `holiday-${dayKey}`, type: 'birthday', title: holiday.name, responsible: [], date: day, start: day, end: day, rawData: {} }, ...dailyTasks]
+                        }
+
                         return <DailyTaskList key={dayKey} day={day} tasks={dailyTasks} dayKey={dayKey} handleTaskClick={handleTaskClick} getTaskTime={getTaskTime} />
                     })}
                 </div>
@@ -372,8 +406,8 @@ export default function CalendarPage() {
       <NewAppointmentModal
         isOpen={isAppointmentModalOpen}
         onClose={() => setAppointmentModalOpen(false)}
-        selectedDates={selectedDates}
-        onDatesConsumed={() => setSelectedDates([])}
+        selectedDate={selectedDate}
+        onDateConsumed={() => setSelectedDate(undefined)}
       />
       {selectedTask && (
         <AppointmentDetailsModal
@@ -431,11 +465,11 @@ function SortableTaskItem({ task, dayKey, handleTaskClick, getTaskTime }: { task
         <li
             ref={setNodeRef}
             style={style}
-            {...attributes}
+            
             className={cn("flex items-start gap-3 rounded-lg p-3 bg-background border", isBirthday && 'bg-amber-50 border-amber-200')}
         >
              {!isBirthday && (
-                <div {...listeners} className="cursor-grab touch-none p-1 -ml-1">
+                <div {...attributes} {...listeners} className="cursor-grab touch-none p-1 -ml-1">
                     <GripVertical className="h-5 w-5 text-muted-foreground" />
                 </div>
              )}

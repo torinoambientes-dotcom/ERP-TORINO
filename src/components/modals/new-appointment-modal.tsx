@@ -47,7 +47,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 const appointmentSchema = z.object({
   title: z.string().min(3, 'O título deve ter pelo menos 3 caracteres.'),
   description: z.string().optional(),
-  dates: z.array(z.date()).min(1, 'Selecione pelo menos uma data.'),
+  date: z.date({ required_error: 'A data é obrigatória.'}),
   memberIds: z.array(z.string()).min(1, 'Selecione pelo menos um membro da equipe.'),
   timeType: z.enum(['all_day', 'morning', 'afternoon', 'specific']),
   startTime: z.string().optional(),
@@ -67,11 +67,11 @@ type AppointmentFormValues = z.infer<typeof appointmentSchema>;
 interface NewAppointmentModalProps {
   isOpen: boolean;
   onClose: () => void;
-  selectedDates?: Date[];
-  onDatesConsumed?: () => void;
+  selectedDate?: Date;
+  onDateConsumed?: () => void;
 }
 
-export function NewAppointmentModal({ isOpen, onClose, selectedDates, onDatesConsumed }: NewAppointmentModalProps) {
+export function NewAppointmentModal({ isOpen, onClose, selectedDate, onDateConsumed }: NewAppointmentModalProps) {
   const { teamMembers, addAppointment } = useContext(AppContext);
   const { toast } = useToast();
 
@@ -80,7 +80,7 @@ export function NewAppointmentModal({ isOpen, onClose, selectedDates, onDatesCon
     defaultValues: {
       title: '',
       description: '',
-      dates: [],
+      date: new Date(),
       memberIds: [],
       timeType: 'all_day',
       startTime: '09:00',
@@ -93,60 +93,58 @@ export function NewAppointmentModal({ isOpen, onClose, selectedDates, onDatesCon
       form.reset({
         title: '',
         description: '',
-        dates: selectedDates || [],
+        date: selectedDate || new Date(),
         memberIds: [],
         timeType: 'all_day',
         startTime: '09:00',
         endTime: '18:00',
       });
     }
-  }, [isOpen, selectedDates, form]);
+  }, [isOpen, selectedDate, form]);
 
   const onSubmit = (data: AppointmentFormValues) => {
-    data.dates.forEach(date => {
-        let start = date;
-        let end = date;
+    let start = data.date;
+    let end = data.date;
 
-        switch (data.timeType) {
-            case 'morning':
-                start = set(date, { hours: 9, minutes: 0, seconds: 0, milliseconds: 0 });
-                end = set(date, { hours: 12, minutes: 0, seconds: 0, milliseconds: 0 });
-                break;
-            case 'afternoon':
-                start = set(date, { hours: 13, minutes: 0, seconds: 0, milliseconds: 0 });
-                end = set(date, { hours: 18, minutes: 0, seconds: 0, milliseconds: 0 });
-                break;
-            case 'specific':
-                if (data.startTime && data.endTime) {
-                    const [startH, startM] = data.startTime.split(':').map(Number);
-                    const [endH, endM] = data.endTime.split(':').map(Number);
-                    start = set(date, { hours: startH, minutes: startM, seconds: 0, milliseconds: 0 });
-                    end = set(date, { hours: endH, minutes: endM, seconds: 0, milliseconds: 0 });
-                }
-                break;
-            case 'all_day':
-            default:
-                start = set(date, { hours: 0, minutes: 0, seconds: 0, milliseconds: 0 });
-                end = set(date, { hours: 23, minutes: 59, seconds: 59, milliseconds: 999 });
-                break;
-        }
+    switch (data.timeType) {
+        case 'morning':
+            start = set(data.date, { hours: 9, minutes: 0, seconds: 0, milliseconds: 0 });
+            end = set(data.date, { hours: 12, minutes: 0, seconds: 0, milliseconds: 0 });
+            break;
+        case 'afternoon':
+            start = set(data.date, { hours: 13, minutes: 0, seconds: 0, milliseconds: 0 });
+            end = set(data.date, { hours: 18, minutes: 0, seconds: 0, milliseconds: 0 });
+            break;
+        case 'specific':
+            if (data.startTime && data.endTime) {
+                const [startH, startM] = data.startTime.split(':').map(Number);
+                const [endH, endM] = data.endTime.split(':').map(Number);
+                start = set(data.date, { hours: startH, minutes: startM, seconds: 0, milliseconds: 0 });
+                end = set(data.date, { hours: endH, minutes: endM, seconds: 0, milliseconds: 0 });
+            }
+            break;
+        case 'all_day':
+        default:
+            start = set(data.date, { hours: 0, minutes: 0, seconds: 0, milliseconds: 0 });
+            end = set(data.date, { hours: 23, minutes: 59, seconds: 59, milliseconds: 999 });
+            break;
+    }
 
-        addAppointment({
-          title: data.title,
-          description: data.description || '',
-          start: start.toISOString(),
-          end: end.toISOString(),
-          memberIds: data.memberIds,
-        });
+    addAppointment({
+      title: data.title,
+      description: data.description || '',
+      start: start.toISOString(),
+      end: end.toISOString(),
+      memberIds: data.memberIds,
     });
 
     toast({
-      title: 'Compromisso(s) criado(s)!',
-      description: `O compromisso "${data.title}" foi agendado para ${data.dates.length} dia(s).`,
+      title: 'Compromisso criado!',
+      description: `O compromisso "${data.title}" foi agendado.`,
     });
     
     form.reset();
-    if(onDatesConsumed) onDatesConsumed();
+    if(onDateConsumed) onDateConsumed();
     onClose();
   };
 
@@ -192,10 +190,10 @@ export function NewAppointmentModal({ isOpen, onClose, selectedDates, onDatesCon
              <div className="grid grid-cols-2 gap-4">
                 <FormField
                 control={form.control}
-                name="dates"
+                name="date"
                 render={({ field }) => (
                     <FormItem className="flex flex-col">
-                    <FormLabel>Data(s)</FormLabel>
+                    <FormLabel>Data</FormLabel>
                     <Popover>
                         <PopoverTrigger asChild>
                         <FormControl>
@@ -203,20 +201,19 @@ export function NewAppointmentModal({ isOpen, onClose, selectedDates, onDatesCon
                             variant={'outline'}
                             className={cn(
                                 'w-full pl-3 text-left font-normal',
-                                !field.value?.length && 'text-muted-foreground'
+                                !field.value && 'text-muted-foreground'
                             )}
                             >
-                            {field.value?.length
-                                ? `${field.value.length} dia(s) selecionado(s)`
-                                : 'Escolha uma ou mais datas'}
+                            {field.value
+                                ? format(field.value, "PPP")
+                                : 'Escolha uma data'}
                             <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                             </Button>
                         </FormControl>
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0" align="start">
                         <Calendar
-                            mode="multiple"
-                            min={0}
+                            mode="single"
                             selected={field.value}
                             onSelect={field.onChange}
                             initialFocus
@@ -250,8 +247,8 @@ export function NewAppointmentModal({ isOpen, onClose, selectedDates, onDatesCon
             
             {timeType === 'specific' && (
                 <div className="grid grid-cols-2 gap-4">
-                    <FormField control={form.control} name="startTime" render={({ field }) => ( <FormItem><FormLabel>Início</FormLabel><FormControl><Input type="time" {...field} /></FormControl><FormMessage /></FormItem> )} />
-                    <FormField control={form.control} name="endTime" render={({ field }) => ( <FormItem><FormLabel>Fim</FormLabel><FormControl><Input type="time" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                    <FormField control={form.control} name="startTime" render={({ field }) => ( <FormItem><FormLabel>Início</FormLabel><FormControl><Input type="time" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem> )} />
+                    <FormField control={form.control} name="endTime" render={({ field }) => ( <FormItem><FormLabel>Fim</FormLabel><FormControl><Input type="time" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem> )} />
                 </div>
             )}
 
