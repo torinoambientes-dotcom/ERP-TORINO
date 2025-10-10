@@ -284,9 +284,9 @@ export default function CalendarPage() {
         <div className='relative w-full h-full flex items-center justify-center'>
             {day}
             <div className='absolute bottom-1 flex gap-0.5'>
-                {hasTask && <Dot className="w-3 h-3 text-primary" />}
-                {hasBirthday && <Dot className="w-3 h-3 text-amber-500" />}
-                {hasHoliday && <Dot className="w-3 h-3 text-red-500" />}
+                {hasTask && <Dot className="w-4 h-4 text-primary" />}
+                {hasBirthday && <Dot className="w-4 h-4 text-amber-500" />}
+                {hasHoliday && <Dot className="w-4 h-4 text-red-500" />}
             </div>
         </div>
     )
@@ -517,5 +517,7 @@ function SortableTaskItem({ task, dayKey, handleTaskClick, getTaskTime }: { task
         </li>
     );
 }
+
+    
 
     
