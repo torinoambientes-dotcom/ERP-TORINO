@@ -1,6 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
 import {
   Dialog,
   DialogContent,
@@ -18,9 +21,18 @@ import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import type { CalendarTask } from '@/app/(app)/calendar/page';
-import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
-import { getInitials } from '@/lib/utils';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../ui/alert-dialog';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '../ui/form';
+import { Input } from '../ui/input';
+import { Textarea } from '../ui/textarea';
+
+const appointmentEditSchema = z.object({
+  title: z.string().min(1, 'O título é obrigatório.'),
+  description: z.string().optional(),
+  date: z.date(),
+});
+
+type AppointmentEditFormValues = z.infer<typeof appointmentEditSchema>;
 
 interface AppointmentDetailsModalProps {
   isOpen: boolean;
@@ -28,6 +40,7 @@ interface AppointmentDetailsModalProps {
   task: CalendarTask;
   onReschedule: (task: CalendarTask, newDate: Date) => void;
   onCancel: (task: CalendarTask) => void;
+  onUpdate: (taskId: string, updates: { title: string; description: string }) => void;
 }
 
 export function AppointmentDetailsModal({
@@ -36,21 +49,52 @@ export function AppointmentDetailsModal({
   task,
   onReschedule,
   onCancel,
+  onUpdate,
 }: AppointmentDetailsModalProps) {
-  const [newDate, setNewDate] = useState<Date | undefined>(task.start);
-  const [isRescheduling, setIsRescheduling] = useState(false);
   const [isConfirmAlertOpen, setConfirmAlertOpen] = useState(false);
   const { toast } = useToast();
 
-  const handleSave = () => {
-    if (newDate) {
-      onReschedule(task, newDate);
+  const form = useForm<AppointmentEditFormValues>({
+    resolver: zodResolver(appointmentEditSchema),
+    defaultValues: {
+      title: '',
+      description: '',
+      date: new Date(),
+    }
+  });
+
+  useEffect(() => {
+    if (task && isOpen) {
+      form.reset({
+        title: task.title,
+        description: task.subtitle || '',
+        date: task.start,
+      });
+    }
+  }, [task, isOpen, form]);
+
+  const handleSaveChanges = (data: AppointmentEditFormValues) => {
+    // Handle date change (reschedule)
+    if (!isSameDay(data.date, task.start)) {
+      onReschedule(task, data.date);
       toast({
         title: 'Tarefa reagendada!',
-        description: `"${task.title}" foi movida para ${format(newDate, 'PPP', { locale: ptBR })}.`,
+        description: `"${data.title}" foi movida para ${format(data.date, 'PPP', { locale: ptBR })}.`,
       });
-      onClose();
     }
+    
+    // Handle title/description change for appointments
+    if (task.type === 'appointment' && (data.title !== task.title || data.description !== task.subtitle)) {
+        if(task.rawData.appointmentId) {
+            onUpdate(task.rawData.appointmentId, { title: data.title, description: data.description || '' });
+            toast({
+                title: 'Compromisso atualizado!',
+                description: 'O título e a descrição foram salvos.',
+            });
+        }
+    }
+
+    onClose();
   };
 
   const handleConfirmCancel = () => {
@@ -72,97 +116,98 @@ export function AppointmentDetailsModal({
     ? 'Esta ação removerá permanentemente este compromisso do calendário. Tem a certeza?'
     : 'Esta ação irá remover o agendamento desta tarefa, mas ela continuará a existir no projeto. Tem a certeza?';
   const cancelDialogActionText = task.type === 'appointment' ? 'Sim, cancelar' : 'Sim, desagendar';
-  
-  const getTaskTime = (task: CalendarTask) => {
-    const isAllDay = isSameDay(task.start, task.end) && task.start.getHours() === 0 && task.end.getHours() === 23;
-    if (isAllDay || task.type === 'project') {
-        return 'Dia Inteiro';
-    }
-    return `${format(task.start, 'HH:mm')} - ${format(task.end, 'HH:mm')}`;
-  };
 
   return (
     <>
-      <Dialog open={isOpen} onOpenChange={(open) => { if (!open) { onClose(); setIsRescheduling(false); }}}>
+      <Dialog open={isOpen} onOpenChange={onClose}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="font-headline">{task.title}</DialogTitle>
+            <DialogTitle className="font-headline">Editar Compromisso</DialogTitle>
             <DialogDescription>
-              {task.subtitle || 'Detalhes da tarefa.'}
+              Altere os detalhes, reagende ou cancele o compromisso.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 py-4">
-             <div>
-              <p className="text-sm font-medium text-foreground">Responsável(eis):</p>
-              <div className="flex items-center gap-2 mt-1">
-                {task.responsible.map(member => (
-                   <div key={member.id} className="flex items-center gap-2">
-                    <Avatar className="h-8 w-8">
-                        {member.avatarUrl && <AvatarImage src={member.avatarUrl} alt={member.name} />}
-                        <AvatarFallback style={{ backgroundColor: member.color }} className='text-sm'>
-                            {getInitials(member.name)}
-                        </AvatarFallback>
-                    </Avatar>
-                     <p className="text-sm text-muted-foreground">{member.name}</p>
-                   </div>
-                ))}
-              </div>
-            </div>
-            <div>
-                <p className="text-sm font-medium text-foreground">Data e Horário:</p>
-                <p className="text-sm text-muted-foreground">{format(task.start, 'PPP', { locale: ptBR })} - {getTaskTime(task)}</p>
-              </div>
-          </div>
-
-          {isRescheduling && (
-              <div className="space-y-2">
-                  <label className="text-sm font-medium">Nova Data</label>
-                  <Popover>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(handleSaveChanges)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="title"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Título</FormLabel>
+                    <FormControl>
+                      <Input {...field} disabled={task.type !== 'appointment'} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Descrição</FormLabel>
+                    <FormControl>
+                      <Textarea {...field} disabled={task.type !== 'appointment'} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+               <FormField
+                control={form.control}
+                name="date"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col">
+                    <FormLabel>Nova Data</FormLabel>
+                    <Popover>
                       <PopoverTrigger asChild>
-                          <Button
-                            variant={'outline'}
-                            className={cn(
-                              'w-full justify-start text-left font-normal',
-                              !newDate && 'text-muted-foreground'
-                            )}
-                          >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {newDate ? format(newDate, 'PPP', { locale: ptBR }) : <span>Escolha uma nova data</span>}
-                          </Button>
+                         <FormControl>
+                            <Button
+                                variant={'outline'}
+                                className={cn(
+                                'w-full justify-start text-left font-normal',
+                                !field.value && 'text-muted-foreground'
+                                )}
+                            >
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                {field.value ? format(field.value, 'PPP', { locale: ptBR }) : <span>Escolha uma nova data</span>}
+                            </Button>
+                         </FormControl>
                       </PopoverTrigger>
                       <PopoverContent className="w-auto p-0">
                         <Calendar
                           mode="single"
-                          selected={newDate}
-                          onSelect={setNewDate}
+                          selected={field.value}
+                          onSelect={field.onChange}
                           initialFocus
                         />
                       </PopoverContent>
-                  </Popover>
-              </div>
-          )}
-
-          <DialogFooter className='flex-row justify-between w-full'>
-              <Button type="button" variant="destructive" onClick={() => setConfirmAlertOpen(true)}>
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  {task.type === 'appointment' ? 'Cancelar' : 'Desagendar'}
-              </Button>
-              <div className='flex gap-2'>
-                <Button type="button" variant="ghost" onClick={onClose}>
-                  Fechar
-                </Button>
-                {!isRescheduling ? (
-                  <Button type="button" onClick={() => setIsRescheduling(true)}>
-                      Reagendar
-                  </Button>
-                ) : (
-                  <Button type="button" onClick={handleSave} disabled={!newDate}>
-                      Salvar Nova Data
-                  </Button>
+                    </Popover>
+                    <FormMessage />
+                  </FormItem>
                 )}
-              </div>
-          </DialogFooter>
+              />
+
+              <DialogFooter className='flex-row justify-between w-full pt-4'>
+                  <Button type="button" variant="destructive" onClick={() => setConfirmAlertOpen(true)}>
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      {task.type === 'appointment' ? 'Cancelar' : 'Desagendar'}
+                  </Button>
+                  <div className='flex gap-2'>
+                    <Button type="button" variant="ghost" onClick={onClose}>
+                      Fechar
+                    </Button>
+                    <Button type="submit">
+                        Salvar Alterações
+                    </Button>
+                  </div>
+              </DialogFooter>
+            </form>
+          </Form>
+
         </DialogContent>
       </Dialog>
       <AlertDialog open={isConfirmAlertOpen} onOpenChange={setConfirmAlertOpen}>

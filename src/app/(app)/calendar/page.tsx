@@ -1,5 +1,5 @@
 'use client';
-import { useState, useMemo, useContext } from 'react';
+import { useState, useMemo, useContext, useCallback } from 'react';
 import {
   Card,
   CardContent,
@@ -242,6 +242,11 @@ export default function CalendarPage() {
     }
   };
 
+  const handleUpdateAppointment = useCallback((taskId: string, updates: { title: string; description: string }) => {
+    updateAppointment(taskId, updates);
+  }, [updateAppointment]);
+
+
   const getTaskTime = (task: CalendarTask) => {
     const isAllDay = task.start.getHours() === 0 && task.end.getHours() === 23;
     if (isAllDay || task.type === 'project' || task.type === 'birthday') {
@@ -381,6 +386,7 @@ export default function CalendarPage() {
             task={selectedTask}
             onReschedule={handleReschedule}
             onCancel={handleCancelTask}
+            onUpdate={handleUpdateAppointment}
         />
       )}
     </TooltipProvider>
