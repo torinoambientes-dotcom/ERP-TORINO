@@ -12,7 +12,7 @@ import { ptBR } from 'date-fns/locale';
 import type { CalendarTask } from './calendar/page';
 import type { TeamMember, ProductionStage } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, ShoppingCart, RectangleHorizontal, DoorOpen, AlertTriangle } from 'lucide-react';
+import { ArrowRight, ShoppingCart, RectangleHorizontal, DoorOpen, AlertTriangle, Cake } from 'lucide-react';
 import { getProjectStatus } from '@/lib/projects';
 
 export default function DashboardPage() {
@@ -133,6 +133,16 @@ export default function DashboardPage() {
       .slice(0, 5);
   }, [projects, loggedInMember]);
 
+  const todaysBirthdays = useMemo(() => {
+    if (isLoading || !teamMembers) return [];
+    const today = new Date();
+    const todayDay = String(today.getDate()).padStart(2, '0');
+    const todayMonth = String(today.getMonth() + 1).padStart(2, '0');
+    const todayFormatted = `${todayDay}-${todayMonth}`;
+
+    return teamMembers.filter(member => member.birthday === todayFormatted);
+  }, [teamMembers, isLoading]);
+
 
   const pendingGlasswareCount = useMemo(() => {
     if (!projects || !loggedInMember || loggedInMember.role !== 'Administrativo') {
@@ -193,6 +203,21 @@ export default function DashboardPage() {
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-6">
+
+            {todaysBirthdays.length > 0 && (
+              <Card className="border-primary bg-accent/50">
+                  <CardHeader>
+                      <CardTitle className="text-primary flex items-center gap-2">
+                          <Cake className="h-6 w-6" /> Aniversariantes do Dia!
+                      </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p>
+                        Desejamos um feliz aniversário para: <span className="font-semibold">{todaysBirthdays.map(m => m.name).join(', ')}</span>! 🎉
+                    </p>
+                  </CardContent>
+              </Card>
+            )}
             
             {highPriorityProjects.length > 0 && (
               <Card className="border-red-500 bg-red-50/50">
@@ -350,5 +375,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-    
