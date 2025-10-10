@@ -58,8 +58,8 @@ const priorityMap: Record<Priority, { label: string; className: string }> = {
 
 export default function CalendarPage() {
   const { projects, teamMembers, appointments, updateProject, updateAppointment, deleteAppointment, isLoading } = useContext(AppContext);
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
-  const [selectedDates, setSelectedDates] = useState<Date[]>([]);
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
+  const [selectedDates, setSelectedDates] = useState<Date[]>([new Date()]);
   const [selectedMemberId, setSelectedMemberId] = useState('all');
   const [isAppointmentModalOpen, setAppointmentModalOpen] = useState(false);
   const [isDetailsModalOpen, setDetailsModalOpen] = useState(false);
@@ -143,23 +143,29 @@ export default function CalendarPage() {
         if (member.birthday) {
             const matchesFilter = selectedMemberId === 'all' || member.id === selectedMemberId;
             if(matchesFilter) {
-                const [day, month] = member.birthday.split('-');
-                const birthdayDate = new Date(currentYear, parseInt(month) - 1, parseInt(day));
-                const dayKey = format(birthdayDate, 'yyyy-MM-dd');
+                try {
+                    const [day, month] = member.birthday.split('-');
+                    const birthdayDate = new Date(currentYear, parseInt(month) - 1, parseInt(day));
+                    if(!isNaN(birthdayDate.getTime())) {
+                        const dayKey = format(birthdayDate, 'yyyy-MM-dd');
 
-                if (!tasks[dayKey]) tasks[dayKey] = [];
+                        if (!tasks[dayKey]) tasks[dayKey] = [];
 
-                if (!tasks[dayKey].some(t => t.rawData.memberId === member.id)) {
-                    tasks[dayKey].push({
-                        id: `birthday-${member.id}`,
-                        type: 'birthday',
-                        title: `Aniversário de ${member.name}`,
-                        responsible: [member],
-                        date: birthdayDate,
-                        start: birthdayDate,
-                        end: birthdayDate,
-                        rawData: { memberId: member.id },
-                    });
+                        if (!tasks[dayKey].some(t => t.rawData.memberId === member.id)) {
+                            tasks[dayKey].push({
+                                id: `birthday-${member.id}`,
+                                type: 'birthday',
+                                title: `Aniversário de ${member.name}`,
+                                responsible: [member],
+                                date: birthdayDate,
+                                start: birthdayDate,
+                                end: birthdayDate,
+                                rawData: { memberId: member.id },
+                            });
+                        }
+                    }
+                } catch(e) {
+                    console.error("Error parsing birthday date", e);
                 }
             }
         }
@@ -177,15 +183,8 @@ export default function CalendarPage() {
   }, [projects, appointments, teamMembers, isLoading, memberMap, selectedMemberId]);
 
   const defaultMonth = useMemo(() => {
-    if (selectedDate) return selectedDate;
-    
-    const firstTaskDate = Object.keys(tasksByDay).sort()[0];
-    if (firstTaskDate) {
-      return parseISO(firstTaskDate);
-    }
-    
-    return new Date();
-  }, [selectedDate, tasksByDay]);
+    return selectedDate || new Date();
+  }, [selectedDate]);
 
   const weekDays = useMemo(() => {
     const dateToUse = selectedDate || defaultMonth;
