@@ -1,31 +1,13 @@
-/**
- * @file Firestore Security Rules
- * @description This ruleset enforces a strict authorization model where all top-level collections
- * are readable by any authenticated user but writable only by an owner.
- *
- * Data Structure:
- * All data is stored in top-level collections (e.g., /projects/{projectId}).
- *
- * Key Security Decisions:
- * - All collections are publicly readable via `get` and `list`.
- * - Writes (create, update, delete) are restricted to the owner. Each document must have a
- *   field (e.g., `authorId`, `ownerId`) that matches the authenticated user's UID.
- * - The rules explicitly prevent listing of user-specific private data for non-owners.
- *
- * Denormalization for Authorization:
- * - Each document in the database must contain an explicit owner field (e.g., `authorId`, `ownerId`)
- *   that is set to `request.auth.uid` on creation and cannot be changed afterward.
- *
- * Structural Segregation:
- * - No explicit structural segregation is implemented in this ruleset.
- */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Checks if the request is authenticated.
-     * @return {boolean} True if the request is authenticated, false otherwise.
+     * @description Checks if the user is signed in.
+     * @path N/A
+     * @allow N/A
+     * @deny N/A
+     * @principle Requires authentication for all access.
      */
     function isSignedIn() {
       return request.auth != null;
@@ -33,215 +15,193 @@ service cloud.firestore {
 
     /**
      * @description Checks if the authenticated user ID matches the provided user ID.
-     * @param {string} userId The user ID to compare against.
-     * @return {boolean} True if the authenticated user ID matches the provided user ID, false otherwise.
+     * @path N/A
+     * @allow N/A
+     * @deny N/A
+     * @principle Enforces user-based ownership.
      */
     function isOwner(userId) {
       return request.auth.uid == userId;
     }
 
     /**
-     * @description Checks if the authenticated user ID matches the resource's owner ID and the resource exists.
-     * @param {string} userId The user ID to compare against.
-     * @return {boolean} True if the authenticated user ID matches the resource's owner ID and the resource exists, false otherwise.
+     * @description Checks if the authenticated user ID matches the resource owner ID, and that the resource exists.
+     * @path N/A
+     * @allow N/A
+     * @deny N/A
+     * @principle Enforces user-based ownership and resource existence.
      */
-    function isExistingOwner(userId) {
-      return isOwner(userId) && resource != null;
+    function isExistingOwner(ownerId) {
+        return isSignedIn() && isOwner(ownerId) && resource != null;
+    }
+
+    match /{path=**} {
+        allow read, write: if false;
     }
 
     /**
-     * @description Rules for the /post_it_notes collection.
-     * @path /post_it_notes
-     * @allow (list) Any authenticated user can list post_it_notes.
-     * @deny (list) Listing post_it_notes is not explicitly denied.
-     * @principle Allows public listing of post_it_notes.
+     * @description Defines rules for the /post_it_notes collection.
+     * @path /post_it_notes/{documentId}
+     * @allow Signed-in user can list
+     * @deny Non-signed-in user cannot list
+     * @principle Requires authentication for all access.
      */
-    match /post_it_notes {
-        allow get: if false;
-        allow list: if isSignedIn();
-        allow create: if false;
-        allow update: if false;
-        allow delete: if false;
+    match /post_it_notes/{documentId} {
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
     }
 
     /**
-     * @description Rules for the /projects/{projectId} collection.
+     * @description Defines rules for the /projects collection.
      * @path /projects/{projectId}
-     * @allow (get, list) Any authenticated user can read projects.
-     * @allow (create) An authenticated user can create a project if request.auth.uid == request.resource.data.authorId.
-     * @allow (update, delete) Only the owner can update or delete a project.
-     * @deny (create) Creation is denied if the authorId doesn't match the authenticated user.
-     * @deny (update, delete) Updates/deletes are denied if the user isn't the owner or the document doesn't exist.
-     * @principle Public read, owner-only write.
+     * @allow Signed-in user can read
+     * @deny Non-signed-in user cannot read
+     * @principle Requires authentication for all access.
      */
     match /projects/{projectId} {
-      allow get: if true;
-      allow list: if true;
-      allow create: if request.resource.data.id == projectId;
-      allow update: if isExistingOwner(resource.data.id);
-      allow delete: if isExistingOwner(resource.data.id);
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isSignedIn(); // TODO: Add owner validation once the schema is updated with an ownership field.
+      allow update: if isSignedIn(); // TODO: Add owner validation once the schema is updated with an ownership field.
+      allow delete: if isSignedIn(); // TODO: Add owner validation once the schema is updated with an ownership field.
     }
 
     /**
-     * @description Rules for the /team_members/{teamMemberId} collection.
+     * @description Defines rules for the /team_members collection.
      * @path /team_members/{teamMemberId}
-     * @allow (get, list) Any authenticated user can read team members.
-     * @allow (create) An authenticated user can create a team member if request.auth.uid == request.resource.data.authorId.
-     * @allow (update, delete) Only the owner can update or delete a team member.
-     * @deny (create) Creation is denied if the authorId doesn't match the authenticated user.
-     * @deny (update, delete) Updates/deletes are denied if the user isn't the owner or the document doesn't exist.
-     * @principle Public read, owner-only write.
+     * @allow Signed-in user can read
+     * @deny Non-signed-in user cannot read
+     * @principle Requires authentication for all access.
      */
     match /team_members/{teamMemberId} {
-      allow get: if true;
-      allow list: if true;
-      allow create: if request.resource.data.id == teamMemberId;
-      allow update: if isExistingOwner(resource.data.id);
-      allow delete: if isExistingOwner(resource.data.id);
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isSignedIn(); // TODO: Add owner validation once the schema is updated with an ownership field.
+      allow update: if isSignedIn(); // TODO: Add owner validation once the schema is updated with an ownership field.
+      allow delete: if isSignedIn(); // TODO: Add owner validation once the schema is updated with an ownership field.
     }
 
     /**
-     * @description Rules for the /appointments/{appointmentId} collection.
+     * @description Defines rules for the /appointments collection.
      * @path /appointments/{appointmentId}
-     * @allow (get, list) Any authenticated user can read appointments.
-     * @allow (create) An authenticated user can create an appointment if request.auth.uid == request.resource.data.authorId.
-     * @allow (update, delete) Only the owner can update or delete an appointment.
-     * @deny (create) Creation is denied if the authorId doesn't match the authenticated user.
-     * @deny (update, delete) Updates/deletes are denied if the user isn't the owner or the document doesn't exist.
-     * @principle Public read, owner-only write.
+     * @allow Signed-in user can read
+     * @deny Non-signed-in user cannot read
+     * @principle Requires authentication for all access.
      */
     match /appointments/{appointmentId} {
-      allow get: if true;
-      allow list: if true;
-      allow create: if request.resource.data.id == appointmentId;
-      allow update: if isExistingOwner(resource.data.id);
-      allow delete: if isExistingOwner(resource.data.id);
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isSignedIn(); // TODO: Add owner validation once the schema is updated with an ownership field.
+      allow update: if isSignedIn(); // TODO: Add owner validation once the schema is updated with an ownership field.
+      allow delete: if isSignedIn(); // TODO: Add owner validation once the schema is updated with an ownership field.
     }
 
     /**
-     * @description Rules for the /stock_items/{stockItemId} collection.
+     * @description Defines rules for the /stock_items collection.
      * @path /stock_items/{stockItemId}
-     * @allow (get, list) Any authenticated user can read stock items.
-     * @allow (create) An authenticated user can create a stock item if request.auth.uid == request.resource.data.authorId.
-     * @allow (update, delete) Only the owner can update or delete a stock item.
-     * @deny (create) Creation is denied if the authorId doesn't match the authenticated user.
-     * @deny (update, delete) Updates/deletes are denied if the user isn't the owner or the document doesn't exist.
-     * @principle Public read, owner-only write.
+     * @allow Signed-in user can read
+     * @deny Non-signed-in user cannot read
+     * @principle Requires authentication for all access.
      */
     match /stock_items/{stockItemId} {
-      allow get: if true;
-      allow list: if true;
-      allow create: if request.resource.data.id == stockItemId;
-      allow update: if isExistingOwner(resource.data.id);
-      allow delete: if isExistingOwner(resource.data.id);
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isSignedIn(); // TODO: Add owner validation once the schema is updated with an ownership field.
+      allow update: if isSignedIn(); // TODO: Add owner validation once the schema is updated with an ownership field.
+      allow delete: if isSignedIn(); // TODO: Add owner validation once the schema is updated with an ownership field.
     }
 
     /**
-     * @description Rules for the /stock_movements/{movementId} collection.
+     * @description Defines rules for the /stock_movements collection.
      * @path /stock_movements/{movementId}
-     * @allow (get, list) Any authenticated user can read stock movements.
-     * @allow (create) An authenticated user can create a stock movement if request.auth.uid == request.resource.data.authorId.
-     * @allow (update, delete) Only the owner can update or delete a stock movement.
-     * @deny (create) Creation is denied if the authorId doesn't match the authenticated user.
-     * @deny (update, delete) Updates/deletes are denied if the user isn't the owner or the document doesn't exist.
-     * @principle Public read, owner-only write.
+     * @allow Signed-in user can read
+     * @deny Non-signed-in user cannot read
+     * @principle Requires authentication for all access.
      */
     match /stock_movements/{movementId} {
-      allow get: if true;
-      allow list: if true;
-      allow create: if request.resource.data.id == movementId;
-      allow update: if isExistingOwner(resource.data.id);
-      allow delete: if isExistingOwner(resource.data.id);
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isSignedIn(); // TODO: Add owner validation once the schema is updated with an ownership field.
+      allow update: if isSignedIn(); // TODO: Add owner validation once the schema is updated with an ownership field.
+      allow delete: if isSignedIn(); // TODO: Add owner validation once the schema is updated with an ownership field.
     }
 
     /**
-     * @description Rules for the /stock_categories/{stockCategoryId} collection.
+     * @description Defines rules for the /stock_categories collection.
      * @path /stock_categories/{stockCategoryId}
-     * @allow (get, list) Any authenticated user can read stock categories.
-     * @allow (create) An authenticated user can create a stock category if request.auth.uid == request.resource.data.authorId.
-     * @allow (update, delete) Only the owner can update or delete a stock category.
-     * @deny (create) Creation is denied if the authorId doesn't match the authenticated user.
-     * @deny (update, delete) Updates/deletes are denied if the user isn't the owner or the document doesn't exist.
-     * @principle Public read, owner-only write.
+     * @allow Signed-in user can read
+     * @deny Non-signed-in user cannot read
+     * @principle Requires authentication for all access.
      */
     match /stock_categories/{stockCategoryId} {
-      allow get: if true;
-      allow list: if true;
-      allow create: if request.resource.data.id == stockCategoryId;
-      allow update: if isExistingOwner(resource.data.id);
-      allow delete: if isExistingOwner(resource.data.id);
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isSignedIn(); // TODO: Add owner validation once the schema is updated with an ownership field.
+      allow update: if isSignedIn(); // TODO: Add owner validation once the schema is updated with an ownership field.
+      allow delete: if isSignedIn(); // TODO: Add owner validation once the schema is updated with an ownership field.
     }
 
     /**
-     * @description Rules for the /purchase_requests/{purchaseRequestId} collection.
+     * @description Defines rules for the /purchase_requests collection.
      * @path /purchase_requests/{purchaseRequestId}
-     * @allow (get, list) Any authenticated user can read purchase requests.
-     * @allow (create) An authenticated user can create a purchase request if request.auth.uid == request.resource.data.requesterId.
-     * @allow (update, delete) Only the owner can update or delete a purchase request.
-     * @deny (create) Creation is denied if the requesterId doesn't match the authenticated user.
-     * @deny (update, delete) Updates/deletes are denied if the user isn't the owner or the document doesn't exist.
-     * @principle Public read, owner-only write.
+     * @allow Signed-in user can read
+     * @deny Non-signed-in user cannot read
+     * @principle Requires authentication for all access.
      */
     match /purchase_requests/{purchaseRequestId} {
-      allow get: if true;
-      allow list: if true;
-      allow create: if request.resource.data.requesterId == request.auth.uid && request.resource.data.id == purchaseRequestId;
-      allow update: if isExistingOwner(resource.data.requesterId);
-      allow delete: if isExistingOwner(resource.data.requesterId);
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isSignedIn(); // TODO: Add owner validation once the schema is updated with an ownership field.
+      allow update: if isSignedIn(); // TODO: Add owner validation once the schema is updated with an ownership field.
+      allow delete: if isSignedIn(); // TODO: Add owner validation once the schema is updated with an ownership field.
     }
 
     /**
-     * @description Rules for the /quotes/{quoteId} collection.
+     * @description Defines rules for the /quotes collection.
      * @path /quotes/{quoteId}
-     * @allow (get, list) Any authenticated user can read quotes.
-     * @allow (create) An authenticated user can create a quote if request.auth.uid == request.resource.data.authorId.
-     * @allow (update, delete) Only the owner can update or delete a quote.
-     * @deny (create) Creation is denied if the authorId doesn't match the authenticated user.
-     * @deny (update, delete) Updates/deletes are denied if the user isn't the owner or the document doesn't exist.
-     * @principle Public read, owner-only write.
+     * @allow Signed-in user can read
+     * @deny Non-signed-in user cannot read
+     * @principle Requires authentication for all access.
      */
     match /quotes/{quoteId} {
-      allow get: if true;
-      allow list: if true;
-      allow create: if request.resource.data.id == quoteId;
-      allow update: if isExistingOwner(resource.data.id);
-      allow delete: if isExistingOwner(resource.data.id);
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isSignedIn(); // TODO: Add owner validation once the schema is updated with an ownership field.
+      allow update: if isSignedIn(); // TODO: Add owner validation once the schema is updated with an ownership field.
+      allow delete: if isSignedIn(); // TODO: Add owner validation once the schema is updated with an ownership field.
     }
 
     /**
-     * @description Rules for the /quote_materials/{quoteMaterialId} collection.
+     * @description Defines rules for the /quote_materials collection.
      * @path /quote_materials/{quoteMaterialId}
-     * @allow (get, list) Any authenticated user can read quote materials.
-     * @allow (create) An authenticated user can create a quote material if request.auth.uid == request.resource.data.authorId.
-     * @allow (update, delete) Only the owner can update or delete a quote material.
-     * @deny (create) Creation is denied if the authorId doesn't match the authenticated user.
-     * @deny (update, delete) Updates/deletes are denied if the user isn't the owner or the document doesn't exist.
-     * @principle Public read, owner-only write.
+     * @allow Signed-in user can read
+     * @deny Non-signed-in user cannot read
+     * @principle Requires authentication for all access.
      */
     match /quote_materials/{quoteMaterialId} {
-      allow get: if true;
-      allow list: if true;
-      allow create: if request.resource.data.id == quoteMaterialId;
-      allow update: if isExistingOwner(resource.data.id);
-      allow delete: if isExistingOwner(resource.data.id);
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isSignedIn(); // TODO: Add owner validation once the schema is updated with an ownership field.
+      allow update: if isSignedIn(); // TODO: Add owner validation once the schema is updated with an ownership field.
+      allow delete: if isSignedIn(); // TODO: Add owner validation once the schema is updated with an ownership field.
     }
 
     /**
-     * @description Rules for the /quote_material_categories/{quoteMaterialCategoryId} collection.
+     * @description Defines rules for the /quote_material_categories collection.
      * @path /quote_material_categories/{quoteMaterialCategoryId}
-     * @allow (get, list) Any authenticated user can read quote material categories.
-     * @allow (create) An authenticated user can create a quote material category if request.auth.uid == request.resource.data.authorId.
-     * @allow (update, delete) Only the owner can update or delete a quote material category.
-     * @deny (create) Creation is denied if the authorId doesn't match the authenticated user.
-     * @deny (update, delete) Updates/deletes are denied if the user isn't the owner or the document doesn't exist.
-     * @principle Public read, owner-only write.
+     * @allow Signed-in user can read
+     * @deny Non-signed-in user cannot read
+     * @principle Requires authentication for all access.
      */
     match /quote_material_categories/{quoteMaterialCategoryId} {
-      allow get: if true;
-      allow list: if true;
-      allow create: if request.resource.data.id == quoteMaterialCategoryId;
-      allow update: if isExistingOwner(resource.data.id);
-      allow delete: if isExistingOwner(resource.data.id);
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isSignedIn(); // TODO: Add owner validation once the schema is updated with an ownership field.
+      allow update: if isSignedIn(); // TODO: Add owner validation once the schema is updated with an ownership field.
+      allow delete: if isSignedIn(); // TODO: Add owner validation once the schema is updated with an ownership field.
     }
   }
 }

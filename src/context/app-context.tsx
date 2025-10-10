@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, type ReactNode, useCallback, useMemo, useEffect, useState } from 'react';
-import { collection, doc, serverTimestamp, deleteField, writeBatch, getDocs, runTransaction } from 'firebase/firestore';
+import { collection, doc, serverTimestamp, deleteField, writeBatch, getDocs, runTransaction, query, where } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useAuth, useUser } from '@/firebase';
 import type { Project, TeamMember, StageStatus, StockItem, StockMovement, StockCategory, Furniture, Environment, MaterialItem, StockReservation, ProductionStage, Appointment, PurchaseRequest, PurchaseRequestStatus, Quote, QuoteStage, QuoteEnvironment, QuoteFurniture, QuoteMaterial, QuoteMaterialCategory, PostItNote } from '@/lib/types';
 import { generateId } from '@/lib/utils';
@@ -162,7 +162,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const projectsQuery = useMemoFirebase(() => collection(firestore, 'projects'), [firestore]);
   const teamMembersQuery = useMemoFirebase(() => collection(firestore, 'team_members'), [firestore]);
   const appointmentsQuery = useMemoFirebase(() => collection(firestore, 'appointments'), [firestore]);
-  const postItNotesQuery = useMemoFirebase(() => collection(firestore, 'post_it_notes'), [firestore]);
+  const postItNotesQuery = useMemoFirebase(() => {
+    if (!user) return null;
+    return query(collection(firestore, 'post_it_notes'), where("memberId", "==", user.uid));
+  }, [firestore, user]);
   const stockItemsQuery = useMemoFirebase(() => collection(firestore, 'stock_items'), [firestore]);
   const stockCategoriesQuery = useMemoFirebase(() => collection(firestore, 'stock_categories'), [firestore]);
   const stockMovementsQuery = useMemoFirebase(() => collection(firestore, 'stock_movements'), [firestore]);
