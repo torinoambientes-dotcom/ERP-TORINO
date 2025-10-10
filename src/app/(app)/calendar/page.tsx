@@ -11,7 +11,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { AppContext } from '@/context/app-context';
 import type { ProductionStage, TeamMember, Appointment, StageStatus, Priority } from '@/lib/types';
 import { PageHeader } from '@/components/layout/page-header';
-import { eachDayOfInterval, endOfWeek, format, isSameDay, startOfWeek, parseISO, add, set } from 'date-fns';
+import { eachDayOfInterval, endOfWeek, format, isSameDay, startOfWeek, parseISO, add, set, sub } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { STAGE_STATUSES } from '@/lib/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -20,7 +20,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, User, Users, X, Flag, Cake, GripVertical } from 'lucide-react';
+import { PlusCircle, User, Users, X, Flag, Cake, GripVertical, ChevronLeft, ChevronRight } from 'lucide-react';
 import { NewAppointmentModal } from '@/components/modals/new-appointment-modal';
 import { AppointmentDetailsModal } from '@/components/modals/appointment-details-modal';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -58,8 +58,8 @@ const priorityMap: Record<Priority, { label: string; className: string }> = {
 
 export default function CalendarPage() {
   const { projects, teamMembers, appointments, updateProject, updateAppointment, deleteAppointment, isLoading } = useContext(AppContext);
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
-  const [selectedDates, setSelectedDates] = useState<Date[]>([new Date()]);
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [selectedDates, setSelectedDates] = useState<Date[]>([]);
   const [selectedMemberId, setSelectedMemberId] = useState('all');
   const [isAppointmentModalOpen, setAppointmentModalOpen] = useState(false);
   const [isDetailsModalOpen, setDetailsModalOpen] = useState(false);
@@ -182,16 +182,12 @@ export default function CalendarPage() {
     return tasks;
   }, [projects, appointments, teamMembers, isLoading, memberMap, selectedMemberId]);
 
-  const defaultMonth = useMemo(() => {
-    return selectedDate || new Date();
-  }, [selectedDate]);
 
   const weekDays = useMemo(() => {
-    const dateToUse = selectedDate || new Date();
-    const start = startOfWeek(dateToUse, { locale: ptBR });
-    const end = endOfWeek(dateToUse, { locale: ptBR });
+    const start = startOfWeek(currentDate, { locale: ptBR });
+    const end = endOfWeek(currentDate, { locale: ptBR });
     return eachDayOfInterval({ start, end });
-  }, [selectedDate]);
+  }, [currentDate]);
 
   const handleTaskClick = (task: CalendarTask) => {
     if (task.type === 'birthday') return;
@@ -253,17 +249,6 @@ export default function CalendarPage() {
       return 'Dia inteiro';
     }
     return `${format(task.start, 'HH:mm')} - ${format(task.end, 'HH:mm')}`;
-  };
-
-  const handleMultiSelect = (dates: Date[] | undefined) => {
-    if (dates) {
-      setSelectedDates(dates);
-      if (dates.length === 1) {
-        setSelectedDate(dates[0]);
-      } else {
-        setSelectedDate(undefined);
-      }
-    }
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -340,19 +325,18 @@ export default function CalendarPage() {
                           mode="multiple"
                           min={0}
                           selected={selectedDates}
-                          onSelect={handleMultiSelect}
-                          onDayClick={(day) => setSelectedDate(day)}
+                          onSelect={(dates) => setSelectedDates(dates || [])}
                           locale={ptBR}
                           className="w-full"
-                          month={defaultMonth}
-                          onMonthChange={(newMonth) => setSelectedDate(newMonth)}
+                          month={currentDate}
+                          onMonthChange={setCurrentDate}
                       />
                     </CardContent>
                     {selectedDates.length > 0 && (
                       <CardHeader className="p-3 border-t">
                         <div className="flex justify-between items-center">
                           <p className="text-sm font-medium">{selectedDates.length} dia(s) selecionado(s)</p>
-                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setSelectedDates([]); setSelectedDate(new Date()); }}>
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setSelectedDates([])}>
                             <X className="h-4 w-4" />
                             <span className="sr-only">Limpar seleção</span>
                           </Button>
@@ -362,6 +346,18 @@ export default function CalendarPage() {
                 </Card>
             </div>
             <div className="lg:col-span-8 xl:col-span-9">
+                <div className='flex items-center justify-between mb-4'>
+                    <h2 className="text-xl font-bold">{format(currentDate, "MMMM 'de' yyyy", { locale: ptBR })}</h2>
+                    <div className='flex items-center gap-2'>
+                        <Button variant="outline" size="icon" onClick={() => setCurrentDate(sub(currentDate, { weeks: 1 }))}>
+                            <ChevronLeft className='h-4 w-4' />
+                        </Button>
+                         <Button variant="outline" onClick={() => setCurrentDate(new Date())}>Hoje</Button>
+                        <Button variant="outline" size="icon" onClick={() => setCurrentDate(add(currentDate, { weeks: 1 }))}>
+                            <ChevronRight className='h-4 w-4' />
+                        </Button>
+                    </div>
+                </div>
                 <div className="space-y-6">
                     {weekDays.map(day => {
                         const dayKey = format(day, 'yyyy-MM-dd');
@@ -377,7 +373,7 @@ export default function CalendarPage() {
         isOpen={isAppointmentModalOpen}
         onClose={() => setAppointmentModalOpen(false)}
         selectedDates={selectedDates}
-        onDatesConsumed={() => { setSelectedDates([]); setSelectedDate(new Date()); }}
+        onDatesConsumed={() => setSelectedDates([])}
       />
       {selectedTask && (
         <AppointmentDetailsModal
