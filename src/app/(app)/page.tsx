@@ -10,14 +10,18 @@ import { getInitials } from '@/lib/utils';
 import { format, isToday, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import type { CalendarTask } from './calendar/page';
-import type { TeamMember, ProductionStage } from '@/lib/types';
+import type { TeamMember, StockItem } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, ShoppingCart, RectangleHorizontal, DoorOpen, AlertTriangle, Cake, StickyNote } from 'lucide-react';
 import { getProjectStatus } from '@/lib/projects';
 
+interface LowStockInfo extends StockItem {
+  demand?: number;
+}
+
 export default function DashboardPage() {
   const { user } = useUser();
-  const { projects, teamMembers, appointments, purchaseRequests, isLoading } = useContext(AppContext);
+  const { projects, teamMembers, appointments, purchaseRequests, stockItems, isLoading } = useContext(AppContext);
 
   const loggedInMember = useMemo(() => {
     if (!user || !teamMembers) return null;
@@ -143,6 +147,27 @@ export default function DashboardPage() {
     return teamMembers.filter(member => member.birthday === todayFormatted);
   }, [teamMembers, isLoading]);
 
+  const lowStockItems = useMemo((): LowStockInfo[] => {
+    if (!stockItems || !loggedInMember || loggedInMember.role !== 'Administrativo') {
+      return [];
+    }
+    return stockItems
+      .map(item => {
+        const totalReserved = (item.reservations || []).reduce((acc, res) => acc + res.quantity, 0);
+        const quantityAwaitingReceipt = item.awaitingReceipt?.quantity || 0;
+        const potentialStock = item.quantity + quantityAwaitingReceipt;
+
+        const hasMinStockAlert = typeof item.minStock === 'number' && item.quantity < item.minStock && !item.awaitingReceipt;
+        const hasDemandAlert = totalReserved > potentialStock;
+
+        if (hasMinStockAlert || hasDemandAlert) {
+            return { ...item, demand: totalReserved };
+        }
+        return null;
+      })
+      .filter((item): item is LowStockInfo => item !== null);
+  }, [stockItems, loggedInMember]);
+
 
   const pendingGlasswareCount = useMemo(() => {
     if (!projects || !loggedInMember || loggedInMember.role !== 'Administrativo') {
@@ -215,6 +240,36 @@ export default function DashboardPage() {
                     <p>
                         Desejamos um feliz aniversário para: <span className="font-semibold">{todaysBirthdays.map(m => m.name).join(', ')}</span>! 🎉
                     </p>
+                  </CardContent>
+              </Card>
+            )}
+
+            {loggedInMember.role === 'Administrativo' && lowStockItems.length > 0 && (
+              <Card className="border-destructive bg-red-50/50">
+                  <CardHeader>
+                      <CardTitle className="text-destructive-foreground flex items-center gap-2">
+                          <AlertTriangle className="h-6 w-6" /> Alerta de Estoque Baixo
+                      </CardTitle>
+                      <CardDescription className="text-destructive-foreground/90">
+                          Existem {lowStockItems.length} item(ns) que precisam de atenção imediata.
+                      </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      {lowStockItems.slice(0, 3).map(item => (
+                        <div key={item.id} className="p-2 rounded-lg border bg-card/80 flex justify-between items-center text-sm">
+                          <p className="font-semibold">{item.name}</p>
+                          <p className='text-destructive font-bold'>Restam: {item.quantity} {item.unit}</p>
+                        </div>
+                      ))}
+                    </div>
+                     <div className='text-center mt-4'>
+                        <Button asChild variant="outline" className="bg-background">
+                          <Link href="/stock">
+                              Ver Estoque Completo <ArrowRight className="ml-2 h-4 w-4" />
+                          </Link>
+                        </Button>
+                      </div>
                   </CardContent>
               </Card>
             )}
