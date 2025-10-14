@@ -621,7 +621,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
             const dispatchQuantity = Math.min(currentStock, reservedQuantity);
 
-            if (dispatchQuantity <= 0) return;
+            if (dispatchQuantity <= 0) {
+              console.log("No stock to dispatch.");
+              return; // Nothing to do
+            }
 
             const isPartialDispatch = dispatchQuantity < reservedQuantity;
 
@@ -642,47 +645,42 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 reservations: newReservations,
             });
 
-            // --- 2. Update Project ---
+            // --- 2. Update Project's Material List ---
             const newProject = JSON.parse(JSON.stringify(project));
             const env = newProject.environments.find((e: Environment) => e.id === reservation.environmentId);
             if (env) {
                 const fur = env.furniture.find((f: Furniture) => f.id === reservation.furnitureId);
                 if (fur?.materials) {
-                    const matIndex = fur.materials.findIndex((m: MaterialItem) => m.id === reservation.materialId);
-                    
-                    if (matIndex !== -1) {
-                        const originalMaterial = fur.materials[matIndex];
+                    const materialToDispatchIndex = fur.materials.findIndex((m: MaterialItem) => m.id === reservation.materialId);
+
+                    if (materialToDispatchIndex !== -1) {
+                        const materialToDispatch = fur.materials[materialToDispatchIndex];
+                        const alreadyDispatchedItemIndex = fur.materials.findIndex((m: MaterialItem) =>
+                            m.stockItemId === stockItemId && m.purchased === true && m.id !== materialToDispatch.id
+                        );
 
                         if (isPartialDispatch) {
-                            // Update dispatched part
-                            originalMaterial.quantity = dispatchQuantity;
-                            originalMaterial.purchased = true;
-                            
-                            // Create new pending part
+                            // Split the item in the project
+                            materialToDispatch.quantity = dispatchQuantity;
+                            materialToDispatch.purchased = true;
+
                             const pendingMaterial: MaterialItem = {
-                                ...originalMaterial,
-                                id: generateId('mat'),
+                                ...materialToDispatch,
+                                id: generateId('mat'), // New ID for the pending part
                                 quantity: reservedQuantity - dispatchQuantity,
                                 purchased: false,
-                                addedAt: new Date().toISOString(),
                             };
                             fur.materials.push(pendingMaterial);
                         } else {
-                            // Find an existing dispatched item of the same kind to merge with
-                            const existingPurchasedItemIndex = fur.materials.findIndex((m: MaterialItem) => 
-                                m.id !== reservation.materialId &&
-                                m.stockItemId === stockItemId &&
-                                m.purchased === true
-                            );
-                            
-                            if (existingPurchasedItemIndex !== -1) {
-                                // Merge quantities
-                                fur.materials[existingPurchasedItemIndex].quantity += dispatchQuantity;
-                                // Remove the now-dispatched pending item
-                                fur.materials.splice(matIndex, 1);
+                            // Full dispatch of this reservation (might be the final partial dispatch)
+                            if (alreadyDispatchedItemIndex !== -1) {
+                                // Merge with an already dispatched item
+                                fur.materials[alreadyDispatchedItemIndex].quantity += dispatchQuantity;
+                                // Remove the now fully-dispatched pending item
+                                fur.materials.splice(materialToDispatchIndex, 1);
                             } else {
-                                // No item to merge with, just mark as purchased
-                                originalMaterial.purchased = true;
+                                // This is the first and only dispatch for this item, just mark as purchased
+                                fur.materials[materialToDispatchIndex].purchased = true;
                             }
                         }
                     }
@@ -707,7 +705,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         console.error("Erro ao despachar item: ", e);
         throw e;
     }
-}, [firestore]);
+  }, [firestore]);
 
 
 
