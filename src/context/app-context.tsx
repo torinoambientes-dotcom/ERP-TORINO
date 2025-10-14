@@ -617,41 +617,68 @@ export function AppProvider({ children }: { children: ReactNode }) {
             const stockItem = stockItemDoc.data() as StockItem;
             const project = projectDoc.data() as Project;
             const currentStock = stockItem.quantity;
-            const requestedQuantity = reservation.quantity;
+            const reservedQuantity = reservation.quantity;
 
-            const dispatchQuantity = Math.min(currentStock, requestedQuantity);
+            const dispatchQuantity = Math.min(currentStock, reservedQuantity);
 
             if (dispatchQuantity <= 0) {
-                // This will rollback the transaction
                 throw new Error("Nenhum item disponível em estoque para despachar.");
             }
 
-            const isPartialDispatch = dispatchQuantity < requestedQuantity;
-            const remainingQuantity = requestedQuantity - dispatchQuantity;
+            const isPartialDispatch = dispatchQuantity < reservedQuantity;
 
-            // --- Update Stock Item ---
+            // --- 1. Update Stock Item ---
             const newStockQuantity = currentStock - dispatchQuantity;
-            let newReservations = [...(stockItem.reservations || [])];
-
+            const newReservations = [...(stockItem.reservations || [])];
             const reservationIndex = newReservations.findIndex(r => r.materialId === reservation.materialId);
 
             if (reservationIndex !== -1) {
                 if (isPartialDispatch) {
-                    // Update the existing reservation with the remaining quantity
-                    newReservations[reservationIndex].quantity = remainingQuantity;
+                    newReservations[reservationIndex].quantity -= dispatchQuantity;
                 } else {
-                    // Full dispatch, remove the reservation
                     newReservations.splice(reservationIndex, 1);
                 }
             }
             transaction.update(stockItemRef, { 
-                reservations: newReservations,
                 quantity: newStockQuantity,
+                reservations: newReservations,
             });
 
-            // --- Add Movement Record ---
+            // --- 2. Update Project ---
+            const newProject = JSON.parse(JSON.stringify(project)); // Deep copy
+            const env = newProject.environments.find((e: Environment) => e.id === reservation.environmentId);
+            if (env) {
+                const fur = env.furniture.find((f: Furniture) => f.id === reservation.furnitureId);
+                if (fur?.materials) {
+                    const matIndex = fur.materials.findIndex((m: MaterialItem) => m.id === reservation.materialId);
+                    if (matIndex !== -1) {
+                        const originalMaterial = fur.materials[matIndex];
+                        if (isPartialDispatch) {
+                            // Update dispatched part
+                            originalMaterial.quantity = dispatchQuantity;
+                            originalMaterial.purchased = true;
+                            
+                            // Create new item for the pending part
+                            const pendingMaterial: MaterialItem = {
+                                ...originalMaterial,
+                                id: generateId('mat'), // CRITICAL: New ID for the pending part
+                                quantity: reservedQuantity - dispatchQuantity,
+                                purchased: false, // This part is still pending
+                                addedAt: new Date().toISOString(),
+                            };
+                            fur.materials.push(pendingMaterial);
+                        } else {
+                            // Full dispatch
+                            originalMaterial.purchased = true;
+                        }
+                    }
+                }
+            }
+            transaction.set(projectRef, newProject);
+
+            // --- 3. Add Movement Record ---
             const movementId = generateId('move');
-            const movementDetails = `Projeto: ${reservation.projectName} (${dispatchQuantity} de ${requestedQuantity} despachado)`;
+            const movementDetails = `Projeto: ${reservation.projectName} (${dispatchQuantity} de ${reservedQuantity} despachado)`;
             const newMovement: StockMovement = {
                 id: movementId, stockItemId, type: 'exit',
                 quantity: dispatchQuantity,
@@ -661,44 +688,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
             };
             const movementRef = doc(firestore, 'stock_movements', movementId);
             transaction.set(movementRef, newMovement);
-
-            // --- Update Project's Material List ---
-            const newProject = JSON.parse(JSON.stringify(project));
-            const env = newProject.environments.find((e: Environment) => e.id === reservation.environmentId);
-            if (env) {
-                const fur = env.furniture.find((f: Furniture) => f.id === reservation.furnitureId);
-                if (fur?.materials) {
-                    const matIndex = fur.materials.findIndex((m: MaterialItem) => m.id === reservation.materialId);
-                    if (matIndex !== -1) {
-                        const originalMaterial = fur.materials[matIndex];
-                        if (isPartialDispatch) {
-                            // Update the original material to the dispatched quantity and mark as purchased
-                            originalMaterial.quantity = dispatchQuantity;
-                            originalMaterial.purchased = true;
-
-                            // Create a new material item for the remaining quantity
-                            const pendingMaterial: MaterialItem = {
-                                ...originalMaterial,
-                                id: generateId('mat'), // new ID for the pending part
-                                quantity: remainingQuantity,
-                                purchased: false, // This is the pending part
-                                addedAt: new Date().toISOString(),
-                            };
-                            fur.materials.push(pendingMaterial);
-                        } else {
-                            // Full dispatch, just mark as purchased
-                            originalMaterial.purchased = true;
-                        }
-                    }
-                }
-            }
-            transaction.set(projectRef, newProject, { merge: true });
         });
     } catch (e: any) {
         console.error("Erro ao despachar item: ", e);
         throw e;
     }
-  }, [firestore]);
+}, [firestore]);
 
 
   const registerPurchase = useCallback((itemId: string, quantity: number, supplier: string) => {
