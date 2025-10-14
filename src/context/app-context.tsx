@@ -3,7 +3,7 @@
 import { createContext, type ReactNode, useCallback, useMemo, useEffect, useState } from 'react';
 import { collection, doc, serverTimestamp, deleteField, writeBatch, getDocs, runTransaction, query, where } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useAuth, useUser } from '@/firebase';
-import type { Project, TeamMember, StageStatus, StockItem, StockMovement, StockCategory, Furniture, Environment, MaterialItem, StockReservation, ProductionStage, Appointment, PurchaseRequest, PurchaseRequestStatus, Quote, QuoteStage, QuoteEnvironment, QuoteFurniture, QuoteMaterial, QuoteMaterialCategory } from '@/lib/types';
+import type { Project, TeamMember, StageStatus, StockItem, StockMovement, StockCategory, Furniture, Environment, MaterialItem, StockReservation, ProductionStage, Appointment, PurchaseRequest, PurchaseRequestStatus, Quote, QuoteStage, QuoteEnvironment, QuoteFurniture, QuoteMaterial, QuoteMaterialCategory, PostItNote } from '@/lib/types';
 import { generateId } from '@/lib/utils';
 import { setDocumentNonBlocking, deleteDocumentNonBlocking, addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
@@ -13,6 +13,7 @@ interface AppContextType {
   projects: Project[];
   teamMembers: TeamMember[];
   appointments: Appointment[];
+  postItNotes: PostItNote[];
   stockItems: StockItem[];
   stockCategories: StockCategory[];
   stockMovements: StockMovement[];
@@ -30,6 +31,9 @@ interface AppContextType {
   addAppointment: (appointmentData: Omit<Appointment, 'id'>) => void;
   updateAppointment: (appointmentId: string, updates: Partial<Appointment>) => void;
   deleteAppointment: (appointmentId: string) => void;
+  addPostItNote: (noteData: Omit<PostItNote, 'id' | 'memberId' | 'createdAt'>) => void;
+  updatePostItNote: (noteId: string, updates: Partial<PostItNote>) => void;
+  deletePostItNote: (noteId: string) => void;
   completeProjectStages: (projectId: string) => void;
   addStockItem: (itemData: Omit<StockItem, 'id'>) => void;
   updateStockItem: (updatedItem: StockItem) => void;
@@ -41,7 +45,6 @@ interface AppContextType {
   toggleItemPurchasedStatus: (itemType: 'glass' | 'door', itemId: string, projectId: string, envId: string, furId: string) => void;
   toggleMaterialPurchased: (projectId: string, envId: string, furId: string, materialId: string, purchased: boolean) => void;
   clearAllReservations: () => void;
-  markItemAsSeparated: (stockItem: StockItem, reservation: StockReservation) => void;
   dispatchItemToProduction: (stockItemId: string, reservation: StockReservation, memberId: string) => void;
   registerPurchase: (itemId: string, quantity: number, supplier: string) => void;
   confirmStockReceipt: (item: StockItem) => void;
@@ -63,6 +66,7 @@ export const AppContext = createContext<AppContextType>({
   projects: [],
   teamMembers: [],
   appointments: [],
+  postItNotes: [],
   stockItems: [],
   stockCategories: [],
   stockMovements: [],
@@ -80,6 +84,9 @@ export const AppContext = createContext<AppContextType>({
   addAppointment: () => {},
   updateAppointment: () => {},
   deleteAppointment: () => {},
+  addPostItNote: () => {},
+  updatePostItNote: () => {},
+  deletePostItNote: () => {},
   completeProjectStages: () => {},
   addStockItem: () => {},
   updateStockItem: () => {},
@@ -91,7 +98,6 @@ export const AppContext = createContext<AppContextType>({
   toggleItemPurchasedStatus: () => {},
   toggleMaterialPurchased: () => {},
   clearAllReservations: () => {},
-  markItemAsSeparated: () => {},
   dispatchItemToProduction: () => {},
   registerPurchase: () => {},
   confirmStockReceipt: () => {},
@@ -154,6 +160,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const projectsQuery = useMemoFirebase(() => collection(firestore, 'projects'), [firestore]);
   const teamMembersQuery = useMemoFirebase(() => collection(firestore, 'team_members'), [firestore]);
   const appointmentsQuery = useMemoFirebase(() => collection(firestore, 'appointments'), [firestore]);
+  const postItNotesQuery = useMemoFirebase(() => user ? query(collection(firestore, 'post_it_notes'), where("memberId", "==", user.uid)) : null, [firestore, user]);
   const stockItemsQuery = useMemoFirebase(() => collection(firestore, 'stock_items'), [firestore]);
   const stockCategoriesQuery = useMemoFirebase(() => collection(firestore, 'stock_categories'), [firestore]);
   const stockMovementsQuery = useMemoFirebase(() => collection(firestore, 'stock_movements'), [firestore]);
@@ -166,6 +173,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const { data: projects, isLoading: isLoadingProjects } = useCollection<Project>(projectsQuery);
   const { data: teamMembers, isLoading: isLoadingTeamMembers } = useCollection<TeamMember>(teamMembersQuery);
   const { data: appointments, isLoading: isLoadingAppointments } = useCollection<Appointment>(appointmentsQuery);
+  const { data: postItNotes, isLoading: isLoadingPostItNotes } = useCollection<PostItNote>(postItNotesQuery);
   const { data: stockItems, isLoading: isLoadingStockItems } = useCollection<StockItem>(stockItemsQuery);
   const { data: stockCategoriesData, isLoading: isLoadingStockCategories } = useCollection<StockCategory>(stockCategoriesQuery);
   const { data: stockMovements, isLoading: isLoadingMovements } = useCollection<StockMovement>(stockMovementsQuery);
@@ -211,8 +219,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     let projectWithCompletion = { ...updatedProject };
 
-    // This logic handles marking a project as complete if all stages are 'done'
-    // and setting the completion timestamp.
     const allStagesDone = (updatedProject.environments || []).every(env =>
         (env.furniture || []).every(fur =>
             fur.measurement.status === 'done' &&
@@ -238,13 +244,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const originalMaterials = originalProject?.environments.flatMap(e => e.furniture.flatMap(f => (f.materials || []).map(m => ({ ...m, projectId: originalProject.id })))) || [];
     const updatedMaterials = projectWithCompletion.environments.flatMap(e => e.furniture.flatMap(f => (f.materials || []).map(m => ({...m, projectId: projectWithCompletion.id}))));
     
-    const materialToDetails = new Map<string, { projName: string, envName: string, furName: string }>();
+    const materialToDetails = new Map<string, { projName: string, envId: string, envName: string, furId: string, furName: string }>();
     projectWithCompletion.environments.forEach(env => {
         env.furniture.forEach(fur => {
             (fur.materials || []).forEach(mat => {
                 materialToDetails.set(mat.id, {
                     projName: projectWithCompletion.clientName,
+                    envId: env.id,
                     envName: env.name,
+                    furId: fur.id,
                     furName: fur.name,
                 });
             });
@@ -283,26 +291,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
                         const newReservation: StockReservation = {
                             projectId: projectWithCompletion.id,
                             projectName: details.projName,
-                            environmentId: projectWithCompletion.environments.find(e => e.name === details.envName)!.id,
+                            environmentId: details.envId,
                             environmentName: details.envName,
-                            furnitureId: projectWithCompletion.environments.find(e => e.name === details.envName)!.furniture.find(f => f.name === details.furName)!.id,
+                            furnitureId: details.furId,
                             furnitureName: details.furName,
                             materialId: updMat.id,
                             quantity: updMat.quantity,
                             status: 'reservado', // Default status for new reservations
                         };
                         const finalReservations = [...otherReservations, newReservation];
-
-                        // Logic to check if demand exceeds stock and trigger alert
-                        const totalReserved = finalReservations.reduce((acc, res) => acc + res.quantity, 0);
-                        if (totalReserved > stockItem.quantity) {
-                            batch.update(stockItemRef, { 
-                                reservations: finalReservations,
-                                alertHandledAt: deleteField() // Reset the alert
-                            });
-                        } else {
-                            batch.update(stockItemRef, { reservations: finalReservations });
-                        }
+                        batch.update(stockItemRef, { reservations: finalReservations });
                     }
                 }
             }
@@ -415,6 +413,31 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (!firestore) return;
         const appointmentRef = doc(firestore, 'appointments', appointmentId);
         deleteDocumentNonBlocking(appointmentRef);
+    }, [firestore]);
+    
+    const addPostItNote = useCallback((noteData: Omit<PostItNote, 'id' | 'memberId' | 'createdAt'>) => {
+        if (!firestore || !user) return;
+        const noteId = generateId('note');
+        const newNote: PostItNote = {
+            ...noteData,
+            id: noteId,
+            memberId: user.uid,
+            createdAt: new Date().toISOString(),
+        };
+        const noteRef = doc(firestore, 'post_it_notes', noteId);
+        setDocumentNonBlocking(noteRef, newNote, { merge: false });
+    }, [firestore, user]);
+
+    const updatePostItNote = useCallback((noteId: string, updates: Partial<PostItNote>) => {
+        if (!firestore) return;
+        const noteRef = doc(firestore, 'post_it_notes', noteId);
+        updateDocumentNonBlocking(noteRef, updates);
+    }, [firestore]);
+
+    const deletePostItNote = useCallback((noteId: string) => {
+        if (!firestore) return;
+        const noteRef = doc(firestore, 'post_it_notes', noteId);
+        deleteDocumentNonBlocking(noteRef);
     }, [firestore]);
 
 
@@ -611,111 +634,63 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
     await batch.commit();
   }, [firestore, stockItems]);
-
-  const markItemAsSeparated = useCallback(async (stockItem: StockItem, reservation: StockReservation) => {
-    if (!firestore) return;
-  
-    const stockItemRef = doc(firestore, 'stock_items', stockItem.id);
-    const existingReservations = stockItem.reservations || [];
-    
-    const availableQuantity = stockItem.quantity - existingReservations
-        .filter(r => r.materialId !== reservation.materialId)
-        .reduce((acc, r) => acc + r.quantity, 0);
-  
-    const batch = writeBatch(firestore);
-  
-    if (availableQuantity >= reservation.quantity) {
-      // Full separation
-      const updatedReservations = existingReservations.map(r =>
-        r.materialId === reservation.materialId ? { ...r, status: 'separado' as const } : r
-      );
-      batch.update(stockItemRef, { reservations: updatedReservations });
-    } else if (availableQuantity > 0) {
-      // Partial separation
-      const remainingReservations = existingReservations.filter(r => r.materialId !== reservation.materialId);
-      
-      // Separated part
-      const separatedReservation: StockReservation = {
-        ...reservation,
-        materialId: generateId('res'), // New ID for the separated part
-        quantity: availableQuantity,
-        status: 'separado',
-      };
-      
-      // Remaining part to be reserved
-      const pendingReservation: StockReservation = {
-        ...reservation,
-        quantity: reservation.quantity - availableQuantity,
-        status: 'reservado',
-      };
-      
-      batch.update(stockItemRef, {
-        reservations: [...remainingReservations, separatedReservation, pendingReservation]
-      });
-    } else {
-      // No stock available, do nothing (or show a toast)
-      console.warn(`Cannot separate ${reservation.quantity} of ${stockItem.name}, only ${availableQuantity} available.`);
-      // Optionally, add a toast message here.
-      return;
-    }
-    
-    await batch.commit();
-  
-  }, [firestore]);
   
   const dispatchItemToProduction = useCallback(async (stockItemId: string, reservation: StockReservation, memberId: string) => {
       if (!firestore || !stockItems || !projects) return;
-      const stockItem = stockItems.find(i => i.id === stockItemId);
-      const projectToUpdate = projects.find(p => p.id === reservation.projectId);
-  
-      if (!stockItem || !projectToUpdate) {
-        console.error("Stock item or project not found for dispatch");
-        return;
-      }
-
-      const batch = writeBatch(firestore);
       
-      // Update stock item: remove reservation and decrease quantity
-      const stockItemRef = doc(firestore, 'stock_items', stockItemId);
-      const updatedReservations = (stockItem.reservations || []).filter(r => r.materialId !== reservation.materialId);
-      const newQuantity = stockItem.quantity - reservation.quantity;
-      batch.update(stockItemRef, { 
-          reservations: updatedReservations,
-          quantity: newQuantity,
-      });
+      await runTransaction(firestore, async (transaction) => {
+        const stockItemRef = doc(firestore, 'stock_items', stockItemId);
+        const projectRef = doc(firestore, 'projects', reservation.projectId);
+        
+        const stockItemDoc = await transaction.get(stockItemRef);
+        const projectDoc = await transaction.get(projectRef);
 
-      // Add movement record
-      const movementId = generateId('move');
-      const newMovement: StockMovement = {
-          id: movementId,
-          stockItemId,
-          type: 'exit',
-          quantity: reservation.quantity,
-          reason: 'despacho_producao',
-          details: `Projeto: ${reservation.projectName}`,
-          timestamp: new Date().toISOString(),
-          memberId: memberId,
-      };
-      const movementRef = doc(firestore, 'stock_movements', movementId);
-      batch.set(movementRef, newMovement);
+        if (!stockItemDoc.exists() || !projectDoc.exists()) {
+          throw new Error("Item de estoque ou projeto não encontrado.");
+        }
 
-      // Mark material as purchased in the project
-      const newProject = JSON.parse(JSON.stringify(projectToUpdate));
-      const env = newProject.environments.find((e: Environment) => e.id === reservation.environmentId);
-      if (env) {
-        const fur = env.furniture.find((f: Furniture) => f.id === reservation.furnitureId);
-        if (fur && fur.materials) {
-          const mat = fur.materials.find((m: MaterialItem) => m.id === reservation.materialId);
-          if (mat) {
-            mat.purchased = true;
+        const stockItem = stockItemDoc.data() as StockItem;
+        const project = projectDoc.data() as Project;
+
+        // 1. Update Stock Item: Remove reservation and decrease quantity
+        const updatedReservations = (stockItem.reservations || []).filter(r => r.materialId !== reservation.materialId);
+        const newQuantity = stockItem.quantity - reservation.quantity;
+
+        if (newQuantity < 0) {
+          throw new Error("Estoque insuficiente para completar o despacho.");
+        }
+        
+        transaction.update(stockItemRef, { 
+            reservations: updatedReservations,
+            quantity: newQuantity,
+        });
+
+        // 2. Add Movement Record
+        const movementId = generateId('move');
+        const newMovement: StockMovement = {
+            id: movementId, stockItemId, type: 'exit',
+            quantity: reservation.quantity,
+            reason: 'despacho_producao',
+            details: `Projeto: ${reservation.projectName}`,
+            timestamp: new Date().toISOString(), memberId,
+        };
+        const movementRef = doc(firestore, 'stock_movements', movementId);
+        transaction.set(movementRef, newMovement);
+
+        // 3. Mark material as "purchased" in the project
+        const newProject = JSON.parse(JSON.stringify(project));
+        const env = newProject.environments.find((e: Environment) => e.id === reservation.environmentId);
+        if (env) {
+          const fur = env.furniture.find((f: Furniture) => f.id === reservation.furnitureId);
+          if (fur && fur.materials) {
+            const mat = fur.materials.find((m: MaterialItem) => m.id === reservation.materialId);
+            if (mat) {
+              mat.purchased = true;
+            }
           }
         }
-      }
-      
-      const projectRef = doc(firestore, 'projects', newProject.id);
-      batch.set(projectRef, newProject, { merge: true });
-
-      await batch.commit();
+        transaction.set(projectRef, newProject, { merge: true });
+      });
   }, [firestore, stockItems, projects]);
 
   const registerPurchase = useCallback((itemId: string, quantity: number, supplier: string) => {
@@ -898,6 +873,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     projects: projects || [],
     teamMembers: teamMembers || [],
     appointments: appointments || [],
+    postItNotes: postItNotes || [],
     stockItems: stockItems || [],
     stockCategories: stockCategories,
     stockMovements: stockMovements || [],
@@ -905,7 +881,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     quotes: quotes || [],
     quoteMaterials: quoteMaterials || [],
     quoteMaterialCategories: quoteMaterialCategories || [],
-    isLoading: isLoadingProjects || isLoadingTeamMembers || isLoadingAppointments || isLoadingStockItems || isLoadingStockCategories || isLoadingMovements || isLoadingPurchaseRequests || isLoadingQuotes || isLoadingQuoteMaterials || isLoadingQuoteMaterialCategories,
+    isLoading: isLoadingProjects || isLoadingTeamMembers || isLoadingAppointments || isLoadingPostItNotes || isLoadingStockItems || isLoadingStockCategories || isLoadingMovements || isLoadingPurchaseRequests || isLoadingQuotes || isLoadingQuoteMaterials || isLoadingQuoteMaterialCategories,
     addProject,
     updateProject,
     deleteProject,
@@ -915,6 +891,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addAppointment,
     updateAppointment,
     deleteAppointment,
+    addPostItNote,
+    updatePostItNote,
+    deletePostItNote,
     completeProjectStages,
     addStockItem,
     updateStockItem,
@@ -926,7 +905,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     toggleItemPurchasedStatus,
     toggleMaterialPurchased,
     clearAllReservations,
-    markItemAsSeparated,
     dispatchItemToProduction,
     registerPurchase,
     confirmStockReceipt,
@@ -946,6 +924,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     projects, 
     teamMembers, 
     appointments, 
+    postItNotes,
     stockItems,
     stockCategories,
     stockMovements,
@@ -956,6 +935,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     isLoadingProjects, 
     isLoadingTeamMembers, 
     isLoadingAppointments,
+    isLoadingPostItNotes,
     isLoadingStockItems,
     isLoadingStockCategories,
     isLoadingMovements,
@@ -972,6 +952,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addAppointment,
     updateAppointment,
     deleteAppointment,
+    addPostItNote,
+    updatePostItNote,
+    deletePostItNote,
     completeProjectStages,
     addStockItem,
     updateStockItem,
@@ -983,7 +966,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     toggleItemPurchasedStatus,
     toggleMaterialPurchased,
     clearAllReservations,
-    markItemAsSeparated,
     dispatchItemToProduction,
     registerPurchase,
     confirmStockReceipt,

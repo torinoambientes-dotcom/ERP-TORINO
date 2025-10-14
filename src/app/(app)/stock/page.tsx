@@ -43,7 +43,7 @@ import { ptBR } from 'date-fns/locale';
 
 export default function StockPage() {
   const router = useRouter();
-  const { stockItems, stockCategories, deleteStockItem, deleteStockCategory, isLoading, clearAllReservations, markItemAsSeparated, dispatchItemToProduction, confirmStockReceipt, teamMembers } = useContext(AppContext);
+  const { stockItems, stockCategories, deleteStockItem, deleteStockCategory, isLoading, clearAllReservations, dispatchItemToProduction, confirmStockReceipt, teamMembers } = useContext(AppContext);
   const { toast } = useToast();
   const { user } = useUser();
 
@@ -201,14 +201,6 @@ export default function StockPage() {
     setResetAlertOpen(false);
   };
 
-  const handleMarkAsSeparated = (stockItem: StockItem, reservation: StockReservation) => {
-    markItemAsSeparated(stockItem, reservation);
-    toast({
-        title: 'Item marcado como Separado!',
-        description: `A reserva para ${reservation.projectName} foi atualizada.`
-    });
-  };
-
   const handleDispatch = (stockItemId: string, reservation: StockReservation) => {
     if(!user?.uid) {
         toast({ variant: 'destructive', title: 'Erro', description: 'Usuário não autenticado.' });
@@ -283,7 +275,7 @@ export default function StockPage() {
                             </div>
                              <div className="grid gap-2 text-sm max-h-60 overflow-y-auto">
                               {sortedReservations.map(res => (
-                                <div key={res.materialId} className={cn("flex items-center justify-between gap-2 p-2 rounded-md border", res.status === 'separado' ? 'bg-green-100/70 border-green-200' : 'bg-muted/30')}>
+                                <div key={res.materialId} className={cn("flex items-center justify-between gap-2 p-2 rounded-md border", "bg-muted/30")}>
                                   <div className="truncate">
                                       <Link href={`/projects/${res.projectId}`} className="truncate hover:underline">
                                         <p className="font-medium truncate">{res.projectName}</p>
@@ -292,17 +284,10 @@ export default function StockPage() {
                                   </div>
                                   <div className="flex items-center gap-2 flex-shrink-0">
                                     <p className="font-mono">{res.quantity} {item.unit}</p>
-                                    {res.status === 'reservado' ? (
-                                        <Button size="sm" variant="outline" onClick={() => handleMarkAsSeparated(item, res)}>
-                                            <PackageCheck className="mr-2 h-4 w-4" />
-                                            Marcar Separado
-                                        </Button>
-                                    ) : res.status === 'separado' ? (
-                                        <Button size="sm" variant="default" onClick={() => handleDispatch(item.id, res)}>
-                                            <SendToBack className="mr-2 h-4 w-4" />
-                                            Despachar
-                                        </Button>
-                                    ): null}
+                                    <Button size="sm" variant="default" onClick={() => handleDispatch(item.id, res)}>
+                                      <SendToBack className="mr-2 h-4 w-4" />
+                                      Despachar
+                                    </Button>
                                   </div>
                                 </div>
                               ))}
