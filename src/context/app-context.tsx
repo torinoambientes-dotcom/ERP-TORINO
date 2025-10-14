@@ -599,7 +599,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await batch.commit();
   }, [firestore, stockItems]);
   
-  const dispatchItemToProduction = useCallback(async (stockItemId: string, reservation: StockReservation, memberId: string) => {
+    const dispatchItemToProduction = useCallback(async (stockItemId: string, reservation: StockReservation, memberId: string) => {
     if (!firestore) return;
 
     try {
@@ -622,7 +622,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
             const dispatchQuantity = Math.min(currentStock, requestedQuantity);
 
             if (dispatchQuantity <= 0) {
-                // This will rollback the transaction
                 throw new Error("Nenhum item disponível em estoque para despachar.");
             }
 
@@ -631,14 +630,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
             const newReservations = [...(stockItem.reservations || [])];
             const reservationIndex = newReservations.findIndex(r => r.materialId === reservation.materialId);
 
-            if (dispatchQuantity === requestedQuantity) {
-                // Full dispatch: remove reservation
-                if (reservationIndex !== -1) {
+            if (reservationIndex !== -1) {
+                if (dispatchQuantity >= newReservations[reservationIndex].quantity) {
+                    // Full or over-dispatch: remove reservation
                     newReservations.splice(reservationIndex, 1);
-                }
-            } else {
-                // Partial dispatch: update reservation quantity
-                if (reservationIndex !== -1) {
+                } else {
+                    // Partial dispatch: update reservation quantity
                     newReservations[reservationIndex].quantity -= dispatchQuantity;
                 }
             }
@@ -652,7 +649,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             const movementId = generateId('move');
             const newMovement: StockMovement = {
                 id: movementId, stockItemId, type: 'exit',
-                quantity: dispatchQuantity, // Use the actual dispatched quantity
+                quantity: dispatchQuantity,
                 reason: 'despacho_producao',
                 details: `Projeto: ${reservation.projectName} (${dispatchQuantity} de ${requestedQuantity})`,
                 timestamp: new Date().toISOString(), memberId,
@@ -660,25 +657,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
             const movementRef = doc(firestore, 'stock_movements', movementId);
             transaction.set(movementRef, newMovement);
 
-            // --- Mark material as "purchased" in the project ONLY IF FULLY dispatched ---
-            if (dispatchQuantity === requestedQuantity) {
-                const newProject = JSON.parse(JSON.stringify(project));
-                const env = newProject.environments.find((e: Environment) => e.id === reservation.environmentId);
-                if (env) {
-                    const fur = env.furniture.find((f: Furniture) => f.id === reservation.furnitureId);
-                    if (fur && fur.materials) {
-                        const mat = fur.materials.find((m: MaterialItem) => m.id === reservation.materialId);
-                        if (mat) {
-                            mat.purchased = true;
-                        }
+            // --- Mark material as "purchased" in the project ---
+            // This now happens for both partial and full dispatch.
+            const newProject = JSON.parse(JSON.stringify(project));
+            const env = newProject.environments.find((e: Environment) => e.id === reservation.environmentId);
+            if (env) {
+                const fur = env.furniture.find((f: Furniture) => f.id === reservation.furnitureId);
+                if (fur && fur.materials) {
+                    const mat = fur.materials.find((m: MaterialItem) => m.id === reservation.materialId);
+                    if (mat) {
+                        mat.purchased = true;
                     }
                 }
-                transaction.set(projectRef, newProject, { merge: true });
             }
+            transaction.set(projectRef, newProject, { merge: true });
         });
     } catch (e: any) {
         console.error("Erro ao despachar item: ", e);
-        // Let the caller handle the error toast
         throw e;
     }
   }, [firestore]);
@@ -972,5 +967,3 @@ export function AppProvider({ children }: { children: ReactNode }) {
     </AppContext.Provider>
   );
 }
-
-    
