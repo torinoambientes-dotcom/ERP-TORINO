@@ -622,7 +622,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
             const dispatchQuantity = Math.min(currentStock, reservedQuantity);
 
             if (dispatchQuantity <= 0) {
-                throw new Error("Nenhum item disponível em estoque para despachar.");
+                // This case should ideally not happen if the UI is correct, but it's a good safeguard.
+                return; // No stock to dispatch, so abort the transaction.
             }
 
             const isPartialDispatch = dispatchQuantity < reservedQuantity;
@@ -645,31 +646,44 @@ export function AppProvider({ children }: { children: ReactNode }) {
             });
 
             // --- 2. Update Project ---
-            const newProject = JSON.parse(JSON.stringify(project)); // Deep copy
+            const newProject = JSON.parse(JSON.stringify(project));
             const env = newProject.environments.find((e: Environment) => e.id === reservation.environmentId);
             if (env) {
                 const fur = env.furniture.find((f: Furniture) => f.id === reservation.furnitureId);
                 if (fur?.materials) {
                     const matIndex = fur.materials.findIndex((m: MaterialItem) => m.id === reservation.materialId);
+                    
                     if (matIndex !== -1) {
-                        const originalMaterial = fur.materials[matIndex];
                         if (isPartialDispatch) {
-                            // Update dispatched part
-                            originalMaterial.quantity = dispatchQuantity;
-                            originalMaterial.purchased = true;
+                            // If it's a partial dispatch, update the dispatched item and create a new one for the remainder.
+                            fur.materials[matIndex].quantity = dispatchQuantity;
+                            fur.materials[matIndex].purchased = true;
                             
-                            // Create new item for the pending part
                             const pendingMaterial: MaterialItem = {
-                                ...originalMaterial,
-                                id: generateId('mat'), // CRITICAL: New ID for the pending part
+                                ...fur.materials[matIndex],
+                                id: generateId('mat'),
                                 quantity: reservedQuantity - dispatchQuantity,
-                                purchased: false, // This part is still pending
+                                purchased: false,
                                 addedAt: new Date().toISOString(),
                             };
                             fur.materials.push(pendingMaterial);
+
                         } else {
-                            // Full dispatch
-                            originalMaterial.purchased = true;
+                            // Full dispatch. Check if there's a matching purchased item to merge with.
+                            const existingPurchasedItemIndex = fur.materials.findIndex((m: MaterialItem) => 
+                                m.id !== reservation.materialId &&
+                                m.stockItemId === stockItemId &&
+                                m.purchased === true
+                            );
+                            
+                            if (existingPurchasedItemIndex !== -1) {
+                                // Merge with existing purchased item
+                                fur.materials[existingPurchasedItemIndex].quantity += dispatchQuantity;
+                                fur.materials.splice(matIndex, 1); // Remove the just-dispatched item
+                            } else {
+                                // No existing item to merge, just mark as purchased.
+                                fur.materials[matIndex].purchased = true;
+                            }
                         }
                     }
                 }
@@ -694,6 +708,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         throw e;
     }
 }, [firestore]);
+
 
 
   const registerPurchase = useCallback((itemId: string, quantity: number, supplier: string) => {
