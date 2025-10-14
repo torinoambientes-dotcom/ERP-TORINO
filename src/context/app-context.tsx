@@ -599,7 +599,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await batch.commit();
   }, [firestore, stockItems]);
   
-    const dispatchItemToProduction = useCallback(async (stockItemId: string, reservation: StockReservation, memberId: string) => {
+  const dispatchItemToProduction = useCallback(async (stockItemId: string, reservation: StockReservation, memberId: string) => {
     if (!firestore) return;
 
     try {
@@ -622,24 +622,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
             const dispatchQuantity = Math.min(currentStock, requestedQuantity);
 
             if (dispatchQuantity <= 0) {
+                // This will rollback the transaction
                 throw new Error("Nenhum item disponível em estoque para despachar.");
             }
 
+            const isPartialDispatch = dispatchQuantity < requestedQuantity;
+            const remainingQuantity = requestedQuantity - dispatchQuantity;
+
             // --- Update Stock Item ---
             const newStockQuantity = currentStock - dispatchQuantity;
-            const newReservations = [...(stockItem.reservations || [])];
+            let newReservations = [...(stockItem.reservations || [])];
+
             const reservationIndex = newReservations.findIndex(r => r.materialId === reservation.materialId);
 
             if (reservationIndex !== -1) {
-                if (dispatchQuantity >= newReservations[reservationIndex].quantity) {
-                    // Full or over-dispatch: remove reservation
-                    newReservations.splice(reservationIndex, 1);
+                if (isPartialDispatch) {
+                    // Update the existing reservation with the remaining quantity
+                    newReservations[reservationIndex].quantity = remainingQuantity;
                 } else {
-                    // Partial dispatch: update reservation quantity
-                    newReservations[reservationIndex].quantity -= dispatchQuantity;
+                    // Full dispatch, remove the reservation
+                    newReservations.splice(reservationIndex, 1);
                 }
             }
-            
             transaction.update(stockItemRef, { 
                 reservations: newReservations,
                 quantity: newStockQuantity,
@@ -647,26 +651,44 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
             // --- Add Movement Record ---
             const movementId = generateId('move');
+            const movementDetails = `Projeto: ${reservation.projectName} (${dispatchQuantity} de ${requestedQuantity} despachado)`;
             const newMovement: StockMovement = {
                 id: movementId, stockItemId, type: 'exit',
                 quantity: dispatchQuantity,
                 reason: 'despacho_producao',
-                details: `Projeto: ${reservation.projectName} (${dispatchQuantity} de ${requestedQuantity})`,
+                details: movementDetails,
                 timestamp: new Date().toISOString(), memberId,
             };
             const movementRef = doc(firestore, 'stock_movements', movementId);
             transaction.set(movementRef, newMovement);
 
-            // --- Mark material as "purchased" in the project ---
-            // This now happens for both partial and full dispatch.
+            // --- Update Project's Material List ---
             const newProject = JSON.parse(JSON.stringify(project));
             const env = newProject.environments.find((e: Environment) => e.id === reservation.environmentId);
             if (env) {
                 const fur = env.furniture.find((f: Furniture) => f.id === reservation.furnitureId);
-                if (fur && fur.materials) {
-                    const mat = fur.materials.find((m: MaterialItem) => m.id === reservation.materialId);
-                    if (mat) {
-                        mat.purchased = true;
+                if (fur?.materials) {
+                    const matIndex = fur.materials.findIndex((m: MaterialItem) => m.id === reservation.materialId);
+                    if (matIndex !== -1) {
+                        const originalMaterial = fur.materials[matIndex];
+                        if (isPartialDispatch) {
+                            // Update the original material to the dispatched quantity and mark as purchased
+                            originalMaterial.quantity = dispatchQuantity;
+                            originalMaterial.purchased = true;
+
+                            // Create a new material item for the remaining quantity
+                            const pendingMaterial: MaterialItem = {
+                                ...originalMaterial,
+                                id: generateId('mat'), // new ID for the pending part
+                                quantity: remainingQuantity,
+                                purchased: false, // This is the pending part
+                                addedAt: new Date().toISOString(),
+                            };
+                            fur.materials.push(pendingMaterial);
+                        } else {
+                            // Full dispatch, just mark as purchased
+                            originalMaterial.purchased = true;
+                        }
                     }
                 }
             }
