@@ -160,7 +160,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const projectsQuery = useMemoFirebase(() => collection(firestore, 'projects'), [firestore]);
   const teamMembersQuery = useMemoFirebase(() => collection(firestore, 'team_members'), [firestore]);
   const appointmentsQuery = useMemoFirebase(() => collection(firestore, 'appointments'), [firestore]);
-  const postItNotesQuery = useMemoFirebase(() => user ? query(collection(firestore, 'post_it_notes'), where("memberId", "==", user.uid)) : null, [firestore, user]);
+  const postItNotesQuery = useMemoFirebase(() => (firestore && user) ? query(collection(firestore, 'post_it_notes'), where("memberId", "==", user.uid)) : null, [firestore, user]);
   const stockItemsQuery = useMemoFirebase(() => collection(firestore, 'stock_items'), [firestore]);
   const stockCategoriesQuery = useMemoFirebase(() => collection(firestore, 'stock_categories'), [firestore]);
   const stockMovementsQuery = useMemoFirebase(() => collection(firestore, 'stock_movements'), [firestore]);
