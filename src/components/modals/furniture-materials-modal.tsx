@@ -85,7 +85,7 @@ const profileDoorSchema = z.object({
     slidingSystem: z.string().optional(),
     profileColor: z.string().min(1, "Cor do perfil é obrigatória."),
     glassType: z.string().min(1, "Tipo de vidro é obrigatório."),
-    handleType: z.string().min(1, "Tipo de puxador é obrigatório."),
+    handleType: z.string().min(1, "Tipo de puxador é obrigatória."),
     quantity: z.coerce.number().min(1, "Quantidade deve ser pelo menos 1."),
     width: z.coerce.number().min(1, "Largura é obrigatória."),
     height: z.coerce.number().min(1, "Altura é obrigatória."),
@@ -124,17 +124,12 @@ const MaterialRow = ({ index, control, field, remove, update, stockItems, purcha
   let labelText = "Material";
   let containerClasses = "bg-muted/50";
 
-  if (isFromStock) {
-      if (isPurchased) {
-          labelText = "Material (Despachado da Produção)";
-          containerClasses = "bg-green-100/60 border-green-200";
-      } else {
-          labelText = "Item do Estoque (Reservado)";
-          containerClasses = "bg-blue-100/60 border-blue-200";
-      }
-  } else if (isPurchased) {
-      labelText = "Material (Comprado)";
+  if (isPurchased) {
+      labelText = isFromStock ? "Material (Despachado da Produção)" : "Material (Comprado)";
       containerClasses = "bg-green-100/60 border-green-200";
+  } else if (isFromStock) {
+      labelText = "Item do Estoque (Reservado)";
+      containerClasses = "bg-blue-100/60 border-blue-200";
   }
 
 

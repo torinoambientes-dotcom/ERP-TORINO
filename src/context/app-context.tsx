@@ -621,10 +621,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
             const dispatchQuantity = Math.min(currentStock, reservedQuantity);
 
-            if (dispatchQuantity <= 0) {
-                // This case should ideally not happen if the UI is correct, but it's a good safeguard.
-                return; // No stock to dispatch, so abort the transaction.
-            }
+            if (dispatchQuantity <= 0) return;
 
             const isPartialDispatch = dispatchQuantity < reservedQuantity;
 
@@ -654,22 +651,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
                     const matIndex = fur.materials.findIndex((m: MaterialItem) => m.id === reservation.materialId);
                     
                     if (matIndex !== -1) {
+                        const originalMaterial = fur.materials[matIndex];
+
                         if (isPartialDispatch) {
-                            // If it's a partial dispatch, update the dispatched item and create a new one for the remainder.
-                            fur.materials[matIndex].quantity = dispatchQuantity;
-                            fur.materials[matIndex].purchased = true;
+                            // Update dispatched part
+                            originalMaterial.quantity = dispatchQuantity;
+                            originalMaterial.purchased = true;
                             
+                            // Create new pending part
                             const pendingMaterial: MaterialItem = {
-                                ...fur.materials[matIndex],
+                                ...originalMaterial,
                                 id: generateId('mat'),
                                 quantity: reservedQuantity - dispatchQuantity,
                                 purchased: false,
                                 addedAt: new Date().toISOString(),
                             };
                             fur.materials.push(pendingMaterial);
-
                         } else {
-                            // Full dispatch. Check if there's a matching purchased item to merge with.
+                            // Find an existing dispatched item of the same kind to merge with
                             const existingPurchasedItemIndex = fur.materials.findIndex((m: MaterialItem) => 
                                 m.id !== reservation.materialId &&
                                 m.stockItemId === stockItemId &&
@@ -677,12 +676,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
                             );
                             
                             if (existingPurchasedItemIndex !== -1) {
-                                // Merge with existing purchased item
+                                // Merge quantities
                                 fur.materials[existingPurchasedItemIndex].quantity += dispatchQuantity;
-                                fur.materials.splice(matIndex, 1); // Remove the just-dispatched item
+                                // Remove the now-dispatched pending item
+                                fur.materials.splice(matIndex, 1);
                             } else {
-                                // No existing item to merge, just mark as purchased.
-                                fur.materials[matIndex].purchased = true;
+                                // No item to merge with, just mark as purchased
+                                originalMaterial.purchased = true;
                             }
                         }
                     }
