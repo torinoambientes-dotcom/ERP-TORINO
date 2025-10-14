@@ -3,7 +3,7 @@
 import { createContext, type ReactNode, useCallback, useMemo, useEffect, useState } from 'react';
 import { collection, doc, serverTimestamp, deleteField, writeBatch, getDocs, runTransaction, query, where } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useAuth, useUser } from '@/firebase';
-import type { Project, TeamMember, StageStatus, StockItem, StockMovement, StockCategory, Furniture, Environment, MaterialItem, StockReservation, ProductionStage, Appointment, PurchaseRequest, PurchaseRequestStatus, Quote, QuoteStage, QuoteEnvironment, QuoteFurniture, QuoteMaterial, QuoteMaterialCategory } from '@/lib/types';
+import type { Project, TeamMember, StageStatus, StockItem, StockMovement, StockCategory, Furniture, Environment, MaterialItem, StockReservation, ProductionStage, Appointment, PurchaseRequest, PurchaseRequestStatus, Quote, QuoteStage, QuoteEnvironment, QuoteFurniture, QuoteMaterial, QuoteMaterialCategory, Dispatch } from '@/lib/types';
 import { generateId } from '@/lib/utils';
 import { setDocumentNonBlocking, deleteDocumentNonBlocking, addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
@@ -616,81 +616,54 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
             const stockItem = stockItemDoc.data() as StockItem;
             const project = projectDoc.data() as Project;
-            const currentStock = stockItem.quantity;
-            const reservedQuantity = reservation.quantity;
 
-            const dispatchQuantity = Math.min(currentStock, reservedQuantity);
-
+            const dispatchQuantity = Math.min(stockItem.quantity, reservation.quantity);
             if (dispatchQuantity <= 0) {
-              console.log("No stock to dispatch.");
-              return; // Nothing to do
+                console.log("No stock to dispatch for this reservation.");
+                return;
             }
-
-            const isPartialDispatch = dispatchQuantity < reservedQuantity;
 
             // --- 1. Update Stock Item ---
-            const newStockQuantity = currentStock - dispatchQuantity;
-            const newReservations = [...(stockItem.reservations || [])];
-            const reservationIndex = newReservations.findIndex(r => r.materialId === reservation.materialId);
-
-            if (reservationIndex !== -1) {
-                if (isPartialDispatch) {
-                    newReservations[reservationIndex].quantity -= dispatchQuantity;
-                } else {
-                    newReservations.splice(reservationIndex, 1);
+            const newStockQuantity = stockItem.quantity - dispatchQuantity;
+            const newReservations = (stockItem.reservations || []).map(res => {
+                if (res.materialId === reservation.materialId) {
+                    return { ...res, quantity: res.quantity - dispatchQuantity };
                 }
-            }
+                return res;
+            }).filter(res => res.quantity > 0);
             transaction.update(stockItemRef, { 
                 quantity: newStockQuantity,
                 reservations: newReservations,
             });
 
-            // --- 2. Update Project's Material List ---
+            // --- 2. Update Project's Material Item ---
             const newProject = JSON.parse(JSON.stringify(project));
             const env = newProject.environments.find((e: Environment) => e.id === reservation.environmentId);
             if (env) {
                 const fur = env.furniture.find((f: Furniture) => f.id === reservation.furnitureId);
                 if (fur?.materials) {
-                    const materialToDispatchIndex = fur.materials.findIndex((m: MaterialItem) => m.id === reservation.materialId);
+                    const materialIndex = fur.materials.findIndex((m: MaterialItem) => m.id === reservation.materialId);
+                    if (materialIndex !== -1) {
+                        const material = fur.materials[materialIndex];
+                        const newDispatch: Dispatch = {
+                            quantity: dispatchQuantity,
+                            dispatchedAt: new Date().toISOString(),
+                            memberId: memberId,
+                        };
+                        material.dispatches = [...(material.dispatches || []), newDispatch];
 
-                    if (materialToDispatchIndex !== -1) {
-                        const materialToDispatch = fur.materials[materialToDispatchIndex];
-                        const alreadyDispatchedItemIndex = fur.materials.findIndex((m: MaterialItem) =>
-                            m.stockItemId === stockItemId && m.purchased === true && m.id !== materialToDispatch.id
-                        );
-
-                        if (isPartialDispatch) {
-                            // Split the item in the project
-                            materialToDispatch.quantity = dispatchQuantity;
-                            materialToDispatch.purchased = true;
-
-                            const pendingMaterial: MaterialItem = {
-                                ...materialToDispatch,
-                                id: generateId('mat'), // New ID for the pending part
-                                quantity: reservedQuantity - dispatchQuantity,
-                                purchased: false,
-                            };
-                            fur.materials.push(pendingMaterial);
-                        } else {
-                            // Full dispatch of this reservation (might be the final partial dispatch)
-                            if (alreadyDispatchedItemIndex !== -1) {
-                                // Merge with an already dispatched item
-                                fur.materials[alreadyDispatchedItemIndex].quantity += dispatchQuantity;
-                                // Remove the now fully-dispatched pending item
-                                fur.materials.splice(materialToDispatchIndex, 1);
-                            } else {
-                                // This is the first and only dispatch for this item, just mark as purchased
-                                fur.materials[materialToDispatchIndex].purchased = true;
-                            }
+                        const totalDispatched = material.dispatches.reduce((acc, d) => acc + d.quantity, 0);
+                        if (totalDispatched >= material.quantity) {
+                            material.purchased = true;
                         }
                     }
                 }
             }
-            transaction.set(projectRef, newProject);
+            transaction.set(projectRef, newProject, { merge: true });
 
             // --- 3. Add Movement Record ---
             const movementId = generateId('move');
-            const movementDetails = `Projeto: ${reservation.projectName} (${dispatchQuantity} de ${reservedQuantity} despachado)`;
+            const movementDetails = `Projeto: ${reservation.projectName} (${dispatchQuantity} de ${reservation.quantity} despachado)`;
             const newMovement: StockMovement = {
                 id: movementId, stockItemId, type: 'exit',
                 quantity: dispatchQuantity,
@@ -707,13 +680,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [firestore]);
 
-
-
   const registerPurchase = useCallback((itemId: string, quantity: number, supplier: string) => {
     if (!firestore) return;
     const itemRef = doc(firestore, 'stock_items', itemId);
     const update = {
-      // alertHandledAt is no longer set here, the alert logic will resolve itself
       awaitingReceipt: {
         quantity: quantity,
         supplier: supplier,

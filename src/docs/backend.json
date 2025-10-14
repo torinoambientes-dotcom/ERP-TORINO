@@ -132,6 +132,17 @@
       },
       "required": ["id", "text", "isResolved", "authorId"]
     },
+    "Dispatch": {
+      "title": "Dispatch",
+      "type": "object",
+      "description": "Represents a dispatch of a material from stock to production.",
+      "properties": {
+        "quantity": { "type": "number" },
+        "dispatchedAt": { "type": "string", "format": "date-time" },
+        "memberId": { "type": "string" }
+      },
+      "required": ["quantity", "dispatchedAt", "memberId"]
+    },
     "MaterialItem": {
       "title": "MaterialItem",
       "type": "object",
@@ -144,7 +155,11 @@
         "stockItemId": { "type": "string", "description": "Link to the stock item" },
         "addedAt": { "type": "string", "format": "date-time" },
         "purchased": { "type": "boolean" },
-        "markup": { "type": "number", "description": "The markup multiplier for the item's cost." }
+        "markup": { "type": "number", "description": "The markup multiplier for the item's cost." },
+        "dispatches": {
+          "type": "array",
+          "items": { "$ref": "#/entities/Dispatch" }
+        }
       },
       "required": ["id", "name", "quantity", "unit"]
     },

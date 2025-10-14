@@ -44,6 +44,13 @@ export interface Pendency {
   authorId: string;
 }
 
+export interface Dispatch {
+  quantity: number;
+  dispatchedAt: string; // ISO date string
+  memberId: string;
+}
+
+
 export interface MaterialItem {
   id: string;
   name: string;
@@ -54,6 +61,7 @@ export interface MaterialItem {
   purchased?: boolean;
   cost?: number; // Cost per unit for quote materials
   markup?: number;
+  dispatches?: Dispatch[];
 }
 
 export interface GlassItem {
@@ -273,5 +281,3 @@ export interface QuoteMaterial {
   cost: number;
   category: string;
 }
-
-    

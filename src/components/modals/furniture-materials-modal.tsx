@@ -52,6 +52,11 @@ const materialSchema = z.object({
   stockItemId: z.string().optional(),
   addedAt: z.string().optional(),
   purchased: z.boolean().optional(),
+  dispatches: z.array(z.object({
+      quantity: z.number(),
+      dispatchedAt: z.string(),
+      memberId: z.string()
+  })).optional(),
 });
 
 const glassSchema = z.object({
@@ -110,136 +115,146 @@ const formSchema = z.object({
 
 type MaterialFormValues = z.infer<typeof formSchema>;
 
-const MaterialRow = ({ index, control, field, remove, update, stockItems, purchaseTimestamp }: any) => {
+const MaterialRow = ({ index, control, field, remove, update, stockItems }: any) => {
   const [popoverOpen, setPopoverOpen] = useState(false);
   
-  const isOriginalItem = (itemAddedAt?: string) => {
-      if (!purchaseTimestamp || !itemAddedAt) return false;
-      return new Date(itemAddedAt) <= new Date(purchaseTimestamp);
-  };
-  
-  const isPurchased = field.purchased || isOriginalItem(field.addedAt);
-  const isFromStock = !!field.stockItemId;
-  
+  const totalDispatched = (field.dispatches || []).reduce((acc: number, d: any) => acc + d.quantity, 0);
+  const isFullyDispatched = field.stockItemId && totalDispatched >= field.quantity;
+  const isPartiallyDispatched = field.stockItemId && totalDispatched > 0 && totalDispatched < field.quantity;
+  const isPurchasedExternally = !field.stockItemId && field.purchased;
+
+  const isLocked = isFullyDispatched || isPurchasedExternally;
+
   let labelText = "Material";
   let containerClasses = "bg-muted/50";
+  let statusText = null;
 
-  if (isPurchased) {
-      labelText = isFromStock ? "Material (Despachado da Produção)" : "Material (Comprado)";
+  if (isFullyDispatched) {
+      labelText = "Material (Despachado da Produção)";
       containerClasses = "bg-green-100/60 border-green-200";
-  } else if (isFromStock) {
+      statusText = `Completo: ${totalDispatched}/${field.quantity} ${field.unit}`;
+  } else if (isPartiallyDispatched) {
+      labelText = "Material (Despacho Parcial)";
+      containerClasses = "bg-yellow-100/60 border-yellow-300";
+      statusText = `Pendente: ${field.quantity - totalDispatched} ${field.unit}`;
+  } else if (isPurchasedExternally) {
+      labelText = "Material (Comprado)";
+      containerClasses = "bg-green-100/60 border-green-200";
+  } else if (field.stockItemId) {
       labelText = "Item do Estoque (Reservado)";
       containerClasses = "bg-blue-100/60 border-blue-200";
   }
 
-
   return (
-    <div
-      className={cn("flex items-end gap-2 p-3 rounded-lg border", containerClasses)}
-    >
-      <Controller
-        control={control}
-        name={`materials.${index}`}
-        render={({ field: controllerField }) => (
-          <FormItem className="flex-grow">
-            <FormLabel className={cn((isPurchased || isFromStock) && 'text-muted-foreground')}>
-              {labelText}
-            </FormLabel>
-            <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
-              <PopoverTrigger asChild>
-                <FormControl>
-                  <Button
-                    variant="outline"
-                    role="combobox"
-                    disabled={isPurchased}
-                    className={cn(
-                      "w-full justify-between",
-                      !controllerField.value.name && "text-muted-foreground",
-                      isPurchased && "text-opacity-70 line-through",
-                      isFromStock && !isPurchased ? "bg-white/50" : ""
-                    )}
-                  >
-                    {controllerField.value.name || "Selecione ou digite um material"}
-                  </Button>
-                </FormControl>
-              </PopoverTrigger>
-              <PopoverContent className="w-[400px] p-0">
-                <Command>
-                  <CommandInput placeholder="Buscar no estoque ou digitar novo..." />
-                  <CommandList>
-                    <CommandEmpty>
-                       <div className="p-2 cursor-pointer hover:bg-accent" onClick={() => {
-                            const inputValue = (document.querySelector(`[cmdk-input]`) as HTMLInputElement).value;
-                            update(index, {...field, name: inputValue, stockItemId: undefined, unit: 'unidade' });
-                            setPopoverOpen(false);
-                       }}>
-                            Adicionar novo material: "{ (document.querySelector(`[cmdk-input]`) as HTMLInputElement)?.value }"
-                       </div>
-                    </CommandEmpty>
-                    <CommandGroup heading="Itens do Estoque">
-                      {stockItems.map((item: StockItem) => (
-                        <CommandItem
-                          key={item.id}
-                          value={item.name}
-                          onSelect={() => {
-                            update(index, {...field, name: item.name, stockItemId: item.id, unit: item.unit });
-                            setPopoverOpen(false);
-                          }}
-                        >
-                          {item.name}
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
-                  </CommandList>
-                </Command>
-              </PopoverContent>
-            </Popover>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-      <FormField
-        control={control}
-        name={`materials.${index}.quantity`}
-        render={({ field: formField }) => (
-          <FormItem className="w-24">
-            <FormLabel className={cn((isPurchased || isFromStock) && 'text-muted-foreground')}>Qtd.</FormLabel>
-            <FormControl>
-              <Input type="number" {...formField} value={formField.value || 0} disabled={isPurchased} className={cn(
-                  isPurchased && "text-opacity-70 line-through",
-                  isFromStock && !isPurchased ? "bg-white/50" : ""
-              )} />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-      <FormField
-        control={control}
-        name={`materials.${index}.unit`}
-        render={({ field: formField }) => (
-          <FormItem className="w-32">
-            <FormLabel className={cn((isPurchased || isFromStock) && 'text-muted-foreground')}>Unidade</FormLabel>
-            <FormControl>
-              <Input placeholder="Unid." {...formField} value={formField.value || ''} disabled={isFromStock || isPurchased} className={cn(
-                  isPurchased || isFromStock && "text-opacity-70 line-through",
-                   isFromStock && !isPurchased ? "bg-white/50" : ""
-              )} />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
-        className="text-destructive/80 hover:text-destructive h-10 w-10 flex-shrink-0"
-        onClick={() => remove(index)}
-        disabled={isPurchased}
-      >
-        <Trash2 className="h-4 w-4" />
-      </Button>
+    <div className={cn("flex flex-col gap-2 p-3 rounded-lg border", containerClasses)}>
+      <div className="flex items-end gap-2">
+        <Controller
+          control={control}
+          name={`materials.${index}`}
+          render={({ field: controllerField }) => (
+            <FormItem className="flex-grow">
+              <FormLabel className={cn(isLocked && 'text-muted-foreground')}>
+                {labelText}
+              </FormLabel>
+              <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+                <PopoverTrigger asChild>
+                  <FormControl>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      disabled={isLocked}
+                      className={cn(
+                        "w-full justify-between",
+                        !controllerField.value.name && "text-muted-foreground",
+                        isLocked && "text-opacity-70 line-through",
+                        field.stockItemId && !isLocked ? "bg-white/50" : ""
+                      )}
+                    >
+                      {controllerField.value.name || "Selecione ou digite um material"}
+                    </Button>
+                  </FormControl>
+                </PopoverTrigger>
+                <PopoverContent className="w-[400px] p-0">
+                  <Command>
+                    <CommandInput placeholder="Buscar no estoque ou digitar novo..." />
+                    <CommandList>
+                      <CommandEmpty>
+                         <div className="p-2 cursor-pointer hover:bg-accent" onClick={() => {
+                              const inputValue = (document.querySelector(`[cmdk-input]`) as HTMLInputElement).value;
+                              update(index, {...field, name: inputValue, stockItemId: undefined, unit: 'unidade' });
+                              setPopoverOpen(false);
+                         }}>
+                              Adicionar novo material: "{ (document.querySelector(`[cmdk-input]`) as HTMLInputElement)?.value }"
+                         </div>
+                      </CommandEmpty>
+                      <CommandGroup heading="Itens do Estoque">
+                        {stockItems.map((item: StockItem) => (
+                          <CommandItem
+                            key={item.id}
+                            value={item.name}
+                            onSelect={() => {
+                              update(index, {...field, name: item.name, stockItemId: item.id, unit: item.unit });
+                              setPopoverOpen(false);
+                            }}
+                          >
+                            {item.name}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={control}
+          name={`materials.${index}.quantity`}
+          render={({ field: formField }) => (
+            <FormItem className="w-24">
+              <FormLabel className={cn(isLocked && 'text-muted-foreground')}>Qtd. Total</FormLabel>
+              <FormControl>
+                <Input type="number" {...formField} value={formField.value || 0} disabled={isLocked} className={cn(
+                    isLocked && "text-opacity-70 line-through",
+                    field.stockItemId && !isLocked ? "bg-white/50" : ""
+                )} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={control}
+          name={`materials.${index}.unit`}
+          render={({ field: formField }) => (
+            <FormItem className="w-32">
+              <FormLabel className={cn(isLocked && 'text-muted-foreground')}>Unidade</FormLabel>
+              <FormControl>
+                <Input placeholder="Unid." {...formField} value={formField.value || ''} disabled={!!field.stockItemId || isLocked} className={cn(
+                    (isLocked || field.stockItemId) && "text-opacity-70 line-through",
+                     field.stockItemId && !isLocked ? "bg-white/50" : ""
+                )} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="text-destructive/80 hover:text-destructive h-10 w-10 flex-shrink-0"
+          onClick={() => remove(index)}
+          disabled={isLocked}
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      </div>
+      {statusText && (
+          <p className={cn("text-xs font-medium pl-1", isFullyDispatched ? "text-green-700" : "text-yellow-700")}>{statusText}</p>
+      )}
     </div>
   );
 };
@@ -304,7 +319,7 @@ export function FurnitureMaterialsModal({
     const data = form.getValues();
     const updatedFurniture: Furniture = {
       ...furniture,
-      materials: data.materials.map(m => ({ ...m, purchased: m.stockItemId ? (m.purchased ?? false) : (m.purchased ?? false) })),
+      materials: data.materials,
       glassItems: data.glassItems.map(g => g as GlassItem),
       profileDoors: data.profileDoors.map(p => p as ProfileDoorItem),
     };
@@ -317,7 +332,7 @@ export function FurnitureMaterialsModal({
   };
   
   const handleAddNewMaterial = () => {
-    appendMaterial({ id: generateId('mat'), name: '', quantity: 1, unit: 'unidade', addedAt: new Date().toISOString(), purchased: false });
+    appendMaterial({ id: generateId('mat'), name: '', quantity: 1, unit: 'unidade', addedAt: new Date().toISOString(), purchased: false, dispatches: [] });
   };
   
   const handleSaveProfileDoor = (doorData: Omit<ProfileDoorItem, 'id' | 'purchased' | 'addedAt'>) => {
@@ -566,7 +581,6 @@ export function FurnitureMaterialsModal({
                             remove={removeMaterial}
                             update={updateMaterial}
                             stockItems={stockItems}
-                            purchaseTimestamp={purchaseTimestamp}
                           />
                         )
                       )
