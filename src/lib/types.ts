@@ -161,7 +161,7 @@ export interface StockReservation {
   status: 'reservado' | 'separado';
 }
 
-export type StockMovementReason = 'compra' | 'estorno' | 'uso_marceneiro' | 'despacho_producao' | 'outros';
+export type StockMovementReason = 'compra' | 'estorno' | 'uso_marceneiro' | 'despacho_producao' | 'quebra_perda' | 'outros';
 
 export interface StockMovement {
   id: string;
@@ -273,3 +273,5 @@ export interface QuoteMaterial {
   cost: number;
   category: string;
 }
+
+    

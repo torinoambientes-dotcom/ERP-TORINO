@@ -32,6 +32,7 @@ const reasonLabels: { [key: string]: string } = {
   estorno: 'Estorno / Devolução',
   uso_marceneiro: 'Uso por Marceneiro',
   despacho_producao: 'Despacho para Produção',
+  quebra_perda: 'Quebra / Perda',
   outros: 'Outros',
 };
 
@@ -59,7 +60,7 @@ export function StockMovementHistoryModal({
       const marceneiro = memberMap.get(movement.details);
       return `Marceneiro: ${marceneiro?.name || 'ID ' + movement.details}`;
     }
-    if ((movement.reason === 'outros' || movement.reason === 'despacho_producao' || movement.reason === 'compra') && movement.details) {
+    if ((movement.reason === 'outros' || movement.reason === 'despacho_producao' || movement.reason === 'compra' || movement.reason === 'quebra_perda') && movement.details) {
       return `"${movement.details}"`;
     }
     return null;
@@ -141,3 +142,5 @@ export function StockMovementHistoryModal({
     </Dialog>
   );
 }
+
+    

@@ -64,7 +64,7 @@ const entryReasons = [
 
 const exitReasons = [
   { value: 'uso_marceneiro', label: 'Uso por Marceneiro' },
-  { value: 'despacho_producao', label: 'Despacho para Produção' },
+  { value: 'quebra_perda', label: 'Quebra / Perda' },
   { value: 'outros', label: 'Outros' },
 ];
 
@@ -226,3 +226,5 @@ export function StockMovementModal({ isOpen, onClose, item }: StockMovementModal
     </Dialog>
   );
 }
+
+    

@@ -600,62 +600,89 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [firestore, stockItems]);
   
   const dispatchItemToProduction = useCallback(async (stockItemId: string, reservation: StockReservation, memberId: string) => {
-      if (!firestore || !stockItems || !projects) return;
-      
-      await runTransaction(firestore, async (transaction) => {
-        const stockItemRef = doc(firestore, 'stock_items', stockItemId);
-        const projectRef = doc(firestore, 'projects', reservation.projectId);
-        
-        const stockItemDoc = await transaction.get(stockItemRef);
-        const projectDoc = await transaction.get(projectRef);
+    if (!firestore) return;
 
-        if (!stockItemDoc.exists() || !projectDoc.exists()) {
-          throw new Error("Item de estoque ou projeto não encontrado.");
-        }
+    try {
+        await runTransaction(firestore, async (transaction) => {
+            const stockItemRef = doc(firestore, 'stock_items', stockItemId);
+            const projectRef = doc(firestore, 'projects', reservation.projectId);
+            
+            const stockItemDoc = await transaction.get(stockItemRef);
+            const projectDoc = await transaction.get(projectRef);
 
-        const stockItem = stockItemDoc.data() as StockItem;
-        const project = projectDoc.data() as Project;
-
-        // 1. Update Stock Item: Remove reservation and decrease quantity
-        const updatedReservations = (stockItem.reservations || []).filter(r => r.materialId !== reservation.materialId);
-        const newQuantity = stockItem.quantity - reservation.quantity;
-
-        if (newQuantity < 0) {
-          throw new Error("Estoque insuficiente para completar o despacho.");
-        }
-        
-        transaction.update(stockItemRef, { 
-            reservations: updatedReservations,
-            quantity: newQuantity,
-        });
-
-        // 2. Add Movement Record
-        const movementId = generateId('move');
-        const newMovement: StockMovement = {
-            id: movementId, stockItemId, type: 'exit',
-            quantity: reservation.quantity,
-            reason: 'despacho_producao',
-            details: `Projeto: ${reservation.projectName}`,
-            timestamp: new Date().toISOString(), memberId,
-        };
-        const movementRef = doc(firestore, 'stock_movements', movementId);
-        transaction.set(movementRef, newMovement);
-
-        // 3. Mark material as "purchased" in the project
-        const newProject = JSON.parse(JSON.stringify(project));
-        const env = newProject.environments.find((e: Environment) => e.id === reservation.environmentId);
-        if (env) {
-          const fur = env.furniture.find((f: Furniture) => f.id === reservation.furnitureId);
-          if (fur && fur.materials) {
-            const mat = fur.materials.find((m: MaterialItem) => m.id === reservation.materialId);
-            if (mat) {
-              mat.purchased = true;
+            if (!stockItemDoc.exists() || !projectDoc.exists()) {
+                throw new Error("Item de estoque ou projeto não encontrado.");
             }
-          }
-        }
-        transaction.set(projectRef, newProject, { merge: true });
-      });
-  }, [firestore, stockItems, projects]);
+
+            const stockItem = stockItemDoc.data() as StockItem;
+            const project = projectDoc.data() as Project;
+            const currentStock = stockItem.quantity;
+            const requestedQuantity = reservation.quantity;
+
+            const dispatchQuantity = Math.min(currentStock, requestedQuantity);
+
+            if (dispatchQuantity <= 0) {
+                // This will rollback the transaction
+                throw new Error("Nenhum item disponível em estoque para despachar.");
+            }
+
+            // --- Update Stock Item ---
+            const newStockQuantity = currentStock - dispatchQuantity;
+            const newReservations = [...(stockItem.reservations || [])];
+            const reservationIndex = newReservations.findIndex(r => r.materialId === reservation.materialId);
+
+            if (dispatchQuantity === requestedQuantity) {
+                // Full dispatch: remove reservation
+                if (reservationIndex !== -1) {
+                    newReservations.splice(reservationIndex, 1);
+                }
+            } else {
+                // Partial dispatch: update reservation quantity
+                if (reservationIndex !== -1) {
+                    newReservations[reservationIndex].quantity -= dispatchQuantity;
+                }
+            }
+            
+            transaction.update(stockItemRef, { 
+                reservations: newReservations,
+                quantity: newStockQuantity,
+            });
+
+            // --- Add Movement Record ---
+            const movementId = generateId('move');
+            const newMovement: StockMovement = {
+                id: movementId, stockItemId, type: 'exit',
+                quantity: dispatchQuantity, // Use the actual dispatched quantity
+                reason: 'despacho_producao',
+                details: `Projeto: ${reservation.projectName} (${dispatchQuantity} de ${requestedQuantity})`,
+                timestamp: new Date().toISOString(), memberId,
+            };
+            const movementRef = doc(firestore, 'stock_movements', movementId);
+            transaction.set(movementRef, newMovement);
+
+            // --- Mark material as "purchased" in the project ONLY IF FULLY dispatched ---
+            if (dispatchQuantity === requestedQuantity) {
+                const newProject = JSON.parse(JSON.stringify(project));
+                const env = newProject.environments.find((e: Environment) => e.id === reservation.environmentId);
+                if (env) {
+                    const fur = env.furniture.find((f: Furniture) => f.id === reservation.furnitureId);
+                    if (fur && fur.materials) {
+                        const mat = fur.materials.find((m: MaterialItem) => m.id === reservation.materialId);
+                        if (mat) {
+                            mat.purchased = true;
+                        }
+                    }
+                }
+                transaction.set(projectRef, newProject, { merge: true });
+            }
+        });
+    } catch (e: any) {
+        console.error("Erro ao despachar item: ", e);
+        // Let the caller handle the error toast
+        throw e;
+    }
+  }, [firestore]);
+
 
   const registerPurchase = useCallback((itemId: string, quantity: number, supplier: string) => {
     if (!firestore) return;
@@ -945,3 +972,5 @@ export function AppProvider({ children }: { children: ReactNode }) {
     </AppContext.Provider>
   );
 }
+
+    
