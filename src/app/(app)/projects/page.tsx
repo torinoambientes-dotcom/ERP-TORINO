@@ -26,11 +26,21 @@ import { Archive, CheckCircle, Pencil, Trash2, ListTodo, MessageSquare, Calendar
 import { DeleteProjectAlert } from '@/components/modals/delete-project-alert';
 import { RegisterProjectModal } from '@/components/modals/register-project-modal';
 import { getProjectStatus } from '@/lib/projects';
-import { format, parseISO, isThisWeek, isThisMonth, isPast, endOfDay } from 'date-fns';
+import { format, parseISO, isThisWeek, isThisMonth, isPast, endOfDay, isValid } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 type ProjectStatus = 'Novo' | 'Em Andamento' | 'Concluído';
 type DeadlineFilter = 'Todos' | 'Atrasados' | 'Esta semana' | 'Este mês';
+
+// Helper function to check if a date is today, safely
+const isToday = (date: Date): boolean => {
+    if (!isValid(date)) return false;
+    const today = new Date();
+    return date.getDate() === today.getDate() &&
+           date.getMonth() === today.getMonth() &&
+           date.getFullYear() === today.getFullYear();
+};
+
 
 export default function ProjectsPage() {
   const { projects, deleteProject, completeProjectStages, isLoading } = useContext(AppContext);
@@ -119,12 +129,13 @@ export default function ProjectsPage() {
         if (!project.deliveryDeadline) {
             return false;
         }
-
+        
         const deadline = parseISO(project.deliveryDeadline);
+        if (!isValid(deadline)) return false; // Safety check
         
         switch (deadlineFilter) {
             case 'Atrasados':
-                return isPast(deadline) && !isToday(deadline);
+                return isPast(endOfDay(deadline)) && !isToday(deadline);
             case 'Esta semana':
                 return isThisWeek(deadline, { weekStartsOn: 1 });
             case 'Este mês':
@@ -135,13 +146,6 @@ export default function ProjectsPage() {
       });
   }, [projects, searchTerm, statusFilter, deadlineFilter]);
   
-  // Helper function to check if a date is today
-  const isToday = (date: Date) => {
-      const today = new Date();
-      return date.getDate() === today.getDate() &&
-             date.getMonth() === today.getMonth() &&
-             date.getFullYear() === today.getFullYear();
-  }
 
   if (isLoading) {
     return (
@@ -241,7 +245,7 @@ export default function ProjectsPage() {
                       <p className="text-sm text-muted-foreground">
                           {project.environments?.length || 0} ambiente(s)
                       </p>
-                      {project.deliveryDeadline && (
+                      {project.deliveryDeadline && isValid(parseISO(project.deliveryDeadline)) && (
                         <div className="flex items-center gap-2 text-sm text-muted-foreground font-medium">
                           <CalendarIcon className="h-4 w-4 text-primary" />
                           <span>Prazo: {format(parseISO(project.deliveryDeadline), 'dd/MM/yyyy', {locale: ptBR})}</span>
