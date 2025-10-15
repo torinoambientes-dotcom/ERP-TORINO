@@ -26,16 +26,18 @@ import { Archive, CheckCircle, Pencil, Trash2, ListTodo, MessageSquare, Calendar
 import { DeleteProjectAlert } from '@/components/modals/delete-project-alert';
 import { RegisterProjectModal } from '@/components/modals/register-project-modal';
 import { getProjectStatus } from '@/lib/projects';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, isThisWeek, isThisMonth, isPast, endOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 type ProjectStatus = 'Novo' | 'Em Andamento' | 'Concluído';
+type DeadlineFilter = 'Todos' | 'Atrasados' | 'Esta semana' | 'Este mês';
 
 export default function ProjectsPage() {
   const { projects, deleteProject, completeProjectStages, isLoading } = useContext(AppContext);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<ProjectStatus | 'Todos'>('Todos');
+  const [deadlineFilter, setDeadlineFilter] = useState<DeadlineFilter>('Todos');
   
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
   const [projectToEdit, setProjectToEdit] = useState<Project | null>(null);
@@ -43,6 +45,10 @@ export default function ProjectsPage() {
 
   const handleStatusFilterChange = useCallback((value: string) => {
     setStatusFilter(value as ProjectStatus | 'Todos');
+  }, []);
+  
+  const handleDeadlineFilterChange = useCallback((value: string) => {
+    setDeadlineFilter(value as DeadlineFilter);
   }, []);
 
   const openDeleteModal = useCallback((project: Project) => {
@@ -94,7 +100,6 @@ export default function ProjectsPage() {
         statusInfo: getProjectStatus(project),
       }))
       .filter(({ project, statusInfo }) => {
-        // Exclui projetos concluídos da lista de projetos ativos
         if (project.completedAt) return false;
 
         const matchesSearch = project.clientName
@@ -102,9 +107,41 @@ export default function ProjectsPage() {
           .includes(searchTerm.toLowerCase());
         const matchesStatus =
           statusFilter === 'Todos' || statusInfo.status === statusFilter;
-        return matchesSearch && matchesStatus;
+        
+        if (!matchesSearch || !matchesStatus) {
+            return false;
+        }
+
+        if (deadlineFilter === 'Todos') {
+            return true;
+        }
+        
+        if (!project.deliveryDeadline) {
+            return false;
+        }
+
+        const deadline = parseISO(project.deliveryDeadline);
+        
+        switch (deadlineFilter) {
+            case 'Atrasados':
+                return isPast(deadline) && !isToday(deadline);
+            case 'Esta semana':
+                return isThisWeek(deadline, { weekStartsOn: 1 });
+            case 'Este mês':
+                return isThisMonth(deadline);
+            default:
+                return true;
+        }
       });
-  }, [projects, searchTerm, statusFilter]);
+  }, [projects, searchTerm, statusFilter, deadlineFilter]);
+  
+  // Helper function to check if a date is today
+  const isToday = (date: Date) => {
+      const today = new Date();
+      return date.getDate() === today.getDate() &&
+             date.getMonth() === today.getMonth() &&
+             date.getFullYear() === today.getFullYear();
+  }
 
   if (isLoading) {
     return (
@@ -138,19 +175,35 @@ export default function ProjectsPage() {
               onChange={(e) => setSearchTerm(e.target.value)}
               className="flex-grow"
             />
-            <Select
-              value={statusFilter}
-              onValueChange={handleStatusFilterChange}
-            >
-              <SelectTrigger className="w-full sm:w-[180px]">
-                <SelectValue placeholder="Filtrar por status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Todos">Todos os Status</SelectItem>
-                <SelectItem value="Novo">Novo</SelectItem>
-                <SelectItem value="Em Andamento">Em Andamento</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="flex gap-4 w-full sm:w-auto">
+              <Select
+                value={statusFilter}
+                onValueChange={handleStatusFilterChange}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Filtrar por status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Todos">Todos os Status</SelectItem>
+                  <SelectItem value="Novo">Novo</SelectItem>
+                  <SelectItem value="Em Andamento">Em Andamento</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select
+                value={deadlineFilter}
+                onValueChange={handleDeadlineFilterChange}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Filtrar por prazo" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Todos">Todos os Prazos</SelectItem>
+                  <SelectItem value="Atrasados">Atrasados</SelectItem>
+                  <SelectItem value="Esta semana">Esta semana</SelectItem>
+                  <SelectItem value="Este mês">Este mês</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </CardContent>
         </Card>
 
@@ -266,7 +319,7 @@ export default function ProjectsPage() {
                 Nenhum projeto ativo encontrado
               </h3>
               <p className="mt-2 text-sm text-muted-foreground">
-                Cadastre um novo projeto ou verifique os projetos concluídos.
+                Cadastre um novo projeto ou verifique os filtros aplicados.
               </p>
             </div>
           </div>
