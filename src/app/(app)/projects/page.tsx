@@ -188,10 +188,15 @@ export default function ProjectsPage() {
                       </p>
                       {statusInfo.totalTasks > 0 && (
                           <div className="space-y-2">
-                              <Progress value={statusInfo.progress} className="h-2" />
+                            <div className="flex justify-between items-center">
                               <p className="text-xs text-muted-foreground">
-                              {statusInfo.doneTasks} de {statusInfo.totalTasks} tarefas concluídas
+                                {statusInfo.doneTasks} de {statusInfo.totalTasks} tarefas concluídas
                               </p>
+                              <p className="text-xs font-semibold text-muted-foreground">
+                                {Math.round(statusInfo.progress)}%
+                              </p>
+                            </div>
+                            <Progress value={statusInfo.progress} className="h-2" />
                           </div>
                       )}
                       </CardContent>
