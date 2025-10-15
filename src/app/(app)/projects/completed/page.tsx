@@ -15,7 +15,7 @@ import { Progress } from '@/components/ui/progress';
 import { Input } from '@/components/ui/input';
 import type { Project } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, Trash2 } from 'lucide-react';
+import { ChevronLeft, Trash2, CalendarIcon } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { DeleteProjectAlert } from '@/components/modals/delete-project-alert';
@@ -141,6 +141,12 @@ export default function CompletedProjectsPage() {
                         <p className="text-sm text-muted-foreground">
                           {project.environments.length} ambiente(s)
                         </p>
+                        {project.deliveryDeadline && (
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <CalendarIcon className="h-4 w-4" />
+                            <span>Prazo: {format(parseISO(project.deliveryDeadline), 'dd/MM/yyyy', {locale: ptBR})}</span>
+                          </div>
+                        )}
                         <div className="space-y-2">
                           <Progress value={progress} className="h-2" />
                           <p className="text-xs text-muted-foreground">

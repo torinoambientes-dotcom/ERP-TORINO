@@ -22,10 +22,12 @@ import {
 } from '@/components/ui/select';
 import type { Project } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { Archive, CheckCircle, Pencil, Trash2, ListTodo, MessageSquare } from 'lucide-react';
+import { Archive, CheckCircle, Pencil, Trash2, ListTodo, MessageSquare, CalendarIcon } from 'lucide-react';
 import { DeleteProjectAlert } from '@/components/modals/delete-project-alert';
 import { RegisterProjectModal } from '@/components/modals/register-project-modal';
 import { getProjectStatus } from '@/lib/projects';
+import { format, parseISO } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 type ProjectStatus = 'Novo' | 'Em Andamento' | 'Concluído';
 
@@ -186,6 +188,12 @@ export default function ProjectsPage() {
                       <p className="text-sm text-muted-foreground">
                           {project.environments?.length || 0} ambiente(s)
                       </p>
+                      {project.deliveryDeadline && (
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground font-medium">
+                          <CalendarIcon className="h-4 w-4 text-primary" />
+                          <span>Prazo: {format(parseISO(project.deliveryDeadline), 'dd/MM/yyyy', {locale: ptBR})}</span>
+                        </div>
+                      )}
                       {statusInfo.totalTasks > 0 && (
                           <div className="space-y-2">
                             <div className="flex justify-between items-center">

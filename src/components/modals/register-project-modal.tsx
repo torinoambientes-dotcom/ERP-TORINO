@@ -3,7 +3,7 @@ import { useContext, useEffect } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { PlusCircle, Trash2 } from 'lucide-react';
+import { PlusCircle, Trash2, CalendarIcon } from 'lucide-react';
 
 import {
   Dialog,
@@ -27,7 +27,11 @@ import { AppContext } from '@/context/app-context';
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from '../ui/separator';
 import type { Project, Furniture, Environment } from '@/lib/types';
-import { generateId } from '@/lib/utils';
+import { generateId, cn } from '@/lib/utils';
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
+import { Calendar } from '../ui/calendar';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 const furnitureSchema = z.object({
   id: z.string().optional(),
@@ -45,6 +49,7 @@ const projectSchema = z.object({
   environments: z
     .array(environmentSchema)
     .min(1, 'Adicione ao menos um ambiente.'),
+  deliveryDeadline: z.date().optional(),
 });
 
 type ProjectFormValues = z.infer<typeof projectSchema>;
@@ -93,9 +98,8 @@ export function RegisterProjectModal({
       if (isEditMode && projectToEdit) {
         form.reset({
           clientName: projectToEdit.clientName,
-          // No modo de edição, começa com campos vazios para adicionar novos ambientes/móveis.
-          // Os existentes não são mostrados para manter a UI simples.
           environments: projectToEdit.environments,
+          deliveryDeadline: projectToEdit.deliveryDeadline ? new Date(projectToEdit.deliveryDeadline) : undefined,
         });
       } else {
         form.reset(defaultValues);
@@ -139,6 +143,7 @@ export function RegisterProjectModal({
         ...projectToEdit,
         clientName: data.clientName,
         environments: updatedEnvironments,
+        deliveryDeadline: data.deliveryDeadline?.toISOString(),
       };
       
       updateProject(updatedProject);
@@ -148,7 +153,11 @@ export function RegisterProjectModal({
       });
 
     } else { // Modo de Criação
-      addProject(data);
+      const projectDataWithDeadline = {
+        ...data,
+        deliveryDeadline: data.deliveryDeadline?.toISOString(),
+      };
+      addProject(projectDataWithDeadline);
       toast({
           title: 'Projeto cadastrado!',
           description: `O projeto para "${data.clientName}" foi criado com sucesso.`,
@@ -163,24 +172,63 @@ export function RegisterProjectModal({
         <DialogHeader>
           <DialogTitle className="font-headline">{isEditMode ? "Editar Projeto" : "Cadastrar Novo Projeto"}</DialogTitle>
           <DialogDescription>
-            {isEditMode ? `Edite o nome do cliente ou adicione novos ambientes e móveis ao projeto.` : "Preencha os dados para registrar um novo projeto."}
+            {isEditMode ? `Edite os dados do projeto.` : "Preencha os dados para registrar um novo projeto."}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            <FormField
-              control={form.control}
-              name="clientName"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Nome do Cliente</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Ex: João da Silva" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="clientName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nome do Cliente</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Ex: João da Silva" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+               <FormField
+                control={form.control}
+                name="deliveryDeadline"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col">
+                    <FormLabel>Prazo de Entrega</FormLabel>
+                    <Popover>
+                        <PopoverTrigger asChild>
+                        <FormControl>
+                            <Button
+                            variant={'outline'}
+                            className={cn(
+                                'w-full pl-3 text-left font-normal',
+                                !field.value && 'text-muted-foreground'
+                            )}
+                            >
+                            {field.value
+                                ? format(field.value, "PPP", { locale: ptBR })
+                                : 'Escolha uma data'}
+                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                            </Button>
+                        </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                            mode="single"
+                            selected={field.value}
+                            onSelect={field.onChange}
+                            disabled={(date) => date < new Date('1900-01-01')}
+                            initialFocus
+                        />
+                        </PopoverContent>
+                    </Popover>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
+            </div>
 
             <Separator />
 
