@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { PlusCircle, FileText, Database, Archive, Trash2 } from 'lucide-react';
+import { PlusCircle, FileText, Database, Archive, Trash2, Clock } from 'lucide-react';
 import { AppContext } from '@/context/app-context';
 import { RegisterQuoteModal } from '@/components/modals/register-quote-modal';
 import type { Quote } from '@/lib/types';
@@ -89,7 +89,7 @@ export default function QuotesPage() {
             return matchesSearch && matchesStatus && matchesArchived;
         });
 
-        const groups: Record<QuoteGroup, Quote[]> = {
+        const groups: Record<QuoteGroup, (Quote & { totalProductionTime: number })[]> = {
             inProgress: [],
             approved: [],
             rejected: [],
@@ -97,11 +97,19 @@ export default function QuotesPage() {
         };
         
         filtered.forEach(quote => {
+          const totalProductionTime = quote.environments.reduce((total, env) => {
+                return total + (env.furniture || []).reduce((envTotal, fur) => {
+                    return envTotal + (fur.productionTime || 0);
+                }, 0);
+           }, 0);
+
+          const quoteWithTime = { ...quote, totalProductionTime };
+
           if (quote.isArchived) {
-              groups.archived.push(quote);
+              groups.archived.push(quoteWithTime);
           } else {
               const groupKey = statusGroupMap[quote.clientFeedback] || statusGroupMap[quote.presentationStatus] || 'inProgress';
-              groups[groupKey].push(quote);
+              groups[groupKey].push(quoteWithTime);
           }
         });
         
@@ -117,7 +125,7 @@ export default function QuotesPage() {
         );
     }
     
-    const QuoteGroup = ({ title, quotes }: { title: string, quotes: Quote[] }) => {
+    const QuoteGroup = ({ title, quotes }: { title: string, quotes: (Quote & { totalProductionTime: number })[] }) => {
         if (quotes.length === 0) {
             return null;
         }
@@ -140,8 +148,16 @@ export default function QuotesPage() {
                                         {displayStatus && <Badge variant={displayStatus.variant}>{displayStatus.label}</Badge>}
                                         {quote.isArchived && <Badge variant="outline">Arquivado</Badge>}
                                     </CardHeader>
-                                    <CardContent>
+                                    <CardContent className="space-y-2">
                                         <p className="text-sm text-muted-foreground">{(quote.environments || []).length} ambiente(s)</p>
+                                        {quote.totalProductionTime > 0 && (
+                                            <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                                                <Clock className="h-4 w-4" />
+                                                <span>
+                                                    {quote.totalProductionTime.toLocaleString('pt-BR')} dia(s) de produção
+                                                </span>
+                                            </div>
+                                        )}
                                     </CardContent>
                                 </Card>
                               </Link>
