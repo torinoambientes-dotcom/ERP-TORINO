@@ -17,7 +17,7 @@ import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/layout/page-header';
 import { AppContext } from '@/context/app-context';
 import type { StockItem, MaterialItem, GlassItem, ProfileDoorItem, PurchaseRequest } from '@/lib/types';
-import { AlertTriangle, ChevronsUpDown, CheckCircle, Copy, ShoppingCart, Eye, History, MessageCircle, Truck, PlusCircle, Trash2, Edit, MoreHorizontal, FileSearch } from 'lucide-react';
+import { AlertTriangle, ChevronsUpDown, CheckCircle, Copy, ShoppingCart, Eye, History, MessageCircle, Truck, PlusCircle, Trash2, Edit, MoreHorizontal, FileSearch, Archive } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
   Accordion,
@@ -46,6 +46,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { ViewProfileDoorModal } from '@/components/modals/view-profile-door-modal';
+import { Separator } from '@/components/ui/separator';
 
 
 interface ShoppingList {
@@ -170,6 +171,7 @@ export default function PurchasesPage() {
   const [requestToDelete, setRequestToDelete] = useState<PurchaseRequest | null>(null);
 
   const [requestSearchTerm, setRequestSearchTerm] = useState('');
+  const [showRequestHistory, setShowRequestHistory] = useState(false);
 
   const memberMap = useMemo(() => new Map(teamMembers.map(m => [m.id, m])), [teamMembers]);
 
@@ -610,6 +612,56 @@ export default function PurchasesPage() {
         }
     }
 
+  const RenderPurchaseRequestList = ({ title, requests, colorClass }: { title: string, requests: PurchaseRequest[], colorClass: string }) => {
+    if (requests.length === 0) return null;
+    
+    return (
+      <div key={title}>
+        <h3 className="font-semibold mb-2">{title} ({requests.length})</h3>
+        <div className="space-y-3">
+          {requests.map(req => {
+            const requester = memberMap.get(req.requesterId);
+            return(
+              <div key={req.id} className={cn("p-4 rounded-lg border flex flex-col sm:flex-row justify-between items-start gap-4", colorClass)}>
+                <div className="flex-grow">
+                  <p className='font-semibold text-base'>{req.description} - {req.quantity} {req.unit}</p>
+                  <p className='text-sm text-muted-foreground mt-1'>{req.reason}</p>
+                  {requester && (
+                      <div className='text-xs text-muted-foreground mt-2 flex items-center gap-1.5'>
+                        <Avatar className="h-4 w-4"><AvatarFallback style={{backgroundColor: requester.color}} className="text-[8px] font-bold">{getInitials(requester.name)}</AvatarFallback></Avatar>
+                        <span>Solicitado por {requester.name} em {format(new Date(req.createdAt), 'dd/MM/yy \'às\' HH:mm')}</span>
+                      </div>
+                  )}
+                </div>
+                
+                <div className="flex-shrink-0 self-start flex items-center gap-1">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" size="sm" className="bg-background/80 flex gap-2">
+                        <span>Ações</span>
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align='end'>
+                      {req.status !== 'approved' && <DropdownMenuItem onClick={() => updatePurchaseRequestStatus(req.id, 'approved')}>Aprovar</DropdownMenuItem>}
+                      {req.status !== 'purchased' && <DropdownMenuItem onClick={() => updatePurchaseRequestStatus(req.id, 'purchased')}>Marcar como Comprado</DropdownMenuItem>}
+                      {req.status !== 'rejected' && <DropdownMenuItem onClick={() => updatePurchaseRequestStatus(req.id, 'rejected')}>Rejeitar</DropdownMenuItem>}
+                      {req.status !== 'pending' && <DropdownMenuSeparator />}
+                      {req.status !== 'pending' && <DropdownMenuItem onClick={() => updatePurchaseRequestStatus(req.id, 'pending')}>Mover para Pendente</DropdownMenuItem>}
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => handleOpenRequestModal(req)}><Edit className="mr-2 h-4 w-4" />Editar</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleOpenDeleteAlert(req)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" />Apagar Solicitação</DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    );
+  }
+
   if (isLoading || !loggedInMember) {
     return (
       <div className="flex h-full w-full items-center justify-center">
@@ -628,7 +680,7 @@ export default function PurchasesPage() {
     <div className="space-y-8">
       <PageHeader
         title="Compras"
-        description="Gerencie sua lista de compras de materiais e vidros, e acompanhe os alertas de estoque."
+        description="Gerencie sua lista de compras de materiais, vidros e o histórico de solicitações avulsas."
       />
 
       <Tabs defaultValue="materials" className="w-full">
@@ -1004,79 +1056,56 @@ export default function PurchasesPage() {
                             className="pl-8 w-full"
                           />
                         </div>
+                        <Button onClick={() => setShowRequestHistory(!showRequestHistory)} variant="outline">
+                            <Archive className="mr-2 h-4 w-4" />
+                            {showRequestHistory ? "Ocultar Histórico" : "Ver Histórico"}
+                        </Button>
                         <Button onClick={() => handleOpenRequestModal(null)} className="flex-shrink-0">
                           <PlusCircle className="mr-2 h-4 w-4" />
-                          Nova Solicitação
+                          Nova
                         </Button>
                       </div>
                   </div>
                 </CardHeader>
                 <CardContent>
-                <div className="space-y-4">
-                  {['pending', 'approved', 'purchased', 'rejected'].map(status => {
-                      const requests = filteredPurchaseRequests.filter(r => r.status === status).sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-                      if(requests.length === 0) return null;
-                      
-                      const statusConfig = {
-                        pending: { title: 'Pendentes', color: 'border-amber-500 bg-amber-50' },
-                        approved: { title: 'Aprovadas (Aguardando Compra)', color: 'border-blue-500 bg-blue-50' },
-                        purchased: { title: 'Compradas', color: 'border-green-500 bg-green-50' },
-                        rejected: { title: 'Rejeitadas', color: 'border-red-500 bg-red-50' },
-                      };
-                      
-                      return (
-                        <div key={status}>
-                          <h3 className="font-semibold mb-2">{statusConfig[status as keyof typeof statusConfig].title} ({requests.length})</h3>
-                          <div className="space-y-3">
-                            {requests.map(req => {
-                              const requester = memberMap.get(req.requesterId);
-                              return(
-                                <div key={req.id} className={cn("p-4 rounded-lg border flex flex-col sm:flex-row justify-between items-start gap-4", statusConfig[status as keyof typeof statusConfig].color)}>
-                                  <div className="flex-grow">
-                                    <p className='font-semibold text-base'>{req.description} - {req.quantity} {req.unit}</p>
-                                    <p className='text-sm text-muted-foreground mt-1'>{req.reason}</p>
-                                    {requester && (
-                                        <div className='text-xs text-muted-foreground mt-2 flex items-center gap-1.5'>
-                                          <Avatar className="h-4 w-4"><AvatarFallback style={{backgroundColor: requester.color}} className="text-[8px] font-bold">{getInitials(requester.name)}</AvatarFallback></Avatar>
-                                          <span>Solicitado por {requester.name} em {format(new Date(req.createdAt), 'dd/MM/yy \'às\' HH:mm')}</span>
-                                        </div>
-                                    )}
-                                  </div>
-                                  
-                                  <div className="flex-shrink-0 self-start flex items-center gap-1">
-                                    <DropdownMenu>
-                                      <DropdownMenuTrigger asChild>
-                                        <Button variant="outline" size="sm" className="bg-background/80 flex gap-2">
-                                          <span>Ações</span>
-                                          <MoreHorizontal className="h-4 w-4" />
-                                        </Button>
-                                      </DropdownMenuTrigger>
-                                      <DropdownMenuContent align='end'>
-                                        {req.status !== 'approved' && <DropdownMenuItem onClick={() => updatePurchaseRequestStatus(req.id, 'approved')}>Aprovar</DropdownMenuItem>}
-                                        {req.status !== 'purchased' && <DropdownMenuItem onClick={() => updatePurchaseRequestStatus(req.id, 'purchased')}>Marcar como Comprado</DropdownMenuItem>}
-                                        {req.status !== 'rejected' && <DropdownMenuItem onClick={() => updatePurchaseRequestStatus(req.id, 'rejected')}>Rejeitar</DropdownMenuItem>}
-                                        {req.status !== 'pending' && <DropdownMenuSeparator />}
-                                        {req.status !== 'pending' && <DropdownMenuItem onClick={() => updatePurchaseRequestStatus(req.id, 'pending')}>Mover para Pendente</DropdownMenuItem>}
-                                        <DropdownMenuSeparator />
-                                        <DropdownMenuItem onClick={() => handleOpenRequestModal(req)}><Edit className="mr-2 h-4 w-4" />Editar</DropdownMenuItem>
-                                        <DropdownMenuItem onClick={() => handleOpenDeleteAlert(req)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" />Apagar Solicitação</DropdownMenuItem>
-                                      </DropdownMenuContent>
-                                    </DropdownMenu>
-                                  </div>
-                                </div>
-                              )
-                            })}
-                          </div>
-                        </div>
-                      )
-                  })}
-                  {filteredPurchaseRequests.length === 0 && (
-                    <div className="flex h-48 items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/20">
-                      <p className="text-sm text-muted-foreground text-center">
-                        {requestSearchTerm ? `Nenhuma solicitação encontrada para "${requestSearchTerm}".` : 'Nenhuma solicitação de compra avulsa encontrada.'}
-                      </p>
-                    </div>
+                <div className="space-y-6">
+                  <RenderPurchaseRequestList
+                    title="Pendentes de Aprovação"
+                    requests={filteredPurchaseRequests.filter(r => r.status === 'pending')}
+                    colorClass="border-amber-500 bg-amber-50"
+                  />
+                  <RenderPurchaseRequestList
+                    title="Aprovadas (Aguardando Compra)"
+                    requests={filteredPurchaseRequests.filter(r => r.status === 'approved')}
+                    colorClass="border-blue-500 bg-blue-50"
+                  />
+
+                  {filteredPurchaseRequests.filter(r => r.status === 'pending' || r.status === 'approved').length === 0 && (
+                      <div className="flex h-32 items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/20">
+                          <p className="text-sm text-muted-foreground text-center">
+                              Nenhuma solicitação de compra ativa no momento.
+                          </p>
+                      </div>
                   )}
+
+                  <Collapsible open={showRequestHistory} onOpenChange={setShowRequestHistory}>
+                    <CollapsibleContent className="space-y-6 mt-6">
+                      <Separator />
+                      <RenderPurchaseRequestList
+                        title="Histórico: Compradas"
+                        requests={filteredPurchaseRequests.filter(r => r.status === 'purchased')}
+                        colorClass="border-green-500 bg-green-50"
+                      />
+                      <RenderPurchaseRequestList
+                        title="Histórico: Rejeitadas"
+                        requests={filteredPurchaseRequests.filter(r => r.status === 'rejected')}
+                        colorClass="border-red-500 bg-red-50"
+                      />
+                      {filteredPurchaseRequests.filter(r => r.status === 'purchased' || r.status === 'rejected').length === 0 && (
+                        <p className="text-sm text-muted-foreground text-center py-4">O histórico de solicitações está vazio.</p>
+                      )}
+                    </CollapsibleContent>
+                  </Collapsible>
                 </div>
                 </CardContent>
             </Card>
