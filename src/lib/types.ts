@@ -213,6 +213,8 @@ export interface PurchaseRequest {
     createdAt: string; // ISO date string
     updatedAt: string; // ISO date string
     notes?: string;
+    projectId?: string;
+    projectName?: string;
 }
 
 export type QuoteStatus = 'draft' | 'sent' | 'approved' | 'rejected';

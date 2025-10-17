@@ -17,7 +17,7 @@ import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/layout/page-header';
 import { AppContext } from '@/context/app-context';
 import type { StockItem, MaterialItem, GlassItem, ProfileDoorItem, PurchaseRequest } from '@/lib/types';
-import { AlertTriangle, ChevronsUpDown, CheckCircle, Copy, ShoppingCart, Eye, History, MessageCircle, Truck, PlusCircle, Trash2, Edit, MoreHorizontal, FileSearch, Archive } from 'lucide-react';
+import { AlertTriangle, ChevronsUpDown, CheckCircle, Copy, ShoppingCart, Eye, History, MessageCircle, Truck, PlusCircle, Trash2, Edit, MoreHorizontal, FileSearch, Archive, Link as LinkIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
   Accordion,
@@ -47,6 +47,7 @@ import { Input } from '@/components/ui/input';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { ViewProfileDoorModal } from '@/components/modals/view-profile-door-modal';
 import { Separator } from '@/components/ui/separator';
+import Link from 'next/link';
 
 
 interface ShoppingList {
@@ -624,7 +625,17 @@ export default function PurchasesPage() {
             return(
               <div key={req.id} className={cn("p-4 rounded-lg border flex flex-col sm:flex-row justify-between items-start gap-4", colorClass)}>
                 <div className="flex-grow">
-                  <p className='font-semibold text-base'>{req.description} - {req.quantity} {req.unit}</p>
+                  <div className="flex items-center gap-2">
+                    <p className='font-semibold text-base'>{req.description} - {req.quantity} {req.unit}</p>
+                    {req.projectId && req.projectName && (
+                       <Link href={`/projects/${req.projectId}`} passHref legacyBehavior>
+                          <a target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-blue-600 hover:underline">
+                              <LinkIcon className="h-3 w-3" />
+                              {req.projectName}
+                          </a>
+                        </Link>
+                    )}
+                  </div>
                   <p className='text-sm text-muted-foreground mt-1'>{req.reason}</p>
                   {requester && (
                       <div className='text-xs text-muted-foreground mt-2 flex items-center gap-1.5'>

@@ -1,5 +1,5 @@
 'use client';
-import { useContext, useEffect } from 'react';
+import { useContext, useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -26,12 +26,14 @@ import { AppContext } from '@/context/app-context';
 import { useToast } from '@/hooks/use-toast';
 import { useUser } from '@/firebase';
 import type { PurchaseRequest } from '@/lib/types';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 
 const requestSchema = z.object({
   description: z.string().min(3, 'A descrição é obrigatória.'),
   quantity: z.coerce.number().min(0.1, 'A quantidade deve ser positiva.'),
   unit: z.string().min(1, 'A unidade é obrigatória.'),
   reason: z.string().min(3, 'O motivo é obrigatório.'),
+  projectId: z.string().optional(),
 });
 
 type RequestFormValues = z.infer<typeof requestSchema>;
@@ -47,11 +49,15 @@ export function NewPurchaseRequestModal({
   onClose,
   requestToEdit,
 }: NewPurchaseRequestModalProps) {
-  const { addPurchaseRequest, updatePurchaseRequest, teamMembers } = useContext(AppContext);
+  const { addPurchaseRequest, updatePurchaseRequest, teamMembers, projects } = useContext(AppContext);
   const { toast } = useToast();
   const { user } = useUser();
 
   const isEditMode = !!requestToEdit;
+
+  const activeProjects = useMemo(() => {
+    return projects.filter(p => !p.completedAt).sort((a,b) => a.clientName.localeCompare(b.clientName));
+  }, [projects]);
 
   const form = useForm<RequestFormValues>({
     resolver: zodResolver(requestSchema),
@@ -60,29 +66,40 @@ export function NewPurchaseRequestModal({
       quantity: 1,
       unit: 'un',
       reason: '',
+      projectId: '',
     },
   });
 
   useEffect(() => {
     if (isOpen) {
       if (isEditMode && requestToEdit) {
-        form.reset(requestToEdit);
+        form.reset({
+            description: requestToEdit.description,
+            quantity: requestToEdit.quantity,
+            unit: requestToEdit.unit,
+            reason: requestToEdit.reason,
+            projectId: requestToEdit.projectId || '',
+        });
       } else {
         form.reset({
           description: '',
           quantity: 1,
           unit: 'un',
           reason: '',
+          projectId: '',
         });
       }
     }
   }, [isOpen, isEditMode, requestToEdit, form]);
 
   const onSubmit = (data: RequestFormValues) => {
+    const selectedProject = projects.find(p => p.id === data.projectId);
+
     if (isEditMode && requestToEdit) {
         updatePurchaseRequest({
             ...requestToEdit,
             ...data,
+            projectName: selectedProject?.clientName,
         });
         toast({
             title: "Solicitação Atualizada!",
@@ -98,6 +115,7 @@ export function NewPurchaseRequestModal({
             ...data,
             requesterId: requester.id,
             requesterName: requester.name,
+            projectName: selectedProject?.clientName,
         });
         toast({
             title: 'Solicitação Enviada!',
@@ -174,6 +192,31 @@ export function NewPurchaseRequestModal({
                 </FormItem>
               )}
             />
+             <FormField
+                control={form.control}
+                name="projectId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Vincular ao Projeto (Opcional)</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                            <SelectTrigger>
+                                <SelectValue placeholder="Selecione um projeto..." />
+                            </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                            <SelectItem value="">Nenhum projeto</SelectItem>
+                            {activeProjects.map(project => (
+                                <SelectItem key={project.id} value={project.id}>
+                                    {project.clientName}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             <DialogFooter>
               <Button type="button" variant="ghost" onClick={onClose}>
                 Cancelar
