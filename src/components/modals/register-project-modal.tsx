@@ -36,6 +36,7 @@ import { ptBR } from 'date-fns/locale';
 const furnitureSchema = z.object({
   id: z.string().optional(),
   name: z.string().min(1, 'Nome do móvel é obrigatório.'),
+  productionTime: z.coerce.number().optional(),
 });
 
 const environmentSchema = z.object({
@@ -76,7 +77,7 @@ export function RegisterProjectModal({
 
   const defaultValues: ProjectFormValues = {
     clientName: '',
-    environments: [{ name: '', furniture: [{ name: '' }] }],
+    environments: [{ name: '', furniture: [{ name: '', productionTime: 0 }] }],
   };
 
   const form = useForm<ProjectFormValues>({
@@ -123,9 +124,10 @@ export function RegisterProjectModal({
                 .flatMap(e => e.furniture)
                 .find(f => f.id === (fur as any).id);
 
-              return existingFur ? existingFur : {
+              return existingFur ? { ...existingFur, name: fur.name, productionTime: fur.productionTime || 0 } : {
                 id: generateId('fur'),
                 name: fur.name,
+                productionTime: fur.productionTime || 0,
                 measurement: { status: 'todo' as const, priority: 'medium' },
                 cutting: { status: 'todo' as const, priority: 'medium' },
                 purchase: { status: 'todo' as const, priority: 'medium' },
@@ -258,7 +260,7 @@ export function RegisterProjectModal({
                       </FormItem>
                     )}
                   />
-                  <FurnitureArray control={form.control} envIndex={envIndex} isEditMode={isEditMode} />
+                  <FurnitureArray control={form.control} envIndex={envIndex} />
                 </div>
               ))}
               <Button
@@ -266,7 +268,7 @@ export function RegisterProjectModal({
                 variant="outline"
                 size="sm"
                 onClick={() =>
-                  appendEnv({ name: '', furniture: [{ name: '' }] })
+                  appendEnv({ name: '', furniture: [{ name: '', productionTime: 0 }] })
                 }
               >
                 <PlusCircle className="mr-2 h-4 w-4" />
@@ -288,7 +290,7 @@ export function RegisterProjectModal({
 }
 
 
-function FurnitureArray({ control, envIndex, isEditMode }: { control: any, envIndex: number, isEditMode: boolean }) {
+function FurnitureArray({ control, envIndex }: { control: any, envIndex: number }) {
   const { fields, append, remove } = useFieldArray({
     control,
     name: `environments.${envIndex}.furniture`,
@@ -296,9 +298,12 @@ function FurnitureArray({ control, envIndex, isEditMode }: { control: any, envIn
 
   return (
     <div className="space-y-2">
-      <FormLabel>Móveis</FormLabel>
+      <div className="grid grid-cols-[1fr,140px] gap-2 items-center">
+        <FormLabel>Móveis</FormLabel>
+        <FormLabel>Tempo de Produção (dias)</FormLabel>
+      </div>
       {fields.map((field, furIndex) => (
-        <div key={field.id} className="flex items-center gap-2">
+        <div key={field.id} className="flex items-start gap-2">
           <FormField
             control={control}
             name={`environments.${envIndex}.furniture.${furIndex}.name`}
@@ -306,6 +311,18 @@ function FurnitureArray({ control, envIndex, isEditMode }: { control: any, envIn
               <FormItem className="flex-1">
                 <FormControl>
                   <Input placeholder="Ex: Armário aéreo" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={control}
+            name={`environments.${envIndex}.furniture.${furIndex}.productionTime`}
+            render={({ field }) => (
+              <FormItem className="w-[140px]">
+                <FormControl>
+                  <Input type="number" placeholder="Ex: 1.5" step="0.1" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -326,7 +343,7 @@ function FurnitureArray({ control, envIndex, isEditMode }: { control: any, envIn
         type="button"
         variant="outline"
         size="sm"
-        onClick={() => append({ name: '' })}
+        onClick={() => append({ name: '', productionTime: 0 })}
         className="mt-2"
       >
         <PlusCircle className="mr-2 h-4 w-4" />
