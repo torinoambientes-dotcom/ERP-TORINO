@@ -5,7 +5,7 @@ import { AppContext } from '@/context/app-context';
 import type { Quote, StageStatus, TeamMember, QuoteStage, QuoteFurniture, QuoteEnvironment } from '@/lib/types';
 import { PageHeader } from '@/components/layout/page-header';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, User, Package, Pencil, FileText, Download, CalendarIcon, CheckCircle, Clock } from 'lucide-react';
+import { ChevronLeft, User, Package, Pencil, FileText, Download, CalendarIcon, CheckCircle, Clock, Users } from 'lucide-react';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -217,6 +217,14 @@ export default function QuoteDetailsPage() {
       }, 0);
     }, 0);
   }, [quote]);
+
+  const estimatedDays = useMemo(() => {
+    if (totalProductionTime === 0) return 0;
+    const hoursPerDayPerCarpenter = 8;
+    const numberOfCarpenters = 3;
+    const totalCarpenterHoursPerDay = numberOfCarpenters * hoursPerDayPerCarpenter;
+    return Math.ceil(totalProductionTime / totalCarpenterHoursPerDay);
+  }, [totalProductionTime]);
 
   const generatePDF = (isQuote: boolean) => {
     if (!quote) return;
@@ -498,7 +506,14 @@ export default function QuoteDetailsPage() {
                   <Clock className="h-5 w-5 text-muted-foreground" />
                   <div>
                     <span className="font-semibold">{totalProductionTime} horas</span>
-                    <p className="text-xs text-muted-foreground">de produção estimada</p>
+                    <p className="text-xs text-muted-foreground">de produção</p>
+                  </div>
+                </Card>
+                <Card className="flex items-center gap-2 p-2 text-sm">
+                  <Users className="h-5 w-5 text-muted-foreground" />
+                  <div>
+                    <span className="font-semibold">~{estimatedDays} dias</span>
+                    <p className="text-xs text-muted-foreground">com 3 marceneiros</p>
                   </div>
                 </Card>
                 {isAdmin && (
