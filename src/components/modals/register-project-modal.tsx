@@ -99,7 +99,13 @@ export function RegisterProjectModal({
       if (isEditMode && projectToEdit) {
         form.reset({
           clientName: projectToEdit.clientName,
-          environments: projectToEdit.environments,
+          environments: projectToEdit.environments.map(env => ({
+            ...env,
+            furniture: env.furniture.map(fur => ({
+              ...fur,
+              productionTime: fur.productionTime || 0,
+            }))
+          })),
           deliveryDeadline: projectToEdit.deliveryDeadline ? new Date(projectToEdit.deliveryDeadline) : undefined,
         });
       } else {
@@ -322,7 +328,7 @@ function FurnitureArray({ control, envIndex }: { control: any, envIndex: number 
             render={({ field }) => (
               <FormItem className="w-[140px]">
                 <FormControl>
-                  <Input type="number" placeholder="Ex: 1.5" step="0.1" {...field} />
+                  <Input type="number" placeholder="Ex: 1.5" step="0.1" {...field} value={field.value || 0} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
