@@ -41,7 +41,7 @@ interface AppContextType {
   toggleItemPurchasedStatus: (itemType: 'glass' | 'door', itemId: string, projectId: string, envId: string, furId: string) => void;
   toggleMaterialPurchased: (projectId: string, envId: string, furId: string, materialId: string, purchased: boolean) => void;
   clearAllReservations: () => void;
-  dispatchItemToProduction: (stockItemId: string, reservation: StockReservation, memberId: string) => void;
+  dispatchItemToProduction: (stockItemId: string, reservation: StockReservation, memberId: string, marceneiroId: string) => void;
   registerPurchase: (itemId: string, quantity: number, supplier: string) => void;
   confirmStockReceipt: (item: StockItem) => void;
   addPurchaseRequest: (requestData: Omit<PurchaseRequest, 'id' | 'createdAt' | 'updatedAt' | 'status'>) => void;
@@ -162,7 +162,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
 
   const { data: projects, isLoading: isLoadingProjects } = useCollection<Project>(projectsQuery);
-  const { data: teamMembers, isLoading: isLoadingTeamMembers } = useCollection<TeamMember>(teamMembersQuery);
+  const { data: teamMembersData, isLoading: isLoadingTeamMembers } = useCollection<TeamMember>(teamMembersQuery);
   const { data: appointments, isLoading: isLoadingAppointments } = useCollection<Appointment>(appointmentsQuery);
   const { data: stockItems, isLoading: isLoadingStockItems } = useCollection<StockItem>(stockItemsQuery);
   const { data: stockCategoriesData, isLoading: isLoadingStockCategories } = useCollection<StockCategory>(stockCategoriesQuery);
@@ -172,7 +172,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const { data: quoteMaterials, isLoading: isLoadingQuoteMaterials } = useCollection<QuoteMaterial>(quoteMaterialsQuery);
   const { data: quoteMaterialCategories, isLoading: isLoadingQuoteMaterialCategories } = useCollection<QuoteMaterialCategory>(quoteMaterialCategoriesQuery);
 
-
+  const teamMembers = useMemo(() => teamMembersData || [], [teamMembersData]);
   const stockCategories = useMemo(() => stockCategoriesData || [], [stockCategoriesData]);
   
   const addProject = useCallback((projectData: Omit<Project, 'id' | 'environments'> & { environments: Array<Omit<Project['environments'][0], 'id' | 'furniture'> & { furniture: Array<Omit<Furniture, 'id' | 'measurement' | 'cutting' | 'purchase' | 'assembly' | 'comments' | 'pendencies' | 'materials' | 'glassItems' | 'profileDoors'>>}>}) => {
@@ -599,8 +599,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await batch.commit();
   }, [firestore, stockItems]);
   
-  const dispatchItemToProduction = useCallback(async (stockItemId: string, reservation: StockReservation, memberId: string) => {
+  const dispatchItemToProduction = useCallback(async (stockItemId: string, reservation: StockReservation, memberId: string, marceneiroId: string) => {
     if (!firestore) return;
+    const marceneiro = teamMembers.find(m => m.id === marceneiroId);
+    if (!marceneiro) {
+        console.error("Marceneiro não encontrado!");
+        return;
+    }
 
     try {
         await runTransaction(firestore, async (transaction) => {
@@ -616,14 +621,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
             const stockItem = stockItemDoc.data() as StockItem;
             const project = projectDoc.data() as Project;
-
+            
             const dispatchQuantity = Math.min(stockItem.quantity, reservation.quantity);
             if (dispatchQuantity <= 0) {
                 console.log("No stock to dispatch for this reservation.");
                 return;
             }
 
-            // --- 1. Update Stock Item ---
+            // Update Stock Item
             const newStockQuantity = stockItem.quantity - dispatchQuantity;
             const newReservations = (stockItem.reservations || []).map(res => {
                 if (res.materialId === reservation.materialId) {
@@ -636,7 +641,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 reservations: newReservations,
             });
 
-            // --- 2. Update Project's Material Item ---
+            // Update Project's Material Item
             const newProject = JSON.parse(JSON.stringify(project));
             const env = newProject.environments.find((e: Environment) => e.id === reservation.environmentId);
             if (env) {
@@ -651,8 +656,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
                             memberId: memberId,
                         };
                         material.dispatches = [...(material.dispatches || []), newDispatch];
-
-                        const totalDispatched = material.dispatches.reduce((acc, d) => acc + d.quantity, 0);
+                        const totalDispatched = material.dispatches.reduce((acc: number, d: Dispatch) => acc + d.quantity, 0);
                         if (totalDispatched >= material.quantity) {
                             material.purchased = true;
                         }
@@ -661,9 +665,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
             }
             transaction.set(projectRef, newProject, { merge: true });
 
-            // --- 3. Add Movement Record ---
+            // Add Movement Record
             const movementId = generateId('move');
-            const movementDetails = `Projeto: ${reservation.projectName} (${dispatchQuantity} de ${reservation.quantity} despachado)`;
+            const movementDetails = `Projeto: ${reservation.projectName} | Entregue para: ${marceneiro.name}`;
             const newMovement: StockMovement = {
                 id: movementId, stockItemId, type: 'exit',
                 quantity: dispatchQuantity,
@@ -678,7 +682,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         console.error("Erro ao despachar item: ", e);
         throw e;
     }
-  }, [firestore]);
+  }, [firestore, teamMembers]);
 
   const registerPurchase = useCallback((itemId: string, quantity: number, supplier: string) => {
     if (!firestore) return;
@@ -857,7 +861,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo(() => ({
     projects: projects || [],
-    teamMembers: teamMembers || [],
+    teamMembers,
     appointments: appointments || [],
     stockItems: stockItems || [],
     stockCategories: stockCategories,

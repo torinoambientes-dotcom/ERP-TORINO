@@ -40,6 +40,7 @@ import Link from 'next/link';
 import { useUser } from '@/firebase';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { DispatchConfirmationModal } from '@/components/modals/dispatch-confirmation-modal';
 
 export default function StockPage() {
   const router = useRouter();
@@ -80,6 +81,9 @@ export default function StockPage() {
   const [popoverOpenState, setPopoverOpenState] = useState<Record<string, boolean>>({});
   
   const [isAwaitingReceiptOpen, setAwaitingReceiptOpen] = useState(true);
+
+  const [isDispatchModalOpen, setDispatchModalOpen] = useState(false);
+  const [dispatchInfo, setDispatchInfo] = useState<{ item: StockItem, reservation: StockReservation } | null>(null);
 
   const togglePopover = (itemId: string) => {
     setPopoverOpenState(prev => ({ ...prev, [itemId]: !prev[itemId] }));
@@ -201,12 +205,17 @@ export default function StockPage() {
     setResetAlertOpen(false);
   };
 
-  const handleDispatch = (stockItemId: string, reservation: StockReservation) => {
+  const handleOpenDispatchModal = (item: StockItem, reservation: StockReservation) => {
+    setDispatchInfo({ item, reservation });
+    setDispatchModalOpen(true);
+  };
+
+  const handleConfirmDispatch = (stockItemId: string, reservation: StockReservation, marceneiroId: string) => {
     if(!user?.uid) {
         toast({ variant: 'destructive', title: 'Erro', description: 'Usuário não autenticado.' });
         return;
     }
-    dispatchItemToProduction(stockItemId, reservation, user.uid);
+    dispatchItemToProduction(stockItemId, reservation, user.uid, marceneiroId);
     toast({
         title: 'Item Despachado para Produção!',
         description: `Foi dada a baixa no estoque para a reserva do projeto ${reservation.projectName}.`
@@ -284,7 +293,7 @@ export default function StockPage() {
                                   </div>
                                   <div className="flex items-center gap-2 flex-shrink-0">
                                     <p className="font-mono">{res.quantity} {item.unit}</p>
-                                    <Button size="sm" variant="default" onClick={() => handleDispatch(item.id, res)}>
+                                    <Button size="sm" variant="default" onClick={() => handleOpenDispatchModal(item, res)}>
                                       <SendToBack className="mr-2 h-4 w-4" />
                                       Despachar
                                     </Button>
@@ -500,6 +509,16 @@ export default function StockPage() {
           isOpen={isHistoryModalOpen}
           onClose={handleCloseHistoryModal}
           item={itemForHistory}
+        />
+      )}
+
+      {dispatchInfo && (
+        <DispatchConfirmationModal
+          isOpen={isDispatchModalOpen}
+          onClose={() => setDispatchModalOpen(false)}
+          item={dispatchInfo.item}
+          reservation={dispatchInfo.reservation}
+          onConfirm={handleConfirmDispatch}
         />
       )}
 

@@ -61,7 +61,7 @@ export function StockMovementHistoryModal({
       return `Marceneiro: ${marceneiro?.name || 'ID ' + movement.details}`;
     }
     if ((movement.reason === 'outros' || movement.reason === 'despacho_producao' || movement.reason === 'compra' || movement.reason === 'quebra_perda') && movement.details) {
-      return `"${movement.details}"`;
+      return `${movement.details}`;
     }
     return null;
   };
@@ -142,5 +142,3 @@ export function StockMovementHistoryModal({
     </Dialog>
   );
 }
-
-    
