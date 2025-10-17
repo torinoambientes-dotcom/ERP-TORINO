@@ -132,7 +132,11 @@ const MaterialRow = ({ index, control, field, remove, update, stockItems }: any)
   if (isFullyDispatched) {
       labelText = "Material (Despachado da Produção)";
       containerClasses = "bg-green-100/60 border-green-200";
-      statusText = `Completo: ${totalDispatched}/${field.quantity} ${field.unit}`;
+      const lastDispatchDate = field.dispatches?.length > 0 
+          ? new Date(field.dispatches[field.dispatches.length - 1].dispatchedAt)
+          : null;
+      const formattedDate = lastDispatchDate ? format(lastDispatchDate, 'dd/MM/yyyy') : '';
+      statusText = `Completo: ${totalDispatched}/${field.quantity} ${field.unit} - Despachado em ${formattedDate}`;
   } else if (isPartiallyDispatched) {
       labelText = "Material (Despacho Parcial)";
       containerClasses = "bg-yellow-100/60 border-yellow-300";
