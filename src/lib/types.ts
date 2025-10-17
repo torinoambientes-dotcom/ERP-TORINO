@@ -127,6 +127,7 @@ export interface Furniture {
   materials?: MaterialItem[];
   glassItems?: GlassItem[];
   profileDoors?: ProfileDoorItem[];
+  productionTime?: number;
 }
 
 export interface Environment {
@@ -238,7 +239,7 @@ export interface QuoteFurniture {
     id: string;
     name: string;
     description?: string;
-    productionTime?: number; // Estimated production time in hours
+    productionTime?: number; // Estimated production time in days
     materials?: MaterialItem[];
     glassItems?: GlassItem[];
     profileDoors?: ProfileDoorItem[];

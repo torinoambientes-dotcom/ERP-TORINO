@@ -184,9 +184,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       environments: projectData.environments.map((env) => ({
         ...env,
         id: generateId('env'),
-        furniture: env.furniture.map((fur) => ({
+        furniture: env.furniture.map((fur: any) => ({ // Cast fur to any to access productionTime
           ...fur,
           id: generateId('fur'),
+          productionTime: fur.productionTime || 0,
           measurement: { status: 'todo' },
           cutting: { status: 'todo' },
           purchase: { status: 'todo' },
@@ -791,7 +792,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           productionTime: fur.productionTime || 0,
           materials: [],
           glassItems: [],
-          profileDoors: [],
+          profileDoors: []
         }))
       }));
 

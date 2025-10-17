@@ -22,7 +22,7 @@ import {
 } from '@/components/ui/select';
 import type { Project } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { Archive, CheckCircle, Pencil, Trash2, ListTodo, MessageSquare, CalendarIcon } from 'lucide-react';
+import { Archive, CheckCircle, Pencil, Trash2, ListTodo, MessageSquare, CalendarIcon, Clock } from 'lucide-react';
 import { DeleteProjectAlert } from '@/components/modals/delete-project-alert';
 import { RegisterProjectModal } from '@/components/modals/register-project-modal';
 import { getProjectStatus } from '@/lib/projects';
@@ -105,10 +105,19 @@ export default function ProjectsPage() {
   const filteredProjects = useMemo(() => {
      if (!projects) return [];
      return projects
-      .map((project) => ({
-        project,
-        statusInfo: getProjectStatus(project),
-      }))
+      .map((project) => {
+        const totalProductionTime = (project.environments || []).reduce((total, env) => {
+          return total + (env.furniture || []).reduce((envTotal, fur) => {
+              return envTotal + (fur.productionTime || 0);
+          }, 0);
+        }, 0);
+
+        return {
+          project,
+          statusInfo: getProjectStatus(project),
+          totalProductionTime,
+        }
+      })
       .filter(({ project, statusInfo }) => {
         if (project.completedAt) return false;
 
@@ -213,7 +222,7 @@ export default function ProjectsPage() {
 
         {filteredProjects.length > 0 ? (
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {filteredProjects.map(({ project, statusInfo }) => {
+            {filteredProjects.map(({ project, statusInfo, totalProductionTime }) => {
                 let statusBadge: { variant: 'default' | 'secondary' | 'outline', className?: string };
                 switch (statusInfo.status) {
                     case 'Concluído':
@@ -242,9 +251,15 @@ export default function ProjectsPage() {
                       </div>
                       </CardHeader>
                       <CardContent className="flex-grow space-y-4">
-                      <p className="text-sm text-muted-foreground">
-                          {project.environments?.length || 0} ambiente(s)
-                      </p>
+                      <div className="flex justify-between items-center text-sm text-muted-foreground">
+                        <span>{project.environments?.length || 0} ambiente(s)</span>
+                        {totalProductionTime > 0 && (
+                          <div className="flex items-center gap-1.5 font-medium">
+                            <Clock className="h-4 w-4" />
+                            <span>{totalProductionTime.toLocaleString('pt-BR')} dia(s)</span>
+                          </div>
+                        )}
+                      </div>
                       {project.deliveryDeadline && isValid(parseISO(project.deliveryDeadline)) && (
                         <div className="flex items-center gap-2 text-sm text-muted-foreground font-medium">
                           <CalendarIcon className="h-4 w-4 text-primary" />

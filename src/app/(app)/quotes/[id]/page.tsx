@@ -172,6 +172,7 @@ export default function QuoteDetailsPage() {
         name: env.name,
         furniture: env.furniture.map(fur => ({
           name: fur.name,
+          productionTime: fur.productionTime,
           materials: fur.materials,
           glassItems: fur.glassItems,
           profileDoors: fur.profileDoors,
