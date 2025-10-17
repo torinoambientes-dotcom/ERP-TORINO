@@ -328,7 +328,7 @@ function FurnitureArray({ control, envIndex }: { control: any, envIndex: number 
             render={({ field }) => (
               <FormItem className="w-[140px]">
                 <FormControl>
-                  <Input type="number" placeholder="Ex: 1.5" step="0.1" {...field} value={field.value || 0} />
+                  <Input type="number" placeholder="Ex: 1.5" step="0.1" {...field} value={field.value ?? 0} />
                 </FormControl>
                 <FormMessage />
               </FormItem>

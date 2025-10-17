@@ -99,7 +99,7 @@ export function RegisterQuoteModal({
           clientName: quoteToEdit.clientName,
           clientContact: quoteToEdit.clientContact || '',
           projectOrigin: quoteToEdit.projectOrigin,
-          environments: quoteToEdit.environments.length > 0 ? quoteToEdit.environments : [{id: generateId('env'), name: '', furniture: [{id: generateId('fur'), name: '', productionTime: 0}]}],
+          environments: quoteToEdit.environments.length > 0 ? quoteToEdit.environments.map(env => ({...env, furniture: env.furniture.map(f => ({...f, productionTime: f.productionTime || 0}))})) : [{id: generateId('env'), name: '', furniture: [{id: generateId('fur'), name: '', productionTime: 0}]}],
         });
       } else {
         form.reset(getDefaultValues());
@@ -119,6 +119,7 @@ export function RegisterQuoteModal({
           .map(fur => ({
             ...fur,
             id: fur.id || generateId('fur'),
+            productionTime: fur.productionTime || 0,
           })),
       }));
 
@@ -330,7 +331,7 @@ function FurnitureArray({ control, envIndex }: { control: any, envIndex: number 
             render={({ field }) => (
               <FormItem className="w-[140px]">
                 <FormControl>
-                  <Input type="number" placeholder="Ex: 1.5" step="0.1" {...field} />
+                  <Input type="number" placeholder="Ex: 1.5" step="0.1" {...field} value={field.value ?? 0} />
                 </FormControl>
                 <FormMessage />
               </FormItem>

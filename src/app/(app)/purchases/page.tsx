@@ -227,13 +227,9 @@ export default function PurchasesPage() {
                         if (!stockItem) {
                             return true; // Stock item not found, assume it needs to be bought
                         }
-
-                        // Check if demand for this specific reservation can be met
-                        const availableStock = stockItem.quantity;
-                        // For this check, we consider if the *specific* item's quantity is > stock
-                        // This isn't perfect if multiple projects use the same item, but it's a good start.
-                        // A better check would be total reservations vs stock.
-                        return m.quantity > availableStock;
+                        
+                        // Show if reserved quantity is greater than available stock
+                        return m.quantity > stockItem.quantity;
                     })
                     .map(material => ({
                         ...material,
@@ -1034,7 +1030,7 @@ export default function PurchasesPage() {
                                                     <li key={index} className='flex justify-between items-center gap-2'>
                                                         <div className='text-muted-foreground'>
                                                             <p className="font-medium text-foreground/90">
-                                                                {quantityText} de Porta {item.profileColor} / Vidro {item.glassType}
+                                                                {item.quantity}x Porta {item.profileColor} / Vidro {item.glassType}
                                                             </p>
                                                             <p>
                                                                 {item.width}mm x {item.height}mm - Puxador: {item.handleType} ({handleDetails})
