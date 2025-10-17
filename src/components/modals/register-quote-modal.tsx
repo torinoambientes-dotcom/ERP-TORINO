@@ -33,6 +33,7 @@ import { generateId } from '@/lib/utils';
 const furnitureSchema = z.object({
   id: z.string().optional(),
   name: z.string().min(1, 'Nome do móvel é obrigatório.'),
+  productionTime: z.coerce.number().optional(),
 });
 
 const environmentSchema = z.object({
@@ -73,7 +74,7 @@ export function RegisterQuoteModal({
     clientName: '',
     clientContact: '',
     projectOrigin: 'client_provided',
-    environments: [{ id: generateId('env'), name: '', furniture: [{ id: generateId('fur'), name: '' }] }],
+    environments: [{ id: generateId('env'), name: '', furniture: [{ id: generateId('fur'), name: '', productionTime: 0 }] }],
   }), []);
 
 
@@ -98,7 +99,7 @@ export function RegisterQuoteModal({
           clientName: quoteToEdit.clientName,
           clientContact: quoteToEdit.clientContact || '',
           projectOrigin: quoteToEdit.projectOrigin,
-          environments: quoteToEdit.environments.length > 0 ? quoteToEdit.environments : [{id: generateId('env'), name: '', furniture: [{id: generateId('fur'), name: ''}]}],
+          environments: quoteToEdit.environments.length > 0 ? quoteToEdit.environments : [{id: generateId('env'), name: '', furniture: [{id: generateId('fur'), name: '', productionTime: 0}]}],
         });
       } else {
         form.reset(getDefaultValues());
@@ -128,7 +129,7 @@ export function RegisterQuoteModal({
           ...env,
           furniture: env.furniture.map(fur => {
             const existingFur = existingEnv?.furniture.find(f => f.id === fur.id);
-            return existingFur ? existingFur : {
+            return existingFur ? { ...existingFur, name: fur.name, productionTime: fur.productionTime } : {
               ...fur,
               materials: [],
               glassItems: [],
@@ -274,7 +275,7 @@ export function RegisterQuoteModal({
                 variant="outline"
                 size="sm"
                 onClick={() =>
-                  appendEnv({ id: generateId('env'), name: '', furniture: [{ id: generateId('fur'), name: '' }] })
+                  appendEnv({ id: generateId('env'), name: '', furniture: [{ id: generateId('fur'), name: '', productionTime: 0 }] })
                 }
               >
                 <PlusCircle className="mr-2 h-4 w-4" />
@@ -305,9 +306,12 @@ function FurnitureArray({ control, envIndex }: { control: any, envIndex: number 
 
   return (
     <div className="space-y-2">
-      <FormLabel>Móveis</FormLabel>
+      <div className="grid grid-cols-[1fr,140px] gap-2 items-center">
+        <FormLabel>Móveis</FormLabel>
+        <FormLabel>Tempo de Produção (h)</FormLabel>
+      </div>
       {fields.map((field, furIndex) => (
-        <div key={field.id} className="flex items-center gap-2">
+        <div key={field.id} className="flex items-start gap-2">
           <FormField
             control={control}
             name={`environments.${envIndex}.furniture.${furIndex}.name`}
@@ -315,6 +319,18 @@ function FurnitureArray({ control, envIndex }: { control: any, envIndex: number 
               <FormItem className="flex-1">
                 <FormControl>
                   <Input placeholder="Ex: Armário aéreo" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+           <FormField
+            control={control}
+            name={`environments.${envIndex}.furniture.${furIndex}.productionTime`}
+            render={({ field }) => (
+              <FormItem className="w-[140px]">
+                <FormControl>
+                  <Input type="number" placeholder="Ex: 8" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -335,7 +351,7 @@ function FurnitureArray({ control, envIndex }: { control: any, envIndex: number 
         type="button"
         variant="outline"
         size="sm"
-        onClick={() => append({ id: generateId('fur'), name: '' })}
+        onClick={() => append({ id: generateId('fur'), name: '', productionTime: 0 })}
         className="mt-2"
       >
         <PlusCircle className="mr-2 h-4 w-4" />

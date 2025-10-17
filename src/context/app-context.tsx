@@ -600,7 +600,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [firestore, stockItems]);
   
   const dispatchItemToProduction = useCallback(async (stockItemId: string, reservation: StockReservation, memberId: string, marceneiroId: string) => {
-    if (!firestore) return;
+    if (!firestore || !teamMembers) return;
     const marceneiro = teamMembers.find(m => m.id === marceneiroId);
     if (!marceneiro) {
         console.error("Marceneiro não encontrado!");
@@ -622,13 +622,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
             const stockItem = stockItemDoc.data() as StockItem;
             const project = projectDoc.data() as Project;
             
-            const dispatchQuantity = Math.min(stockItem.quantity, reservation.quantity);
+            const newProject = JSON.parse(JSON.stringify(project));
+            const env = newProject.environments.find((e: Environment) => e.id === reservation.environmentId);
+            if (!env) throw new Error("Ambiente não encontrado no projeto.");
+            const fur = env.furniture.find((f: Furniture) => f.id === reservation.furnitureId);
+            if (!fur?.materials) throw new Error("Móvel ou lista de materiais não encontrados.");
+            
+            const materialToDispatch = fur.materials.find((m: MaterialItem) => m.id === reservation.materialId);
+            if (!materialToDispatch) throw new Error("Material a ser despachado não encontrado no projeto.");
+
+            const totalNeeded = materialToDispatch.quantity;
+            const alreadyDispatched = (materialToDispatch.dispatches || []).reduce((acc: number, d: Dispatch) => acc + d.quantity, 0);
+            const stillNeeded = totalNeeded - alreadyDispatched;
+
+            const dispatchQuantity = Math.min(stockItem.quantity, stillNeeded);
             if (dispatchQuantity <= 0) {
-                console.log("No stock to dispatch for this reservation.");
+                console.log("No stock to dispatch or reservation already fulfilled.");
                 return;
             }
-
-            // Update Stock Item
+            
+            // 1. Update Stock Item: Reduce quantity and update/remove reservation
             const newStockQuantity = stockItem.quantity - dispatchQuantity;
             const newReservations = (stockItem.reservations || []).map(res => {
                 if (res.materialId === reservation.materialId) {
@@ -641,31 +654,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 reservations: newReservations,
             });
 
-            // Update Project's Material Item
-            const newProject = JSON.parse(JSON.stringify(project));
-            const env = newProject.environments.find((e: Environment) => e.id === reservation.environmentId);
-            if (env) {
-                const fur = env.furniture.find((f: Furniture) => f.id === reservation.furnitureId);
-                if (fur?.materials) {
-                    const materialIndex = fur.materials.findIndex((m: MaterialItem) => m.id === reservation.materialId);
-                    if (materialIndex !== -1) {
-                        const material = fur.materials[materialIndex];
-                        const newDispatch: Dispatch = {
-                            quantity: dispatchQuantity,
-                            dispatchedAt: new Date().toISOString(),
-                            memberId: memberId,
-                        };
-                        material.dispatches = [...(material.dispatches || []), newDispatch];
-                        const totalDispatched = material.dispatches.reduce((acc: number, d: Dispatch) => acc + d.quantity, 0);
-                        if (totalDispatched >= material.quantity) {
-                            material.purchased = true;
-                        }
-                    }
-                }
+            // 2. Update Project's Material Item: Add a dispatch record
+            const newDispatch: Dispatch = {
+                quantity: dispatchQuantity,
+                dispatchedAt: new Date().toISOString(),
+                memberId: memberId,
+            };
+            materialToDispatch.dispatches = [...(materialToDispatch.dispatches || []), newDispatch];
+            const newTotalDispatched = alreadyDispatched + dispatchQuantity;
+            if (newTotalDispatched >= totalNeeded) {
+                materialToDispatch.purchased = true;
             }
+
             transaction.set(projectRef, newProject, { merge: true });
 
-            // Add Movement Record
+            // 3. Add Movement Record
             const movementId = generateId('move');
             const movementDetails = `Projeto: ${reservation.projectName} | Entregue para: ${marceneiro.name}`;
             const newMovement: StockMovement = {
@@ -785,6 +788,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         furniture: env.furniture.map((fur: any) => ({
           id: generateId('fur'),
           name: fur.name,
+          productionTime: fur.productionTime || 0,
           materials: [],
           glassItems: [],
           profileDoors: [],

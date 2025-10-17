@@ -428,6 +428,7 @@
         "id": { "type": "string", "description": "Unique identifier for the furniture." },
         "name": { "type": "string", "description": "The name of the furniture (e.g., 'Top Cabinet')." },
         "description": { "type": "string", "description": "A detailed description for the quote PDF." },
+        "productionTime": { "type": "number", "description": "Estimated production time in hours." },
         "materials": {
           "type": "array",
           "items": { "$ref": "#/entities/MaterialItem" }

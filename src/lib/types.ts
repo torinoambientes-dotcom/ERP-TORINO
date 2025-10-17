@@ -238,6 +238,7 @@ export interface QuoteFurniture {
     id: string;
     name: string;
     description?: string;
+    productionTime?: number; // Estimated production time in hours
     materials?: MaterialItem[];
     glassItems?: GlassItem[];
     profileDoors?: ProfileDoorItem[];

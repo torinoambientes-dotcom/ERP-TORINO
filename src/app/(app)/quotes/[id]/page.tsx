@@ -5,7 +5,7 @@ import { AppContext } from '@/context/app-context';
 import type { Quote, StageStatus, TeamMember, QuoteStage, QuoteFurniture, QuoteEnvironment } from '@/lib/types';
 import { PageHeader } from '@/components/layout/page-header';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, User, Package, Pencil, FileText, Download, CalendarIcon, CheckCircle } from 'lucide-react';
+import { ChevronLeft, User, Package, Pencil, FileText, Download, CalendarIcon, CheckCircle, Clock } from 'lucide-react';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -208,6 +208,15 @@ export default function QuoteDetailsPage() {
     if (!teamMembers) return new Map();
     return new Map(teamMembers.map(m => [m.id, m]));
   }, [teamMembers]);
+  
+  const totalProductionTime = useMemo(() => {
+    if (!quote) return 0;
+    return quote.environments.reduce((total, env) => {
+      return total + (env.furniture || []).reduce((envTotal, fur) => {
+        return envTotal + (fur.productionTime || 0);
+      }, 0);
+    }, 0);
+  }, [quote]);
 
   const generatePDF = (isQuote: boolean) => {
     if (!quote) return;
@@ -479,17 +488,26 @@ export default function QuoteDetailsPage() {
               Voltar para orçamentos
             </Link>
           </Button>
-           <div className="flex items-center gap-4">
+           <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
               <PageHeader
                 title={quote.clientName}
                 description="Detalhes do orçamento e acompanhamento das etapas."
               />
-              {isAdmin && (
-                <Button variant="outline" size="sm" onClick={() => setIsEditModalOpen(true)}>
-                    <Pencil className="mr-2 h-4 w-4" />
-                    Editar Orçamento
-                </Button>
-              )}
+              <div className="flex items-center gap-2">
+                <Card className="flex items-center gap-2 p-2 text-sm">
+                  <Clock className="h-5 w-5 text-muted-foreground" />
+                  <div>
+                    <span className="font-semibold">{totalProductionTime} horas</span>
+                    <p className="text-xs text-muted-foreground">de produção estimada</p>
+                  </div>
+                </Card>
+                {isAdmin && (
+                    <Button variant="outline" size="sm" onClick={() => setIsEditModalOpen(true)}>
+                        <Pencil className="mr-2 h-4 w-4" />
+                        Editar
+                    </Button>
+                )}
+              </div>
            </div>
         </div>
 
@@ -625,9 +643,17 @@ export default function QuoteDetailsPage() {
                             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
                                 <div className="flex-grow">
                                   <h4 className="font-semibold text-lg">{fur.name}</h4>
-                                  {isAdmin && (
-                                    <p className="text-sm text-primary font-semibold">Valor Orçado: R$ {furnitureCost.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-                                  )}
+                                   <div className='flex items-center gap-4 text-xs mt-1'>
+                                    {isAdmin && (
+                                      <p className="text-primary font-semibold">Valor: R$ {furnitureCost.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                                    )}
+                                    {fur.productionTime && fur.productionTime > 0 && (
+                                      <div className="flex items-center gap-1.5 text-muted-foreground font-medium">
+                                        <Clock className="h-3.5 w-3.5" />
+                                        <span>{fur.productionTime} horas</span>
+                                      </div>
+                                    )}
+                                  </div>
                                 </div>
                                 <div className="flex gap-2 w-full sm:w-auto">
                                     <Button variant="outline" size="sm" onClick={() => openDescriptionModal(fur, env.id)} className="w-full sm:w-auto flex-1">
