@@ -213,7 +213,22 @@
         "handleWidth": { "type": "number" },
         "handleOffset": { "type": "number" },
         "addedAt": { "type": "string", "format": "date-time" },
-        "purchased": { "type": "boolean" }
+        "purchased": { "type": "boolean" },
+        "doorSet": {
+            "type": "object",
+            "properties": {
+                "count": { "type": "number" },
+                "doors": {
+                    "type": "array",
+                    "items": { 
+                        "type": "object",
+                        "properties": {
+                            "handlePosition": { "type": "string", "enum": ["left", "right", "both", "none"] }
+                        }
+                    }
+                }
+            }
+        }
       },
       "required": ["id", "profileColor", "glassType", "handleType", "height", "width", "quantity"]
     },
@@ -250,6 +265,24 @@
         }
       },
       "required": ["id", "title", "start", "end", "memberIds"]
+    },
+    "Task": {
+      "title": "Task",
+      "type": "object",
+      "description": "Represents a generic task that can be assigned to team members.",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "status": { "type": "string", "enum": ["todo", "in_progress", "done"] },
+        "priority": { "type": "string", "enum": ["low", "medium", "high"] },
+        "dueDate": { "type": "string", "format": "date-time" },
+        "assigneeIds": { "type": "array", "items": { "type": "string" } },
+        "projectId": { "type": "string", "description": "Optional link to a project." },
+        "environmentId": { "type": "string", "description": "Optional link to an environment." },
+        "furnitureId": { "type": "string", "description": "Optional link to a piece of furniture." }
+      },
+      "required": ["id", "title", "status", "priority", "assigneeIds"]
     },
     "StockItem": {
       "title": "StockItem",
@@ -487,6 +520,10 @@
       "schema": { "$ref": "#/entities/Appointment" },
       "description": "Stores general appointments and tasks for the calendar."
     },
+    "/tasks/{taskId}": {
+        "schema": { "$ref": "#/entities/Task" },
+        "description": "Stores general tasks."
+    },
     "/stock_items/{stockItemId}": {
       "schema": { "$ref": "#/entities/StockItem" },
       "description": "Stores inventory items."
@@ -517,3 +554,5 @@
     }
   }
 }
+
+    

@@ -6,18 +6,25 @@ import { useUser } from '@/firebase';
 import { PageHeader } from '@/components/layout/page-header';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { getInitials } from '@/lib/utils';
+import { cn, getInitials } from '@/lib/utils';
 import { format, isToday, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import type { CalendarTask } from './calendar/page';
-import type { TeamMember, StockItem } from '@/lib/types';
+import type { TeamMember, StockItem, Priority } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, ShoppingCart, RectangleHorizontal, DoorOpen, AlertTriangle, Cake, StickyNote } from 'lucide-react';
+import { ArrowRight, ShoppingCart, RectangleHorizontal, DoorOpen, AlertTriangle, Cake, StickyNote, Flag } from 'lucide-react';
 import { getProjectStatus } from '@/lib/projects';
 
 interface LowStockInfo extends StockItem {
   demand?: number;
 }
+
+const priorityMap: Record<Priority, { label: string; className: string }> = {
+    low: { label: 'Baixa', className: 'text-gray-500' },
+    medium: { label: 'Média', className: 'text-yellow-500' },
+    high: { label: 'Alta', className: 'text-red-500' },
+};
+
 
 export default function DashboardPage() {
   const { user } = useUser();
@@ -79,11 +86,19 @@ export default function DashboardPage() {
           start: parseISO(appointment.start),
           end: parseISO(appointment.end),
           rawData: { appointmentId: appointment.id },
+          priority: 'medium', // Default priority for appointments
         });
       }
     });
+    
+    const priorityOrder: Record<Priority, number> = { high: 1, medium: 2, low: 3 };
 
-    return tasks.sort((a, b) => a.start.getTime() - b.start.getTime());
+    return tasks.sort((a, b) => {
+        const priorityA = a.priority || 'medium';
+        const priorityB = b.priority || 'medium';
+        return priorityOrder[priorityA] - priorityOrder[priorityB];
+    });
+
   }, [projects, appointments, isLoading, loggedInMember]);
 
   const ongoingProjectsForMember = useMemo(() => {
@@ -404,7 +419,7 @@ export default function DashboardPage() {
         <div className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Compromissos de Hoje</CardTitle>
+              <CardTitle>Minhas Tarefas do Dia</CardTitle>
               <CardDescription>{format(new Date(), "eeee, dd 'de' MMMM", { locale: ptBR })}</CardDescription>
             </CardHeader>
             <CardContent>
@@ -417,11 +432,12 @@ export default function DashboardPage() {
                           <p className="font-semibold truncate">{task.title}</p>
                           <p className="text-sm text-muted-foreground truncate">{task.subtitle}</p>
                        </div>
+                       {task.priority && <Flag className={cn("h-5 w-5 flex-shrink-0", priorityMap[task.priority].className)} />}
                     </li>
                   ))}
                 </ul>
               ) : (
-                <p className="text-sm text-muted-foreground text-center py-8">Nenhum compromisso para hoje.</p>
+                <p className="text-sm text-muted-foreground text-center py-8">Nenhuma tarefa agendada para hoje.</p>
               )}
             </CardContent>
           </Card>
@@ -430,3 +446,5 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    

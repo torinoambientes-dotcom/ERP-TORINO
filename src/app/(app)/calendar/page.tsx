@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/card';
 import { Calendar } from '@/components/ui/calendar';
 import { AppContext } from '@/context/app-context';
-import type { ProductionStage, TeamMember, Appointment, StageStatus, Priority } from '@/lib/types';
+import type { ProductionStage, TeamMember, Appointment, StageStatus, Priority, Task } from '@/lib/types';
 import { PageHeader } from '@/components/layout/page-header';
 import { eachDayOfInterval, endOfWeek, format, isSameDay, startOfWeek, parseISO, add, set, sub, isWithinInterval } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -509,7 +509,7 @@ function SortableTaskItem({ task, dayKey, handleTaskClick, getTaskTime }: { task
                   {task.subtitle && <p className="text-sm text-muted-foreground truncate">{task.subtitle}</p>}
               </div>
               <div className="flex items-center gap-2">
-                  {task.priority && <Flag className={cn("h-4 w-4", priorityMap[task.priority].className)} />}
+                  {task.priority && !isBirthday && <Flag className={cn("h-4 w-4", priorityMap[task.priority].className)} />}
                   {!isBirthday && task.responsible.length > 0 && (
                       <div className="flex items-center -space-x-2">
                           {task.responsible.map(member => (
@@ -539,3 +539,5 @@ function SortableTaskItem({ task, dayKey, handleTaskClick, getTaskTime }: { task
         </li>
     );
 }
+
+    

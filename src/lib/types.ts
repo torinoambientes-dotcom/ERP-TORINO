@@ -153,6 +153,19 @@ export interface Appointment {
   memberIds: string[];
 }
 
+export interface Task {
+  id: string;
+  title: string;
+  description?: string;
+  status: 'todo' | 'in_progress' | 'done';
+  priority: 'low' | 'medium' | 'high';
+  dueDate?: string; // ISO date string
+  assigneeIds: string[];
+  projectId?: string;
+  environmentId?: string;
+  furnitureId?: string;
+}
+
 export interface StockCategory {
   id: string;
   name: string;
@@ -285,3 +298,5 @@ export interface QuoteMaterial {
   cost: number;
   category: string;
 }
+
+    
