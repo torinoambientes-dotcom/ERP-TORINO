@@ -22,7 +22,7 @@ import {
 } from '@/components/ui/select';
 import type { Project } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { Archive, CheckCircle, Pencil, Trash2, ListTodo, MessageSquare, CalendarIcon, Clock } from 'lucide-react';
+import { Archive, CheckCircle, Pencil, Trash2, ListTodo, MessageSquare, CalendarIcon, Users } from 'lucide-react';
 import { DeleteProjectAlert } from '@/components/modals/delete-project-alert';
 import { RegisterProjectModal } from '@/components/modals/register-project-modal';
 import { getProjectStatus } from '@/lib/projects';
@@ -235,6 +235,7 @@ export default function ProjectsPage() {
                         statusBadge = { variant: 'secondary' };
                         break;
                 }
+                const estimatedDays = totalProductionTime > 0 ? Math.ceil(totalProductionTime / 3) : 0;
 
               return (
                 <div key={project.id} className="relative group">
@@ -253,10 +254,10 @@ export default function ProjectsPage() {
                       <CardContent className="flex-grow space-y-4">
                       <div className="flex justify-between items-center text-sm text-muted-foreground">
                         <span>{project.environments?.length || 0} ambiente(s)</span>
-                        {totalProductionTime > 0 && (
+                        {estimatedDays > 0 && (
                           <div className="flex items-center gap-1.5 font-medium">
-                            <Clock className="h-4 w-4" />
-                            <span>{totalProductionTime.toLocaleString('pt-BR')} dia(s)</span>
+                            <Users className="h-4 w-4" />
+                            <span>~{estimatedDays} dia(s)</span>
                           </div>
                         )}
                       </div>
