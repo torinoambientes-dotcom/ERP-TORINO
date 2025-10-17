@@ -175,6 +175,7 @@ export default function PurchasesPage() {
   const [showRequestHistory, setShowRequestHistory] = useState(false);
 
   const memberMap = useMemo(() => new Map(teamMembers.map(m => [m.id, m])), [teamMembers]);
+  const stockItemMap = useMemo(() => new Map(stockItems.map(item => [item.id, item])), [stockItems]);
 
   const lowStockItems = useMemo((): LowStockInfo[] => {
     return stockItems
@@ -209,13 +210,30 @@ export default function PurchasesPage() {
                 const materialsWithContext = (furniture.materials || [])
                     .filter(m => {
                         const isPurchased = !!m.purchased;
-                        const isFromStock = !!m.stockItemId;
-                        // For the "A Comprar" list, we only want items that are NOT from stock and NOT purchased.
-                        // For the "Histórico" list, we show everything that IS purchased (regardless of whether it's from stock or not).
+
                         if (showPurchasedMaterials) {
-                            return isPurchased;
+                            return isPurchased; // Show only purchased for history
                         }
-                        return !isFromStock && !isPurchased;
+
+                        if (isPurchased) {
+                            return false; // Hide if already purchased in "to buy" list
+                        }
+
+                        if (!m.stockItemId) {
+                            return true; // Not a stock item, needs to be bought
+                        }
+                        
+                        const stockItem = stockItemMap.get(m.stockItemId);
+                        if (!stockItem) {
+                            return true; // Stock item not found, assume it needs to be bought
+                        }
+
+                        // Check if demand for this specific reservation can be met
+                        const availableStock = stockItem.quantity;
+                        // For this check, we consider if the *specific* item's quantity is > stock
+                        // This isn't perfect if multiple projects use the same item, but it's a good start.
+                        // A better check would be total reservations vs stock.
+                        return m.quantity > availableStock;
                     })
                     .map(material => ({
                         ...material,
@@ -225,12 +243,7 @@ export default function PurchasesPage() {
                     }));
 
                 if (materialsWithContext.length > 0) {
-                    materialsWithContext.sort((a, b) => {
-                        if (a.purchased && !b.purchased) return 1;
-                        if (!a.purchased && b.purchased) return -1;
-                        return a.name.localeCompare(b.name);
-                    });
-
+                    materialsWithContext.sort((a, b) => a.name.localeCompare(b.name));
                     environmentFurnitures[furniture.name] = {
                         id: furniture.id,
                         materials: materialsWithContext,
@@ -255,7 +268,7 @@ export default function PurchasesPage() {
     });
 
     return list;
-}, [projects, showPurchasedMaterials]);
+}, [projects, showPurchasedMaterials, stockItemMap]);
 
   
   const glasswareList = useMemo((): GlasswareList => {
@@ -365,7 +378,17 @@ export default function PurchasesPage() {
     activeProjects.forEach(p => {
         p.environments.forEach(e => {
             e.furniture.forEach(f => {
-                materialsCount += (f.materials || []).filter(m => !m.stockItemId && !m.purchased).length;
+                (f.materials || []).forEach(m => {
+                    if (m.purchased) return;
+                    if (!m.stockItemId) {
+                        materialsCount++;
+                        return;
+                    }
+                    const stockItem = stockItemMap.get(m.stockItemId);
+                    if (!stockItem || m.quantity > stockItem.quantity) {
+                        materialsCount++;
+                    }
+                });
                 glassCount += (f.glassItems || []).filter(g => !g.purchased).length;
                 doorsCount += (f.profileDoors || []).filter(d => !d.purchased).length;
             });
@@ -379,7 +402,7 @@ export default function PurchasesPage() {
       requests: purchaseRequests.filter(req => req.status === 'pending').length,
       lowStock: lowStockItems.length,
     };
-  }, [projects, purchaseRequests, lowStockItems]);
+}, [projects, purchaseRequests, lowStockItems, stockItemMap]);
 
 
     const generateShoppingListText = (forWhatsApp: boolean = false) => {
@@ -395,15 +418,10 @@ export default function PurchasesPage() {
                 let envText = `  *Ambiente:* ${environmentName}\n`;
                 
                 Object.entries(environmentData.furnitures).forEach(([furnitureName, furnitureData]) => {
-                    const itemsToBuy = furnitureData.materials.filter(item => {
-                        // Include only items that are NOT from stock and NOT yet purchased.
-                        return !item.stockItemId && !item.purchased;
-                    });
-
-                    if (itemsToBuy.length > 0) {
+                     if (furnitureData.materials.length > 0) {
                         envHasItems = true;
                         let furText = `    *Móvel:* ${furnitureName}\n`;
-                        itemsToBuy.forEach(item => {
+                        furnitureData.materials.forEach(item => {
                             furText += `      - ${item.name}: ${item.quantity} ${item.unit}\n`;
                         });
                         envText += furText;
@@ -423,7 +441,7 @@ export default function PurchasesPage() {
         });
         
         if (!hasItemsToBuy) {
-            return "Nenhum material a comprar (externamente) nos projetos ativos.";
+            return "Nenhum material a comprar nos projetos ativos.";
         }
 
         return listText;
@@ -459,19 +477,17 @@ export default function PurchasesPage() {
         let hasItemsToBuy = false;
 
         Object.entries(furnitures).forEach(([furnitureName, furnitureData]) => {
-            // Exclude stock items and purchased items from the copied list
-            const itemsToBuy = furnitureData.materials.filter(item => !item.stockItemId && !item.purchased);
-            if (itemsToBuy.length > 0) {
+            if (furnitureData.materials.length > 0) {
                 hasItemsToBuy = true;
                 listText += `  Móvel: ${furnitureName}\n`;
-                itemsToBuy.forEach(item => {
+                furnitureData.materials.forEach(item => {
                     listText += `    - ${item.name}: ${item.quantity} ${item.unit}\n`;
                 });
             }
         });
 
         if (!hasItemsToBuy) {
-            listText = `Nenhum item a comprar (externamente) para o ambiente "${environmentName}".`;
+            listText = `Nenhum item a comprar para o ambiente "${environmentName}".`;
         }
         
         navigator.clipboard.writeText(listText).then(() => {
@@ -795,7 +811,7 @@ export default function PurchasesPage() {
                         {showPurchasedMaterials ? 'Histórico de Compras de Materiais' : 'Lista de Compras de Materiais'}
                     </CardTitle>
                     <CardDescription>
-                        {showPurchasedMaterials ? 'Materiais de projetos que já foram comprados ou despachados do estoque.' : 'Materiais de todos os projetos ativos, prontos para a compra.'}
+                        {showPurchasedMaterials ? 'Materiais de projetos que já foram comprados.' : 'Materiais de todos os projetos ativos que precisam ser comprados.'}
                     </CardDescription>
                 </div>
                 <div className="flex items-center gap-2">
@@ -853,19 +869,16 @@ export default function PurchasesPage() {
                                                                         id={`mat-${item.id}`}
                                                                         checked={!!item.purchased}
                                                                         onCheckedChange={() => handleToggleMaterial(item.projectId, item.envId, item.furId, item.id, !!item.purchased)}
-                                                                        disabled={!!item.stockItemId || showPurchasedMaterials}
+                                                                        disabled={showPurchasedMaterials}
                                                                     />
                                                                     <label
                                                                         htmlFor={`mat-${item.id}`}
-                                                                        className={cn("flex-grow", (!!item.stockItemId || showPurchasedMaterials) ? "cursor-default" : "cursor-pointer", item.purchased && "line-through text-muted-foreground")}
+                                                                        className={cn("flex-grow", showPurchasedMaterials ? "cursor-default" : "cursor-pointer", item.purchased && "line-through text-muted-foreground")}
                                                                     >
                                                                         <span className="font-medium text-foreground/90">{item.name}:</span> {item.quantity} {item.unit}
-                                                                        {item.stockItemId && (
-                                                                            <span className={cn(
-                                                                                "text-xs font-medium ml-2 rounded-md px-1.5 py-0.5",
-                                                                                item.purchased ? "bg-green-100/60 text-green-700" : "bg-blue-100/60 text-blue-600"
-                                                                            )}>
-                                                                                {item.purchased ? "(Despachado da Produção)" : "(Reservado do Estoque)"}
+                                                                        {item.stockItemId && stockItemMap.get(item.stockItemId)?.quantity < item.quantity && (
+                                                                            <span className="text-xs font-medium ml-2 rounded-md px-1.5 py-0.5 bg-destructive/10 text-destructive border border-destructive/20">
+                                                                                (Estoque Insuficiente: {stockItemMap.get(item.stockItemId)?.quantity || 0})
                                                                             </span>
                                                                         )}
                                                                     </label>
@@ -885,7 +898,7 @@ export default function PurchasesPage() {
                     ) : (
                       <div className="flex h-48 items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/20">
                           <p className="text-sm text-muted-foreground text-center">
-                              {showPurchasedMaterials ? 'Nenhum material foi comprado ou despachado ainda.' : 'Nenhum material necessário para os projetos ativos.'}
+                              {showPurchasedMaterials ? 'Nenhum material foi comprado ainda.' : 'Nenhum material necessário para os projetos ativos.'}
                           </p>
                       </div>
                     )}
