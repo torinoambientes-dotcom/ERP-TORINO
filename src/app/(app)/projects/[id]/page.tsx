@@ -2,7 +2,7 @@
 import { useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import { notFound, useParams } from 'next/navigation';
-import { ChevronLeft, MessageSquare, Package, ListTodo, CalendarIcon, XCircle, Flag, User, X, Pencil } from 'lucide-react';
+import { ChevronLeft, MessageSquare, Package, ListTodo, CalendarIcon, XCircle, Flag, User, X, Pencil, Clock, Users } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -36,6 +36,8 @@ import {
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { RegisterProjectModal } from '@/components/modals/register-project-modal';
+import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 
 
 type StageKey = 'measurement' | 'cutting' | 'purchase' | 'assembly';
@@ -72,6 +74,7 @@ export default function ProjectDetailsPage() {
   const [isMaterialsModalOpen, setMaterialsModalOpen] = useState(false);
   const [selectedFurniture, setSelectedFurniture] = useState<Furniture | null>(null);
   const [selectedEnvironmentId, setSelectedEnvironmentId] = useState<string | null>(null);
+  const [carpenterCount, setCarpenterCount] = useState(3);
   
 
   useEffect(() => {
@@ -202,6 +205,21 @@ export default function ProjectDetailsPage() {
     return { marceneiros, outrosMembros };
   }, [teamMembers]);
 
+  const totalProductionTimeInDays = useMemo(() => {
+    if (!project) return 0;
+    return project.environments.reduce((total, env) => {
+      return total + (env.furniture || []).reduce((envTotal, fur) => {
+        return envTotal + (fur.productionTime || 0);
+      }, 0);
+    }, 0);
+  }, [project]);
+
+  const estimatedDays = useMemo(() => {
+    if (totalProductionTimeInDays === 0 || carpenterCount <= 0) return 0;
+    return Math.ceil(totalProductionTimeInDays / carpenterCount);
+  }, [totalProductionTimeInDays, carpenterCount]);
+
+
   if (project === undefined || isLoading) {
     return (
       <div className="flex h-full w-full items-center justify-center">
@@ -251,29 +269,53 @@ export default function ProjectDetailsPage() {
   return (
     <>
       <div className="space-y-8">
-        <div className="flex items-center justify-between">
-          <div>
-            <Button variant="ghost" asChild className="-ml-4">
-              <Link href="/projects">
-                <ChevronLeft className="mr-2 h-4 w-4" />
-                Voltar para projetos
-              </Link>
-            </Button>
-            <div className="flex items-center gap-4">
-                <PageHeader
+        <div>
+          <Button variant="ghost" asChild className="-ml-4">
+            <Link href="/projects">
+              <ChevronLeft className="mr-2 h-4 w-4" />
+              Voltar para projetos
+            </Link>
+          </Button>
+          <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
+              <PageHeader
                 title={project.clientName}
                 description="Detalhes do projeto, ambientes e status das etapas."
-                />
+              />
+              <div className="flex items-center gap-2">
+                 <Card className="flex items-center gap-2 p-2 text-sm">
+                    <Clock className="h-5 w-5 text-muted-foreground" />
+                    <div>
+                      <span className="font-semibold">{totalProductionTimeInDays.toLocaleString('pt-BR')} dias</span>
+                      <p className="text-xs text-muted-foreground">de produção</p>
+                    </div>
+                  </Card>
+                  <Card className="flex items-center gap-4 p-2 text-sm">
+                      <Users className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                      <div className="flex-grow">
+                          <span className="font-semibold">~{estimatedDays} dias</span>
+                          <div className='flex items-center gap-1.5'>
+                              <p className="text-xs text-muted-foreground">com</p>
+                              <Input 
+                                  type="number" 
+                                  min="1"
+                                  value={carpenterCount}
+                                  onChange={(e) => setCarpenterCount(Number(e.target.value))}
+                                  className="h-6 w-12 p-1 text-center text-xs"
+                              />
+                              <p className="text-xs text-muted-foreground">marceneiros</p>
+                          </div>
+                      </div>
+                  </Card>
                  <Button variant="outline" size="sm" onClick={() => setIsEditModalOpen(true)}>
                     <Pencil className="mr-2 h-4 w-4" />
-                    Editar Projeto
+                    Editar
                 </Button>
             </div>
           </div>
         </div>
 
         {project.environments?.length > 0 && (
-          <Accordion type="multiple" className="space-y-4">
+          <Accordion type="multiple" className="space-y-4" defaultValue={project.environments.map(e => e.id)}>
             {project.environments?.map((env) => {
               
               const {status, progress} = getEnvironmentStatus(env);
