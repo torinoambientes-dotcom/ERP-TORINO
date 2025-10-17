@@ -26,6 +26,8 @@ import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { logoSvgString } from '@/components/logo';
 import { useUser } from '@/firebase';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 
 type StageKey = 'internalProjectStage' | 'materialSurveyStage' | 'descriptiveStage';
@@ -70,6 +72,7 @@ export default function QuoteDetailsPage() {
   const [isDescriptionModalOpen, setDescriptionModalOpen] = useState(false);
   const [selectedFurniture, setSelectedFurniture] = useState<QuoteFurniture | null>(null);
   const [selectedEnvironmentId, setSelectedEnvironmentId] = useState<string | null>(null);
+  const [carpenterCount, setCarpenterCount] = useState(3);
 
   useEffect(() => {
     if (!isLoading && quotes) {
@@ -219,10 +222,10 @@ export default function QuoteDetailsPage() {
   }, [quote]);
 
   const estimatedDays = useMemo(() => {
-    if (totalProductionTimeInDays === 0) return 0;
-    const numberOfCarpenters = 3;
-    return Math.ceil(totalProductionTimeInDays / numberOfCarpenters);
-  }, [totalProductionTimeInDays]);
+    if (totalProductionTimeInDays === 0 || carpenterCount <= 0) return 0;
+    return Math.ceil(totalProductionTimeInDays / carpenterCount);
+  }, [totalProductionTimeInDays, carpenterCount]);
+
 
   const generatePDF = (isQuote: boolean) => {
     if (!quote) return;
@@ -507,12 +510,22 @@ export default function QuoteDetailsPage() {
                     <p className="text-xs text-muted-foreground">de produção</p>
                   </div>
                 </Card>
-                <Card className="flex items-center gap-2 p-2 text-sm">
-                  <Users className="h-5 w-5 text-muted-foreground" />
-                  <div>
-                    <span className="font-semibold">~{estimatedDays} dias</span>
-                    <p className="text-xs text-muted-foreground">com 3 marceneiros</p>
-                  </div>
+                <Card className="flex items-center gap-4 p-2 text-sm">
+                    <Users className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                    <div className="flex-grow">
+                        <span className="font-semibold">~{estimatedDays} dias</span>
+                        <div className='flex items-center gap-1.5'>
+                            <p className="text-xs text-muted-foreground">com</p>
+                            <Input 
+                                type="number" 
+                                min="1"
+                                value={carpenterCount}
+                                onChange={(e) => setCarpenterCount(Number(e.target.value))}
+                                className="h-6 w-12 p-1 text-center text-xs"
+                            />
+                            <p className="text-xs text-muted-foreground">marceneiros</p>
+                        </div>
+                    </div>
                 </Card>
                 {isAdmin && (
                     <Button variant="outline" size="sm" onClick={() => setIsEditModalOpen(true)}>
