@@ -207,7 +207,16 @@ export default function PurchasesPage() {
 
             environment.furniture.forEach(furniture => {
                 const materialsWithContext = (furniture.materials || [])
-                    .filter(m => showPurchasedMaterials ? m.purchased : !m.purchased)
+                    .filter(m => {
+                        const isPurchased = !!m.purchased;
+                        const isFromStock = !!m.stockItemId;
+                        // For the "A Comprar" list, we only want items that are NOT from stock and NOT purchased.
+                        // For the "Histórico" list, we show everything that IS purchased (regardless of whether it's from stock or not).
+                        if (showPurchasedMaterials) {
+                            return isPurchased;
+                        }
+                        return !isFromStock && !isPurchased;
+                    })
                     .map(material => ({
                         ...material,
                         projectId: project.id,
