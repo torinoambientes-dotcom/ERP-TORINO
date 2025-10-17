@@ -209,7 +209,7 @@ export default function QuoteDetailsPage() {
     return new Map(teamMembers.map(m => [m.id, m]));
   }, [teamMembers]);
   
-  const totalProductionTime = useMemo(() => {
+  const totalProductionTimeInDays = useMemo(() => {
     if (!quote) return 0;
     return quote.environments.reduce((total, env) => {
       return total + (env.furniture || []).reduce((envTotal, fur) => {
@@ -219,12 +219,10 @@ export default function QuoteDetailsPage() {
   }, [quote]);
 
   const estimatedDays = useMemo(() => {
-    if (totalProductionTime === 0) return 0;
-    const hoursPerDayPerCarpenter = 8;
+    if (totalProductionTimeInDays === 0) return 0;
     const numberOfCarpenters = 3;
-    const totalCarpenterHoursPerDay = numberOfCarpenters * hoursPerDayPerCarpenter;
-    return Math.ceil(totalProductionTime / totalCarpenterHoursPerDay);
-  }, [totalProductionTime]);
+    return Math.ceil(totalProductionTimeInDays / numberOfCarpenters);
+  }, [totalProductionTimeInDays]);
 
   const generatePDF = (isQuote: boolean) => {
     if (!quote) return;
@@ -505,7 +503,7 @@ export default function QuoteDetailsPage() {
                 <Card className="flex items-center gap-2 p-2 text-sm">
                   <Clock className="h-5 w-5 text-muted-foreground" />
                   <div>
-                    <span className="font-semibold">{totalProductionTime} horas</span>
+                    <span className="font-semibold">{totalProductionTimeInDays.toLocaleString('pt-BR')} dias</span>
                     <p className="text-xs text-muted-foreground">de produção</p>
                   </div>
                 </Card>
@@ -665,7 +663,7 @@ export default function QuoteDetailsPage() {
                                     {fur.productionTime && fur.productionTime > 0 && (
                                       <div className="flex items-center gap-1.5 text-muted-foreground font-medium">
                                         <Clock className="h-3.5 w-3.5" />
-                                        <span>{fur.productionTime} horas</span>
+                                        <span>{fur.productionTime} dia(s)</span>
                                       </div>
                                     )}
                                   </div>

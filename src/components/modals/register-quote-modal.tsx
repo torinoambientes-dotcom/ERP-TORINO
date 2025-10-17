@@ -308,7 +308,7 @@ function FurnitureArray({ control, envIndex }: { control: any, envIndex: number 
     <div className="space-y-2">
       <div className="grid grid-cols-[1fr,140px] gap-2 items-center">
         <FormLabel>Móveis</FormLabel>
-        <FormLabel>Tempo de Produção (h)</FormLabel>
+        <FormLabel>Tempo de Produção (dias)</FormLabel>
       </div>
       {fields.map((field, furIndex) => (
         <div key={field.id} className="flex items-start gap-2">
@@ -330,7 +330,7 @@ function FurnitureArray({ control, envIndex }: { control: any, envIndex: number 
             render={({ field }) => (
               <FormItem className="w-[140px]">
                 <FormControl>
-                  <Input type="number" placeholder="Ex: 8" {...field} />
+                  <Input type="number" placeholder="Ex: 1.5" step="0.1" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
