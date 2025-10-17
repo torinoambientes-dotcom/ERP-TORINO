@@ -41,6 +41,9 @@ import { useUser } from '@/firebase';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { DispatchConfirmationModal } from '@/components/modals/dispatch-confirmation-modal';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
+type SortOrder = 'name_asc' | 'demand_desc' | 'quantity_asc';
 
 export default function StockPage() {
   const router = useRouter();
@@ -84,6 +87,9 @@ export default function StockPage() {
 
   const [isDispatchModalOpen, setDispatchModalOpen] = useState(false);
   const [dispatchInfo, setDispatchInfo] = useState<{ item: StockItem, reservation: StockReservation } | null>(null);
+  
+  const [sortOrder, setSortOrder] = useState<SortOrder>('name_asc');
+
 
   const togglePopover = (itemId: string) => {
     setPopoverOpenState(prev => ({ ...prev, [itemId]: !prev[itemId] }));
@@ -231,10 +237,24 @@ export default function StockPage() {
   };
 
 
-  const renderStockList = (categoryName: string) => {
-    const items = stockItems.filter(
-      (item) => item.category === categoryName
-    );
+  const renderStockList = useCallback((categoryName: string) => {
+    const items = [...stockItems]
+      .filter((item) => item.category === categoryName)
+      .sort((a, b) => {
+          switch (sortOrder) {
+              case 'demand_desc':
+                  const demandA = (a.reservations || []).reduce((acc, r) => acc + r.quantity, 0);
+                  const demandB = (b.reservations || []).reduce((acc, r) => acc + r.quantity, 0);
+                  return demandB - demandA;
+              case 'quantity_asc':
+                  const availableA = a.quantity - (a.reservations || []).reduce((acc, r) => acc + r.quantity, 0);
+                  const availableB = b.quantity - (b.reservations || []).reduce((acc, r) => acc + r.quantity, 0);
+                  return availableA - availableB;
+              case 'name_asc':
+              default:
+                  return a.name.localeCompare(b.name);
+          }
+      });
 
     if (items.length === 0) {
       return (
@@ -348,7 +368,8 @@ export default function StockPage() {
         )})}
       </div>
     );
-  };
+  }, [stockItems, sortOrder, popoverOpenState, togglePopover, handleOpenDispatchModal, handleOpenHistoryModal, handleOpenMovementModal, handleOpenRegisterModal, handleOpenAlert]);
+
 
   if (isLoading || !loggedInMember) {
     return (
@@ -464,10 +485,22 @@ export default function StockPage() {
                           Itens da categoria {category.name.toLowerCase()}
                         </CardDescription>
                       </div>
-                      <Button variant="ghost" size="icon" className="text-destructive/80 hover:text-destructive h-8 w-8" onClick={() => handleOpenCategoryAlert(category)}>
-                        <Trash2 className="h-4 w-4" />
-                        <span className="sr-only">Remover Categoria</span>
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        <Select value={sortOrder} onValueChange={(value) => setSortOrder(value as SortOrder)}>
+                          <SelectTrigger className="w-[200px]">
+                            <SelectValue placeholder="Ordenar por..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="name_asc">Nome (A-Z)</SelectItem>
+                            <SelectItem value="demand_desc">Maior Demanda</SelectItem>
+                            <SelectItem value="quantity_asc">Menor Estoque</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Button variant="ghost" size="icon" className="text-destructive/80 hover:text-destructive h-8 w-8" onClick={() => handleOpenCategoryAlert(category)}>
+                          <Trash2 className="h-4 w-4" />
+                          <span className="sr-only">Remover Categoria</span>
+                        </Button>
+                      </div>
                     </div>
                   </CardHeader>
                   <CardContent>{renderStockList(category.name)}</CardContent>
