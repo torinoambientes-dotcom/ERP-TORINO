@@ -3,7 +3,7 @@
 import { createContext, type ReactNode, useCallback, useMemo, useEffect, useState } from 'react';
 import { collection, doc, serverTimestamp, deleteField, writeBatch, getDocs, runTransaction, query, where } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useAuth, useUser } from '@/firebase';
-import type { Project, TeamMember, StageStatus, StockItem, StockMovement, StockCategory, Furniture, Environment, MaterialItem, StockReservation, ProductionStage, Appointment, PurchaseRequest, PurchaseRequestStatus, Quote, QuoteStage, QuoteEnvironment, QuoteFurniture, QuoteMaterial, QuoteMaterialCategory, Dispatch } from '@/lib/types';
+import type { Project, TeamMember, StageStatus, StockItem, StockMovement, StockCategory, Furniture, Environment, MaterialItem, StockReservation, ProductionStage, Appointment, PurchaseRequest, PurchaseRequestStatus, Quote, QuoteStage, QuoteEnvironment, QuoteFurniture, QuoteMaterial, QuoteMaterialCategory, Dispatch, Task } from '@/lib/types';
 import { generateId } from '@/lib/utils';
 import { setDocumentNonBlocking, deleteDocumentNonBlocking, addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
@@ -13,6 +13,7 @@ interface AppContextType {
   projects: Project[];
   teamMembers: TeamMember[];
   appointments: Appointment[];
+  tasks: Task[];
   stockItems: StockItem[];
   stockCategories: StockCategory[];
   stockMovements: StockMovement[];
@@ -30,6 +31,7 @@ interface AppContextType {
   addAppointment: (appointmentData: Omit<Appointment, 'id'>) => void;
   updateAppointment: (appointmentId: string, updates: Partial<Appointment>) => void;
   deleteAppointment: (appointmentId: string) => void;
+  addTasks: (tasksData: Omit<Task, 'id'>[]) => void;
   completeProjectStages: (projectId: string) => void;
   addStockItem: (itemData: Omit<StockItem, 'id'>) => void;
   updateStockItem: (updatedItem: StockItem) => void;
@@ -62,6 +64,7 @@ export const AppContext = createContext<AppContextType>({
   projects: [],
   teamMembers: [],
   appointments: [],
+  tasks: [],
   stockItems: [],
   stockCategories: [],
   stockMovements: [],
@@ -79,6 +82,7 @@ export const AppContext = createContext<AppContextType>({
   addAppointment: () => {},
   updateAppointment: () => {},
   deleteAppointment: () => {},
+  addTasks: () => {},
   completeProjectStages: () => {},
   addStockItem: () => {},
   updateStockItem: () => {},
@@ -152,6 +156,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const projectsQuery = useMemoFirebase(() => collection(firestore, 'projects'), [firestore]);
   const teamMembersQuery = useMemoFirebase(() => collection(firestore, 'team_members'), [firestore]);
   const appointmentsQuery = useMemoFirebase(() => collection(firestore, 'appointments'), [firestore]);
+  const tasksQuery = useMemoFirebase(() => collection(firestore, 'tasks'), [firestore]);
   const stockItemsQuery = useMemoFirebase(() => collection(firestore, 'stock_items'), [firestore]);
   const stockCategoriesQuery = useMemoFirebase(() => collection(firestore, 'stock_categories'), [firestore]);
   const stockMovementsQuery = useMemoFirebase(() => collection(firestore, 'stock_movements'), [firestore]);
@@ -164,6 +169,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const { data: projects, isLoading: isLoadingProjects } = useCollection<Project>(projectsQuery);
   const { data: teamMembersData, isLoading: isLoadingTeamMembers } = useCollection<TeamMember>(teamMembersQuery);
   const { data: appointments, isLoading: isLoadingAppointments } = useCollection<Appointment>(appointmentsQuery);
+  const { data: tasks, isLoading: isLoadingTasks } = useCollection<Task>(tasksQuery);
   const { data: stockItems, isLoading: isLoadingStockItems } = useCollection<StockItem>(stockItemsQuery);
   const { data: stockCategoriesData, isLoading: isLoadingStockCategories } = useCollection<StockCategory>(stockCategoriesQuery);
   const { data: stockMovements, isLoading: isLoadingMovements } = useCollection<StockMovement>(stockMovementsQuery);
@@ -404,6 +410,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (!firestore) return;
         const appointmentRef = doc(firestore, 'appointments', appointmentId);
         deleteDocumentNonBlocking(appointmentRef);
+    }, [firestore]);
+
+    const addTasks = useCallback((tasksData: Omit<Task, 'id'>[]) => {
+      if (!firestore) return;
+      const batch = writeBatch(firestore);
+      tasksData.forEach(taskData => {
+        const taskId = generateId('task');
+        const newTask: Task = { ...taskData, id: taskId };
+        const taskRef = doc(firestore, 'tasks', taskId);
+        batch.set(taskRef, newTask);
+      });
+      batch.commit();
     }, [firestore]);
 
   const completeProjectStages = useCallback((projectId: string) => {
@@ -868,6 +886,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     projects: projects || [],
     teamMembers,
     appointments: appointments || [],
+    tasks: tasks || [],
     stockItems: stockItems || [],
     stockCategories: stockCategories,
     stockMovements: stockMovements || [],
@@ -875,7 +894,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     quotes: quotes || [],
     quoteMaterials: quoteMaterials || [],
     quoteMaterialCategories: quoteMaterialCategories || [],
-    isLoading: isLoadingProjects || isLoadingTeamMembers || isLoadingAppointments || isLoadingStockItems || isLoadingStockCategories || isLoadingMovements || isLoadingPurchaseRequests || isLoadingQuotes || isLoadingQuoteMaterials || isLoadingQuoteMaterialCategories,
+    isLoading: isLoadingProjects || isLoadingTeamMembers || isLoadingAppointments || isLoadingTasks || isLoadingStockItems || isLoadingStockCategories || isLoadingMovements || isLoadingPurchaseRequests || isLoadingQuotes || isLoadingQuoteMaterials || isLoadingQuoteMaterialCategories,
     addProject,
     updateProject,
     deleteProject,
@@ -885,6 +904,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addAppointment,
     updateAppointment,
     deleteAppointment,
+    addTasks,
     completeProjectStages,
     addStockItem,
     updateStockItem,
@@ -915,6 +935,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     projects, 
     teamMembers, 
     appointments, 
+    tasks,
     stockItems,
     stockCategories,
     stockMovements,
@@ -925,6 +946,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     isLoadingProjects, 
     isLoadingTeamMembers, 
     isLoadingAppointments,
+    isLoadingTasks,
     isLoadingStockItems,
     isLoadingStockCategories,
     isLoadingMovements,
@@ -941,6 +963,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addAppointment,
     updateAppointment,
     deleteAppointment,
+    addTasks,
     completeProjectStages,
     addStockItem,
     updateStockItem,

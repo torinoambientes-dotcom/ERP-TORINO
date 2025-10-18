@@ -15,6 +15,11 @@
           "type": "string",
           "format": "date-time",
           "description": "The timestamp when the project was completed."
+        },
+        "deliveryDeadline": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The agreed delivery date for the project."
         }
       },
       "required": ["id", "clientName", "environments"]
@@ -40,6 +45,7 @@
       "properties": {
         "id": { "type": "string", "description": "Unique identifier for the furniture." },
         "name": { "type": "string", "description": "The name of the furniture (e.g., 'Top Cabinet')." },
+        "productionTime": { "type": "number", "description": "Estimated production time in days." },
         "measurement": { "$ref": "#/entities/ProductionStage" },
         "cutting": { "$ref": "#/entities/ProductionStage" },
         "purchase": { "$ref": "#/entities/ProductionStage" },
@@ -127,6 +133,17 @@
       },
       "required": ["id", "text", "isResolved", "authorId"]
     },
+    "Dispatch": {
+      "title": "Dispatch",
+      "type": "object",
+      "description": "Represents a dispatch of a material from stock to production.",
+      "properties": {
+        "quantity": { "type": "number" },
+        "dispatchedAt": { "type": "string", "format": "date-time" },
+        "memberId": { "type": "string" }
+      },
+      "required": ["quantity", "dispatchedAt", "memberId"]
+    },
     "MaterialItem": {
       "title": "MaterialItem",
       "type": "object",
@@ -139,7 +156,11 @@
         "stockItemId": { "type": "string", "description": "Link to the stock item" },
         "addedAt": { "type": "string", "format": "date-time" },
         "purchased": { "type": "boolean" },
-        "markup": { "type": "number", "description": "The markup multiplier for the item's cost." }
+        "markup": { "type": "number", "description": "The markup multiplier for the item's cost." },
+        "dispatches": {
+          "type": "array",
+          "items": { "$ref": "#/entities/Dispatch" }
+        }
       },
       "required": ["id", "name", "quantity", "unit"]
     },
@@ -192,7 +213,22 @@
         "handleWidth": { "type": "number" },
         "handleOffset": { "type": "number" },
         "addedAt": { "type": "string", "format": "date-time" },
-        "purchased": { "type": "boolean" }
+        "purchased": { "type": "boolean" },
+        "doorSet": {
+            "type": "object",
+            "properties": {
+                "count": { "type": "number" },
+                "doors": {
+                    "type": "array",
+                    "items": { 
+                        "type": "object",
+                        "properties": {
+                            "handlePosition": { "type": "string", "enum": ["left", "right", "both", "none"] }
+                        }
+                    }
+                }
+            }
+        }
       },
       "required": ["id", "profileColor", "glassType", "handleType", "height", "width", "quantity"]
     },
@@ -207,7 +243,8 @@
         "email": { "type": "string", "format": "email" },
         "color": { "type": "string", "description": "A hex color code for the member's label." },
         "role": { "type": "string", "description": "The role of the team member (e.g., 'Marceneiro', 'Projetista')." },
-        "avatarUrl": { "type": "string", "format": "uri", "description": "URL of the team member's avatar image. Can be updated by the user." }
+        "avatarUrl": { "type": "string", "format": "uri", "description": "URL of the team member's avatar image. Can be updated by the user." },
+        "birthday": { "type": "string", "description": "The member's birthday in MM-DD format."}
       },
       "required": ["id", "name", "email", "color", "role"]
     },
@@ -228,6 +265,24 @@
         }
       },
       "required": ["id", "title", "start", "end", "memberIds"]
+    },
+    "Task": {
+      "title": "Task",
+      "type": "object",
+      "description": "Represents a generic task that can be assigned to team members.",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "status": { "type": "string", "enum": ["todo", "in_progress", "done"] },
+        "priority": { "type": "string", "enum": ["low", "medium", "high"] },
+        "dueDate": { "type": "string", "format": "date-time" },
+        "assigneeIds": { "type": "array", "items": { "type": "string" } },
+        "projectId": { "type": "string", "description": "Optional link to a project." },
+        "environmentId": { "type": "string", "description": "Optional link to an environment." },
+        "furnitureId": { "type": "string", "description": "Optional link to a piece of furniture." }
+      },
+      "required": ["id", "title", "status", "priority", "assigneeIds"]
     },
     "StockItem": {
       "title": "StockItem",
@@ -318,7 +373,9 @@
             "status": { "type": "string", "enum": ["pending", "approved", "purchased", "rejected"], "description": "The current status of the purchase request." },
             "createdAt": { "type": "string", "format": "date-time" },
             "updatedAt": { "type": "string", "format": "date-time" },
-            "notes": { "type": "string", "description": "Notes from the purchasing team." }
+            "notes": { "type": "string", "description": "Notes from the purchasing team." },
+            "projectId": { "type": "string", "description": "Optional ID of the project this request is for." },
+            "projectName": { "type": "string", "description": "Optional name of the project this request is for." }
         },
         "required": ["id", "description", "quantity", "unit", "reason", "requesterId", "requesterName", "status", "createdAt"]
     },
@@ -344,7 +401,7 @@
         "id": { "type": "string" },
         "clientName": { "type": "string" },
         "clientContact": { "type": "string" },
-        "environments": { "type": "array", "items": { "$ref": "#/entities/Environment" } },
+        "environments": { "type": "array", "items": { "$ref": "#/entities/QuoteEnvironment" } },
         "totalValue": { "type": "number" },
         "notes": { "type": "string" },
         "createdAt": { "type": "string", "format": "date-time" },
@@ -366,9 +423,60 @@
           "type": "string",
           "enum": ["analyzing", "approved", "rejected", "revision"],
           "description": "Client's feedback on the quote."
+        },
+        "deliveryDeadline": {
+            "type": "string",
+            "format": "date-time",
+            "description": "The delivery date agreed upon with the client."
+        },
+        "relatedProjectId": {
+            "type": "string",
+            "description": "The ID of the project created from this quote."
+        },
+        "isArchived": {
+            "type": "boolean",
+            "description": "Whether the quote is archived and hidden from the main view."
         }
       },
       "required": ["id", "clientName", "environments", "createdAt", "updatedAt", "projectOrigin", "materialSurveyStage", "descriptiveStage", "presentationStatus", "clientFeedback"]
+    },
+    "QuoteEnvironment": {
+      "title": "QuoteEnvironment",
+      "type": "object",
+      "description": "An environment within a quote, containing multiple pieces of furniture.",
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier for the environment." },
+        "name": { "type": "string", "description": "The name of the environment (e.g., 'Kitchen')." },
+        "furniture": {
+          "type": "array",
+          "items": { "$ref": "#/entities/QuoteFurniture" }
+        }
+      },
+      "required": ["id", "name", "furniture"]
+    },
+    "QuoteFurniture": {
+      "title": "QuoteFurniture",
+      "type": "object",
+      "description": "A single piece of furniture within a quote.",
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier for the furniture." },
+        "name": { "type": "string", "description": "The name of the furniture (e.g., 'Top Cabinet')." },
+        "description": { "type": "string", "description": "A detailed description for the quote PDF." },
+        "productionTime": { "type": "number", "description": "Estimated production time in days." },
+        "materials": {
+          "type": "array",
+          "items": { "$ref": "#/entities/MaterialItem" }
+        },
+        "glassItems": {
+          "type": "array",
+          "items": { "$ref": "#/entities/GlassItem" }
+        },
+        "profileDoors": {
+          "type": "array",
+          "items": { "$ref": "#/entities/ProfileDoorItem" }
+        }
+      },
+      "required": ["id", "name"]
     },
     "QuoteMaterial": {
       "title": "QuoteMaterial",
@@ -411,6 +519,10 @@
     "/appointments/{appointmentId}": {
       "schema": { "$ref": "#/entities/Appointment" },
       "description": "Stores general appointments and tasks for the calendar."
+    },
+    "/tasks/{taskId}": {
+        "schema": { "$ref": "#/entities/Task" },
+        "description": "Stores general tasks."
     },
     "/stock_items/{stockItemId}": {
       "schema": { "$ref": "#/entities/StockItem" },

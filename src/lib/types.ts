@@ -298,5 +298,3 @@ export interface QuoteMaterial {
   cost: number;
   category: string;
 }
-
-    
