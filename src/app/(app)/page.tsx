@@ -10,7 +10,7 @@ import { cn, getInitials } from '@/lib/utils';
 import { format, isToday, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import type { CalendarTask } from './calendar/page';
-import type { TeamMember, StockItem, Priority } from '@/lib/types';
+import type { TeamMember, StockItem, Priority, Task } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, ShoppingCart, RectangleHorizontal, DoorOpen, AlertTriangle, Cake, StickyNote, Flag } from 'lucide-react';
 import { getProjectStatus } from '@/lib/projects';
@@ -28,7 +28,7 @@ const priorityMap: Record<Priority, { label: string; className: string }> = {
 
 export default function DashboardPage() {
   const { user } = useUser();
-  const { projects, teamMembers, appointments, purchaseRequests, stockItems, isLoading } = useContext(AppContext);
+  const { projects, teamMembers, appointments, tasks: allTasks, purchaseRequests, stockItems, isLoading } = useContext(AppContext);
 
   const loggedInMember = useMemo(() => {
     if (!user || !teamMembers) return null;
@@ -41,29 +41,23 @@ export default function DashboardPage() {
     return map;
   }, [teamMembers]);
 
-  const todaysTasks = useMemo(() => {
+  const allMemberTasks = useMemo(() => {
     if (isLoading || !loggedInMember) return [];
     
     const tasks: CalendarTask[] = [];
     const today = new Date();
 
-    // Project stages scheduled for today
+    // Project stages
     projects.forEach(project => {
       project.environments.forEach(env => {
         env.furniture.forEach(fur => {
           (['measurement', 'cutting', 'purchase', 'assembly'] as const).forEach(stageKey => {
             const stage = fur[stageKey];
-            if (stage && stage.scheduledFor && stage.responsibleIds?.includes(loggedInMember.id) && isToday(parseISO(stage.scheduledFor))) {
+            if (stage && stage.scheduledFor && stage.responsibleIds?.includes(loggedInMember.id)) {
               tasks.push({
-                id: `${fur.id}-${stageKey}`,
-                type: 'project',
-                title: `${fur.name} (${project.clientName})`,
-                subtitle: `Etapa: ${stageKey}`,
-                link: `/projects/${project.id}`,
-                responsible: [loggedInMember],
-                date: parseISO(stage.scheduledFor),
-                start: parseISO(stage.scheduledFor),
-                end: parseISO(stage.scheduledFor),
+                id: `${fur.id}-${stageKey}`, type: 'project', title: `${fur.name} (${project.clientName})`,
+                subtitle: `Etapa: ${stageKey}`, link: `/projects/${project.id}`, responsible: [loggedInMember],
+                date: parseISO(stage.scheduledFor), start: parseISO(stage.scheduledFor), end: parseISO(stage.scheduledFor),
                 priority: stage.priority,
                 rawData: { projectId: project.id, envId: env.id, furId: fur.id, stageKey },
               });
@@ -73,23 +67,27 @@ export default function DashboardPage() {
       });
     });
 
-    // Appointments for today
+    // Appointments
     appointments.forEach(appointment => {
-      if (appointment.start && appointment.memberIds?.includes(loggedInMember.id) && isToday(parseISO(appointment.start))) {
+      if (appointment.start && appointment.memberIds?.includes(loggedInMember.id)) {
         tasks.push({
-          id: appointment.id,
-          type: 'appointment',
-          title: appointment.title,
-          subtitle: appointment.description,
-          responsible: [loggedInMember],
-          date: parseISO(appointment.start),
-          start: parseISO(appointment.start),
-          end: parseISO(appointment.end),
-          rawData: { appointmentId: appointment.id },
-          priority: 'medium', // Default priority for appointments
+          id: appointment.id, type: 'appointment', title: appointment.title, subtitle: appointment.description,
+          responsible: [loggedInMember], date: parseISO(appointment.start), start: parseISO(appointment.start),
+          end: parseISO(appointment.end), rawData: { appointmentId: appointment.id }, priority: 'medium',
         });
       }
     });
+
+    // Generic Tasks
+    (allTasks || []).forEach(task => {
+        if(task.dueDate && task.assigneeIds?.includes(loggedInMember.id)) {
+            tasks.push({
+                id: task.id, type: 'task', title: task.title, subtitle: task.description,
+                responsible: [loggedInMember], date: parseISO(task.dueDate), start: parseISO(task.dueDate),
+                end: parseISO(task.dueDate), rawData: { taskId: task.id }, priority: task.priority
+            })
+        }
+    })
     
     const priorityOrder: Record<Priority, number> = { high: 1, medium: 2, low: 3 };
 
@@ -99,7 +97,11 @@ export default function DashboardPage() {
         return priorityOrder[priorityA] - priorityOrder[priorityB];
     });
 
-  }, [projects, appointments, isLoading, loggedInMember]);
+  }, [projects, appointments, allTasks, isLoading, loggedInMember]);
+
+  const todaysTasks = useMemo(() => {
+    return allMemberTasks.filter(task => isToday(task.date));
+  }, [allMemberTasks]);
 
   const ongoingProjectsForMember = useMemo(() => {
     if (!projects || !loggedInMember) return [];
@@ -243,7 +245,62 @@ export default function DashboardPage() {
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-6">
+            <Card>
+                <CardHeader>
+                    <CardTitle>Minhas Tarefas do Dia</CardTitle>
+                    <CardDescription>{format(new Date(), "eeee, dd 'de' MMMM", { locale: ptBR })}</CardDescription>
+                </CardHeader>
+                <CardContent>
+                {todaysTasks.length > 0 ? (
+                    <ul className="space-y-3">
+                    {todaysTasks.map(task => (
+                        <li key={task.id} className="flex items-start gap-3 rounded-lg p-3 bg-muted/50 border">
+                        <div className="w-1.5 h-auto self-stretch rounded-full" style={{backgroundColor: task.responsible[0]?.color || '#ccc'}}></div>
+                        <div className="flex-grow overflow-hidden">
+                            <p className="font-semibold truncate">{task.title}</p>
+                            <p className="text-sm text-muted-foreground truncate">{task.subtitle}</p>
+                        </div>
+                        {task.priority && <Flag className={cn("h-5 w-5 flex-shrink-0", priorityMap[task.priority].className)} />}
+                        </li>
+                    ))}
+                    </ul>
+                ) : (
+                    <p className="text-sm text-muted-foreground text-center py-8">Nenhuma tarefa agendada para hoje.</p>
+                )}
+                </CardContent>
+            </Card>
 
+            <Card>
+                <CardHeader>
+                    <CardTitle>Todas as Tarefas</CardTitle>
+                    <CardDescription>Uma visão geral de todas as suas tarefas agendadas, ordenadas por prioridade.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                {allMemberTasks.length > 0 ? (
+                    <ul className="space-y-3 max-h-96 overflow-y-auto pr-2">
+                    {allMemberTasks.map(task => (
+                        <li key={task.id} className="flex items-start gap-3 rounded-lg p-3 bg-muted/50 border">
+                        <div className="flex flex-col items-center w-12 text-center text-sm font-semibold">
+                          <span className="text-xs uppercase text-muted-foreground">{format(task.date, 'MMM', { locale: ptBR })}</span>
+                          <span className="text-lg">{format(task.date, 'dd')}</span>
+                        </div>
+                        <div className="w-1.5 h-auto self-stretch rounded-full" style={{backgroundColor: task.responsible[0]?.color || '#ccc'}}></div>
+                        <div className="flex-grow overflow-hidden">
+                            <p className="font-semibold truncate">{task.title}</p>
+                            <p className="text-sm text-muted-foreground truncate">{task.subtitle}</p>
+                        </div>
+                        {task.priority && <Flag className={cn("h-5 w-5 flex-shrink-0", priorityMap[task.priority].className)} />}
+                        </li>
+                    ))}
+                    </ul>
+                ) : (
+                    <p className="text-sm text-muted-foreground text-center py-8">Você não tem nenhuma tarefa agendada.</p>
+                )}
+                </CardContent>
+            </Card>
+        </div>
+
+        <div className="space-y-6">
             {todaysBirthdays.length > 0 && (
               <Card className="border-primary bg-accent/50">
                   <CardHeader>
@@ -415,32 +472,6 @@ export default function DashboardPage() {
                     </div>
                 </CardContent>
             </Card>
-        </div>
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Minhas Tarefas do Dia</CardTitle>
-              <CardDescription>{format(new Date(), "eeee, dd 'de' MMMM", { locale: ptBR })}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {todaysTasks.length > 0 ? (
-                <ul className="space-y-3">
-                  {todaysTasks.map(task => (
-                    <li key={task.id} className="flex items-start gap-3 rounded-lg p-3 bg-muted/50 border">
-                       <div className="w-1.5 h-auto self-stretch rounded-full" style={{backgroundColor: task.responsible[0]?.color || '#ccc'}}></div>
-                       <div className="flex-grow overflow-hidden">
-                          <p className="font-semibold truncate">{task.title}</p>
-                          <p className="text-sm text-muted-foreground truncate">{task.subtitle}</p>
-                       </div>
-                       {task.priority && <Flag className={cn("h-5 w-5 flex-shrink-0", priorityMap[task.priority].className)} />}
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-sm text-muted-foreground text-center py-8">Nenhuma tarefa agendada para hoje.</p>
-              )}
-            </CardContent>
-          </Card>
         </div>
       </div>
     </div>
