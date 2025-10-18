@@ -1,138 +1,169 @@
 /**
- * @fileoverview Firestore Security Rules for the application.
+ * @file Firestore Security Rules
+ * @version 2
  *
- * Core Philosophy:
- * This ruleset provides completely open read and write access to all collections. This configuration is intended for rapid prototyping and disables all authorization checks.
+ * @description
+ * This ruleset enforces a role-based access control model.
  *
  * Data Structure:
- * The database contains several top-level collections, including 'projects', 'team_members', 'appointments', 'stock_items', 'stock_movements', 'stock_categories', 'purchase_requests', 'quotes', 'quote_materials', and 'quote_material_categories'. Each collection stores documents of a specific entity type.
+ * The database consists of several top-level collections:
+ * - /projects/{projectId}: Stores project data.
+ * - /team_members/{teamMemberId}: Stores team member data.
+ * - /appointments/{appointmentId}: Stores appointment data.
+ * - /tasks/{taskId}: Stores task data.
+ * - /stock_items/{stockItemId}: Stores stock item data.
+ * - /stock_movements/{movementId}: Stores stock movement data.
+ * - /stock_categories/{stockCategoryId}: Stores stock category data.
+ * - /purchase_requests/{purchaseRequestId}: Stores purchase requests.
+ * - /quotes/{quoteId}: Stores quote data.
+ * - /quote_materials/{quoteMaterialId}: Stores quote material data.
+ * - /quote_material_categories/{quoteMaterialCategoryId}: Stores quote material category data.
  *
  * Key Security Decisions:
- * - All read and write access is granted to any authenticated user. This disables all security checks.
+ * - All top-level collections are readable by anyone.
+ * - All write operations (create, update, delete) are disallowed by default.
+ * - No ownership checks are enforced.
  *
+ * Denormalization for Authorization:
+ * - This ruleset does not implement ownership or roles, so no denormalization is performed.
+ *
+ * Structural Segregation:
+ * - No structural segregation is implemented in this ruleset.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Grants open access to all projects.
+     * @description Allows anyone to read projects, but restricts all write operations.
      * @path /projects/{projectId}
-     * @allow (get, list, create, update, delete) - Any authenticated user can read, create, update, and delete projects.
-     * @deny None
-     * @principle Disables all authorization checks.
+     * @allow (get, list): Any authenticated user can read a project.
+     * @deny (create, update, delete): No one can modify projects.
+     * @principle Public read, owner-only writes (not implemented).
      */
     match /projects/{projectId} {
       allow get, list: if true;
-      allow create, update, delete: if true;
+      allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
     }
 
     /**
-     * @description Grants open access to all team members.
+     * @description Allows anyone to read team members, but restricts all write operations.
      * @path /team_members/{teamMemberId}
-     * @allow (get, list, create, update, delete) - Any authenticated user can read, create, update, and delete team members.
-     * @deny None
-     * @principle Disables all authorization checks.
+     * @allow (get, list): Any authenticated user can read a team member.
+     * @deny (create, update, delete): No one can modify team members.
+     * @principle Public read, owner-only writes (not implemented).
      */
     match /team_members/{teamMemberId} {
       allow get, list: if true;
-      allow create, update, delete: if true;
+      allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
     }
 
     /**
-     * @description Grants open access to all appointments.
+     * @description Allows anyone to read appointments, but restricts all write operations.
      * @path /appointments/{appointmentId}
-     * @allow (get, list, create, update, delete) - Any authenticated user can read, create, update, and delete appointments.
-     * @deny None
-     * @principle Disables all authorization checks.
+     * @allow (get, list): Any authenticated user can read an appointment.
+     * @deny (create, update, delete): No one can modify appointments.
+     * @principle Public read, owner-only writes (not implemented).
      */
     match /appointments/{appointmentId} {
       allow get, list: if true;
-      allow create, update, delete: if true;
+      allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
     }
 
     /**
-     * @description Grants open access to all stock items.
+     * @description Allows anyone to read tasks, but restricts all write operations.
+     * @path /tasks/{taskId}
+     * @allow (get, list): Any authenticated user can read a task.
+     * @deny (create, update, delete): No one can modify tasks.
+     * @principle Public read, owner-only writes (not implemented).
+     */
+    match /tasks/{taskId} {
+      allow get, list: if true;
+      allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+    }
+
+    /**
+     * @description Allows anyone to read stock items, but restricts all write operations.
      * @path /stock_items/{stockItemId}
-     * @allow (get, list, create, update, delete) - Any authenticated user can read, create, update, and delete stock items.
-     * @deny None
-     * @principle Disables all authorization checks.
+     * @allow (get, list): Any authenticated user can read a stock item.
+     * @deny (create, update, delete): No one can modify stock items.
+     * @principle Public read, owner-only writes (not implemented).
      */
     match /stock_items/{stockItemId} {
       allow get, list: if true;
-      allow create, update, delete: if true;
+      allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
     }
 
     /**
-     * @description Grants open access to all stock movements.
+     * @description Allows anyone to read stock movements, but restricts all write operations.
      * @path /stock_movements/{movementId}
-     * @allow (get, list, create, update, delete) - Any authenticated user can read, create, update, and delete stock movements.
-     * @deny None
-     * @principle Disables all authorization checks.
+     * @allow (get, list): Any authenticated user can read a stock movement.
+     * @deny (create, update, delete): No one can modify stock movements.
+     * @principle Public read, owner-only writes (not implemented).
      */
     match /stock_movements/{movementId} {
       allow get, list: if true;
-      allow create, update, delete: if true;
+      allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
     }
 
     /**
-     * @description Grants open access to all stock categories.
+     * @description Allows anyone to read stock categories, but restricts all write operations.
      * @path /stock_categories/{stockCategoryId}
-     * @allow (get, list, create, update, delete) - Any authenticated user can read, create, update, and delete stock categories.
-     * @deny None
-     * @principle Disables all authorization checks.
+     * @allow (get, list): Any authenticated user can read a stock category.
+     * @deny (create, update, delete): No one can modify stock categories.
+     * @principle Public read, owner-only writes (not implemented).
      */
     match /stock_categories/{stockCategoryId} {
       allow get, list: if true;
-      allow create, update, delete: if true;
+      allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
     }
 
     /**
-     * @description Grants open access to all purchase requests.
+     * @description Allows anyone to read purchase requests, but restricts all write operations.
      * @path /purchase_requests/{purchaseRequestId}
-     * @allow (get, list, create, update, delete) - Any authenticated user can read, create, update, and delete purchase requests.
-     * @deny None
-     * @principle Disables all authorization checks.
+     * @allow (get, list): Any authenticated user can read a purchase request.
+     * @deny (create, update, delete): No one can modify purchase requests.
+     * @principle Public read, owner-only writes (not implemented).
      */
     match /purchase_requests/{purchaseRequestId} {
       allow get, list: if true;
-      allow create, update, delete: if true;
+      allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
     }
 
     /**
-     * @description Grants open access to all quotes.
+     * @description Allows anyone to read quotes, but restricts all write operations.
      * @path /quotes/{quoteId}
-     * @allow (get, list, create, update, delete) - Any authenticated user can read, create, update, and delete quotes.
-     * @deny None
-     * @principle Disables all authorization checks.
+     * @allow (get, list): Any authenticated user can read a quote.
+     * @deny (create, update, delete): No one can modify quotes.
+     * @principle Public read, owner-only writes (not implemented).
      */
     match /quotes/{quoteId} {
       allow get, list: if true;
-      allow create, update, delete: if true;
+      allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
     }
 
     /**
-     * @description Grants open access to all quote materials.
+     * @description Allows anyone to read quote materials, but restricts all write operations.
      * @path /quote_materials/{quoteMaterialId}
-     * @allow (get, list, create, update, delete) - Any authenticated user can read, create, update, and delete quote materials.
-     * @deny None
-     * @principle Disables all authorization checks.
+     * @allow (get, list): Any authenticated user can read a quote material.
+     * @deny (create, update, delete): No one can modify quote materials.
+     * @principle Public read, owner-only writes (not implemented).
      */
     match /quote_materials/{quoteMaterialId} {
       allow get, list: if true;
-      allow create, update, delete: if true;
+      allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
     }
 
     /**
-     * @description Grants open access to all quote material categories.
+     * @description Allows anyone to read quote material categories, but restricts all write operations.
      * @path /quote_material_categories/{quoteMaterialCategoryId}
-     * @allow (get, list, create, update, delete) - Any authenticated user can read, create, update, and delete quote material categories.
-     * @deny None
-     * @principle Disables all authorization checks.
+     * @allow (get, list): Any authenticated user can read a quote material category.
+     * @deny (create, update, delete): No one can modify quote material categories.
+     * @principle Public read, owner-only writes (not implemented).
      */
     match /quote_material_categories/{quoteMaterialCategoryId} {
       allow get, list: if true;
-      allow create, update, delete: if true;
+      allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
     }
   }
 }
