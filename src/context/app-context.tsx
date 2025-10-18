@@ -7,6 +7,8 @@ import type { Project, TeamMember, StageStatus, StockItem, StockMovement, StockC
 import { generateId } from '@/lib/utils';
 import { setDocumentNonBlocking, deleteDocumentNonBlocking, addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { FirestorePermissionError } from '@/firebase/errors';
+import { errorEmitter } from '@/firebase/error-emitter';
 
 
 interface AppContextType {
@@ -415,13 +417,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const addTasks = useCallback((tasksData: Omit<Task, 'id'>[]) => {
       if (!firestore) return;
       const batch = writeBatch(firestore);
-      tasksData.forEach(taskData => {
+      const allTasksData = tasksData.map(taskData => {
         const taskId = generateId('task');
         const newTask: Task = { ...taskData, id: taskId };
         const taskRef = doc(firestore, 'tasks', taskId);
         batch.set(taskRef, newTask);
+        return newTask;
       });
-      batch.commit();
+
+      batch.commit().catch(error => {
+        errorEmitter.emit(
+          'permission-error',
+          new FirestorePermissionError({
+            path: 'tasks',
+            operation: 'write',
+            requestResourceData: allTasksData,
+          })
+        )
+      });
     }, [firestore]);
 
   const completeProjectStages = useCallback((projectId: string) => {
