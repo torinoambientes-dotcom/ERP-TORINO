@@ -13,10 +13,12 @@ import type { CalendarTask } from './calendar/page';
 import type { TeamMember, StockItem, Priority, Task, StageStatus, ProductionStage } from '@/lib/types';
 import { STAGE_STATUSES } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, ShoppingCart, RectangleHorizontal, DoorOpen, AlertTriangle, Cake, StickyNote, Flag } from 'lucide-react';
+import { ArrowRight, ShoppingCart, RectangleHorizontal, DoorOpen, AlertTriangle, Cake, StickyNote, Flag, Users } from 'lucide-react';
 import { getProjectStatus } from '@/lib/projects';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
+import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
 
 interface LowStockInfo extends StockItem {
   demand?: number;
@@ -26,6 +28,12 @@ const priorityMap: Record<Priority, { label: string; className: string }> = {
     low: { label: 'Baixa', className: 'text-gray-500' },
     medium: { label: 'Média', className: 'text-yellow-500' },
     high: { label: 'Alta', className: 'text-red-500' },
+};
+
+const statusDisplayMap: Record<string, { label: string; variant: 'default' | 'secondary' | 'outline' | 'destructive' }> = {
+  todo: { label: 'A Fazer', variant: 'secondary' },
+  in_progress: { label: 'Em Andamento', variant: 'outline' },
+  done: { label: 'Concluído', variant: 'default' },
 };
 
 
@@ -101,6 +109,14 @@ export default function DashboardPage() {
     });
 
   }, [projects, appointments, allTasks, isLoading, loggedInMember]);
+
+    const delegatedTasks = useMemo(() => {
+        if (!loggedInMember || !allTasks) return [];
+        return allTasks.filter(task => 
+            task.creatorId === loggedInMember.id && 
+            !task.assigneeIds.includes(loggedInMember.id)
+        ).sort((a, b) => new Date(b.dueDate || 0).getTime() - new Date(a.dueDate || 0).getTime());
+    }, [allTasks, loggedInMember]);
   
   const handleToggleTaskStatus = useCallback((task: CalendarTask, isChecked: boolean) => {
     const newStatus: StageStatus = isChecked ? 'done' : 'in_progress';
@@ -389,6 +405,39 @@ export default function DashboardPage() {
                 )}
                 </CardContent>
             </Card>
+
+            {delegatedTasks.length > 0 && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Tarefas Delegadas</CardTitle>
+                        <CardDescription>Tarefas que você criou e atribuiu a outros membros.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <ul className="space-y-3 max-h-96 overflow-y-auto pr-2">
+                            {delegatedTasks.map(task => {
+                                const assignees = task.assigneeIds.map(id => memberMap.get(id)).filter(Boolean) as TeamMember[];
+                                const displayStatus = statusDisplayMap[task.status];
+                                return (
+                                    <li key={task.id} className="flex items-start gap-3 rounded-lg p-3 bg-muted/50 border">
+                                        <div className="flex flex-col items-center w-12 text-center text-sm font-semibold">
+                                            <span className="text-xs uppercase text-muted-foreground">{format(parseISO(task.dueDate!), 'MMM', { locale: ptBR })}</span>
+                                            <span className="text-lg">{format(parseISO(task.dueDate!), 'dd')}</span>
+                                        </div>
+                                        <div className="flex-grow overflow-hidden">
+                                            <p className={cn("font-semibold truncate", task.status === 'done' && 'line-through text-muted-foreground')}>{task.title}</p>
+                                            <div className="flex items-center gap-2 mt-1">
+                                                <Users className="h-4 w-4 text-muted-foreground" />
+                                                <p className="text-sm text-muted-foreground truncate">{assignees.map(a => a.name).join(', ')}</p>
+                                            </div>
+                                        </div>
+                                        {displayStatus && <Badge variant={displayStatus.variant}>{displayStatus.label}</Badge>}
+                                    </li>
+                                );
+                            })}
+                        </ul>
+                    </CardContent>
+                </Card>
+            )}
         </div>
 
         <div className="space-y-6">

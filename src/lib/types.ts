@@ -161,6 +161,7 @@ export interface Task {
   priority: 'low' | 'medium' | 'high';
   dueDate?: string; // ISO date string
   assigneeIds: string[];
+  creatorId: string;
   projectId?: string;
   environmentId?: string;
   furnitureId?: string;

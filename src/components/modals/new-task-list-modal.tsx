@@ -42,6 +42,7 @@ import { Textarea } from '../ui/textarea';
 import type { TeamMember } from '@/lib/types';
 import { Checkbox } from '../ui/checkbox';
 import { Separator } from '../ui/separator';
+import { useUser } from '@/firebase';
 
 const taskSchema = z.object({
   title: z.string().min(3, 'O título deve ter pelo menos 3 caracteres.'),
@@ -65,6 +66,7 @@ interface NewTaskListModalProps {
 
 export function NewTaskListModal({ isOpen, onClose, selectedDate, onDateConsumed }: NewTaskListModalProps) {
   const { teamMembers, addTasks } = useContext(AppContext);
+  const { user } = useUser();
   const { toast } = useToast();
 
   const form = useForm<TaskListFormValues>({
@@ -88,9 +90,19 @@ export function NewTaskListModal({ isOpen, onClose, selectedDate, onDateConsumed
   }, [isOpen, selectedDate, form]);
 
   const onSubmit = (data: TaskListFormValues) => {
+    if (!user) {
+      toast({
+        variant: 'destructive',
+        title: 'Erro de Autenticação',
+        description: 'Você precisa estar logado para criar tarefas.',
+      });
+      return;
+    }
+
     const tasksToAdd = data.tasks.map(task => ({
       ...task,
       dueDate: task.dueDate.toISOString(),
+      creatorId: user.uid, // Add creatorId
       status: 'todo' as const,
       priority: 'medium' as const,
     }));
