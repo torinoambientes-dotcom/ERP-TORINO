@@ -34,6 +34,7 @@ interface AppContextType {
   updateAppointment: (appointmentId: string, updates: Partial<Appointment>) => void;
   deleteAppointment: (appointmentId: string) => void;
   addTasks: (tasksData: Omit<Task, 'id'>[]) => void;
+  updateTaskStatus: (taskId: string, status: 'todo' | 'in_progress' | 'done') => void;
   completeProjectStages: (projectId: string) => void;
   addStockItem: (itemData: Omit<StockItem, 'id'>) => void;
   updateStockItem: (updatedItem: StockItem) => void;
@@ -85,6 +86,7 @@ export const AppContext = createContext<AppContextType>({
   updateAppointment: () => {},
   deleteAppointment: () => {},
   addTasks: () => {},
+  updateTaskStatus: () => {},
   completeProjectStages: () => {},
   addStockItem: () => {},
   updateStockItem: () => {},
@@ -435,6 +437,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
           })
         )
       });
+    }, [firestore]);
+
+    const updateTaskStatus = useCallback((taskId: string, status: 'todo' | 'in_progress' | 'done') => {
+      if (!firestore) return;
+      const taskRef = doc(firestore, 'tasks', taskId);
+      updateDocumentNonBlocking(taskRef, { status: status });
     }, [firestore]);
 
   const completeProjectStages = useCallback((projectId: string) => {
@@ -918,6 +926,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     updateAppointment,
     deleteAppointment,
     addTasks,
+    updateTaskStatus,
     completeProjectStages,
     addStockItem,
     updateStockItem,
@@ -977,6 +986,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     updateAppointment,
     deleteAppointment,
     addTasks,
+    updateTaskStatus,
     completeProjectStages,
     addStockItem,
     updateStockItem,

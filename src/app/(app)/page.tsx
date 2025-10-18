@@ -1,5 +1,5 @@
 'use client';
-import { useContext, useMemo } from 'react';
+import { useContext, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import { AppContext } from '@/context/app-context';
 import { useUser } from '@/firebase';
@@ -10,10 +10,13 @@ import { cn, getInitials } from '@/lib/utils';
 import { format, isToday, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import type { CalendarTask } from './calendar/page';
-import type { TeamMember, StockItem, Priority, Task } from '@/lib/types';
+import type { TeamMember, StockItem, Priority, Task, StageStatus, ProductionStage } from '@/lib/types';
+import { STAGE_STATUSES } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, ShoppingCart, RectangleHorizontal, DoorOpen, AlertTriangle, Cake, StickyNote, Flag } from 'lucide-react';
 import { getProjectStatus } from '@/lib/projects';
+import { Checkbox } from '@/components/ui/checkbox';
+import { useToast } from '@/hooks/use-toast';
 
 interface LowStockInfo extends StockItem {
   demand?: number;
@@ -28,7 +31,8 @@ const priorityMap: Record<Priority, { label: string; className: string }> = {
 
 export default function DashboardPage() {
   const { user } = useUser();
-  const { projects, teamMembers, appointments, tasks: allTasks, purchaseRequests, stockItems, isLoading } = useContext(AppContext);
+  const { projects, teamMembers, appointments, tasks: allTasks, purchaseRequests, stockItems, isLoading, updateProject, updateTaskStatus } = useContext(AppContext);
+  const { toast } = useToast();
 
   const loggedInMember = useMemo(() => {
     if (!user || !teamMembers) return null;
@@ -45,7 +49,6 @@ export default function DashboardPage() {
     if (isLoading || !loggedInMember) return [];
     
     const tasks: CalendarTask[] = [];
-    const today = new Date();
 
     // Project stages
     projects.forEach(project => {
@@ -56,7 +59,7 @@ export default function DashboardPage() {
             if (stage && stage.scheduledFor && stage.responsibleIds?.includes(loggedInMember.id)) {
               tasks.push({
                 id: `${fur.id}-${stageKey}`, type: 'project', title: `${fur.name} (${project.clientName})`,
-                subtitle: `Etapa: ${stageKey}`, link: `/projects/${project.id}`, responsible: [loggedInMember],
+                subtitle: `Etapa: ${STAGE_STATUSES[stageKey]}`, link: `/projects/${project.id}`, responsible: [loggedInMember],
                 date: parseISO(stage.scheduledFor), start: parseISO(stage.scheduledFor), end: parseISO(stage.scheduledFor),
                 priority: stage.priority,
                 rawData: { projectId: project.id, envId: env.id, furId: fur.id, stageKey },
@@ -98,6 +101,68 @@ export default function DashboardPage() {
     });
 
   }, [projects, appointments, allTasks, isLoading, loggedInMember]);
+  
+  const handleToggleTaskStatus = useCallback((task: CalendarTask, isChecked: boolean) => {
+    const newStatus: StageStatus = isChecked ? 'done' : 'in_progress';
+    
+    if (task.type === 'project' && task.rawData.projectId) {
+        const project = projects.find(p => p.id === task.rawData.projectId);
+        if (!project) return;
+
+        const newProject = JSON.parse(JSON.stringify(project));
+        const env = newProject.environments.find((e: any) => e.id === task.rawData.envId);
+        if (!env) return;
+        const fur = env.furniture.find((f: any) => f.id === task.rawData.furId);
+        if (!fur || !task.rawData.stageKey) return;
+        
+        const stageToUpdate = fur[task.rawData.stageKey] as ProductionStage;
+        if (!stageToUpdate) return;
+        
+        const previousStatus = stageToUpdate.status;
+        stageToUpdate.status = newStatus;
+
+        if (newStatus === 'in_progress' && previousStatus === 'todo') {
+            stageToUpdate.startedAt = new Date().toISOString();
+        } else if (newStatus === 'done' && !stageToUpdate.completedAt) {
+            stageToUpdate.completedAt = new Date().toISOString();
+            if (!stageToUpdate.startedAt) {
+                stageToUpdate.startedAt = stageToUpdate.completedAt;
+            }
+        } else if (newStatus !== 'done') {
+            delete stageToUpdate.completedAt;
+        }
+
+        updateProject(newProject, project);
+        
+        toast({
+          title: `Etapa "${STAGE_STATUSES[task.rawData.stageKey]}" marcada como ${newStatus === 'done' ? 'concluída' : 'em andamento'}.`
+        });
+
+    } else if (task.type === 'task' && task.rawData.taskId) {
+        updateTaskStatus(task.rawData.taskId, newStatus);
+        toast({
+          title: `Tarefa "${task.title}" marcada como ${newStatus === 'done' ? 'concluída' : 'em andamento'}.`
+        });
+    }
+  }, [projects, updateProject, updateTaskStatus, toast]);
+
+
+  const isTaskCompleted = useCallback((task: CalendarTask): boolean => {
+    if (task.type === 'project' && task.rawData.projectId) {
+      const project = projects.find(p => p.id === task.rawData.projectId);
+      if (!project || !task.rawData.stageKey) return false;
+      const env = project.environments.find(e => e.id === task.rawData.envId);
+      const fur = env?.furniture.find(f => f.id === task.rawData.furId);
+      const stage = fur?.[task.rawData.stageKey] as ProductionStage;
+      return stage?.status === 'done';
+    }
+    if (task.type === 'task' && task.rawData.taskId) {
+      const genericTask = allTasks.find(t => t.id === task.rawData.taskId);
+      return genericTask?.status === 'done';
+    }
+    return false;
+  }, [projects, allTasks]);
+
 
   const todaysTasks = useMemo(() => {
     return allMemberTasks.filter(task => isToday(task.date));
@@ -253,16 +318,29 @@ export default function DashboardPage() {
                 <CardContent>
                 {todaysTasks.length > 0 ? (
                     <ul className="space-y-3">
-                    {todaysTasks.map(task => (
-                        <li key={task.id} className="flex items-start gap-3 rounded-lg p-3 bg-muted/50 border">
-                        <div className="w-1.5 h-auto self-stretch rounded-full" style={{backgroundColor: task.responsible[0]?.color || '#ccc'}}></div>
-                        <div className="flex-grow overflow-hidden">
-                            <p className="font-semibold truncate">{task.title}</p>
-                            <p className="text-sm text-muted-foreground truncate">{task.subtitle}</p>
-                        </div>
-                        {task.priority && <Flag className={cn("h-5 w-5 flex-shrink-0", priorityMap[task.priority].className)} />}
-                        </li>
-                    ))}
+                    {todaysTasks.map(task => {
+                        const isCompletable = task.type === 'project' || task.type === 'task';
+                        const isCompleted = isCompletable ? isTaskCompleted(task) : false;
+                        
+                        return (
+                          <li key={task.id} className="flex items-start gap-3 rounded-lg p-3 bg-muted/50 border">
+                            {isCompletable && (
+                              <Checkbox 
+                                id={`task-check-${task.id}`}
+                                className="mt-1"
+                                checked={isCompleted}
+                                onCheckedChange={(checked) => handleToggleTaskStatus(task, Boolean(checked))}
+                              />
+                            )}
+                            <div className={cn("w-1.5 h-auto self-stretch rounded-full", !isCompletable && "ml-5")} style={{backgroundColor: task.responsible[0]?.color || '#ccc'}}></div>
+                            <div className="flex-grow overflow-hidden">
+                                <label htmlFor={`task-check-${task.id}`} className={cn("font-semibold truncate", isCompleted && "line-through text-muted-foreground")}>{task.title}</label>
+                                <p className={cn("text-sm text-muted-foreground truncate", isCompleted && "line-through")}>{task.subtitle}</p>
+                            </div>
+                            {task.priority && <Flag className={cn("h-5 w-5 flex-shrink-0", priorityMap[task.priority].className)} />}
+                          </li>
+                        );
+                    })}
                     </ul>
                 ) : (
                     <p className="text-sm text-muted-foreground text-center py-8">Nenhuma tarefa agendada para hoje.</p>
@@ -278,20 +356,33 @@ export default function DashboardPage() {
                 <CardContent>
                 {allMemberTasks.length > 0 ? (
                     <ul className="space-y-3 max-h-96 overflow-y-auto pr-2">
-                    {allMemberTasks.map(task => (
-                        <li key={task.id} className="flex items-start gap-3 rounded-lg p-3 bg-muted/50 border">
-                        <div className="flex flex-col items-center w-12 text-center text-sm font-semibold">
-                          <span className="text-xs uppercase text-muted-foreground">{format(task.date, 'MMM', { locale: ptBR })}</span>
-                          <span className="text-lg">{format(task.date, 'dd')}</span>
-                        </div>
-                        <div className="w-1.5 h-auto self-stretch rounded-full" style={{backgroundColor: task.responsible[0]?.color || '#ccc'}}></div>
-                        <div className="flex-grow overflow-hidden">
-                            <p className="font-semibold truncate">{task.title}</p>
-                            <p className="text-sm text-muted-foreground truncate">{task.subtitle}</p>
-                        </div>
-                        {task.priority && <Flag className={cn("h-5 w-5 flex-shrink-0", priorityMap[task.priority].className)} />}
-                        </li>
-                    ))}
+                    {allMemberTasks.map(task => {
+                        const isCompletable = task.type === 'project' || task.type === 'task';
+                        const isCompleted = isCompletable ? isTaskCompleted(task) : false;
+                        
+                        return (
+                            <li key={task.id} className="flex items-start gap-3 rounded-lg p-3 bg-muted/50 border">
+                                {isCompletable && (
+                                  <Checkbox 
+                                    id={`all-task-check-${task.id}`}
+                                    className="mt-3"
+                                    checked={isCompleted}
+                                    onCheckedChange={(checked) => handleToggleTaskStatus(task, Boolean(checked))}
+                                  />
+                                )}
+                                <div className={cn("flex flex-col items-center w-12 text-center text-sm font-semibold", !isCompletable && 'ml-5')}>
+                                  <span className="text-xs uppercase text-muted-foreground">{format(task.date, 'MMM', { locale: ptBR })}</span>
+                                  <span className="text-lg">{format(task.date, 'dd')}</span>
+                                </div>
+                                <div className="w-1.5 h-auto self-stretch rounded-full" style={{backgroundColor: task.responsible[0]?.color || '#ccc'}}></div>
+                                <div className="flex-grow overflow-hidden">
+                                    <label htmlFor={`all-task-check-${task.id}`} className={cn("font-semibold truncate", isCompleted && "line-through text-muted-foreground")}>{task.title}</label>
+                                    <p className={cn("text-sm text-muted-foreground truncate", isCompleted && "line-through")}>{task.subtitle}</p>
+                                </div>
+                                {task.priority && <Flag className={cn("h-5 w-5 flex-shrink-0", priorityMap[task.priority].className)} />}
+                            </li>
+                        );
+                    })}
                     </ul>
                 ) : (
                     <p className="text-sm text-muted-foreground text-center py-8">Você não tem nenhuma tarefa agendada.</p>
