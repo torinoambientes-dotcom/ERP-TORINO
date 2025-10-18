@@ -260,9 +260,9 @@ export default function DashboardPage() {
             )}
 
             {loggedInMember.role === 'Administrativo' && lowStockItems.length > 0 && (
-              <Card className="border-destructive bg-red-50/50">
+              <Card className="border-destructive bg-destructive text-destructive-foreground">
                   <CardHeader>
-                      <CardTitle className="text-destructive-foreground flex items-center gap-2">
+                      <CardTitle className="flex items-center gap-2">
                           <AlertTriangle className="h-6 w-6" /> Alerta de Estoque Baixo
                       </CardTitle>
                       <CardDescription className="text-destructive-foreground/90">
@@ -272,14 +272,14 @@ export default function DashboardPage() {
                   <CardContent>
                     <div className="space-y-2">
                       {lowStockItems.slice(0, 3).map(item => (
-                        <div key={item.id} className="p-2 rounded-lg border bg-card/80 flex justify-between items-center text-sm">
+                        <div key={item.id} className="p-2 rounded-lg border border-destructive-foreground/20 bg-background/10 flex justify-between items-center text-sm">
                           <p className="font-semibold">{item.name}</p>
-                          <p className='text-destructive font-bold'>Restam: {item.quantity} {item.unit}</p>
+                          <p className='font-bold'>Restam: {item.quantity} {item.unit}</p>
                         </div>
                       ))}
                     </div>
                      <div className='text-center mt-4'>
-                        <Button asChild variant="outline" className="bg-background">
+                        <Button asChild variant="outline" className="bg-destructive-foreground text-destructive hover:bg-destructive-foreground/90 hover:text-destructive">
                           <Link href="/stock">
                               Ver Estoque Completo <ArrowRight className="ml-2 h-4 w-4" />
                           </Link>
@@ -446,5 +446,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-    
