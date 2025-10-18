@@ -20,8 +20,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, User, Users, X, Flag, Cake, GripVertical, ChevronLeft, ChevronRight, Dot } from 'lucide-react';
+import { PlusCircle, User, Users, X, Flag, Cake, GripVertical, ChevronLeft, ChevronRight, Dot, ListChecks } from 'lucide-react';
 import { NewAppointmentModal } from '@/components/modals/new-appointment-modal';
+import { NewTaskListModal } from '@/components/modals/new-task-list-modal';
 import { AppointmentDetailsModal } from '@/components/modals/appointment-details-modal';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { DndContext, closestCenter, type DragEndEvent } from '@dnd-kit/core';
@@ -32,7 +33,7 @@ import { getHolidaysForYear } from '@/lib/holidays';
 
 export interface CalendarTask {
   id: string;
-  type: 'project' | 'appointment' | 'birthday';
+  type: 'project' | 'appointment' | 'birthday' | 'task';
   title: string;
   subtitle?: string;
   link?: string;
@@ -48,6 +49,7 @@ export interface CalendarTask {
     stageKey?: keyof typeof STAGE_STATUSES;
     appointmentId?: string;
     memberId?: string;
+    taskId?: string;
   }
 }
 
@@ -59,11 +61,12 @@ const priorityMap: Record<Priority, { label: string; className: string }> = {
 
 
 export default function CalendarPage() {
-  const { projects, teamMembers, appointments, updateProject, updateAppointment, deleteAppointment, isLoading } = useContext(AppContext);
+  const { projects, teamMembers, appointments, tasks, updateProject, updateAppointment, deleteAppointment, isLoading } = useContext(AppContext);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [selectedMemberId, setSelectedMemberId] = useState('all');
   const [isAppointmentModalOpen, setAppointmentModalOpen] = useState(false);
+  const [isTaskListModalOpen, setTaskListModalOpen] = useState(false);
   const [isDetailsModalOpen, setDetailsModalOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<CalendarTask | null>(null);
 
@@ -76,8 +79,8 @@ export default function CalendarPage() {
   const holidays = useMemo(() => getHolidaysForYear(currentDate.getFullYear()), [currentDate]);
 
   const tasksByDay = useMemo(() => {
-    const tasks: { [key: string]: CalendarTask[] } = {};
-    if (isLoading) return tasks;
+    const tasksMap: { [key: string]: CalendarTask[] } = {};
+    if (isLoading) return tasksMap;
     
     // Project Stages
     projects.forEach(project => {
@@ -96,11 +99,11 @@ export default function CalendarPage() {
                 if(matchesFilter) {
                   const date = new Date(stage.scheduledFor);
                   const dayKey = format(date, 'yyyy-MM-dd');
-                  if (!tasks[dayKey]) tasks[dayKey] = [];
+                  if (!tasksMap[dayKey]) tasksMap[dayKey] = [];
                   
                   const taskId = `${fur.id}-${stageKey}`;
-                  if (!tasks[dayKey].some(t => t.id === taskId)) {
-                    tasks[dayKey].push({
+                  if (!tasksMap[dayKey].some(t => t.id === taskId)) {
+                    tasksMap[dayKey].push({
                       id: taskId, type: 'project', title: `${fur.name} (${project.clientName})`,
                       subtitle: `Etapa: ${STAGE_STATUSES[stageKey]}`, link: `/projects/${project.id}`, responsible: responsibleMembers, date,
                       start: date, end: date, priority: stage.priority || 'medium',
@@ -127,10 +130,10 @@ export default function CalendarPage() {
            if (matchesFilter) {
              const startDate = parseISO(appointment.start);
              const dayKey = format(startDate, 'yyyy-MM-dd');
-             if (!tasks[dayKey]) tasks[dayKey] = [];
+             if (!tasksMap[dayKey]) tasksMap[dayKey] = [];
              
-             if (!tasks[dayKey].some(t => t.rawData.appointmentId === appointment.id)) {
-                tasks[dayKey].push({
+             if (!tasksMap[dayKey].some(t => t.rawData.appointmentId === appointment.id)) {
+                tasksMap[dayKey].push({
                     id: appointment.id, type: 'appointment', title: appointment.title,
                     subtitle: appointment.description, responsible: responsibleMembers, date: startDate, start: startDate,
                     end: parseISO(appointment.end), rawData: { appointmentId: appointment.id }, priority: 'medium'
@@ -139,6 +142,33 @@ export default function CalendarPage() {
            }
         }
       }
+    });
+
+    // Generic Tasks
+    (tasks || []).forEach(task => {
+        if (task.dueDate && task.assigneeIds) {
+            const responsibleMembers = task.assigneeIds.map(id => memberMap.get(id)).filter((m): m is TeamMember => !!m);
+            if (responsibleMembers.length > 0) {
+                const matchesFilter = selectedMemberId === 'all' || task.assigneeIds.includes(selectedMemberId);
+                if (matchesFilter) {
+                    const date = parseISO(task.dueDate);
+                    const dayKey = format(date, 'yyyy-MM-dd');
+                    if (!tasksMap[dayKey]) tasksMap[dayKey] = [];
+                    if (!tasksMap[dayKey].some(t => t.rawData.taskId === task.id)) {
+                        tasksMap[dayKey].push({
+                            id: task.id,
+                            type: 'task',
+                            title: task.title,
+                            subtitle: task.description,
+                            responsible: responsibleMembers,
+                            date, start: date, end: date,
+                            priority: task.priority || 'medium',
+                            rawData: { taskId: task.id }
+                        });
+                    }
+                }
+            }
+        }
     });
 
     // Birthdays
@@ -153,10 +183,10 @@ export default function CalendarPage() {
                     if(!isNaN(birthdayDate.getTime())) {
                         const dayKey = format(birthdayDate, 'yyyy-MM-dd');
 
-                        if (!tasks[dayKey]) tasks[dayKey] = [];
+                        if (!tasksMap[dayKey]) tasksMap[dayKey] = [];
 
-                        if (!tasks[dayKey].some(t => t.rawData.memberId === member.id)) {
-                            tasks[dayKey].push({
+                        if (!tasksMap[dayKey].some(t => t.rawData.memberId === member.id)) {
+                            tasksMap[dayKey].push({
                                 id: `birthday-${member.id}`,
                                 type: 'birthday',
                                 title: `Aniversário de ${member.name}`,
@@ -175,16 +205,16 @@ export default function CalendarPage() {
         }
     });
 
-    Object.keys(tasks).forEach(dayKey => {
-        tasks[dayKey].sort((a, b) => {
+    Object.keys(tasksMap).forEach(dayKey => {
+        tasksMap[dayKey].sort((a, b) => {
             if (a.type === 'birthday') return -1;
             if (b.type === 'birthday') return 1;
             return a.start.getTime() - b.start.getTime();
         });
     });
 
-    return tasks;
-  }, [projects, appointments, teamMembers, isLoading, memberMap, selectedMemberId, currentDate]);
+    return tasksMap;
+  }, [projects, appointments, tasks, teamMembers, isLoading, memberMap, selectedMemberId, currentDate]);
 
 
   const weekDays = useMemo(() => {
@@ -194,7 +224,7 @@ export default function CalendarPage() {
   }, [currentDate]);
 
   const handleTaskClick = (task: CalendarTask) => {
-    if (task.type === 'birthday') return;
+    if (task.type === 'birthday' || task.type === 'task') return;
     setSelectedTask(task);
     setDetailsModalOpen(true);
   };
@@ -248,6 +278,7 @@ export default function CalendarPage() {
 
 
   const getTaskTime = (task: CalendarTask) => {
+    if (task.type === 'task') return 'Tarefa';
     const isAllDay = task.start.getHours() === 0 && task.end.getHours() === 23;
     if (isAllDay || task.type === 'project' || task.type === 'birthday') {
       return 'Dia inteiro';
@@ -264,7 +295,7 @@ export default function CalendarPage() {
         
         if (sourceDayKey && destinationDayKey && sourceDayKey !== destinationDayKey) {
             const taskToMove = (tasksByDay[sourceDayKey] || []).find(t => t.id === active.id);
-            if (taskToMove && taskToMove.type !== 'birthday') {
+            if (taskToMove && taskToMove.type !== 'birthday' && taskToMove.type !== 'task') {
                 const newDate = parseISO(destinationDayKey);
                 handleReschedule(taskToMove, newDate);
             }
@@ -353,6 +384,10 @@ export default function CalendarPage() {
                 ))}
               </SelectContent>
             </Select>
+            <Button onClick={() => setTaskListModalOpen(true)} variant="outline" className="sm:flex-initial">
+              <ListChecks className="mr-2 h-4 w-4" />
+              Criar Tarefas
+            </Button>
             <Button onClick={() => setAppointmentModalOpen(true)} className="sm:flex-initial">
               <PlusCircle className="mr-2 h-4 w-4" />
               Novo Compromisso
@@ -387,7 +422,7 @@ export default function CalendarPage() {
                           modifiersClassNames={dayModifiersClassNames}
                           footer={
                             <div className='text-xs p-3 border-t space-y-1'>
-                              <div className='flex items-center gap-2'><div className="w-3 h-3 rounded-full bg-primary/20 border border-primary"></div> Compromissos</div>
+                              <div className='flex items-center gap-2'><div className="w-3 h-3 rounded-full bg-primary/20 border border-primary"></div> Compromissos/Tarefas</div>
                               <div className='flex items-center gap-2'><div className="w-3 h-3 rounded-full bg-amber-500/20 border border-amber-500"></div> Aniversários</div>
                               <div className='flex items-center gap-2'><div className="w-3 h-3 rounded-full bg-red-500/20 border border-red-500"></div> Feriados</div>
                             </div>
@@ -428,6 +463,12 @@ export default function CalendarPage() {
       <NewAppointmentModal
         isOpen={isAppointmentModalOpen}
         onClose={() => setAppointmentModalOpen(false)}
+        selectedDate={selectedDate}
+        onDateConsumed={() => setSelectedDate(undefined)}
+      />
+      <NewTaskListModal
+        isOpen={isTaskListModalOpen}
+        onClose={() => setTaskListModalOpen(false)}
         selectedDate={selectedDate}
         onDateConsumed={() => setSelectedDate(undefined)}
       />
@@ -474,7 +515,9 @@ function DailyTaskList({ day, tasks, dayKey, handleTaskClick, getTaskTime }: { d
 
 function SortableTaskItem({ task, dayKey, handleTaskClick, getTaskTime }: { task: CalendarTask, dayKey: string, handleTaskClick: (task: CalendarTask) => void, getTaskTime: (task: CalendarTask) => string }) {
     const isBirthday = task.type === 'birthday';
-    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: task.id, data: { dayKey }, disabled: isBirthday });
+    const isGenericTask = task.type === 'task';
+
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: task.id, data: { dayKey }, disabled: isBirthday || isGenericTask });
 
     const style = {
         transform: CSS.Transform.toString(transform),
@@ -488,9 +531,9 @@ function SortableTaskItem({ task, dayKey, handleTaskClick, getTaskTime }: { task
             ref={setNodeRef}
             style={style}
             
-            className={cn("flex items-start gap-3 rounded-lg p-3 bg-background border", isBirthday && 'bg-amber-50 border-amber-200')}
+            className={cn("flex items-start gap-3 rounded-lg p-3 bg-background border", isBirthday && 'bg-amber-50 border-amber-200', isGenericTask && 'bg-blue-50 border-blue-200')}
         >
-             {!isBirthday && (
+             {!(isBirthday || isGenericTask) && (
                 <div {...attributes} {...listeners} className="cursor-grab touch-none p-1 -ml-1">
                     <GripVertical className="h-5 w-5 text-muted-foreground" />
                 </div>
@@ -505,7 +548,7 @@ function SortableTaskItem({ task, dayKey, handleTaskClick, getTaskTime }: { task
                   <div className="w-1.5 h-auto self-stretch rounded-full" style={{ backgroundColor: task.responsible[0]?.color || '#ccc' }}></div>
               )}
               <div className="flex-grow overflow-hidden">
-                  <p className={cn("font-semibold truncate", isBirthday && "text-amber-800")}>{isBirthday ? <Cake className='inline-block mr-2 h-4 w-4' /> : null}{task.title}</p>
+                  <p className={cn("font-semibold truncate", isBirthday && "text-amber-800", isGenericTask && "text-blue-800")}>{isBirthday ? <Cake className='inline-block mr-2 h-4 w-4' /> : null}{isGenericTask ? <ListChecks className='inline-block mr-2 h-4 w-4' /> : null}{task.title}</p>
                   {task.subtitle && <p className="text-sm text-muted-foreground truncate">{task.subtitle}</p>}
               </div>
               <div className="flex items-center gap-2">
