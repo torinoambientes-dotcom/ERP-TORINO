@@ -662,55 +662,57 @@ export function AppProvider({ children }: { children: ReactNode }) {
             const stockItem = stockItemDoc.data() as StockItem;
             const project = projectDoc.data() as Project;
             
-            const newProject = JSON.parse(JSON.stringify(project));
-            const env = newProject.environments.find((e: Environment) => e.id === reservation.environmentId);
-            if (!env) throw new Error("Ambiente não encontrado no projeto.");
-            const fur = env.furniture.find((f: Furniture) => f.id === reservation.furnitureId);
-            if (!fur?.materials) throw new Error("Móvel ou lista de materiais não encontrados.");
-            
-            const materialToDispatch = fur.materials.find((m: MaterialItem) => m.id === reservation.materialId);
-            if (!materialToDispatch) throw new Error("Material a ser despachado não encontrado no projeto.");
-
-            const totalNeeded = materialToDispatch.quantity;
-            const alreadyDispatched = (materialToDispatch.dispatches || []).reduce((acc: number, d: Dispatch) => acc + d.quantity, 0);
-            const stillNeeded = totalNeeded - alreadyDispatched;
-
-            const dispatchQuantity = Math.min(stockItem.quantity, stillNeeded);
+            // Determinar a quantidade a ser despachada
+            const dispatchQuantity = Math.min(stockItem.quantity, reservation.quantity);
             if (dispatchQuantity <= 0) {
                 console.log("No stock to dispatch or reservation already fulfilled.");
                 return;
             }
             
-            // 1. Update Stock Item: Reduce quantity and update/remove reservation
+            // 1. Atualizar o item do estoque
             const newStockQuantity = stockItem.quantity - dispatchQuantity;
-            
-            const finalReservations: StockReservation[] = (stockItem.reservations || []).map(res => {
+            const finalReservations: StockReservation[] = [];
+            for (const res of stockItem.reservations || []) {
                 if (res.materialId === reservation.materialId) {
-                    return { ...res, quantity: res.quantity - dispatchQuantity };
+                    const newResQuantity = res.quantity - dispatchQuantity;
+                    if (newResQuantity > 0.001) { // Use a small epsilon for float comparison
+                        finalReservations.push({ ...res, quantity: newResQuantity });
+                    }
+                    // Se a quantidade for <= 0, a reserva é simplesmente omitida, removendo-a.
+                } else {
+                    finalReservations.push(res);
                 }
-                return res;
-            }).filter(res => res.quantity > 0.001); // Filter out fulfilled reservations
-
+            }
             transaction.update(stockItemRef, { 
                 quantity: newStockQuantity,
                 reservations: finalReservations,
             });
 
-            // 2. Update Project's Material Item: Add a dispatch record
-            const newDispatch: Dispatch = {
-                quantity: dispatchQuantity,
-                dispatchedAt: new Date().toISOString(),
-                memberId: memberId,
-            };
-            materialToDispatch.dispatches = [...(materialToDispatch.dispatches || []), newDispatch];
-            const newTotalDispatched = alreadyDispatched + dispatchQuantity;
-            if (newTotalDispatched >= totalNeeded) {
-                materialToDispatch.purchased = true; // Mark as purchased when fully dispatched
+            // 2. Atualizar o item do projeto com o registro de despacho
+            const newProject = JSON.parse(JSON.stringify(project));
+            const env = newProject.environments.find((e: Environment) => e.id === reservation.environmentId);
+            const fur = env?.furniture.find((f: Furniture) => f.id === reservation.furnitureId);
+            const materialToDispatch = fur?.materials?.find((m: MaterialItem) => m.id === reservation.materialId);
+
+            if (materialToDispatch) {
+                const newDispatch: Dispatch = {
+                    quantity: dispatchQuantity,
+                    dispatchedAt: new Date().toISOString(),
+                    memberId: memberId,
+                };
+                materialToDispatch.dispatches = [...(materialToDispatch.dispatches || []), newDispatch];
+                
+                // Opcional: Marcar como 'comprado' quando totalmente despachado
+                const totalDispatched = (materialToDispatch.dispatches).reduce((acc: number, d: Dispatch) => acc + d.quantity, 0);
+                if (totalDispatched >= materialToDispatch.quantity) {
+                    materialToDispatch.purchased = true;
+                }
+                transaction.set(projectRef, newProject, { merge: true });
+            } else {
+                 throw new Error("Material a ser despachado não encontrado no projeto.");
             }
 
-            transaction.set(projectRef, newProject, { merge: true });
-
-            // 3. Add Movement Record
+            // 3. Adicionar movimento ao histórico
             const movementId = generateId('move');
             const movementDetails = `Projeto: ${reservation.projectName} | Entregue para: ${marceneiro.name}`;
             const newMovement: StockMovement = {
