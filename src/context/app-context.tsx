@@ -688,7 +688,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
                     return { ...res, quantity: res.quantity - dispatchQuantity };
                 }
                 return res;
-            }).filter(res => res.quantity > 0);
+            }).filter(res => res.quantity > 0.001); // Filter out tiny leftovers and fulfilled reservations
             transaction.update(stockItemRef, { 
                 quantity: newStockQuantity,
                 reservations: newReservations,
@@ -703,7 +703,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             materialToDispatch.dispatches = [...(materialToDispatch.dispatches || []), newDispatch];
             const newTotalDispatched = alreadyDispatched + dispatchQuantity;
             if (newTotalDispatched >= totalNeeded) {
-                materialToDispatch.purchased = true;
+                materialToDispatch.purchased = true; // Mark as purchased when fully dispatched
             }
 
             transaction.set(projectRef, newProject, { merge: true });
