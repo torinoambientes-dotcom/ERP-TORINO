@@ -683,15 +683,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
             
             // 1. Update Stock Item: Reduce quantity and update/remove reservation
             const newStockQuantity = stockItem.quantity - dispatchQuantity;
-            const newReservations = (stockItem.reservations || []).map(res => {
-                if (res.materialId === reservation.materialId) {
-                    return { ...res, quantity: res.quantity - dispatchQuantity };
-                }
-                return res;
+            
+            const updatedReservations = (stockItem.reservations || []).map(res => {
+              if (res.materialId === reservation.materialId) {
+                return { ...res, quantity: res.quantity - dispatchQuantity };
+              }
+              return res;
             }).filter(res => res.quantity > 0.001); // Filter out tiny leftovers and fulfilled reservations
+
             transaction.update(stockItemRef, { 
                 quantity: newStockQuantity,
-                reservations: newReservations,
+                reservations: updatedReservations,
             });
 
             // 2. Update Project's Material Item: Add a dispatch record
