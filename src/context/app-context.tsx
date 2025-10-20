@@ -684,16 +684,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
             // 1. Update Stock Item: Reduce quantity and update/remove reservation
             const newStockQuantity = stockItem.quantity - dispatchQuantity;
             
-            const updatedReservations = (stockItem.reservations || []).map(res => {
-              if (res.materialId === reservation.materialId) {
-                return { ...res, quantity: res.quantity - dispatchQuantity };
-              }
-              return res;
-            }).filter(res => res.quantity > 0.001); // Filter out tiny leftovers and fulfilled reservations
+            const finalReservations: StockReservation[] = [];
+            for (const res of (stockItem.reservations || [])) {
+                if (res.materialId === reservation.materialId) {
+                    const newResQuantity = res.quantity - dispatchQuantity;
+                    if (newResQuantity > 0.001) { // Use a small epsilon to handle float inaccuracies
+                        finalReservations.push({ ...res, quantity: newResQuantity });
+                    }
+                } else {
+                    finalReservations.push(res);
+                }
+            }
 
             transaction.update(stockItemRef, { 
                 quantity: newStockQuantity,
-                reservations: updatedReservations,
+                reservations: finalReservations,
             });
 
             // 2. Update Project's Material Item: Add a dispatch record
