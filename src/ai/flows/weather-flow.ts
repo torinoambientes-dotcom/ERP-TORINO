@@ -61,7 +61,7 @@ const getWeatherForecastFlow = ai.defineFlow(
     outputSchema: WeatherForecastOutputSchema,
   },
   async () => {
-    const apiKey = process.env.OPENWEATHER_API_KEY;
+    const apiKey = process.env.NEXT_PUBLIC_OPENWEATHER_API_KEY;
     if (!apiKey) {
       throw new Error('OpenWeather API key is not configured.');
     }
