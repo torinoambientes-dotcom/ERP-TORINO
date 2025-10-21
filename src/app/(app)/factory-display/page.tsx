@@ -47,10 +47,10 @@ export default function FactoryDisplayPage() {
 
   return (
     <div className="bg-gray-900 text-white min-h-screen p-8">
-      <div className="mb-8">
+      <div className="mb-8 flex items-center justify-between">
         <Logo className="h-20 w-auto text-white" />
-        <p className="mt-2 text-lg text-gray-300">
-          Progresso da produção em tempo real.
+        <p className="text-xl font-medium text-gray-400">
+          Progresso da produção em tempo real
         </p>
       </div>
 
