@@ -90,25 +90,27 @@ function FactoryDisplayContent() {
 
       <main className="flex-grow flex flex-col justify-center">
         {marceneiros.length > 0 ? (
-          <Carousel
-            setApi={setApi}
-            plugins={[Autoplay({ delay: rotationTime, stopOnInteraction: true })]}
-            className="w-full"
-          >
-            <CarouselContent>
-              {marceneiros.map((marceneiro) => (
-                <CarouselItem key={marceneiro.id}>
-                  <CarpenterSlide marceneiro={marceneiro} extraProjects={extraProjects} />
-                </CarouselItem>
-              ))}
-               <CarouselItem key="ongoing-projects">
-                  <OngoingProjectsSlide />
-                </CarouselItem>
-               <CarouselItem key="monthly-production">
-                  <MonthlyProductionSlide />
-                </CarouselItem>
-            </CarouselContent>
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+          <>
+            <Carousel
+              setApi={setApi}
+              plugins={[Autoplay({ delay: rotationTime, stopOnInteraction: true })]}
+              className="w-full"
+            >
+              <CarouselContent>
+                {marceneiros.map((marceneiro) => (
+                  <CarouselItem key={marceneiro.id}>
+                    <CarpenterSlide marceneiro={marceneiro} extraProjects={extraProjects} />
+                  </CarouselItem>
+                ))}
+                <CarouselItem key="ongoing-projects">
+                    <OngoingProjectsSlide />
+                  </CarouselItem>
+                <CarouselItem key="monthly-production">
+                    <MonthlyProductionSlide />
+                  </CarouselItem>
+              </CarouselContent>
+            </Carousel>
+            <div className="flex justify-center gap-2 py-4">
               {Array.from({ length: totalSlides }).map((_, index) => (
                 <div
                   key={index}
@@ -118,7 +120,7 @@ function FactoryDisplayContent() {
                 />
               ))}
             </div>
-          </Carousel>
+          </>
         ) : (
           <div className="flex items-center justify-center h-96">
             <p className="text-xl text-gray-400">
@@ -129,7 +131,7 @@ function FactoryDisplayContent() {
       </main>
 
       {customMessage && (
-        <footer className="mt-8 text-center text-2xl font-semibold text-amber-300 tracking-wide">
+        <footer className="mt-4 text-center text-2xl font-semibold text-amber-300 tracking-wide">
           <p>{customMessage}</p>
         </footer>
       )}
