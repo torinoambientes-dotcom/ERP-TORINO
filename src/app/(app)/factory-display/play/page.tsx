@@ -5,6 +5,7 @@ import { AppContext } from '@/context/app-context';
 import type { TeamMember } from '@/lib/types';
 import { CarpenterSlide } from './carpenter-slide';
 import { MonthlyProductionSlide } from './monthly-production-slide';
+import { OngoingProjectsSlide } from './ongoing-projects-slide';
 import {
   Carousel,
   CarouselContent,
@@ -68,7 +69,7 @@ function FactoryDisplayContent() {
     };
   }, [api]);
   
-  const totalSlides = marceneiros.length + 1; // +1 for monthly
+  const totalSlides = marceneiros.length + 2; // +1 for ongoing projects, +1 for monthly
 
   if (isLoading) {
     return (
@@ -100,6 +101,9 @@ function FactoryDisplayContent() {
                   <CarpenterSlide marceneiro={marceneiro} extraProjects={extraProjects} />
                 </CarouselItem>
               ))}
+               <CarouselItem key="ongoing-projects">
+                  <OngoingProjectsSlide />
+                </CarouselItem>
                <CarouselItem key="monthly-production">
                   <MonthlyProductionSlide />
                 </CarouselItem>
