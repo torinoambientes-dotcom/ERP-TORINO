@@ -1,5 +1,5 @@
 'use client';
-import { useState, useMemo, useContext } from 'react';
+import { useState, useMemo, useContext, useEffect } from 'react';
 import { PageHeader } from '@/components/layout/page-header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -27,12 +27,12 @@ export default function FactoryDisplaySettingsPage() {
     return (teamMembers || []).filter(member => member.role === 'Marceneiro');
   }, [teamMembers]);
 
-  // Select all by default
-  useState(() => {
-    if(marceneiros.length > 0) {
+  // Select all by default when the component loads and marceneiros are available
+  useEffect(() => {
+    if (marceneiros.length > 0) {
       setSelectedMarceneiros(marceneiros.map(m => m.id));
     }
-  });
+  }, [marceneiros]);
 
   const generatePlayUrl = () => {
     const params = new URLSearchParams();
