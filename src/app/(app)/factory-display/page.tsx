@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { MonitorPlay, X, Check, ChevronsUpDown, PlusCircle, Trash2 } from 'lucide-react';
+import { MonitorPlay, X, Check, ChevronsUpDown, PlusCircle, Trash2, History } from 'lucide-react';
 import Link from 'next/link';
 import { AppContext } from '@/context/app-context';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -15,21 +15,26 @@ import { cn } from '@/lib/utils';
 import type { TeamMember } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import useLocalStorage from '@/hooks/use-local-storage';
+import { Switch } from '@/components/ui/switch';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 export interface ExtraProject {
     id: string;
     name: string;
     description: string;
     assignedTo: string[];
+    isCompleted: boolean;
 }
 
 export default function FactoryDisplaySettingsPage() {
   const { teamMembers } = useContext(AppContext);
   const [rotationTime, setRotationTime] = useLocalStorage('factoryDisplay:rotationTime', 60);
   const [customMessage, setCustomMessage] = useLocalStorage('factoryDisplay:customMessage', '');
-  const [selectedMarceneiros, setSelectedMarceneiros] = useState<string[]>([]);
+  const [selectedMarceneiros, setSelectedMarceneiros] = useLocalStorage<string[]>('factoryDisplay:selectedMarceneiros', []);
   const [extraProjects, setExtraProjects] = useLocalStorage<ExtraProject[]>('factoryDisplay:extraProjects', []);
   const [open, setOpen] = useState(false)
+  const [showCompletedExtras, setShowCompletedExtras] = useState(false);
+
 
   const marceneiros = useMemo(() => {
     return (teamMembers || []).filter(member => member.role === 'Marceneiro');
@@ -37,10 +42,10 @@ export default function FactoryDisplaySettingsPage() {
 
   // Select all by default when the component loads and marceneiros are available
   useEffect(() => {
-    if (marceneiros.length > 0) {
+    if (marceneiros.length > 0 && selectedMarceneiros.length === 0) {
       setSelectedMarceneiros(marceneiros.map(m => m.id));
     }
-  }, [marceneiros]);
+  }, [marceneiros, selectedMarceneiros.length, setSelectedMarceneiros]);
 
   const generatePlayUrl = () => {
     const params = new URLSearchParams();
@@ -60,7 +65,7 @@ export default function FactoryDisplaySettingsPage() {
   };
 
   const addExtraProject = () => {
-    setExtraProjects([...extraProjects, { id: `extra-${Date.now()}`, name: '', description: '', assignedTo: [] }]);
+    setExtraProjects([...extraProjects, { id: `extra-${Date.now()}`, name: '', description: '', assignedTo: [], isCompleted: false }]);
   };
 
   const updateExtraProject = (id: string, field: keyof ExtraProject, value: any) => {
@@ -70,6 +75,19 @@ export default function FactoryDisplaySettingsPage() {
   const removeExtraProject = (id: string) => {
     setExtraProjects(extraProjects.filter(p => p.id !== id));
   };
+  
+  const { activeExtraProjects, completedExtraProjects } = useMemo(() => {
+    const active: ExtraProject[] = [];
+    const completed: ExtraProject[] = [];
+    extraProjects.forEach(p => {
+        if(p.isCompleted) {
+            completed.push(p);
+        } else {
+            active.push(p);
+        }
+    });
+    return { activeExtraProjects: active, completedExtraProjects: completed };
+  }, [extraProjects]);
 
 
   return (
@@ -169,17 +187,21 @@ export default function FactoryDisplaySettingsPage() {
 
              <Card>
                 <CardHeader>
-                    <CardTitle>Projetos Extras Manuais</CardTitle>
+                    <CardTitle>Projetos Extras Manuais (Ativos)</CardTitle>
                     <CardDescription>
                        Adicione projetos ou tarefas que não estão no sistema para aparecer no ecrã.
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                    {extraProjects.map((project, index) => (
+                    {activeExtraProjects.length > 0 ? activeExtraProjects.map((project, index) => (
                         <div key={project.id} className="border p-4 rounded-lg space-y-3 bg-muted/50 relative">
                              <Button variant="ghost" size="icon" className="absolute top-2 right-2 h-7 w-7" onClick={() => removeExtraProject(project.id)}>
                                 <Trash2 className="h-4 w-4 text-destructive" />
                              </Button>
+                            <div className="flex items-center space-x-2">
+                                <Switch id={`completed-switch-${project.id}`} checked={project.isCompleted} onCheckedChange={(checked) => updateExtraProject(project.id, 'isCompleted', checked)} />
+                                <Label htmlFor={`completed-switch-${project.id}`} className="font-medium">Concluído</Label>
+                            </div>
                             <div className="space-y-2">
                                 <Label htmlFor={`extra-name-${index}`}>Nome do Projeto/Tarefa Extra</Label>
                                 <Input 
@@ -236,12 +258,40 @@ export default function FactoryDisplaySettingsPage() {
                                 </Popover>
                             </div>
                         </div>
-                    ))}
+                    )) : (
+                        <p className="text-sm text-muted-foreground text-center py-4">Nenhum projeto extra ativo.</p>
+                    )}
 
                     <Button variant="outline" onClick={addExtraProject}>
                         <PlusCircle className="mr-2 h-4 w-4" />
                         Adicionar Projeto Extra
                     </Button>
+
+                    {completedExtraProjects.length > 0 && (
+                      <Collapsible open={showCompletedExtras} onOpenChange={setShowCompletedExtras}>
+                        <CollapsibleTrigger asChild>
+                           <Button variant="ghost" className="w-full mt-4">
+                             <History className="mr-2 h-4 w-4" />
+                             {showCompletedExtras ? 'Ocultar Histórico' : 'Ver Histórico'} ({completedExtraProjects.length})
+                           </Button>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent className="mt-2 space-y-4">
+                            {completedExtraProjects.map((project, index) => (
+                                <div key={project.id} className="border p-4 rounded-lg space-y-3 bg-muted/80 relative">
+                                    <Button variant="ghost" size="icon" className="absolute top-2 right-2 h-7 w-7" onClick={() => removeExtraProject(project.id)}>
+                                        <Trash2 className="h-4 w-4 text-destructive" />
+                                    </Button>
+                                    <div className="flex items-center space-x-2">
+                                        <Switch id={`completed-switch-${project.id}`} checked={project.isCompleted} onCheckedChange={(checked) => updateExtraProject(project.id, 'isCompleted', checked)} />
+                                        <Label htmlFor={`completed-switch-${project.id}`} className="font-medium text-muted-foreground line-through">Concluído</Label>
+                                    </div>
+                                    <p className="font-medium text-muted-foreground line-through">{project.name}</p>
+                                    <p className="text-sm text-muted-foreground line-through">{project.description}</p>
+                                </div>
+                            ))}
+                        </CollapsibleContent>
+                      </Collapsible>
+                    )}
                 </CardContent>
             </Card>
 
@@ -268,3 +318,5 @@ export default function FactoryDisplaySettingsPage() {
     </div>
   );
 }
+
+    

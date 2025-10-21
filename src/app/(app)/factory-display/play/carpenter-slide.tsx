@@ -17,6 +17,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import Link from 'next/link';
 import type { ExtraProject } from '../page';
+import { Separator } from '@/components/ui/separator';
 
 interface CarpenterSlideProps {
   marceneiro: TeamMember;
@@ -75,8 +76,19 @@ export function CarpenterSlide({ marceneiro, extraProjects }: CarpenterSlideProp
     };
   }, [projects, marceneiro.id]);
 
-  const assignedExtraProjects = useMemo(() => {
-    return extraProjects.filter(p => p.assignedTo.includes(marceneiro.id));
+  const { activeExtraProjects, completedExtraProjects } = useMemo(() => {
+    const active: ExtraProject[] = [];
+    const completed: ExtraProject[] = [];
+    (extraProjects || []).forEach(p => {
+        if(p.assignedTo.includes(marceneiro.id)){
+            if (p.isCompleted) {
+                completed.push(p);
+            } else {
+                active.push(p);
+            }
+        }
+    });
+    return { activeExtraProjects: active, completedExtraProjects: completed };
   }, [extraProjects, marceneiro.id]);
 
 
@@ -112,7 +124,7 @@ export function CarpenterSlide({ marceneiro, extraProjects }: CarpenterSlideProp
       <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-8 h-full">
         <Card className="bg-gray-800 border-blue-500/50 flex flex-col">
           <CardHeader>
-            <CardTitle className="text-blue-400">Em Andamento ({tasksInProgress.length + assignedExtraProjects.length})</CardTitle>
+            <CardTitle className="text-blue-400">Em Andamento ({tasksInProgress.length + activeExtraProjects.length})</CardTitle>
           </CardHeader>
           <CardContent className="flex-grow">
             <ScrollArea className="h-96">
@@ -123,8 +135,8 @@ export function CarpenterSlide({ marceneiro, extraProjects }: CarpenterSlideProp
                     <p className="text-sm text-gray-400">{task.projectName}</p>
                   </Link>
                 ))}
-                {assignedExtraProjects.length > 0 && tasksInProgress.length > 0 && <hr className="border-gray-600"/>}
-                 {assignedExtraProjects.map((project) => (
+                {activeExtraProjects.length > 0 && tasksInProgress.length > 0 && <hr className="border-gray-600"/>}
+                 {activeExtraProjects.map((project) => (
                   <div key={project.id} className="p-3 bg-amber-800/30 rounded-lg border border-amber-600/50">
                     <p className="font-bold text-amber-200">{project.name}</p>
                     <p className="text-sm text-amber-300/80 whitespace-pre-wrap">{project.description}</p>
@@ -136,7 +148,7 @@ export function CarpenterSlide({ marceneiro, extraProjects }: CarpenterSlideProp
         </Card>
         <Card className="bg-gray-800 border-green-500/50 flex flex-col">
           <CardHeader>
-            <CardTitle className="text-green-400">Concluído ({tasksDone.length})</CardTitle>
+            <CardTitle className="text-green-400">Concluído ({tasksDone.length + completedExtraProjects.length})</CardTitle>
           </CardHeader>
           <CardContent className="flex-grow">
              <ScrollArea className="h-96">
@@ -147,6 +159,13 @@ export function CarpenterSlide({ marceneiro, extraProjects }: CarpenterSlideProp
                         <p className="text-sm text-gray-400">{task.projectName}</p>
                     </Link>
                     ))}
+                    {completedExtraProjects.length > 0 && tasksDone.length > 0 && <Separator className="my-3 bg-gray-600" />}
+                    {completedExtraProjects.map((project) => (
+                        <div key={project.id} className="p-3 bg-gray-700/50 rounded-lg">
+                           <p className="font-semibold text-white line-through">{project.name}</p>
+                           <p className="text-sm text-gray-400 whitespace-pre-wrap line-through">{project.description}</p>
+                        </div>
+                    ))}
                 </div>
             </ScrollArea>
           </CardContent>
@@ -155,3 +174,5 @@ export function CarpenterSlide({ marceneiro, extraProjects }: CarpenterSlideProp
     </div>
   );
 }
+
+    
