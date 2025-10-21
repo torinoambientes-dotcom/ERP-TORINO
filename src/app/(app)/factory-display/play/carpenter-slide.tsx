@@ -33,6 +33,7 @@ interface TaskItem {
   furnitureName: string;
   status: 'in_progress' | 'done';
   link: string;
+  isExtra: boolean;
 }
 
 export function CarpenterSlide({ marceneiro, extraProjects }: CarpenterSlideProps) {
@@ -62,6 +63,7 @@ export function CarpenterSlide({ marceneiro, extraProjects }: CarpenterSlideProp
                   furnitureName: f.name,
                   status: 'in_progress',
                   link: `/projects/${p.id}`,
+                  isExtra: false,
                 });
                 inProgressCount++;
               } else if (stage.status === 'done' && stage.completedAt) {
@@ -73,6 +75,7 @@ export function CarpenterSlide({ marceneiro, extraProjects }: CarpenterSlideProp
                     furnitureName: f.name,
                     status: 'done',
                     link: `/projects/${p.id}`,
+                    isExtra: false,
                   });
                   doneCount++;
                 }
@@ -100,7 +103,7 @@ export function CarpenterSlide({ marceneiro, extraProjects }: CarpenterSlideProp
     };
   }, [projects, marceneiro.id]);
 
-  const { activeExtraProjects, completedExtraProjects } = useMemo(() => {
+  const { activeExtra, completedExtra } = useMemo(() => {
     const active: ExtraProject[] = [];
     const completed: ExtraProject[] = [];
     (extraProjects || []).forEach(p => {
@@ -112,13 +115,14 @@ export function CarpenterSlide({ marceneiro, extraProjects }: CarpenterSlideProp
             }
         }
     });
-    return { activeExtraProjects, completedExtraProjects };
+    return { activeExtra: active, completedExtra: completed };
   }, [extraProjects, marceneiro.id]);
   
-  const combinedTasks = [
-    ...allTasks,
-    ...activeExtraProjects.map(p => ({ ...p, status: 'in_progress' as const, furnitureName: p.name, projectName: p.description, link: '#' })),
-    ...completedExtraProjects.map(p => ({ ...p, status: 'done' as const, furnitureName: p.name, projectName: p.description, link: '#' }))
+  const combinedTasks: TaskItem[] = [
+    ...allTasks.filter(t => t.status === 'in_progress'),
+    ...activeExtra.map(p => ({ id: p.id, status: 'in_progress' as const, furnitureName: p.name, projectName: p.description, link: '#', isExtra: true })),
+    ...allTasks.filter(t => t.status === 'done'),
+    ...completedExtra.map(p => ({ id: p.id, status: 'done' as const, furnitureName: p.name, projectName: p.description, link: '#', isExtra: true }))
   ];
 
   return (
@@ -144,8 +148,7 @@ export function CarpenterSlide({ marceneiro, extraProjects }: CarpenterSlideProp
             <ScrollArea className="h-full">
               <div className="space-y-4 pr-4">
                 {combinedTasks.length > 0 ? combinedTasks.map((task) => {
-                  const isExtra = 'description' in task;
-                  const Wrapper = isExtra ? 'div' : Link;
+                  const Wrapper = task.isExtra ? 'div' : Link;
                   
                   return (
                     <Wrapper href={task.link} key={task.id} className="block">
