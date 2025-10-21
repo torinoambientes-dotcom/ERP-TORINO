@@ -4,6 +4,7 @@ import { useSearchParams } from 'next/navigation';
 import { AppContext } from '@/context/app-context';
 import type { TeamMember } from '@/lib/types';
 import { CarpenterSlide } from './carpenter-slide';
+import { MonthlyProductionSlide } from './monthly-production-slide';
 import {
   Carousel,
   CarouselContent,
@@ -66,6 +67,8 @@ function FactoryDisplayContent() {
       api.off('select', onSelect);
     };
   }, [api]);
+  
+  const totalSlides = marceneiros.length + 1;
 
   if (isLoading) {
     return (
@@ -97,9 +100,12 @@ function FactoryDisplayContent() {
                   <CarpenterSlide marceneiro={marceneiro} extraProjects={extraProjects} />
                 </CarouselItem>
               ))}
+               <CarouselItem key="monthly-production">
+                  <MonthlyProductionSlide />
+                </CarouselItem>
             </CarouselContent>
             <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
-              {marceneiros.map((_, index) => (
+              {Array.from({ length: totalSlides }).map((_, index) => (
                 <div
                   key={index}
                   className={`h-2 w-8 rounded-full transition-all ${
