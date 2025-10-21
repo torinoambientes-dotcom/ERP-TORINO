@@ -16,9 +16,11 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import Link from 'next/link';
+import type { ExtraProject } from '../page';
 
 interface CarpenterSlideProps {
   marceneiro: TeamMember;
+  extraProjects: ExtraProject[];
 }
 
 interface TaskItem {
@@ -29,7 +31,7 @@ interface TaskItem {
   link: string;
 }
 
-export function CarpenterSlide({ marceneiro }: CarpenterSlideProps) {
+export function CarpenterSlide({ marceneiro, extraProjects }: CarpenterSlideProps) {
   const { projects } = useContext(AppContext);
 
   const { tasksInProgress, tasksDone, productivityData } = useMemo(() => {
@@ -73,6 +75,11 @@ export function CarpenterSlide({ marceneiro }: CarpenterSlideProps) {
     };
   }, [projects, marceneiro.id]);
 
+  const assignedExtraProjects = useMemo(() => {
+    return extraProjects.filter(p => p.assignedTo.includes(marceneiro.id));
+  }, [extraProjects, marceneiro.id]);
+
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start h-full">
       <div className="lg:col-span-1 flex flex-col items-center justify-center gap-6 py-8">
@@ -105,16 +112,23 @@ export function CarpenterSlide({ marceneiro }: CarpenterSlideProps) {
       <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-8 h-full">
         <Card className="bg-gray-800 border-blue-500/50 flex flex-col">
           <CardHeader>
-            <CardTitle className="text-blue-400">Em Andamento ({tasksInProgress.length})</CardTitle>
+            <CardTitle className="text-blue-400">Em Andamento ({tasksInProgress.length + assignedExtraProjects.length})</CardTitle>
           </CardHeader>
           <CardContent className="flex-grow">
             <ScrollArea className="h-96">
-              <div className="space-y-3 pr-4">
+              <div className="space-y-4 pr-4">
                 {tasksInProgress.map((task) => (
                   <Link href={task.link} key={task.id} className="block p-3 bg-gray-700/50 rounded-lg hover:bg-gray-700 transition-colors">
                     <p className="font-semibold text-white">{task.furnitureName}</p>
                     <p className="text-sm text-gray-400">{task.projectName}</p>
                   </Link>
+                ))}
+                {assignedExtraProjects.length > 0 && tasksInProgress.length > 0 && <hr className="border-gray-600"/>}
+                 {assignedExtraProjects.map((project) => (
+                  <div key={project.id} className="p-3 bg-amber-800/30 rounded-lg border border-amber-600/50">
+                    <p className="font-bold text-amber-200">{project.name}</p>
+                    <p className="text-sm text-amber-300/80 whitespace-pre-wrap">{project.description}</p>
+                  </div>
                 ))}
               </div>
             </ScrollArea>

@@ -12,6 +12,8 @@ import {
 } from '@/components/ui/carousel';
 import Autoplay from 'embla-carousel-autoplay';
 import { Logo } from '@/components/logo';
+import type { ExtraProject } from '../page';
+
 
 function FactoryDisplayContent() {
   const { teamMembers, isLoading } = useContext(AppContext);
@@ -30,6 +32,15 @@ function FactoryDisplayContent() {
   const selectedCarpenterIds = useMemo(() => {
     const ids = searchParams.get('carpenters');
     return ids ? ids.split(',') : null;
+  }, [searchParams]);
+
+  const extraProjects = useMemo((): ExtraProject[] => {
+    const data = searchParams.get('extraProjects');
+    try {
+        return data ? JSON.parse(data) : [];
+    } catch {
+        return [];
+    }
   }, [searchParams]);
 
   const marceneiros = useMemo(() => {
@@ -83,7 +94,7 @@ function FactoryDisplayContent() {
             <CarouselContent>
               {marceneiros.map((marceneiro) => (
                 <CarouselItem key={marceneiro.id}>
-                  <CarpenterSlide marceneiro={marceneiro} />
+                  <CarpenterSlide marceneiro={marceneiro} extraProjects={extraProjects} />
                 </CarouselItem>
               ))}
             </CarouselContent>

@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { MonitorPlay, X, Check, ChevronsUpDown } from 'lucide-react';
+import { MonitorPlay, X, Check, ChevronsUpDown, PlusCircle, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { AppContext } from '@/context/app-context';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -14,13 +14,21 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { cn } from '@/lib/utils';
 import type { TeamMember } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
+import useLocalStorage from '@/hooks/use-local-storage';
 
+export interface ExtraProject {
+    id: string;
+    name: string;
+    description: string;
+    assignedTo: string[];
+}
 
 export default function FactoryDisplaySettingsPage() {
   const { teamMembers } = useContext(AppContext);
-  const [rotationTime, setRotationTime] = useState(60);
-  const [customMessage, setCustomMessage] = useState('');
+  const [rotationTime, setRotationTime] = useLocalStorage('factoryDisplay:rotationTime', 60);
+  const [customMessage, setCustomMessage] = useLocalStorage('factoryDisplay:customMessage', '');
   const [selectedMarceneiros, setSelectedMarceneiros] = useState<string[]>([]);
+  const [extraProjects, setExtraProjects] = useLocalStorage<ExtraProject[]>('factoryDisplay:extraProjects', []);
   const [open, setOpen] = useState(false)
 
   const marceneiros = useMemo(() => {
@@ -45,8 +53,24 @@ export default function FactoryDisplaySettingsPage() {
     if (customMessage.trim()) {
       params.append('message', customMessage.trim());
     }
+    if (extraProjects.length > 0) {
+        params.append('extraProjects', JSON.stringify(extraProjects));
+    }
     return `/factory-display/play?${params.toString()}`;
   };
+
+  const addExtraProject = () => {
+    setExtraProjects([...extraProjects, { id: `extra-${Date.now()}`, name: '', description: '', assignedTo: [] }]);
+  };
+
+  const updateExtraProject = (id: string, field: keyof ExtraProject, value: any) => {
+    setExtraProjects(extraProjects.map(p => p.id === id ? { ...p, [field]: value } : p));
+  };
+  
+  const removeExtraProject = (id: string) => {
+    setExtraProjects(extraProjects.filter(p => p.id !== id));
+  };
+
 
   return (
     <div className="space-y-8">
@@ -142,6 +166,85 @@ export default function FactoryDisplaySettingsPage() {
                   </div>
                 </CardContent>
             </Card>
+
+             <Card>
+                <CardHeader>
+                    <CardTitle>Projetos Extras Manuais</CardTitle>
+                    <CardDescription>
+                       Adicione projetos ou tarefas que não estão no sistema para aparecer no ecrã.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    {extraProjects.map((project, index) => (
+                        <div key={project.id} className="border p-4 rounded-lg space-y-3 bg-muted/50 relative">
+                             <Button variant="ghost" size="icon" className="absolute top-2 right-2 h-7 w-7" onClick={() => removeExtraProject(project.id)}>
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                             </Button>
+                            <div className="space-y-2">
+                                <Label htmlFor={`extra-name-${index}`}>Nome do Projeto/Tarefa Extra</Label>
+                                <Input 
+                                    id={`extra-name-${index}`}
+                                    value={project.name}
+                                    onChange={e => updateExtraProject(project.id, 'name', e.target.value)}
+                                    placeholder="Ex: Prateleiras para a recepção"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor={`extra-desc-${index}`}>Descrição Breve</Label>
+                                <Textarea 
+                                    id={`extra-desc-${index}`}
+                                    value={project.description}
+                                    onChange={e => updateExtraProject(project.id, 'description', e.target.value)}
+                                    placeholder="Ex: Cortar e fitar 3 prateleiras de 120x30cm."
+                                    rows={2}
+                                />
+                            </div>
+                             <div className="space-y-2">
+                                <Label>Atribuir aos Marceneiros</Label>
+                                <Popover>
+                                <PopoverTrigger asChild>
+                                    <Button variant="outline" className="w-full justify-start text-left font-normal">
+                                        {project.assignedTo.length > 0 ? `${project.assignedTo.length} marceneiro(s) selecionado(s)` : "Selecionar marceneiros"}
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                    <Command>
+                                        <CommandInput placeholder="Procurar marceneiro..." />
+                                        <CommandList>
+                                        <CommandEmpty>Nenhum marceneiro encontrado.</CommandEmpty>
+                                        <CommandGroup>
+                                            {marceneiros.map(member => (
+                                            <CommandItem
+                                                key={member.id}
+                                                value={member.name}
+                                                onSelect={() => {
+                                                    const isSelected = project.assignedTo.includes(member.id);
+                                                    const newAssignedTo = isSelected
+                                                        ? project.assignedTo.filter(id => id !== member.id)
+                                                        : [...project.assignedTo, member.id];
+                                                    updateExtraProject(project.id, 'assignedTo', newAssignedTo);
+                                                }}
+                                            >
+                                                <Check className={cn("mr-2 h-4 w-4", project.assignedTo.includes(member.id) ? "opacity-100" : "opacity-0")} />
+                                                {member.name}
+                                            </CommandItem>
+                                            ))}
+                                        </CommandGroup>
+                                        </CommandList>
+                                    </Command>
+                                </PopoverContent>
+                                </Popover>
+                            </div>
+                        </div>
+                    ))}
+
+                    <Button variant="outline" onClick={addExtraProject}>
+                        <PlusCircle className="mr-2 h-4 w-4" />
+                        Adicionar Projeto Extra
+                    </Button>
+                </CardContent>
+            </Card>
+
         </div>
         <div className="lg:col-span-1">
             <Card className="sticky top-8">
