@@ -127,15 +127,15 @@ export function CarpenterSlide({ marceneiro, extraProjects }: CarpenterSlideProp
               <div className="space-y-4 pr-4">
                 {tasksInProgress.map((task) => (
                   <Link href={task.link} key={task.id} className="block p-4 bg-gray-700/50 rounded-lg hover:bg-gray-700 transition-colors">
-                    <p className="font-semibold text-white text-xl">{task.furnitureName}</p>
-                    <p className="text-lg text-gray-400">{task.projectName}</p>
+                    <p className="font-semibold text-white text-2xl">{task.furnitureName}</p>
+                    <p className="text-xl text-gray-400">{task.projectName}</p>
                   </Link>
                 ))}
                 {activeExtraProjects.length > 0 && tasksInProgress.length > 0 && <hr className="border-gray-600"/>}
                  {activeExtraProjects.map((project) => (
                   <div key={project.id} className="p-4 bg-amber-800/30 rounded-lg border border-amber-600/50">
-                    <p className="font-bold text-amber-200 text-xl">{project.name}</p>
-                    <p className="text-lg text-amber-300/80 whitespace-pre-wrap">{project.description}</p>
+                    <p className="font-bold text-amber-200 text-2xl">{project.name}</p>
+                    <p className="text-xl text-amber-300/80 whitespace-pre-wrap">{project.description}</p>
                   </div>
                 ))}
               </div>
@@ -151,15 +151,15 @@ export function CarpenterSlide({ marceneiro, extraProjects }: CarpenterSlideProp
                 <div className="space-y-3 pr-4">
                     {tasksDone.map((task) => (
                     <Link href={task.link} key={task.id} className="block p-4 bg-gray-700/50 rounded-lg hover:bg-gray-700 transition-colors">
-                        <p className="font-semibold text-white line-through text-xl">{task.furnitureName}</p>
-                        <p className="text-lg text-gray-400">{task.projectName}</p>
+                        <p className="font-semibold text-white line-through text-2xl">{task.furnitureName}</p>
+                        <p className="text-xl text-gray-400">{task.projectName}</p>
                     </Link>
                     ))}
                     {completedExtraProjects.length > 0 && tasksDone.length > 0 && <Separator className="my-3 bg-gray-600" />}
                     {completedExtraProjects.map((project) => (
                         <div key={project.id} className="p-4 bg-gray-700/50 rounded-lg">
-                           <p className="font-semibold text-white line-through text-xl">{project.name}</p>
-                           <p className="text-lg text-gray-400 whitespace-pre-wrap line-through">{project.description}</p>
+                           <p className="font-semibold text-white line-through text-2xl">{project.name}</p>
+                           <p className="text-xl text-gray-400 whitespace-pre-wrap line-through">{project.description}</p>
                         </div>
                     ))}
                 </div>
