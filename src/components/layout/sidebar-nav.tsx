@@ -2,7 +2,7 @@
 import { useState, useContext, useMemo } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BarChart3, LayoutGrid, PlusCircle, Users, Boxes, LogOut, ShoppingCart, User, X, Calendar, Home, FileText, Recycle } from 'lucide-react';
+import { BarChart3, LayoutGrid, PlusCircle, Users, Boxes, LogOut, ShoppingCart, User, X, Calendar, Home, FileText, Recycle, MonitorPlay } from 'lucide-react';
 import {
   SidebarHeader,
   SidebarContent,
@@ -41,9 +41,10 @@ const menuItems = [
   { href: '/quotes', label: 'Orçamentos', icon: FileText, adminOnly: false },
   { href: '/calendar', label: 'Calendário', icon: Calendar, adminOnly: false },
   { href: '/purchases', label: 'Compras', icon: ShoppingCart, adminOnly: false, restrictedRoles: ['Projetista'] },
+  { href: '/stock', label: 'Estoque', icon: Boxes, adminOnly: false, restrictedRoles: ['Projetista'] },
+  { href: '/factory-display', label: 'Ecrã Fábrica', icon: MonitorPlay, adminOnly: false, restrictedRoles: ['Projetista'] },
   { href: '/reports', label: 'Relatórios', icon: BarChart3, adminOnly: false, restrictedRoles: ['Projetista'] },
   { href: '/team', label: 'Equipe', icon: Users, adminOnly: true },
-  { href: '/stock', label: 'Estoque', icon: Boxes, adminOnly: false, restrictedRoles: ['Projetista'] },
 ];
 
 const externalMenuItems = [
@@ -127,7 +128,7 @@ export function SidebarNav() {
     updateTeamMember({ ...loggedInMember, avatarUrl: '' });
     toast({
       title: 'Foto de perfil removida!',
-      description: 'Seu avatar agora exibirá suas iniciais.',
+      description: 'O seu avatar agora exibirá as suas iniciais.',
     });
     setAvatarPopoverOpen(false);
   };
@@ -145,7 +146,7 @@ export function SidebarNav() {
 
   const visibleMenuItems = useMemo(() => {
     const internal = filterMenuItems(menuItems).sort((a, b) => {
-        const order = ['Dashboard', 'Projetos', 'Orçamentos', 'Calendário', 'Compras', 'Estoque', 'Relatórios', 'Equipe'];
+        const order = ['Dashboard', 'Projetos', 'Orçamentos', 'Calendário', 'Compras', 'Estoque', 'Ecrã Fábrica', 'Relatórios', 'Equipe'];
         return order.indexOf(a.label) - order.indexOf(b.label);
       });
     const external = filterMenuItems(externalMenuItems);
