@@ -61,11 +61,9 @@ export function CarpenterSlide({ marceneiro, extraProjects }: CarpenterSlideProp
                 link: `/projects/${p.id}`,
               };
               
-              // Tarefas "Em Andamento" são as que estão com esse status, independente da data
               if (stage.status === 'in_progress') {
                 inProgress.push(task);
               } 
-              // Tarefas "Concluídas" são as que foram finalizadas DENTRO da semana atual
               else if (stage.status === 'done' && stage.completedAt) {
                 const completionDate = parseISO(stage.completedAt);
                 if (isWithinInterval(completionDate, { start: startOfThisWeek, end: endOfThisWeek })) {
@@ -106,53 +104,38 @@ export function CarpenterSlide({ marceneiro, extraProjects }: CarpenterSlideProp
 
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 items-start h-full">
-      <div className="lg:col-span-1 flex flex-col items-center justify-center gap-6 py-8">
-        <Avatar className="h-32 w-32 border-4 border-primary">
+    <div className="flex flex-col h-full gap-6">
+      {/* Top Section: Carpenter Info */}
+      <div className="flex flex-col items-center justify-center gap-4 pt-4">
+        <Avatar className="h-28 w-28 border-4 border-primary">
           {marceneiro.avatarUrl && <AvatarImage src={marceneiro.avatarUrl} alt={marceneiro.name} />}
-          <AvatarFallback style={{ backgroundColor: marceneiro.color }} className="text-5xl">
+          <AvatarFallback style={{ backgroundColor: marceneiro.color }} className="text-4xl">
             {getInitials(marceneiro.name)}
           </AvatarFallback>
         </Avatar>
-        <h2 className="text-3xl font-bold text-center">{marceneiro.name}</h2>
-        <div className="w-full">
-            <ResponsiveContainer width="100%" height={150}>
-                <BarChart data={productivityData} layout="vertical" margin={{ left: 20 }}>
-                <XAxis type="number" hide />
-                <YAxis type="category" dataKey="name" hide />
-                <Tooltip
-                    cursor={{ fill: 'rgba(255, 255, 255, 0.1)' }}
-                    contentStyle={{ backgroundColor: '#333', border: 'none', borderRadius: '0.5rem' }}
-                    labelStyle={{ color: '#fff' }}
-                />
-                <Legend
-                    formatter={(value, entry, index) => <span className="text-white">{value}</span>}
-                />
-                <Bar dataKey="Em Andamento" stackId="a" fill="#3b82f6" name="Em Andamento" />
-                <Bar dataKey="Concluído (Semana)" stackId="a" fill="#16a34a" name="Concluído (Semana)" />
-                </BarChart>
-            </ResponsiveContainer>
-        </div>
+        <h2 className="text-4xl font-bold text-center">{marceneiro.name}</h2>
       </div>
-      <div className="lg:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-8 h-full">
+      
+      {/* Middle Section: Task Lists */}
+      <div className="flex-grow grid grid-cols-1 md:grid-cols-2 gap-8 min-h-0">
         <Card className="bg-gray-800 border-blue-500/50 flex flex-col">
           <CardHeader>
-            <CardTitle className="text-blue-400">Em Andamento ({tasksInProgress.length + activeExtraProjects.length})</CardTitle>
+            <CardTitle className="text-blue-400 text-2xl">Em Andamento ({tasksInProgress.length + activeExtraProjects.length})</CardTitle>
           </CardHeader>
-          <CardContent className="flex-grow">
-            <ScrollArea className="h-full max-h-[65vh]">
+          <CardContent className="flex-grow overflow-hidden">
+            <ScrollArea className="h-full">
               <div className="space-y-4 pr-4">
                 {tasksInProgress.map((task) => (
-                  <Link href={task.link} key={task.id} className="block p-3 bg-gray-700/50 rounded-lg hover:bg-gray-700 transition-colors">
-                    <p className="font-semibold text-white">{task.furnitureName}</p>
-                    <p className="text-sm text-gray-400">{task.projectName}</p>
+                  <Link href={task.link} key={task.id} className="block p-4 bg-gray-700/50 rounded-lg hover:bg-gray-700 transition-colors">
+                    <p className="font-semibold text-white text-lg">{task.furnitureName}</p>
+                    <p className="text-md text-gray-400">{task.projectName}</p>
                   </Link>
                 ))}
                 {activeExtraProjects.length > 0 && tasksInProgress.length > 0 && <hr className="border-gray-600"/>}
                  {activeExtraProjects.map((project) => (
-                  <div key={project.id} className="p-3 bg-amber-800/30 rounded-lg border border-amber-600/50">
-                    <p className="font-bold text-amber-200">{project.name}</p>
-                    <p className="text-sm text-amber-300/80 whitespace-pre-wrap">{project.description}</p>
+                  <div key={project.id} className="p-4 bg-amber-800/30 rounded-lg border border-amber-600/50">
+                    <p className="font-bold text-amber-200 text-lg">{project.name}</p>
+                    <p className="text-md text-amber-300/80 whitespace-pre-wrap">{project.description}</p>
                   </div>
                 ))}
               </div>
@@ -161,28 +144,49 @@ export function CarpenterSlide({ marceneiro, extraProjects }: CarpenterSlideProp
         </Card>
         <Card className="bg-gray-800 border-green-500/50 flex flex-col">
           <CardHeader>
-            <CardTitle className="text-green-400">Concluído (Semana) ({tasksDone.length + completedExtraProjects.length})</CardTitle>
+            <CardTitle className="text-green-400 text-2xl">Concluído (Semana) ({tasksDone.length + completedExtraProjects.length})</CardTitle>
           </CardHeader>
-          <CardContent className="flex-grow">
-             <ScrollArea className="h-full max-h-[65vh]">
+          <CardContent className="flex-grow overflow-hidden">
+             <ScrollArea className="h-full">
                 <div className="space-y-3 pr-4">
                     {tasksDone.map((task) => (
-                    <Link href={task.link} key={task.id} className="block p-3 bg-gray-700/50 rounded-lg hover:bg-gray-700 transition-colors">
-                        <p className="font-semibold text-white line-through">{task.furnitureName}</p>
-                        <p className="text-sm text-gray-400">{task.projectName}</p>
+                    <Link href={task.link} key={task.id} className="block p-4 bg-gray-700/50 rounded-lg hover:bg-gray-700 transition-colors">
+                        <p className="font-semibold text-white line-through text-lg">{task.furnitureName}</p>
+                        <p className="text-md text-gray-400">{task.projectName}</p>
                     </Link>
                     ))}
                     {completedExtraProjects.length > 0 && tasksDone.length > 0 && <Separator className="my-3 bg-gray-600" />}
                     {completedExtraProjects.map((project) => (
-                        <div key={project.id} className="p-3 bg-gray-700/50 rounded-lg">
-                           <p className="font-semibold text-white line-through">{project.name}</p>
-                           <p className="text-sm text-gray-400 whitespace-pre-wrap line-through">{project.description}</p>
+                        <div key={project.id} className="p-4 bg-gray-700/50 rounded-lg">
+                           <p className="font-semibold text-white line-through text-lg">{project.name}</p>
+                           <p className="text-md text-gray-400 whitespace-pre-wrap line-through">{project.description}</p>
                         </div>
                     ))}
                 </div>
             </ScrollArea>
           </CardContent>
         </Card>
+      </div>
+
+      {/* Bottom Section: Chart */}
+      <div className="flex-shrink-0 w-full max-w-lg mx-auto pb-4">
+        <ResponsiveContainer width="100%" height={80}>
+            <BarChart data={productivityData} layout="vertical" margin={{ left: 20 }}>
+            <XAxis type="number" hide />
+            <YAxis type="category" dataKey="name" hide />
+            <Tooltip
+                cursor={{ fill: 'rgba(255, 255, 255, 0.1)' }}
+                contentStyle={{ backgroundColor: '#333', border: 'none', borderRadius: '0.5rem' }}
+                labelStyle={{ color: '#fff' }}
+            />
+            <Legend
+                wrapperStyle={{ bottom: -10 }}
+                formatter={(value) => <span className="text-white text-sm">{value}</span>}
+            />
+            <Bar dataKey="Em Andamento" stackId="a" fill="#3b82f6" name="Em Andamento" />
+            <Bar dataKey="Concluído (Semana)" stackId="a" fill="#16a34a" name="Concluído (Semana)" />
+            </BarChart>
+        </ResponsiveContainer>
       </div>
     </div>
   );
