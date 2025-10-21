@@ -5,6 +5,7 @@ import { AppContext } from '@/context/app-context';
 import type { TeamMember } from '@/lib/types';
 import { CarpenterSlide } from './carpenter-slide';
 import { MonthlyProductionSlide } from './monthly-production-slide';
+import { WeatherSlide } from './weather-slide';
 import {
   Carousel,
   CarouselContent,
@@ -68,7 +69,7 @@ function FactoryDisplayContent() {
     };
   }, [api]);
   
-  const totalSlides = marceneiros.length + 1;
+  const totalSlides = marceneiros.length + 2; // +1 for monthly, +1 for weather
 
   if (isLoading) {
     return (
@@ -102,6 +103,9 @@ function FactoryDisplayContent() {
               ))}
                <CarouselItem key="monthly-production">
                   <MonthlyProductionSlide />
+                </CarouselItem>
+                <CarouselItem key="weather-forecast">
+                  <WeatherSlide />
                 </CarouselItem>
             </CarouselContent>
             <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
