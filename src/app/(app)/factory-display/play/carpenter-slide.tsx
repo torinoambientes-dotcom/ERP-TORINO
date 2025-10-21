@@ -18,6 +18,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import Link from 'next/link';
 import type { ExtraProject } from '../page';
 import { Separator } from '@/components/ui/separator';
+import { isWithinInterval, startOfWeek, endOfWeek, parseISO } from 'date-fns';
+
 
 interface CarpenterSlideProps {
   marceneiro: TeamMember;
@@ -39,6 +41,10 @@ export function CarpenterSlide({ marceneiro, extraProjects }: CarpenterSlideProp
     const inProgress: TaskItem[] = [];
     const done: TaskItem[] = [];
 
+    const now = new Date();
+    const startOfThisWeek = startOfWeek(now, { weekStartsOn: 1 });
+    const endOfThisWeek = endOfWeek(now, { weekStartsOn: 1 });
+
     (projects || []).forEach((p) => {
       if (p.completedAt) return; // Ignore completed projects
 
@@ -54,10 +60,17 @@ export function CarpenterSlide({ marceneiro, extraProjects }: CarpenterSlideProp
                 stageName: 'Pré-Montagem',
                 link: `/projects/${p.id}`,
               };
+              
+              // Tarefas "Em Andamento" são as que estão com esse status, independente da data
               if (stage.status === 'in_progress') {
                 inProgress.push(task);
-              } else if (stage.status === 'done') {
-                done.push(task);
+              } 
+              // Tarefas "Concluídas" são as que foram finalizadas DENTRO da semana atual
+              else if (stage.status === 'done' && stage.completedAt) {
+                const completionDate = parseISO(stage.completedAt);
+                if (isWithinInterval(completionDate, { start: startOfThisWeek, end: endOfThisWeek })) {
+                  done.push(task);
+                }
               }
             }
           });
@@ -66,7 +79,7 @@ export function CarpenterSlide({ marceneiro, extraProjects }: CarpenterSlideProp
     });
 
     const productivity = [
-      { name: 'Status', 'Em Andamento': inProgress.length, 'Concluído': done.length },
+      { name: 'Status', 'Em Andamento': inProgress.length, 'Concluído (Semana)': done.length },
     ];
 
     return {
@@ -116,7 +129,7 @@ export function CarpenterSlide({ marceneiro, extraProjects }: CarpenterSlideProp
                     formatter={(value, entry, index) => <span className="text-white">{value}</span>}
                 />
                 <Bar dataKey="Em Andamento" stackId="a" fill="#3b82f6" name="Em Andamento" />
-                <Bar dataKey="Concluído" stackId="a" fill="#16a34a" name="Concluído" />
+                <Bar dataKey="Concluído (Semana)" stackId="a" fill="#16a34a" name="Concluído (Semana)" />
                 </BarChart>
             </ResponsiveContainer>
         </div>
@@ -148,7 +161,7 @@ export function CarpenterSlide({ marceneiro, extraProjects }: CarpenterSlideProp
         </Card>
         <Card className="bg-gray-800 border-green-500/50 flex flex-col">
           <CardHeader>
-            <CardTitle className="text-green-400">Concluído ({tasksDone.length + completedExtraProjects.length})</CardTitle>
+            <CardTitle className="text-green-400">Concluído (Semana) ({tasksDone.length + completedExtraProjects.length})</CardTitle>
           </CardHeader>
           <CardContent className="flex-grow">
              <ScrollArea className="h-96">
@@ -174,5 +187,3 @@ export function CarpenterSlide({ marceneiro, extraProjects }: CarpenterSlideProp
     </div>
   );
 }
-
-    
