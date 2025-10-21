@@ -106,7 +106,7 @@ export function CarpenterSlide({ marceneiro, extraProjects }: CarpenterSlideProp
   return (
     <div className="flex flex-col h-full gap-6">
       {/* Top Section: Carpenter Info */}
-      <div className="flex flex-col items-center justify-center gap-4 pt-4">
+      <div className="flex flex-col items-center justify-center gap-4 pt-4 flex-shrink-0">
         <Avatar className="h-28 w-28 border-4 border-primary">
           {marceneiro.avatarUrl && <AvatarImage src={marceneiro.avatarUrl} alt={marceneiro.name} />}
           <AvatarFallback style={{ backgroundColor: marceneiro.color }} className="text-4xl">
@@ -120,22 +120,22 @@ export function CarpenterSlide({ marceneiro, extraProjects }: CarpenterSlideProp
       <div className="flex-grow grid grid-cols-1 md:grid-cols-2 gap-8 min-h-0">
         <Card className="bg-gray-800 border-blue-500/50 flex flex-col">
           <CardHeader>
-            <CardTitle className="text-blue-400 text-2xl">Em Andamento ({tasksInProgress.length + activeExtraProjects.length})</CardTitle>
+            <CardTitle className="text-blue-400 text-3xl">Em Andamento ({tasksInProgress.length + activeExtraProjects.length})</CardTitle>
           </CardHeader>
           <CardContent className="flex-grow overflow-hidden">
             <ScrollArea className="h-full">
               <div className="space-y-4 pr-4">
                 {tasksInProgress.map((task) => (
                   <Link href={task.link} key={task.id} className="block p-4 bg-gray-700/50 rounded-lg hover:bg-gray-700 transition-colors">
-                    <p className="font-semibold text-white text-lg">{task.furnitureName}</p>
-                    <p className="text-md text-gray-400">{task.projectName}</p>
+                    <p className="font-semibold text-white text-xl">{task.furnitureName}</p>
+                    <p className="text-lg text-gray-400">{task.projectName}</p>
                   </Link>
                 ))}
                 {activeExtraProjects.length > 0 && tasksInProgress.length > 0 && <hr className="border-gray-600"/>}
                  {activeExtraProjects.map((project) => (
                   <div key={project.id} className="p-4 bg-amber-800/30 rounded-lg border border-amber-600/50">
-                    <p className="font-bold text-amber-200 text-lg">{project.name}</p>
-                    <p className="text-md text-amber-300/80 whitespace-pre-wrap">{project.description}</p>
+                    <p className="font-bold text-amber-200 text-xl">{project.name}</p>
+                    <p className="text-lg text-amber-300/80 whitespace-pre-wrap">{project.description}</p>
                   </div>
                 ))}
               </div>
@@ -144,22 +144,22 @@ export function CarpenterSlide({ marceneiro, extraProjects }: CarpenterSlideProp
         </Card>
         <Card className="bg-gray-800 border-green-500/50 flex flex-col">
           <CardHeader>
-            <CardTitle className="text-green-400 text-2xl">Concluído (Semana) ({tasksDone.length + completedExtraProjects.length})</CardTitle>
+            <CardTitle className="text-green-400 text-3xl">Concluído (Semana) ({tasksDone.length + completedExtraProjects.length})</CardTitle>
           </CardHeader>
           <CardContent className="flex-grow overflow-hidden">
              <ScrollArea className="h-full">
                 <div className="space-y-3 pr-4">
                     {tasksDone.map((task) => (
                     <Link href={task.link} key={task.id} className="block p-4 bg-gray-700/50 rounded-lg hover:bg-gray-700 transition-colors">
-                        <p className="font-semibold text-white line-through text-lg">{task.furnitureName}</p>
-                        <p className="text-md text-gray-400">{task.projectName}</p>
+                        <p className="font-semibold text-white line-through text-xl">{task.furnitureName}</p>
+                        <p className="text-lg text-gray-400">{task.projectName}</p>
                     </Link>
                     ))}
                     {completedExtraProjects.length > 0 && tasksDone.length > 0 && <Separator className="my-3 bg-gray-600" />}
                     {completedExtraProjects.map((project) => (
                         <div key={project.id} className="p-4 bg-gray-700/50 rounded-lg">
-                           <p className="font-semibold text-white line-through text-lg">{project.name}</p>
-                           <p className="text-md text-gray-400 whitespace-pre-wrap line-through">{project.description}</p>
+                           <p className="font-semibold text-white line-through text-xl">{project.name}</p>
+                           <p className="text-lg text-gray-400 whitespace-pre-wrap line-through">{project.description}</p>
                         </div>
                     ))}
                 </div>
