@@ -106,15 +106,15 @@ export function CarpenterSlide({ marceneiro, extraProjects }: CarpenterSlideProp
 
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start h-full">
+    <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 items-start h-full">
       <div className="lg:col-span-1 flex flex-col items-center justify-center gap-6 py-8">
-        <Avatar className="h-40 w-40 border-4 border-primary">
+        <Avatar className="h-32 w-32 border-4 border-primary">
           {marceneiro.avatarUrl && <AvatarImage src={marceneiro.avatarUrl} alt={marceneiro.name} />}
-          <AvatarFallback style={{ backgroundColor: marceneiro.color }} className="text-6xl">
+          <AvatarFallback style={{ backgroundColor: marceneiro.color }} className="text-5xl">
             {getInitials(marceneiro.name)}
           </AvatarFallback>
         </Avatar>
-        <h2 className="text-4xl font-bold text-center">{marceneiro.name}</h2>
+        <h2 className="text-3xl font-bold text-center">{marceneiro.name}</h2>
         <div className="w-full">
             <ResponsiveContainer width="100%" height={150}>
                 <BarChart data={productivityData} layout="vertical" margin={{ left: 20 }}>
@@ -134,13 +134,13 @@ export function CarpenterSlide({ marceneiro, extraProjects }: CarpenterSlideProp
             </ResponsiveContainer>
         </div>
       </div>
-      <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-8 h-full">
+      <div className="lg:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-8 h-full">
         <Card className="bg-gray-800 border-blue-500/50 flex flex-col">
           <CardHeader>
             <CardTitle className="text-blue-400">Em Andamento ({tasksInProgress.length + activeExtraProjects.length})</CardTitle>
           </CardHeader>
           <CardContent className="flex-grow">
-            <ScrollArea className="h-96">
+            <ScrollArea className="h-full max-h-[65vh]">
               <div className="space-y-4 pr-4">
                 {tasksInProgress.map((task) => (
                   <Link href={task.link} key={task.id} className="block p-3 bg-gray-700/50 rounded-lg hover:bg-gray-700 transition-colors">
@@ -164,7 +164,7 @@ export function CarpenterSlide({ marceneiro, extraProjects }: CarpenterSlideProp
             <CardTitle className="text-green-400">Concluído (Semana) ({tasksDone.length + completedExtraProjects.length})</CardTitle>
           </CardHeader>
           <CardContent className="flex-grow">
-             <ScrollArea className="h-96">
+             <ScrollArea className="h-full max-h-[65vh]">
                 <div className="space-y-3 pr-4">
                     {tasksDone.map((task) => (
                     <Link href={task.link} key={task.id} className="block p-3 bg-gray-700/50 rounded-lg hover:bg-gray-700 transition-colors">
