@@ -24,13 +24,13 @@ export function OngoingProjectsSlide() {
     <div className="h-full flex flex-col justify-center items-center">
       <h2 className="text-4xl font-bold text-center mb-8">Projetos em Andamento</h2>
       <ScrollArea className="w-full h-[75vh]">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 p-1">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 p-1">
           {ongoingProjects.length > 0 ? (
             ongoingProjects.map(({ project, statusInfo }) => (
               <Card key={project.id} className="bg-gray-800 border-gray-700 text-white flex flex-col">
                 <CardHeader>
                   <div className="flex justify-between items-start gap-2">
-                    <CardTitle className="text-xl font-semibold tracking-tight">
+                    <CardTitle className="text-2xl font-bold tracking-tight">
                       {project.clientName}
                     </CardTitle>
                     <Badge variant="outline" className="text-blue-300 border-blue-400/50 bg-blue-900/30">
@@ -38,21 +38,21 @@ export function OngoingProjectsSlide() {
                     </Badge>
                   </div>
                 </CardHeader>
-                <CardContent className="flex-grow space-y-3">
-                   <p className="text-sm text-gray-400">
+                <CardContent className="flex-grow space-y-4">
+                   <p className="text-base text-gray-400">
                       {project.environments?.length || 0} ambiente(s)
                     </p>
                     {statusInfo.totalTasks > 0 && (
                         <div className="space-y-2">
-                          <div className="flex justify-between items-center text-xs text-gray-400">
+                          <div className="flex justify-between items-center text-base text-gray-300">
                             <span>
                                 {statusInfo.doneTasks} de {statusInfo.totalTasks} tarefas concluídas
                             </span>
-                             <span className="font-semibold text-gray-200">
+                             <span className="font-semibold text-gray-100">
                                 {Math.round(statusInfo.progress)}%
                               </span>
                           </div>
-                          <Progress value={statusInfo.progress} className="h-2 [&>div]:bg-blue-400" />
+                          <Progress value={statusInfo.progress} className="h-3 [&>div]:bg-blue-400" />
                         </div>
                     )}
                 </CardContent>
