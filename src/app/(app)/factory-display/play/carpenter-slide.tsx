@@ -2,8 +2,6 @@
 import { useContext, useMemo } from 'react';
 import { AppContext } from '@/context/app-context';
 import type { TeamMember, ProductionStage } from '@/lib/types';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { getInitials } from '@/lib/utils';
 import {
   BarChart,
   Bar,
@@ -17,7 +15,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import Link from 'next/link';
 import type { ExtraProject } from '../page';
-import { Separator } from '@/components/ui/separator';
 import { isWithinInterval, startOfWeek, endOfWeek, parseISO } from 'date-fns';
 import { CheckCircle, Clock } from 'lucide-react';
 
@@ -86,7 +83,6 @@ export function CarpenterSlide({ marceneiro, extraProjects }: CarpenterSlideProp
       });
     });
     
-    // Sort tasks: in_progress first, then done
     tasks.sort((a, b) => {
       if (a.status === 'in_progress' && b.status === 'done') return -1;
       if (a.status === 'done' && b.status === 'in_progress') return 1;
@@ -128,14 +124,8 @@ export function CarpenterSlide({ marceneiro, extraProjects }: CarpenterSlideProp
   return (
     <div className="flex flex-col h-full gap-6">
       {/* Top Section: Carpenter Info */}
-      <div className="flex flex-col items-center justify-center gap-4 pt-4 flex-shrink-0">
-        <Avatar className="h-28 w-28 border-4 border-primary">
-          {marceneiro.avatarUrl && <AvatarImage src={marceneiro.avatarUrl} alt={marceneiro.name} />}
-          <AvatarFallback style={{ backgroundColor: marceneiro.color }} className="text-4xl">
-            {getInitials(marceneiro.name)}
-          </AvatarFallback>
-        </Avatar>
-        <h2 className="text-4xl font-bold text-center">{marceneiro.name}</h2>
+      <div className="flex flex-col items-center justify-center pt-4 pb-2 flex-shrink-0">
+        <h2 className="text-5xl font-bold text-center">{marceneiro.name}</h2>
       </div>
       
       {/* Middle Section: Task List */}
@@ -146,7 +136,7 @@ export function CarpenterSlide({ marceneiro, extraProjects }: CarpenterSlideProp
           </CardHeader>
           <CardContent className="flex-grow overflow-hidden">
             <ScrollArea className="h-full">
-              <div className="space-y-4 pr-4">
+              <div className="space-y-6 pr-4">
                 {combinedTasks.length > 0 ? combinedTasks.map((task) => {
                   const Wrapper = task.isExtra ? 'div' : Link;
                   
@@ -157,13 +147,13 @@ export function CarpenterSlide({ marceneiro, extraProjects }: CarpenterSlideProp
                           ? 'bg-gray-700/50 hover:bg-gray-700 border-l-4 border-blue-400'
                           : 'bg-gray-800/60 border-l-4 border-green-500 opacity-70'
                       }`}>
-                          <div className='flex items-center gap-2'>
-                            {task.status === 'in_progress' ? <Clock className="h-5 w-5 text-blue-300" /> : <CheckCircle className="h-5 w-5 text-green-400" />}
-                            <p className={`font-semibold text-white text-2xl ${task.status === 'done' ? 'line-through' : ''}`}>
+                          <div className='flex items-center gap-3'>
+                            {task.status === 'in_progress' ? <Clock className="h-6 w-6 text-blue-300" /> : <CheckCircle className="h-6 w-6 text-green-400" />}
+                            <p className={`font-semibold text-white text-3xl ${task.status === 'done' ? 'line-through' : ''}`}>
                                {task.furnitureName}
                             </p>
                           </div>
-                          <p className={`text-xl text-gray-400 pl-7 ${task.status === 'done' ? 'line-through' : ''}`}>
+                          <p className={`text-2xl text-gray-400 pl-9 ${task.status === 'done' ? 'line-through' : ''}`}>
                             {task.projectName}
                           </p>
                       </div>
