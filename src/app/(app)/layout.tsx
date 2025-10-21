@@ -10,7 +10,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   // Conditionally apply AppShell based on the route
-  if (pathname === '/factory-display') {
+  if (pathname === '/factory-display/play') {
     return (
       <AuthGuard>
         <AppProvider>

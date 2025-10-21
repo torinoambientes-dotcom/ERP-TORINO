@@ -1,90 +1,53 @@
 'use client';
-import { useContext, useMemo, useState, useEffect } from 'react';
-import { AppContext } from '@/context/app-context';
-import type { TeamMember } from '@/lib/types';
-import { CarpenterSlide } from './carpenter-slide';
-import {
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-  type CarouselApi,
-} from '@/components/ui/carousel';
-import Autoplay from 'embla-carousel-autoplay';
-import { Logo } from '@/components/logo';
+import { PageHeader } from '@/components/layout/page-header';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { MonitorPlay } from 'lucide-react';
+import Link from 'next/link';
 
-export default function FactoryDisplayPage() {
-  const { teamMembers, isLoading } = useContext(AppContext);
-  const [api, setApi] = useState<CarouselApi>();
-  const [currentSlide, setCurrentSlide] = useState(0);
-
-  const marceneiros = useMemo(() => {
-    return (teamMembers || []).filter((member) => member.role === 'Marceneiro');
-  }, [teamMembers]);
-
-  useEffect(() => {
-    if (!api) {
-      return;
-    }
-
-    const onSelect = () => {
-      setCurrentSlide(api.selectedScrollSnap());
-    };
-
-    api.on('select', onSelect);
-
-    return () => {
-      api.off('select', onSelect);
-    };
-  }, [api]);
-
-  if (isLoading) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-gray-900 text-white">
-        <p className="text-2xl font-bold">A carregar dados da fábrica...</p>
-      </div>
-    );
-  }
-
+export default function FactoryDisplaySettingsPage() {
   return (
-    <div className="bg-gray-900 text-white min-h-screen p-8">
-      <div className="mb-8 flex items-center justify-between">
-        <Logo className="h-20 w-auto text-white" />
-        <p className="text-xl font-medium text-gray-400">
-          Progresso da produção em tempo real
-        </p>
-      </div>
+    <div className="space-y-8">
+      <PageHeader
+        title="Ecrã da Fábrica"
+        description="Configure e inicie a apresentação para o monitor da sua fábrica."
+      />
 
-      {marceneiros.length > 0 ? (
-        <Carousel
-          setApi={setApi}
-          plugins={[Autoplay({ delay: 60000, stopOnInteraction: true })]}
-          className="w-full"
-        >
-          <CarouselContent>
-            {marceneiros.map((marceneiro) => (
-              <CarouselItem key={marceneiro.id}>
-                <CarpenterSlide marceneiro={marceneiro} />
-              </CarouselItem>
-            ))}
-          </CarouselContent>
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
-            {marceneiros.map((_, index) => (
-              <div
-                key={index}
-                className={`h-2 w-8 rounded-full transition-all ${
-                  index === currentSlide ? 'bg-primary' : 'bg-gray-600'
-                }`}
-              />
-            ))}
-          </div>
-        </Carousel>
-      ) : (
-        <div className="flex items-center justify-center h-96">
-          <p className="text-xl text-gray-400">
-            Nenhum marceneiro encontrado para exibir.
-          </p>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-2">
+            <Card>
+                <CardHeader>
+                    <CardTitle>Iniciar Apresentação</CardTitle>
+                    <CardDescription>
+                        Clique no botão abaixo para iniciar o modo de apresentação em ecrã inteiro. A apresentação irá alternar automaticamente entre os marceneiros a cada minuto.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Link href="/factory-display/play" passHref>
+                        <Button size="lg" className="w-full sm:w-auto">
+                            <MonitorPlay className="mr-2 h-5 w-5" />
+                            Iniciar Apresentação
+                        </Button>
+                    </Link>
+                </CardContent>
+            </Card>
         </div>
-      )}
+        <div className="lg:col-span-1">
+            <Card className="bg-muted/50">
+                <CardHeader>
+                    <CardTitle>Em Breve</CardTitle>
+                    <CardDescription>
+                       Mais opções de configuração estarão disponíveis aqui.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="text-sm text-muted-foreground space-y-2">
+                    <p>∙ Selecionar quais marceneiros exibir.</p>
+                    <p>∙ Ajustar tempo de rotação.</p>
+                    <p>∙ Adicionar mensagens personalizadas.</p>
+                </CardContent>
+            </Card>
+        </div>
+      </div>
     </div>
   );
 }
