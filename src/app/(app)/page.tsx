@@ -39,7 +39,7 @@ const statusDisplayMap: Record<string, { label: string; variant: 'default' | 'se
 
 export default function DashboardPage() {
   const { user } = useUser();
-  const { projects, teamMembers, appointments, tasks: allTasks, purchaseRequests, stockItems, isLoading, updateProject, updateTaskStatus } = useContext(AppContext);
+  const { projects, teamMembers, appointments, tasks: allTasks, purchaseRequests, stockItems, isLoading, updateProject, updateTaskStatus, deleteAppointment } = useContext(AppContext);
   const { toast } = useToast();
 
   const loggedInMember = useMemo(() => {
@@ -119,9 +119,9 @@ export default function DashboardPage() {
     }, [allTasks, loggedInMember]);
   
   const handleToggleTaskStatus = useCallback((task: CalendarTask, isChecked: boolean) => {
-    const newStatus: StageStatus = isChecked ? 'done' : 'in_progress';
     
     if (task.type === 'project' && task.rawData.projectId) {
+        const newStatus: StageStatus = isChecked ? 'done' : 'in_progress';
         const project = projects.find(p => p.id === task.rawData.projectId);
         if (!project) return;
 
@@ -155,12 +155,21 @@ export default function DashboardPage() {
         });
 
     } else if (task.type === 'task' && task.rawData.taskId) {
+        const newStatus: StageStatus = isChecked ? 'done' : 'in_progress';
         updateTaskStatus(task.rawData.taskId, newStatus);
         toast({
           title: `Tarefa "${task.title}" marcada como ${newStatus === 'done' ? 'concluída' : 'em andamento'}.`
         });
+    } else if (task.type === 'appointment' && task.rawData.appointmentId) {
+        // Appointments don't have a status, we just delete them to "complete" them
+        if (isChecked) {
+            deleteAppointment(task.rawData.appointmentId);
+            toast({
+                title: `Compromisso "${task.title}" concluído.`
+            });
+        }
     }
-  }, [projects, updateProject, updateTaskStatus, toast]);
+  }, [projects, updateProject, updateTaskStatus, deleteAppointment, toast]);
 
 
   const isTaskCompleted = useCallback((task: CalendarTask): boolean => {
@@ -176,8 +185,13 @@ export default function DashboardPage() {
       const genericTask = allTasks.find(t => t.id === task.rawData.taskId);
       return genericTask?.status === 'done';
     }
+    // Appointments are considered "not completed" until they are deleted via checkbox.
+    // We check if it still exists in the main appointments list.
+    if (task.type === 'appointment' && task.rawData.appointmentId) {
+        return !appointments.some(a => a.id === task.rawData.appointmentId);
+    }
     return false;
-  }, [projects, allTasks]);
+  }, [projects, allTasks, appointments]);
 
 
   const todaysTasks = useMemo(() => {
@@ -341,21 +355,20 @@ export default function DashboardPage() {
                 {todaysTasks.length > 0 ? (
                     <ul className="space-y-3">
                     {todaysTasks.map(task => {
-                        const isCompletable = task.type === 'project' || task.type === 'task';
-                        const isCompleted = isCompletable ? isTaskCompleted(task) : false;
+                        const isCompletable = true; // All tasks in this list are completable
+                        const isCompleted = isTaskCompleted(task);
                         const isOverdue = isPast(endOfDay(task.date)) && !isCompleted;
                         
                         return (
                           <li key={task.id} className={cn("flex items-start gap-3 rounded-lg p-3 border", isOverdue ? 'bg-destructive/10 border-destructive/20' : 'bg-muted/50')}>
-                            {isCompletable && (
-                              <Checkbox 
-                                id={`task-check-${task.id}`}
-                                className="mt-1"
-                                checked={isCompleted}
-                                onCheckedChange={(checked) => handleToggleTaskStatus(task, Boolean(checked))}
-                              />
-                            )}
-                            <div className={cn("w-1.5 h-auto self-stretch rounded-full", !isCompletable && "ml-5")} style={{backgroundColor: task.responsible[0]?.color || '#ccc'}}></div>
+                            <Checkbox 
+                              id={`task-check-${task.id}`}
+                              className="mt-1"
+                              checked={isCompleted}
+                              onCheckedChange={(checked) => handleToggleTaskStatus(task, Boolean(checked))}
+                              disabled={isCompleted && task.type === 'appointment'} // Can't "un-delete" an appointment
+                            />
+                            <div className={cn("w-1.5 h-auto self-stretch rounded-full")} style={{backgroundColor: task.responsible[0]?.color || '#ccc'}}></div>
                             <div className="flex-grow overflow-hidden">
                                 <div className="flex items-center gap-2">
                                   {isOverdue && <AlertTriangle className="h-4 w-4 text-destructive flex-shrink-0" />}
@@ -384,20 +397,19 @@ export default function DashboardPage() {
                 {allMemberTasks.length > 0 ? (
                     <ul className="space-y-3 max-h-96 overflow-y-auto pr-2">
                     {allMemberTasks.map(task => {
-                        const isCompletable = task.type === 'project' || task.type === 'task';
-                        const isCompleted = isCompletable ? isTaskCompleted(task) : false;
+                        const isCompletable = true; // All tasks here are potentially completable
+                        const isCompleted = isTaskCompleted(task);
                         
                         return (
                             <li key={task.id} className="flex items-start gap-3 rounded-lg p-3 bg-muted/50 border">
-                                {isCompletable && (
-                                  <Checkbox 
-                                    id={`all-task-check-${task.id}`}
-                                    className="mt-3"
-                                    checked={isCompleted}
-                                    onCheckedChange={(checked) => handleToggleTaskStatus(task, Boolean(checked))}
-                                  />
-                                )}
-                                <div className={cn("flex flex-col items-center w-12 text-center text-sm font-semibold", !isCompletable && 'ml-5')}>
+                              <Checkbox 
+                                id={`all-task-check-${task.id}`}
+                                className="mt-3"
+                                checked={isCompleted}
+                                onCheckedChange={(checked) => handleToggleTaskStatus(task, Boolean(checked))}
+                                disabled={isCompleted && task.type === 'appointment'}
+                              />
+                                <div className={cn("flex flex-col items-center w-12 text-center text-sm font-semibold")}>
                                   <span className="text-xs uppercase text-muted-foreground">{format(task.date, 'MMM', { locale: ptBR })}</span>
                                   <span className="text-lg">{format(task.date, 'dd')}</span>
                                 </div>
