@@ -4,7 +4,6 @@ import { useSearchParams } from 'next/navigation';
 import { AppContext } from '@/context/app-context';
 import type { TeamMember } from '@/lib/types';
 import { CarpenterSlide } from './carpenter-slide';
-import { MonthlyProductionSlide } from './monthly-production-slide';
 import { OngoingProjectsSlide } from './ongoing-projects-slide';
 import {
   Carousel,
@@ -69,7 +68,7 @@ function FactoryDisplayContent() {
     };
   }, [api]);
   
-  const totalSlides = marceneiros.length + 2; // +1 for ongoing projects, +1 for monthly
+  const totalSlides = marceneiros.length + 1; // +1 for ongoing projects
 
   if (isLoading) {
     return (
@@ -104,9 +103,6 @@ function FactoryDisplayContent() {
                 ))}
                 <CarouselItem key="ongoing-projects">
                     <OngoingProjectsSlide />
-                  </CarouselItem>
-                <CarouselItem key="monthly-production">
-                    <MonthlyProductionSlide />
                   </CarouselItem>
               </CarouselContent>
             </Carousel>
