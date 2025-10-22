@@ -93,13 +93,20 @@ export function NewPurchaseRequestModal({
   }, [isOpen, isEditMode, requestToEdit, form]);
 
   const onSubmit = (data: RequestFormValues) => {
-    const selectedProject = projects.find(p => p.id === data.projectId);
+    const projectId = data.projectId === 'none' ? undefined : data.projectId;
+    const selectedProject = projects.find(p => p.id === projectId);
+    
+    const finalData = {
+        ...data,
+        projectId: projectId,
+        projectName: selectedProject?.clientName,
+    };
+
 
     if (isEditMode && requestToEdit) {
         updatePurchaseRequest({
             ...requestToEdit,
-            ...data,
-            projectName: selectedProject?.clientName,
+            ...finalData,
         });
         toast({
             title: "Solicitação Atualizada!",
@@ -112,10 +119,9 @@ export function NewPurchaseRequestModal({
             return;
         }
         addPurchaseRequest({
-            ...data,
+            ...finalData,
             requesterId: requester.id,
             requesterName: requester.name,
-            projectName: selectedProject?.clientName,
         });
         toast({
             title: 'Solicitação Enviada!',
@@ -198,14 +204,14 @@ export function NewPurchaseRequestModal({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Vincular ao Projeto (Opcional)</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value || 'none'}>
                         <FormControl>
                             <SelectTrigger>
                                 <SelectValue placeholder="Selecione um projeto..." />
                             </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                            <SelectItem value="">Nenhum projeto</SelectItem>
+                            <SelectItem value="none">Nenhum projeto</SelectItem>
                             {activeProjects.map(project => (
                                 <SelectItem key={project.id} value={project.id}>
                                     {project.clientName}
