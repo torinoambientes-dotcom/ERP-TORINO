@@ -66,7 +66,7 @@ export function NewPurchaseRequestModal({
       quantity: 1,
       unit: 'un',
       reason: '',
-      projectId: '',
+      projectId: 'none',
     },
   });
 
@@ -93,26 +93,43 @@ export function NewPurchaseRequestModal({
   }, [isOpen, isEditMode, requestToEdit, form]);
 
   const onSubmit = (data: RequestFormValues) => {
-    const projectId = data.projectId === 'none' ? undefined : data.projectId;
-    const selectedProject = projects.find(p => p.id === projectId);
+    const isProjectSelected = data.projectId && data.projectId !== 'none';
+    const selectedProject = isProjectSelected ? projects.find(p => p.id === data.projectId) : null;
     
-    const finalData: any = {
-        ...data,
-        projectId: projectId,
+    let finalData: Omit<PurchaseRequest, 'id' | 'createdAt' | 'updatedAt' | 'status' | 'requesterId' | 'requesterName'> & { projectName?: string } = {
+        description: data.description,
+        quantity: data.quantity,
+        unit: data.unit,
+        reason: data.reason,
     };
 
-    if (selectedProject) {
+    if (isProjectSelected && selectedProject) {
+        finalData.projectId = selectedProject.id;
         finalData.projectName = selectedProject.clientName;
-    } else {
-        delete finalData.projectName; // Ensure projectName is not sent if no project
     }
 
-
     if (isEditMode && requestToEdit) {
+        // Build the update object carefully
+        const updatePayload: Partial<PurchaseRequest> = {
+            description: data.description,
+            quantity: data.quantity,
+            unit: data.unit,
+            reason: data.reason,
+            projectId: finalData.projectId,
+            projectName: finalData.projectName,
+        };
+
+        if (!isProjectSelected) {
+            // Explicitly set to undefined to remove if it exists, will be cleaned up by context
+            updatePayload.projectId = undefined;
+            updatePayload.projectName = undefined;
+        }
+
         updatePurchaseRequest({
             ...requestToEdit,
-            ...finalData,
+            ...updatePayload,
         });
+
         toast({
             title: "Solicitação Atualizada!",
             description: "A solicitação de compra foi atualizada com sucesso."
