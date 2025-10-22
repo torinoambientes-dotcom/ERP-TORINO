@@ -78,7 +78,7 @@ export function NewPurchaseRequestModal({
             quantity: requestToEdit.quantity,
             unit: requestToEdit.unit,
             reason: requestToEdit.reason,
-            projectId: requestToEdit.projectId || '',
+            projectId: requestToEdit.projectId || 'none',
         });
       } else {
         form.reset({
@@ -86,7 +86,7 @@ export function NewPurchaseRequestModal({
           quantity: 1,
           unit: 'un',
           reason: '',
-          projectId: '',
+          projectId: 'none',
         });
       }
     }
@@ -96,11 +96,16 @@ export function NewPurchaseRequestModal({
     const projectId = data.projectId === 'none' ? undefined : data.projectId;
     const selectedProject = projects.find(p => p.id === projectId);
     
-    const finalData = {
+    const finalData: any = {
         ...data,
         projectId: projectId,
-        projectName: selectedProject?.clientName,
     };
+
+    if (selectedProject) {
+        finalData.projectName = selectedProject.clientName;
+    } else {
+        delete finalData.projectName; // Ensure projectName is not sent if no project
+    }
 
 
     if (isEditMode && requestToEdit) {
