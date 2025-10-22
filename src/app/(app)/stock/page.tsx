@@ -243,12 +243,12 @@ export default function StockPage() {
       .sort((a, b) => {
           switch (sortOrder) {
               case 'demand_desc':
-                  const demandA = (a.reservations || []).reduce((acc, r) => acc + r.quantity, 0);
-                  const demandB = (b.reservations || []).reduce((acc, r) => acc + r.quantity, 0);
+                  const demandA = (a.reservations || []).reduce((acc, r) => acc + Number(r.quantity), 0);
+                  const demandB = (b.reservations || []).reduce((acc, r) => acc + Number(r.quantity), 0);
                   return demandB - demandA;
               case 'quantity_asc':
-                  const availableA = a.quantity - (a.reservations || []).reduce((acc, r) => acc + r.quantity, 0);
-                  const availableB = b.quantity - (b.reservations || []).reduce((acc, r) => acc + r.quantity, 0);
+                  const availableA = a.quantity - (a.reservations || []).reduce((acc, r) => acc + Number(r.quantity), 0);
+                  const availableB = b.quantity - (b.reservations || []).reduce((acc, r) => acc + Number(r.quantity), 0);
                   return availableA - availableB;
               case 'name_asc':
               default:
@@ -269,7 +269,7 @@ export default function StockPage() {
     return (
       <div className="space-y-4">
         {items.map((item) => {
-          const totalReserved = (item.reservations || []).reduce((acc, res) => acc + res.quantity, 0);
+          const totalReserved = (item.reservations || []).reduce((acc, res) => acc + Number(res.quantity), 0);
           const availableQuantity = item.quantity - totalReserved;
           const isLowStock = typeof item.minStock === 'number' && availableQuantity < item.minStock;
           const sortedReservations = [...(item.reservations || [])].sort((a, b) => a.projectName.localeCompare(b.projectName) || a.furnitureName.localeCompare(b.furnitureName));
