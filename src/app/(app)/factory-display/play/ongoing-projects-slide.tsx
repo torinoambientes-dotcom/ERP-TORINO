@@ -11,6 +11,8 @@ export function OngoingProjectsSlide() {
   const { projects } = useContext(AppContext);
   const [isAnimating, setIsAnimating] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
+  const listInnerRef = useRef<HTMLDivElement>(null);
+
 
   const ongoingProjects = useMemo(() => {
     return (projects || [])
@@ -26,18 +28,17 @@ export function OngoingProjectsSlide() {
   const duplicatedProjects = useMemo(() => [...ongoingProjects, ...ongoingProjects], [ongoingProjects]);
 
   useEffect(() => {
-    // A animação só deve começar se a lista for maior que a área visível.
-    // Esta é uma lógica simplificada. Uma implementação robusta verificaria as alturas reais.
-    if (ongoingProjects.length > 3) { // Ex: Inicia a animação se houver mais de 3 projetos.
-      setIsAnimating(true);
-    } else {
-      setIsAnimating(false);
+    if (listRef.current && listInnerRef.current) {
+        const listHeight = listRef.current.clientHeight;
+        const listInnerHeight = listInnerRef.current.clientHeight;
+        // Começa a animação apenas se o conteúdo for maior que o contentor
+        setIsAnimating(listInnerHeight > listHeight && ongoingProjects.length > 0);
     }
-  }, [ongoingProjects.length]);
+  }, [ongoingProjects.length, duplicatedProjects.length]);
 
 
   return (
-    <div className="h-full flex flex-col justify-center items-center">
+    <div className="h-full flex flex-col p-4">
       <style>{`
         @keyframes scroll-vertical {
           from {
@@ -52,13 +53,14 @@ export function OngoingProjectsSlide() {
         }
       `}</style>
 
-      <h2 className="text-4xl font-bold text-center mb-8">Projetos em Andamento</h2>
+      <h2 className="text-4xl font-bold text-center mb-8 flex-shrink-0">Projetos em Andamento</h2>
       
-      <div ref={listRef} className="w-full max-w-4xl mx-auto overflow-hidden flex-grow">
+      <div ref={listRef} className="w-full max-w-4xl mx-auto overflow-hidden flex-grow min-h-0">
         {ongoingProjects.length > 0 ? (
           <div 
+            ref={listInnerRef}
             className={cn('flex flex-col gap-6', isAnimating && 'animate-scroll-vertical')}
-            style={{ animationDuration: `${ongoingProjects.length * 5}s` }}
+            style={ isAnimating ? { animationDuration: `${ongoingProjects.length * 5}s` } : {}}
           >
             {duplicatedProjects.map(({ project, statusInfo }, index) => (
               <div key={`${project.id}-${index}`} className="bg-gray-800 border-gray-700 text-white rounded-lg p-6 space-y-4 shadow-lg">
