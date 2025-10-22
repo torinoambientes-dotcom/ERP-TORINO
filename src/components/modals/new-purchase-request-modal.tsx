@@ -96,7 +96,7 @@ export function NewPurchaseRequestModal({
     const isProjectSelected = data.projectId && data.projectId !== 'none';
     const selectedProject = isProjectSelected ? projects.find(p => p.id === data.projectId) : null;
     
-    let finalData: Omit<PurchaseRequest, 'id' | 'createdAt' | 'updatedAt' | 'status' | 'requesterId' | 'requesterName'> & { projectName?: string } = {
+    let finalData: Partial<Omit<PurchaseRequest, 'id' | 'createdAt' | 'updatedAt' | 'status' | 'requesterId' | 'requesterName'>> = {
         description: data.description,
         quantity: data.quantity,
         unit: data.unit,
@@ -111,18 +111,12 @@ export function NewPurchaseRequestModal({
     if (isEditMode && requestToEdit) {
         // Build the update object carefully
         const updatePayload: Partial<PurchaseRequest> = {
-            description: data.description,
-            quantity: data.quantity,
-            unit: data.unit,
-            reason: data.reason,
-            projectId: finalData.projectId,
-            projectName: finalData.projectName,
+            ...finalData
         };
-
+        
         if (!isProjectSelected) {
-            // Explicitly set to undefined to remove if it exists, will be cleaned up by context
-            updatePayload.projectId = undefined;
-            updatePayload.projectName = undefined;
+          updatePayload.projectId = undefined;
+          updatePayload.projectName = undefined;
         }
 
         updatePurchaseRequest({
@@ -141,7 +135,7 @@ export function NewPurchaseRequestModal({
             return;
         }
         addPurchaseRequest({
-            ...finalData,
+            ...(finalData as any),
             requesterId: requester.id,
             requesterName: requester.name,
         });
