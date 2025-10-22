@@ -134,7 +134,7 @@ export function CarpenterSlide({ marceneiro, extraProjects }: CarpenterSlideProp
           <CardHeader>
             <CardTitle className="text-white text-3xl">Tarefas Atribuídas</CardTitle>
           </CardHeader>
-          <CardContent className="flex-grow overflow-hidden">
+          <CardContent className="flex-grow overflow-hidden flex flex-col">
             <ScrollArea className="h-full">
               <div className="space-y-6 pr-4">
                 {combinedTasks.length > 0 ? combinedTasks.map((task) => {
@@ -160,7 +160,9 @@ export function CarpenterSlide({ marceneiro, extraProjects }: CarpenterSlideProp
                     </Wrapper>
                   )
                 }) : (
-                   <p className="text-center text-gray-400 py-10">Nenhuma tarefa para exibir.</p>
+                  <div className="flex h-full items-center justify-center">
+                    <p className="text-center text-gray-400 py-10 text-xl">Nenhuma tarefa para exibir.</p>
+                  </div>
                 )}
               </div>
             </ScrollArea>
