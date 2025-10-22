@@ -7,7 +7,7 @@ import { PageHeader } from '@/components/layout/page-header';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn, getInitials } from '@/lib/utils';
-import { format, isToday, parseISO } from 'date-fns';
+import { format, isToday, parseISO, isPast, endOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import type { CalendarTask } from './calendar/page';
 import type { TeamMember, StockItem, Priority, Task, StageStatus, ProductionStage } from '@/lib/types';
@@ -181,8 +181,14 @@ export default function DashboardPage() {
 
 
   const todaysTasks = useMemo(() => {
-    return allMemberTasks.filter(task => isToday(task.date));
-  }, [allMemberTasks]);
+    return allMemberTasks
+      .filter(task => {
+          const isCompleted = isTaskCompleted(task);
+          // Include if it's for today OR if it's in the past and not completed
+          return isToday(task.date) || (isPast(endOfDay(task.date)) && !isCompleted);
+      })
+      .sort((a, b) => a.date.getTime() - b.date.getTime()); // Sort by date, oldest first
+  }, [allMemberTasks, isTaskCompleted]);
 
   const ongoingProjectsForMember = useMemo(() => {
     if (!projects || !loggedInMember) return [];
@@ -319,7 +325,7 @@ export default function DashboardPage() {
         <div>
             <PageHeader
                 title={`${getGreeting()}, ${loggedInMember.name.split(' ')[0]}!`}
-                description="Bem-vindo(a) ao seu painel. Aqui estão as suas tarefas para hoje."
+                description="Bem-vindo(a) ao seu painel. Aqui estão as suas tarefas para hoje e as pendentes."
             />
         </div>
       </div>
@@ -328,7 +334,7 @@ export default function DashboardPage() {
         <div className="lg:col-span-2 space-y-6">
             <Card>
                 <CardHeader>
-                    <CardTitle>Minhas Tarefas do Dia</CardTitle>
+                    <CardTitle>Minhas Tarefas do Dia e Pendentes</CardTitle>
                     <CardDescription>{format(new Date(), "eeee, dd 'de' MMMM", { locale: ptBR })}</CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -337,9 +343,10 @@ export default function DashboardPage() {
                     {todaysTasks.map(task => {
                         const isCompletable = task.type === 'project' || task.type === 'task';
                         const isCompleted = isCompletable ? isTaskCompleted(task) : false;
+                        const isOverdue = isPast(endOfDay(task.date)) && !isCompleted;
                         
                         return (
-                          <li key={task.id} className="flex items-start gap-3 rounded-lg p-3 bg-muted/50 border">
+                          <li key={task.id} className={cn("flex items-start gap-3 rounded-lg p-3 border", isOverdue ? 'bg-destructive/10 border-destructive/20' : 'bg-muted/50')}>
                             {isCompletable && (
                               <Checkbox 
                                 id={`task-check-${task.id}`}
@@ -350,8 +357,12 @@ export default function DashboardPage() {
                             )}
                             <div className={cn("w-1.5 h-auto self-stretch rounded-full", !isCompletable && "ml-5")} style={{backgroundColor: task.responsible[0]?.color || '#ccc'}}></div>
                             <div className="flex-grow overflow-hidden">
-                                <label htmlFor={`task-check-${task.id}`} className={cn("font-semibold truncate", isCompleted && "line-through text-muted-foreground")}>{task.title}</label>
+                                <div className="flex items-center gap-2">
+                                  {isOverdue && <AlertTriangle className="h-4 w-4 text-destructive flex-shrink-0" />}
+                                  <label htmlFor={`task-check-${task.id}`} className={cn("font-semibold truncate", isCompleted && "line-through text-muted-foreground")}>{task.title}</label>
+                                </div>
                                 <p className={cn("text-sm text-muted-foreground truncate", isCompleted && "line-through")}>{task.subtitle}</p>
+                                {isOverdue && <p className="text-xs font-bold text-destructive">Atrasado - Prazo: {format(task.date, 'dd/MM/yyyy')}</p>}
                             </div>
                             {task.priority && <Flag className={cn("h-5 w-5 flex-shrink-0", priorityMap[task.priority].className)} />}
                           </li>
@@ -359,15 +370,15 @@ export default function DashboardPage() {
                     })}
                     </ul>
                 ) : (
-                    <p className="text-sm text-muted-foreground text-center py-8">Nenhuma tarefa agendada para hoje.</p>
+                    <p className="text-sm text-muted-foreground text-center py-8">Nenhuma tarefa para hoje ou pendente.</p>
                 )}
                 </CardContent>
             </Card>
 
             <Card>
                 <CardHeader>
-                    <CardTitle>Todas as Tarefas</CardTitle>
-                    <CardDescription>Uma visão geral de todas as suas tarefas agendadas, ordenadas por prioridade.</CardDescription>
+                    <CardTitle>Todas as Tarefas Agendadas</CardTitle>
+                    <CardDescription>Uma visão geral de todas as suas tarefas futuras, ordenadas por prioridade.</CardDescription>
                 </CardHeader>
                 <CardContent>
                 {allMemberTasks.length > 0 ? (
