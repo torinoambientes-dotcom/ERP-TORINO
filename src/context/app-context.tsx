@@ -658,7 +658,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
                                 if (mat.id === reservationToCancel.materialId) {
                                     // eslint-disable-next-line @typescript-eslint/no-unused-vars
                                     const { stockItemId, ...rest } = mat;
-                                    return { ...rest, purchased: false }; // Marca como não comprado
+                                    return { 
+                                        ...rest, 
+                                        purchased: false, 
+                                        reservationCancelledAt: new Date().toISOString() 
+                                    };
                                 }
                                 return mat;
                             });

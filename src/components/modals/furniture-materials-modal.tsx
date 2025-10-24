@@ -57,6 +57,7 @@ const materialSchema = z.object({
       dispatchedAt: z.string(),
       memberId: z.string()
   })).optional(),
+  reservationCancelledAt: z.string().optional(),
 });
 
 const glassSchema = z.object({
@@ -122,14 +123,19 @@ const MaterialRow = ({ index, control, field, remove, update, stockItems }: any)
   const isFullyDispatched = field.stockItemId && totalDispatched >= field.quantity;
   const isPartiallyDispatched = field.stockItemId && totalDispatched > 0 && totalDispatched < field.quantity;
   const isPurchasedExternally = !field.stockItemId && field.purchased;
+  const reservationCancelled = field.reservationCancelledAt;
 
-  const isLocked = isFullyDispatched || isPurchasedExternally;
+  const isLocked = isFullyDispatched || isPurchasedExternally || reservationCancelled;
 
   let labelText = "Material";
   let containerClasses = "bg-muted/50";
   let statusText = null;
 
-  if (isFullyDispatched) {
+  if (reservationCancelled) {
+    labelText = "Material (Reserva Anulada)";
+    containerClasses = "bg-orange-100/60 border-orange-200";
+    statusText = `Anulado em: ${format(new Date(field.reservationCancelledAt), 'dd/MM/yyyy HH:mm')}`;
+  } else if (isFullyDispatched) {
       labelText = "Material (Despachado da Produção)";
       containerClasses = "bg-green-100/60 border-green-200";
       const lastDispatchDate = field.dispatches?.length > 0 
@@ -257,7 +263,7 @@ const MaterialRow = ({ index, control, field, remove, update, stockItems }: any)
         </Button>
       </div>
       {statusText && (
-          <p className={cn("text-xs font-medium pl-1", isFullyDispatched ? "text-green-700" : "text-yellow-700")}>{statusText}</p>
+          <p className={cn("text-xs font-medium pl-1", isFullyDispatched ? "text-green-700" : isPartiallyDispatched ? "text-yellow-700" : "text-orange-700")}>{statusText}</p>
       )}
     </div>
   );

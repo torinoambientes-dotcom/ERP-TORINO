@@ -160,6 +160,11 @@
         "dispatches": {
           "type": "array",
           "items": { "$ref": "#/entities/Dispatch" }
+        },
+        "reservationCancelledAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp for when a stock reservation for this item was cancelled."
         }
       },
       "required": ["id", "name", "quantity", "unit"]
@@ -278,11 +283,12 @@
         "priority": { "type": "string", "enum": ["low", "medium", "high"] },
         "dueDate": { "type": "string", "format": "date-time" },
         "assigneeIds": { "type": "array", "items": { "type": "string" } },
+        "creatorId": { "type": "string", "description": "ID of the team member who created the task." },
         "projectId": { "type": "string", "description": "Optional link to a project." },
         "environmentId": { "type": "string", "description": "Optional link to an environment." },
         "furnitureId": { "type": "string", "description": "Optional link to a piece of furniture." }
       },
-      "required": ["id", "title", "status", "priority", "assigneeIds"]
+      "required": ["id", "title", "status", "priority", "assigneeIds", "creatorId"]
     },
     "StockItem": {
       "title": "StockItem",

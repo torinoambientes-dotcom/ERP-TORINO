@@ -62,6 +62,7 @@ export interface MaterialItem {
   cost?: number; // Cost per unit for quote materials
   markup?: number;
   dispatches?: Dispatch[];
+  reservationCancelledAt?: string; // ISO date string
 }
 
 export interface GlassItem {
