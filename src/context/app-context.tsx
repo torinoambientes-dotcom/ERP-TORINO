@@ -45,7 +45,7 @@ interface AppContextType {
   handleStockAlert: (itemId: string, markAsHandled: boolean) => void;
   toggleItemPurchasedStatus: (itemType: 'glass' | 'door', itemId: string, projectId: string, envId: string, furId: string) => void;
   toggleMaterialPurchased: (projectId: string, envId: string, furId: string, materialId: string, purchased: boolean) => void;
-  clearAllReservations: () => void;
+  cancelStockReservation: (stockItemId: string, reservationToCancel: StockReservation) => void;
   dispatchItemToProduction: (stockItemId: string, reservation: StockReservation, memberId: string, marceneiroId: string) => void;
   registerPurchase: (itemId: string, quantity: number, supplier: string) => void;
   confirmStockReceipt: (item: StockItem) => void;
@@ -97,7 +97,7 @@ export const AppContext = createContext<AppContextType>({
   handleStockAlert: () => {},
   toggleItemPurchasedStatus: () => {},
   toggleMaterialPurchased: () => {},
-  clearAllReservations: () => {},
+  cancelStockReservation: () => {},
   dispatchItemToProduction: () => {},
   registerPurchase: () => {},
   confirmStockReceipt: () => {},
@@ -626,18 +626,56 @@ export function AppProvider({ children }: { children: ReactNode }) {
     updateProject({ ...project, environments: newEnvironments }, project);
   }, [projects, updateProject]);
 
-  const clearAllReservations = useCallback(async () => {
-    if (!firestore || !stockItems) return;
+  const cancelStockReservation = useCallback(async (stockItemId: string, reservationToCancel: StockReservation) => {
+    if (!firestore) return;
+    try {
+        await runTransaction(firestore, async (transaction) => {
+            const stockItemRef = doc(firestore, 'stock_items', stockItemId);
+            const projectRef = doc(firestore, 'projects', reservationToCancel.projectId);
 
-    const batch = writeBatch(firestore);
-    stockItems.forEach(item => {
-        if (item.reservations && item.reservations.length > 0) {
-            const stockItemRef = doc(firestore, 'stock_items', item.id);
-            batch.update(stockItemRef, { reservations: [] });
-        }
-    });
-    await batch.commit();
-  }, [firestore, stockItems]);
+            const stockItemDoc = await transaction.get(stockItemRef);
+            const projectDoc = await transaction.get(projectRef);
+
+            if (!stockItemDoc.exists() || !projectDoc.exists()) {
+                throw new Error("Item de estoque ou projeto não encontrado.");
+            }
+
+            const stockItemData = stockItemDoc.data() as StockItem;
+            const projectData = projectDoc.data() as Project;
+
+            // 1. Remove a reserva do item de estoque
+            const updatedReservations = (stockItemData.reservations || []).filter(
+                res => res.materialId !== reservationToCancel.materialId
+            );
+            transaction.update(stockItemRef, { reservations: updatedReservations });
+
+            // 2. Desvincula o material no projeto (remove stockItemId)
+            const newProjectEnvs = projectData.environments.map(env => {
+                if (env.id === reservationToCancel.environmentId) {
+                    const newFurnitures = env.furniture.map(fur => {
+                        if (fur.id === reservationToCancel.furnitureId) {
+                            const newMaterials = (fur.materials || []).map(mat => {
+                                if (mat.id === reservationToCancel.materialId) {
+                                    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                                    const { stockItemId, ...rest } = mat;
+                                    return { ...rest, purchased: false }; // Marca como não comprado
+                                }
+                                return mat;
+                            });
+                            return { ...fur, materials: newMaterials };
+                        }
+                        return fur;
+                    });
+                    return { ...env, furniture: newFurnitures };
+                }
+                return env;
+            });
+            transaction.update(projectRef, { environments: newProjectEnvs });
+        });
+    } catch (error) {
+        console.error("Falha ao cancelar reserva:", error);
+    }
+  }, [firestore]);
   
  const dispatchItemToProduction = useCallback(async (stockItemId: string, reservation: StockReservation, memberId: string, marceneiroId: string) => {
     if (!firestore || !teamMembers) return;
@@ -941,7 +979,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     handleStockAlert,
     toggleItemPurchasedStatus,
     toggleMaterialPurchased,
-    clearAllReservations,
+    cancelStockReservation,
     dispatchItemToProduction,
     registerPurchase,
     confirmStockReceipt,
@@ -1001,7 +1039,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     handleStockAlert,
     toggleItemPurchasedStatus,
     toggleMaterialPurchased,
-    clearAllReservations,
+    cancelStockReservation,
     dispatchItemToProduction,
     registerPurchase,
     confirmStockReceipt,

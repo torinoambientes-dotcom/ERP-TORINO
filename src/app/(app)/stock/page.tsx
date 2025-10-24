@@ -16,7 +16,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { AppContext } from '@/context/app-context';
 import { PageHeader } from '@/components/layout/page-header';
-import { PlusCircle, Edit, Trash2, ArrowRightLeft, History, AlertTriangle, ListOrdered, ShieldAlert, CheckCircle, PackageCheck, SendToBack, ChevronsUpDown, PackagePlus } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, ArrowRightLeft, History, AlertTriangle, ListOrdered, ShieldAlert, CheckCircle, PackageCheck, SendToBack, ChevronsUpDown, PackagePlus, XCircle } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -47,7 +47,7 @@ type SortOrder = 'name_asc' | 'demand_desc' | 'quantity_asc';
 
 export default function StockPage() {
   const router = useRouter();
-  const { stockItems, stockCategories, deleteStockItem, deleteStockCategory, isLoading, clearAllReservations, dispatchItemToProduction, confirmStockReceipt, teamMembers } = useContext(AppContext);
+  const { stockItems, stockCategories, deleteStockItem, deleteStockCategory, isLoading, cancelStockReservation, dispatchItemToProduction, confirmStockReceipt, teamMembers } = useContext(AppContext);
   const { toast } = useToast();
   const { user } = useUser();
 
@@ -79,7 +79,8 @@ export default function StockPage() {
   const [isCategoryAlertOpen, setCategoryAlertOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<string | undefined>(undefined);
 
-  const [isResetAlertOpen, setResetAlertOpen] = useState(false);
+  const [isReservationCancelAlertOpen, setReservationCancelAlertOpen] = useState(false);
+  const [reservationToCancel, setReservationToCancel] = useState<{item: StockItem, reservation: StockReservation} | null>(null);
   
   const [popoverOpenState, setPopoverOpenState] = useState<Record<string, boolean>>({});
   
@@ -202,14 +203,23 @@ export default function StockPage() {
     handleCloseCategoryAlert();
   };
 
-  const handleConfirmResetReservations = () => {
-    clearAllReservations();
-    toast({
-        title: 'Reservas Anuladas!',
-        description: 'Todas as reservas de estoque foram limpas com sucesso.',
-    });
-    setResetAlertOpen(false);
+  const handleOpenCancelReservationAlert = (item: StockItem, reservation: StockReservation) => {
+    setReservationToCancel({item, reservation});
+    setReservationCancelAlertOpen(true);
+  }
+
+  const handleConfirmCancelReservation = () => {
+    if(reservationToCancel){
+      cancelStockReservation(reservationToCancel.item.id, reservationToCancel.reservation);
+      toast({
+          title: 'Reserva Anulada!',
+          description: `A reserva para o projeto ${reservationToCancel.reservation.projectName} foi removida. O material agora precisa ser comprado manualmente.`,
+      });
+      setReservationToCancel(null);
+      setReservationCancelAlertOpen(false);
+    }
   };
+
 
   const handleOpenDispatchModal = (item: StockItem, reservation: StockReservation) => {
     setDispatchInfo({ item, reservation });
@@ -311,8 +321,11 @@ export default function StockPage() {
                                         <p className="text-xs text-muted-foreground truncate">{res.furnitureName}</p>
                                       </Link>
                                   </div>
-                                  <div className="flex items-center gap-2 flex-shrink-0">
+                                  <div className="flex items-center gap-1 flex-shrink-0">
                                     <p className="font-mono">{res.quantity} {item.unit}</p>
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10" onClick={() => handleOpenCancelReservationAlert(item, res)}>
+                                        <XCircle className="h-4 w-4" />
+                                    </Button>
                                     <Button size="sm" variant="default" onClick={() => handleOpenDispatchModal(item, res)}>
                                       <SendToBack className="mr-2 h-4 w-4" />
                                       Despachar
@@ -368,7 +381,7 @@ export default function StockPage() {
         )})}
       </div>
     );
-  }, [stockItems, sortOrder, popoverOpenState, togglePopover, handleOpenDispatchModal, handleOpenHistoryModal, handleOpenMovementModal, handleOpenRegisterModal, handleOpenAlert]);
+  }, [stockItems, sortOrder, popoverOpenState, togglePopover, handleOpenCancelReservationAlert, handleOpenDispatchModal, handleOpenHistoryModal, handleOpenMovementModal, handleOpenRegisterModal, handleOpenAlert]);
 
 
   if (isLoading || !loggedInMember) {
@@ -392,14 +405,6 @@ export default function StockPage() {
             description="Gerencie os materiais da sua marcenaria."
           />
           <div className="flex gap-2 w-full sm:w-auto">
-             <Button
-              onClick={() => setResetAlertOpen(true)}
-              variant="destructive"
-              className="flex-1 sm:flex-initial"
-            >
-              <ShieldAlert className="mr-2 h-4 w-4" />
-              Anular Reservas
-            </Button>
             <Button
               onClick={() => setCategoryModalOpen(true)}
               variant="outline"
@@ -578,26 +583,21 @@ export default function StockPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      
-      <AlertDialog open={isResetAlertOpen} onOpenChange={setResetAlertOpen}>
+
+      <AlertDialog open={isReservationCancelAlertOpen} onOpenChange={setReservationCancelAlertOpen}>
         <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Anular Todas as Reservas?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Esta ação é irreversível e removerá todas as reservas de todos os itens do estoque. Use isto para corrigir dados inconsistentes. As reservas corretas serão recriadas quando os projetos forem salvos novamente.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setResetAlertOpen(false)}>
-              Cancelar
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleConfirmResetReservations}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Sim, anular todas
-            </AlertDialogAction>
-          </AlertDialogFooter>
+            <AlertDialogHeader>
+                <AlertDialogTitle>Anular Reserva?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Esta ação não pode ser desfeita. A reserva de <span className="font-bold">{reservationToCancel?.reservation.quantity} {reservationToCancel?.item.unit}(s)</span> para o projeto <span className="font-bold">{reservationToCancel?.reservation.projectName}</span> será removida. O material terá de ser comprado manualmente.
+                </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+                <AlertDialogCancel onClick={() => setReservationCancelAlertOpen(false)}>Cancelar</AlertDialogCancel>
+                <AlertDialogAction onClick={handleConfirmCancelReservation} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                    Sim, anular reserva
+                </AlertDialogAction>
+            </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
