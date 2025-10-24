@@ -218,6 +218,11 @@ export default function PurchasesPage() {
                         if (isPurchased) {
                             return false; // Hide if already purchased in "to buy" list
                         }
+                        
+                        // If reservation was cancelled, do not include in shopping list
+                        if (m.reservationCancelledAt) {
+                            return false;
+                        }
 
                         if (!m.stockItemId) {
                             return true; // Not a stock item, needs to be bought
@@ -375,7 +380,7 @@ export default function PurchasesPage() {
         p.environments.forEach(e => {
             e.furniture.forEach(f => {
                 (f.materials || []).forEach(m => {
-                    if (m.purchased) return;
+                    if (m.purchased || m.reservationCancelledAt) return;
                     if (!m.stockItemId) {
                         materialsCount++;
                         return;
@@ -649,11 +654,9 @@ export default function PurchasesPage() {
                   <div className="flex items-center gap-2">
                     <p className='font-semibold text-base'>{req.description} - {req.quantity} {req.unit}</p>
                     {req.projectId && req.projectName && (
-                       <Link href={`/projects/${req.projectId}`} passHref legacyBehavior>
-                          <a target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-blue-600 hover:underline">
-                              <LinkIcon className="h-3 w-3" />
-                              {req.projectName}
-                          </a>
+                       <Link href={`/projects/${req.projectId}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-blue-600 hover:underline">
+                          <LinkIcon className="h-3 w-3" />
+                          {req.projectName}
                         </Link>
                     )}
                   </div>
