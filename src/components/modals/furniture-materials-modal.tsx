@@ -58,6 +58,7 @@ const materialSchema = z.object({
       memberId: z.string()
   })).optional(),
   reservationCancelledAt: z.string().optional(),
+  reservationCancellationReason: z.string().optional(),
 });
 
 const glassSchema = z.object({
@@ -134,7 +135,7 @@ const MaterialRow = ({ index, control, field, remove, update, stockItems }: any)
   if (reservationCancelled) {
     labelText = "Material (Reserva Anulada)";
     containerClasses = "bg-orange-100/60 border-orange-200";
-    statusText = `Anulado em: ${format(new Date(field.reservationCancelledAt), 'dd/MM/yyyy HH:mm')}`;
+    statusText = `Anulado em: ${format(new Date(field.reservationCancelledAt), 'dd/MM/yyyy HH:mm')} - Motivo: ${field.reservationCancellationReason || 'Não especificado'}`;
   } else if (isFullyDispatched) {
       labelText = "Material (Despachado da Produção)";
       containerClasses = "bg-green-100/60 border-green-200";

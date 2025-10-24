@@ -160,6 +160,15 @@
         "dispatches": {
           "type": "array",
           "items": { "$ref": "#/entities/Dispatch" }
+        },
+        "reservationCancelledAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp for when a stock reservation for this item was cancelled."
+        },
+        "reservationCancellationReason": {
+          "type": "string",
+          "description": "The reason why a stock reservation was cancelled."
         }
       },
       "required": ["id", "name", "quantity", "unit"]

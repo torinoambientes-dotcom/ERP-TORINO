@@ -42,6 +42,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { DispatchConfirmationModal } from '@/components/modals/dispatch-confirmation-modal';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 
 type SortOrder = 'name_asc' | 'demand_desc' | 'quantity_asc';
 
@@ -81,6 +82,7 @@ export default function StockPage() {
 
   const [isReservationCancelAlertOpen, setReservationCancelAlertOpen] = useState(false);
   const [reservationToCancel, setReservationToCancel] = useState<{item: StockItem, reservation: StockReservation} | null>(null);
+  const [cancellationReason, setCancellationReason] = useState('');
   
   const [popoverOpenState, setPopoverOpenState] = useState<Record<string, boolean>>({});
   
@@ -205,15 +207,24 @@ export default function StockPage() {
 
   const handleOpenCancelReservationAlert = (item: StockItem, reservation: StockReservation) => {
     setReservationToCancel({item, reservation});
+    setCancellationReason('');
     setReservationCancelAlertOpen(true);
   }
 
   const handleConfirmCancelReservation = () => {
     if(reservationToCancel){
-      cancelStockReservation(reservationToCancel.item.id, reservationToCancel.reservation);
+      if(!cancellationReason.trim()) {
+        toast({
+          variant: 'destructive',
+          title: 'Motivo obrigatório',
+          description: 'Por favor, insira o motivo da anulação.',
+        });
+        return;
+      }
+      cancelStockReservation(reservationToCancel.item.id, reservationToCancel.reservation, cancellationReason);
       toast({
           title: 'Reserva Anulada!',
-          description: `A reserva para o projeto ${reservationToCancel.reservation.projectName} foi removida. O material agora precisa ser comprado manualmente.`,
+          description: `A reserva para o projeto ${reservationToCancel.reservation.projectName} foi removida. O material agora precisa ser comprado manually.`,
       });
       setReservationToCancel(null);
       setReservationCancelAlertOpen(false);
@@ -589,9 +600,16 @@ export default function StockPage() {
             <AlertDialogHeader>
                 <AlertDialogTitle>Anular Reserva?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  Esta ação não pode ser desfeita. A reserva de <span className="font-bold">{reservationToCancel?.reservation.quantity} {reservationToCancel?.item.unit}(s)</span> para o projeto <span className="font-bold">{reservationToCancel?.reservation.projectName}</span> será removida. O material terá de ser comprado manualmente.
+                  Tem certeza de que deseja anular a reserva de <span className="font-bold">{reservationToCancel?.reservation.quantity} {reservationToCancel?.item.unit}(s)</span> para o projeto <span className="font-bold">{reservationToCancel?.reservation.projectName}</span>? O material terá de ser comprado manualmente.
                 </AlertDialogDescription>
             </AlertDialogHeader>
+            <div className="py-4">
+                <Textarea 
+                    placeholder="Motivo da anulação (obrigatório)" 
+                    value={cancellationReason}
+                    onChange={(e) => setCancellationReason(e.target.value)}
+                />
+            </div>
             <AlertDialogFooter>
                 <AlertDialogCancel onClick={() => setReservationCancelAlertOpen(false)}>Cancelar</AlertDialogCancel>
                 <AlertDialogAction onClick={handleConfirmCancelReservation} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">

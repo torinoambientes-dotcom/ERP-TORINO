@@ -45,7 +45,7 @@ interface AppContextType {
   handleStockAlert: (itemId: string, markAsHandled: boolean) => void;
   toggleItemPurchasedStatus: (itemType: 'glass' | 'door', itemId: string, projectId: string, envId: string, furId: string) => void;
   toggleMaterialPurchased: (projectId: string, envId: string, furId: string, materialId: string, purchased: boolean) => void;
-  cancelStockReservation: (stockItemId: string, reservationToCancel: StockReservation) => void;
+  cancelStockReservation: (stockItemId: string, reservationToCancel: StockReservation, reason: string) => void;
   dispatchItemToProduction: (stockItemId: string, reservation: StockReservation, memberId: string, marceneiroId: string) => void;
   registerPurchase: (itemId: string, quantity: number, supplier: string) => void;
   confirmStockReceipt: (item: StockItem) => void;
@@ -626,7 +626,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     updateProject({ ...project, environments: newEnvironments }, project);
   }, [projects, updateProject]);
 
-  const cancelStockReservation = useCallback(async (stockItemId: string, reservationToCancel: StockReservation) => {
+  const cancelStockReservation = useCallback(async (stockItemId: string, reservationToCancel: StockReservation, reason: string) => {
     if (!firestore) return;
     try {
         await runTransaction(firestore, async (transaction) => {
@@ -649,7 +649,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             );
             transaction.update(stockItemRef, { reservations: updatedReservations });
 
-            // 2. Desvincula o material no projeto (remove stockItemId)
+            // 2. Desvincula o material no projeto (remove stockItemId) e adiciona o motivo da anulação
             const newProjectEnvs = projectData.environments.map(env => {
                 if (env.id === reservationToCancel.environmentId) {
                     const newFurnitures = env.furniture.map(fur => {
@@ -661,7 +661,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
                                     return { 
                                         ...rest, 
                                         purchased: false, 
-                                        reservationCancelledAt: new Date().toISOString() 
+                                        reservationCancelledAt: new Date().toISOString(),
+                                        reservationCancellationReason: reason,
                                     };
                                 }
                                 return mat;

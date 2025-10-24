@@ -63,6 +63,7 @@ export interface MaterialItem {
   markup?: number;
   dispatches?: Dispatch[];
   reservationCancelledAt?: string; // ISO date string
+  reservationCancellationReason?: string;
 }
 
 export interface GlassItem {
