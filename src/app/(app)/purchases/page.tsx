@@ -180,7 +180,7 @@ export default function PurchasesPage() {
   const lowStockItems = useMemo((): LowStockInfo[] => {
     return stockItems
       .map(item => {
-        const totalReserved = (item.reservations || []).reduce((acc, res) => acc + res.quantity, 0);
+        const totalReserved = (item.reservations || []).reduce((acc, res) => acc + Number(res.quantity), 0);
         const quantityAwaitingReceipt = item.awaitingReceipt?.quantity || 0;
         const potentialStock = item.quantity + quantityAwaitingReceipt;
 
