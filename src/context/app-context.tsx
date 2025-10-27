@@ -704,16 +704,29 @@ export function AppProvider({ children }: { children: ReactNode }) {
             const stockItem = stockItemDoc.data() as StockItem;
             const project = projectDoc.data() as Project;
             
-            const dispatchQuantity = reservation.quantity;
+            const dispatchQuantity = Math.min(reservation.quantity, stockItem.quantity);
 
-            if (stockItem.quantity < dispatchQuantity) {
-                throw new Error(`Estoque insuficiente para "${stockItem.name}". Necessário: ${dispatchQuantity}, Disponível: ${stockItem.quantity}.`);
+            if (dispatchQuantity <= 0) {
+                 throw new Error(`Estoque de "${stockItem.name}" está zerado. Não é possível despachar.`);
             }
             
             const newStockQuantity = stockItem.quantity - dispatchQuantity;
-            const finalReservations = (stockItem.reservations || []).filter(
-                res => res.materialId !== reservation.materialId
-            );
+            const remainingReservationQty = reservation.quantity - dispatchQuantity;
+
+            let finalReservations = stockItem.reservations || [];
+            if (remainingReservationQty <= 0) {
+                // Remove reservation if fully dispatched
+                finalReservations = finalReservations.filter(
+                    res => res.materialId !== reservation.materialId
+                );
+            } else {
+                // Update reservation with remaining quantity
+                finalReservations = finalReservations.map(res => 
+                    res.materialId === reservation.materialId 
+                        ? { ...res, quantity: remainingReservationQty } 
+                        : res
+                );
+            }
 
             transaction.update(stockItemRef, { 
                 quantity: newStockQuantity,
