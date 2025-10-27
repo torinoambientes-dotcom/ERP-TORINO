@@ -33,6 +33,7 @@ import type { StockItem, StockReservation, TeamMember } from '@/lib/types';
 import { Truck } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { getInitials } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
 
 const dispatchSchema = z.object({
   marceneiroId: z.string().min(1, 'É obrigatório selecionar um marceneiro.'),
@@ -45,7 +46,7 @@ interface DispatchConfirmationModalProps {
   onClose: () => void;
   item: StockItem;
   reservation: StockReservation;
-  onConfirm: (stockItemId: string, reservation: StockReservation, marceneiroId: string) => void;
+  onConfirm: (stockItemId: string, reservation: StockReservation, marceneiroId: string) => Promise<void>;
 }
 
 export function DispatchConfirmationModal({
@@ -57,6 +58,7 @@ export function DispatchConfirmationModal({
 }: DispatchConfirmationModalProps) {
   const { teamMembers } = useContext(AppContext);
   const marceneiros = teamMembers.filter((m) => m.role === 'Marceneiro');
+  const { toast } = useToast();
 
   const form = useForm<DispatchFormValues>({
     resolver: zodResolver(dispatchSchema),
@@ -65,9 +67,21 @@ export function DispatchConfirmationModal({
     },
   });
 
-  const onSubmit = (data: DispatchFormValues) => {
-    onConfirm(item.id, reservation, data.marceneiroId);
-    onClose();
+  const onSubmit = async (data: DispatchFormValues) => {
+    try {
+      await onConfirm(item.id, reservation, data.marceneiroId);
+      toast({
+          title: 'Item Despachado para Produção!',
+          description: `Foi dada a baixa no estoque para a reserva do projeto ${reservation.projectName}.`
+      });
+      onClose();
+    } catch (error: any) {
+        toast({
+            variant: "destructive",
+            title: "Erro ao dar baixa no estoque",
+            description: error.message || "Não foi possível completar a operação."
+        });
+    }
   };
 
   return (

@@ -46,7 +46,7 @@ interface AppContextType {
   toggleItemPurchasedStatus: (itemType: 'glass' | 'door', itemId: string, projectId: string, envId: string, furId: string) => void;
   toggleMaterialPurchased: (projectId: string, envId: string, furId: string, materialId: string, purchased: boolean) => void;
   cancelStockReservation: (stockItemId: string, reservationToCancel: StockReservation, reason: string) => void;
-  dispatchItemToProduction: (stockItemId: string, reservation: StockReservation, memberId: string, marceneiroId: string) => void;
+  dispatchItemToProduction: (stockItemId: string, reservation: StockReservation, memberId: string, marceneiroId: string) => Promise<void>;
   registerPurchase: (itemId: string, quantity: number, supplier: string) => void;
   confirmStockReceipt: (item: StockItem) => void;
   addPurchaseRequest: (requestData: Omit<PurchaseRequest, 'id' | 'createdAt' | 'updatedAt' | 'status'>) => void;
@@ -98,7 +98,7 @@ export const AppContext = createContext<AppContextType>({
   toggleItemPurchasedStatus: () => {},
   toggleMaterialPurchased: () => {},
   cancelStockReservation: () => {},
-  dispatchItemToProduction: () => {},
+  dispatchItemToProduction: async () => {},
   registerPurchase: () => {},
   confirmStockReceipt: () => {},
   addPurchaseRequest: () => {},
@@ -682,12 +682,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [firestore]);
   
- const dispatchItemToProduction = useCallback(async (stockItemId: string, reservation: StockReservation, memberId: string, marceneiroId: string) => {
+  const dispatchItemToProduction = useCallback(async (stockItemId: string, reservation: StockReservation, memberId: string, marceneiroId: string) => {
     if (!firestore || !teamMembers) return;
     const marceneiro = teamMembers.find(m => m.id === marceneiroId);
     if (!marceneiro) {
-        console.error("Marceneiro não encontrado!");
-        return;
+        throw new Error("Marceneiro não encontrado!");
     }
 
     try {
@@ -705,33 +704,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
             const stockItem = stockItemDoc.data() as StockItem;
             const project = projectDoc.data() as Project;
             
-            // Determinar a quantidade a ser despachada
-            const dispatchQuantity = Math.min(stockItem.quantity, reservation.quantity);
-            if (dispatchQuantity <= 0) {
-                console.log("No stock to dispatch or reservation already fulfilled.");
-                return;
+            const dispatchQuantity = reservation.quantity;
+
+            if (stockItem.quantity < dispatchQuantity) {
+                throw new Error(`Estoque insuficiente para "${stockItem.name}". Necessário: ${dispatchQuantity}, Disponível: ${stockItem.quantity}.`);
             }
             
-            // 1. Atualizar o item do estoque
             const newStockQuantity = stockItem.quantity - dispatchQuantity;
-            const finalReservations: StockReservation[] = [];
-            for (const res of stockItem.reservations || []) {
-                if (res.materialId === reservation.materialId) {
-                    const newResQuantity = res.quantity - dispatchQuantity;
-                    if (newResQuantity > 0.001) { // Use a small epsilon for float comparison
-                        finalReservations.push({ ...res, quantity: newResQuantity });
-                    }
-                    // Se a quantidade for <= 0, a reserva é simplesmente omitida, removendo-a.
-                } else {
-                    finalReservations.push(res);
-                }
-            }
+            const finalReservations = (stockItem.reservations || []).filter(
+                res => res.materialId !== reservation.materialId
+            );
+
             transaction.update(stockItemRef, { 
                 quantity: newStockQuantity,
                 reservations: finalReservations,
             });
 
-            // 2. Atualizar o item do projeto com o registro de despacho
             const newProject = JSON.parse(JSON.stringify(project));
             const env = newProject.environments.find((e: Environment) => e.id === reservation.environmentId);
             const fur = env?.furniture.find((f: Furniture) => f.id === reservation.furnitureId);
@@ -745,7 +733,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 };
                 materialToDispatch.dispatches = [...(materialToDispatch.dispatches || []), newDispatch];
                 
-                // Opcional: Marcar como 'comprado' quando totalmente despachado
                 const totalDispatched = (materialToDispatch.dispatches).reduce((acc: number, d: Dispatch) => acc + d.quantity, 0);
                 if (totalDispatched >= materialToDispatch.quantity) {
                     materialToDispatch.purchased = true;
@@ -755,7 +742,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
                  throw new Error("Material a ser despachado não encontrado no projeto.");
             }
 
-            // 3. Adicionar movimento ao histórico
             const movementId = generateId('move');
             const movementDetails = `Projeto: ${reservation.projectName} | Entregue para: ${marceneiro.name}`;
             const newMovement: StockMovement = {
