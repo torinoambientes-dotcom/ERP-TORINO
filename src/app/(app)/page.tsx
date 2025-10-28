@@ -271,7 +271,7 @@ export default function DashboardPage() {
     }
     return stockItems
       .map(item => {
-        const totalReserved = (item.reservations || []).reduce((acc, res) => acc + res.quantity, 0);
+        const totalReserved = (item.reservations || []).reduce((acc, res) => acc + Number(res.quantity), 0);
         const quantityAwaitingReceipt = item.awaitingReceipt?.quantity || 0;
         const potentialStock = item.quantity + quantityAwaitingReceipt;
 
@@ -491,12 +491,23 @@ export default function DashboardPage() {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-2">
-                      {lowStockItems.slice(0, 3).map(item => (
-                        <div key={item.id} className="p-2 rounded-lg border border-destructive-foreground/20 bg-background/10 flex justify-between items-center text-sm">
-                          <p className="font-semibold">{item.name}</p>
-                          <p className='font-bold'>Restam: {item.quantity} {item.unit}</p>
-                        </div>
-                      ))}
+                      {lowStockItems.slice(0, 3).map(item => {
+                        const potentialStock = item.quantity + (item.awaitingReceipt?.quantity || 0);
+                        const hasDemandAlert = (item.demand || 0) > potentialStock;
+                        return (
+                          <div key={item.id} className="p-2 rounded-lg border border-destructive-foreground/20 bg-background/10 flex justify-between items-center text-sm">
+                            <div>
+                                <p className="font-semibold">{item.name}</p>
+                                <p className="text-xs text-destructive-foreground/80">
+                                    {hasDemandAlert
+                                    ? `Demanda (${item.demand}) > Estoque (${item.quantity})`
+                                    : `Disponível: ${item.quantity} (Mín: ${item.minStock})`}
+                                </p>
+                            </div>
+                            <p className='font-bold'>Restam: {item.quantity} {item.unit}</p>
+                          </div>
+                        )
+                      })}
                     </div>
                      <div className='text-center mt-4'>
                         <Button asChild variant="outline" className="bg-destructive-foreground text-destructive hover:bg-destructive-foreground/90 hover:text-destructive">
@@ -640,3 +651,5 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    
