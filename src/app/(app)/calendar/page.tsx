@@ -69,6 +69,11 @@ export default function CalendarPage() {
   const [isTaskListModalOpen, setTaskListModalOpen] = useState(false);
   const [isDetailsModalOpen, setDetailsModalOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<CalendarTask | null>(null);
+  
+  const [isClient, setIsClient] = useState(false);
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   const memberMap = useMemo(() => {
     const map = new Map<string, TeamMember>();
@@ -343,7 +348,7 @@ export default function CalendarPage() {
   }, [dayModifiers]);
 
 
-  if (isLoading) {
+  if (isLoading || !isClient) {
     return (
       <div className="flex h-full w-full items-center justify-center">
         <p>Carregando calendário...</p>
@@ -488,12 +493,13 @@ export default function CalendarPage() {
 
 function DailyTaskList({ day, tasks, dayKey, handleTaskClick, getTaskTime }: { day: Date, tasks: CalendarTask[], dayKey: string, handleTaskClick: (task: CalendarTask) => void, getTaskTime: (task: CalendarTask) => string }) {
     const { setNodeRef, isOver } = useSortable({ id: dayKey, data: { dayKey } });
+    const isToday = isSameDay(day, new Date());
     
     return (
         <div ref={setNodeRef} className={cn("rounded-lg p-2 transition-colors", isOver ? "bg-muted" : "")}>
             <h2 className="font-semibold text-lg capitalize flex items-center gap-2">
                 {format(day, 'eeee, dd/MM', { locale: ptBR })}
-                {isSameDay(day, new Date()) && <span className="text-xs font-bold text-primary">(Hoje)</span>}
+                {isToday && <span className="text-xs font-bold text-primary">(Hoje)</span>}
             </h2>
             <Separator className="my-2" />
             <SortableContext items={tasks.map(t => t.id)} strategy={verticalListSortingStrategy}>

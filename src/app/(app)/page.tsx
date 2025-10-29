@@ -1,5 +1,5 @@
 'use client';
-import { useContext, useMemo, useCallback } from 'react';
+import { useContext, useMemo, useCallback, useState, useEffect } from 'react';
 import Link from 'next/link';
 import { AppContext } from '@/context/app-context';
 import { useUser } from '@/firebase';
@@ -41,6 +41,12 @@ export default function DashboardPage() {
   const { user } = useUser();
   const { projects, teamMembers, appointments, tasks: allTasks, purchaseRequests, stockItems, isLoading, updateProject, updateTaskStatus, deleteAppointment } = useContext(AppContext);
   const { toast } = useToast();
+  
+  const [isClient, setIsClient] = useState(false);
+  
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   const loggedInMember = useMemo(() => {
     if (!user || !teamMembers) return null;
@@ -320,11 +326,14 @@ export default function DashboardPage() {
   }
   
   const getGreeting = () => {
+    if (!isClient) return 'Olá';
     const hour = new Date().getHours();
     if (hour < 12) return 'Bom dia';
     if (hour < 18) return 'Boa tarde';
     return 'Boa noite';
   }
+
+  const todayFormatted = isClient ? format(new Date(), "eeee, dd 'de' MMMM", { locale: ptBR }) : '...';
 
   return (
     <div className="space-y-8">
@@ -348,7 +357,7 @@ export default function DashboardPage() {
             <Card>
                 <CardHeader>
                     <CardTitle>Minhas Tarefas do Dia e Pendentes</CardTitle>
-                    <CardDescription>{format(new Date(), "eeee, dd 'de' MMMM", { locale: ptBR })}</CardDescription>
+                    <CardDescription>{todayFormatted}</CardDescription>
                 </CardHeader>
                 <CardContent>
                 {todaysTasks.length > 0 ? (
@@ -396,7 +405,6 @@ export default function DashboardPage() {
                 {allMemberTasks.length > 0 ? (
                     <ul className="space-y-3 max-h-96 overflow-y-auto pr-2">
                     {allMemberTasks.map(task => {
-                        const isCompletable = true; // All tasks here are potentially completable
                         const isCompleted = isTaskCompleted(task);
                         
                         return (
