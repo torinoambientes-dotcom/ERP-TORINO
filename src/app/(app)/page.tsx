@@ -274,7 +274,6 @@ export default function DashboardPage() {
         const totalReserved = (item.reservations || []).reduce((acc, res) => acc + Number(res.quantity), 0);
         const quantityAwaitingReceipt = item.awaitingReceipt?.quantity || 0;
         const potentialStock = item.quantity + quantityAwaitingReceipt;
-
         const hasMinStockAlert = typeof item.minStock === 'number' && item.quantity < item.minStock && !item.awaitingReceipt;
         const hasDemandAlert = totalReserved > potentialStock;
 
@@ -500,7 +499,7 @@ export default function DashboardPage() {
                                 <p className="font-semibold">{item.name}</p>
                                 <p className="text-xs text-destructive-foreground/80">
                                     {hasDemandAlert
-                                    ? `Demanda (${item.demand}) > Estoque (${item.quantity})`
+                                    ? `Demanda (${item.demand}) > Estoque (${potentialStock})`
                                     : `Disponível: ${item.quantity} (Mín: ${item.minStock})`}
                                 </p>
                             </div>
@@ -651,5 +650,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-    
