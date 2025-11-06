@@ -1,44 +1,38 @@
 'use client';
-
-import React, { createContext, useContext, useMemo, type ReactNode } from 'react';
-import type { FirebaseApp } from 'firebase/app';
+import { createContext, useContext, useEffect, useMemo, type ReactNode } from 'react';
+import { initializeFirebase } from './index';
 import type { Auth, User } from 'firebase/auth';
 import type { Firestore } from 'firebase/firestore';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener';
 
 interface FirebaseContextValue {
-  firebaseApp: FirebaseApp | null;
-  auth: Auth | null;
-  firestore: Firestore | null;
+  auth: Auth;
+  firestore: Firestore;
+  user: User | null | undefined;
+  isUserLoading: boolean;
 }
 
 const FirebaseContext = createContext<FirebaseContextValue | undefined>(undefined);
 
-interface FirebaseProviderProps {
-  children: ReactNode;
-  firebaseApp: FirebaseApp;
-  auth: Auth;
-  firestore: Firestore;
-}
+export function FirebaseProvider({ children }: { children: ReactNode }) {
+  const { auth, firestore } = useMemo(() => initializeFirebase(), []);
+  const [user, isUserLoading] = useAuthState(auth!);
 
-export function FirebaseProvider({
-  children,
-  firebaseApp,
-  auth,
-  firestore,
-}: FirebaseProviderProps) {
-  const contextValue = useMemo(
-    () => ({
-      firebaseApp,
-      auth,
-      firestore,
-    }),
-    [firebaseApp, auth, firestore]
-  );
+  // This ensures that we don't render anything until Firebase is initialized on the client.
+  if (!auth || !firestore) {
+    return <div className="flex h-screen w-full items-center justify-center"><p>Conectando ao sistema...</p></div>;
+  }
+
+  const value: FirebaseContextValue = {
+    auth,
+    firestore,
+    user,
+    isUserLoading,
+  };
 
   return (
-    <FirebaseContext.Provider value={contextValue}>
+    <FirebaseContext.Provider value={value}>
       {children}
       <FirebaseErrorListener />
     </FirebaseContext.Provider>
@@ -54,42 +48,17 @@ export function useFirebase() {
 }
 
 export function useAuth() {
-  const { auth } = useFirebase();
-  if (!auth) {
+  const context = useFirebase();
+  if (!context.auth) {
     throw new Error('Firebase Auth not available. Check FirebaseProvider props.');
   }
-  return auth;
-}
-
-export function useUser(): { user: User | null | undefined, isUserLoading: boolean } {
-  const auth = useAuth();
-  const [user, loading] = useAuthState(auth);
-  return { user, isUserLoading: loading };
+  return context.auth;
 }
 
 export function useFirestore() {
-  const { firestore } = useFirebase();
-  if (!firestore) {
+  const context = useFirebase();
+  if (!context.firestore) {
     throw new Error('Firestore not available. Check FirebaseProvider props.');
   }
-  return firestore;
+  return context.firestore;
 }
-
-export function useFirebaseApp() {
-    const { firebaseApp } = useFirebase();
-    if (!firebaseApp) {
-        throw new Error('Firebase App not available. Check FirebaseProvider props.');
-    }
-    return firebaseApp;
-}
-
-export function useMemoFirebase<T>(
-    factory: () => T,
-    deps: React.DependencyList,
-  ): (T & {__memo?: boolean}) | null {
-    const result = React.useMemo(factory, deps);
-    if(result) {
-      (result as any).__memo = true;
-    }
-    return result;
-  }

@@ -78,6 +78,7 @@ export function SidebarNav() {
 
   const pendingPurchasesCount = useMemo(() => {
     let count = 0;
+    if (!projects || !stockItems || !purchaseRequests) return 0;
 
     // 1. Low Stock Items (only if not handled and not awaiting receipt)
     count += stockItems.filter(item => {
