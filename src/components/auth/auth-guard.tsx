@@ -17,7 +17,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   if (isUserLoading || !user) {
     return (
       <div className="flex h-screen w-full items-center justify-center">
-        <p>Carregando...</p>
+        <p>A carregar...</p>
       </div>
     );
   }
