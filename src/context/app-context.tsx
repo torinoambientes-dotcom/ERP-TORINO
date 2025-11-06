@@ -184,6 +184,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const teamMembers = useMemo(() => teamMembersData || [], [teamMembersData]);
   const stockCategories = useMemo(() => stockCategoriesData || [], [stockCategoriesData]);
+  const isLoading = isLoadingProjects || isLoadingTeamMembers || isLoadingAppointments || isLoadingTasks || isLoadingStockItems || isLoadingStockCategories || isLoadingMovements || isLoadingPurchaseRequests || isLoadingQuotes || isLoadingQuoteMaterials || isLoadingQuoteMaterialCategories;
   
   const addProject = useCallback((projectData: Omit<Project, 'id' | 'environments'> & { environments: Array<Omit<Project['environments'][0], 'id' | 'furniture'> & { furniture: Array<Omit<Furniture, 'id' | 'measurement' | 'cutting' | 'purchase' | 'assembly' | 'comments' | 'pendencies' | 'materials' | 'glassItems' | 'profileDoors'>>}>}) => {
     if (!firestore) return;
@@ -964,7 +965,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     quotes: quotes || [],
     quoteMaterials: quoteMaterials || [],
     quoteMaterialCategories: quoteMaterialCategories || [],
-    isLoading: isLoadingProjects || isLoadingTeamMembers || isLoadingAppointments || isLoadingTasks || isLoadingStockItems || isLoadingStockCategories || isLoadingMovements || isLoadingPurchaseRequests || isLoadingQuotes || isLoadingQuoteMaterials || isLoadingQuoteMaterialCategories,
+    isLoading,
     addProject,
     updateProject,
     deleteProject,
@@ -1014,17 +1015,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     quotes,
     quoteMaterials,
     quoteMaterialCategories,
-    isLoadingProjects, 
-    isLoadingTeamMembers, 
-    isLoadingAppointments,
-    isLoadingTasks,
-    isLoadingStockItems,
-    isLoadingStockCategories,
-    isLoadingMovements,
-    isLoadingPurchaseRequests,
-    isLoadingQuotes,
-    isLoadingQuoteMaterials,
-    isLoadingQuoteMaterialCategories,
+    isLoading,
     addProject, 
     updateProject, 
     deleteProject, 

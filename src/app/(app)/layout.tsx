@@ -12,21 +12,21 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   // Conditionally apply AppShell based on the route
   if (pathname === '/factory-display/play') {
     return (
-      <AuthGuard>
-        <AppProvider>
+      <AppProvider>
+        <AuthGuard>
           <TooltipProvider>{children}</TooltipProvider>
-        </AppProvider>
-      </AuthGuard>
+        </AuthGuard>
+      </AppProvider>
     );
   }
 
   return (
-    <AuthGuard>
-      <AppProvider>
+    <AppProvider>
+      <AuthGuard>
         <TooltipProvider>
           <AppShell>{children}</AppShell>
         </TooltipProvider>
-      </AppProvider>
-    </AuthGuard>
+      </AuthGuard>
+    </AppProvider>
   );
 }
