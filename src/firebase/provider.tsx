@@ -1,5 +1,5 @@
 'use client';
-import { createContext, useContext, useEffect, useMemo, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { initializeFirebase } from './index';
 import type { Auth, User } from 'firebase/auth';
 import type { Firestore } from 'firebase/firestore';
@@ -15,27 +15,48 @@ interface FirebaseContextValue {
 
 const FirebaseContext = createContext<FirebaseContextValue | undefined>(undefined);
 
-export function FirebaseProvider({ children }: { children: ReactNode }) {
-  const { auth, firestore } = useMemo(() => initializeFirebase(), []);
-  const [user, isUserLoading] = useAuthState(auth!);
+// A new component to handle the auth state logic safely.
+function AuthStateProvider({ auth, firestore, children }: { auth: Auth, firestore: Firestore, children: ReactNode }) {
+    const [user, isUserLoading] = useAuthState(auth);
 
-  // This ensures that we don't render anything until Firebase is initialized on the client.
-  if (!auth || !firestore) {
+    const value: FirebaseContextValue = {
+        auth,
+        firestore,
+        user,
+        isUserLoading,
+    };
+
+    return (
+        <FirebaseContext.Provider value={value}>
+            {children}
+            <FirebaseErrorListener />
+        </FirebaseContext.Provider>
+    );
+}
+
+
+export function FirebaseProvider({ children }: { children: ReactNode }) {
+  const [firebaseServices, setFirebaseServices] = useState<{ auth: Auth; firestore: Firestore; } | null>(null);
+
+  useEffect(() => {
+    // initializeFirebase now correctly returns null on server,
+    // so we only call it inside useEffect which runs on the client.
+    const services = initializeFirebase();
+    if (services.auth && services.firestore) {
+      setFirebaseServices({ auth: services.auth, firestore: services.firestore });
+    }
+  }, []);
+
+  // Render a loading state until Firebase is fully initialized on the client.
+  if (!firebaseServices) {
     return <div className="flex h-screen w-full items-center justify-center"><p>Conectando ao sistema...</p></div>;
   }
 
-  const value: FirebaseContextValue = {
-    auth,
-    firestore,
-    user,
-    isUserLoading,
-  };
-
+  // Once initialized, render the provider that will manage auth state and provide context.
   return (
-    <FirebaseContext.Provider value={value}>
-      {children}
-      <FirebaseErrorListener />
-    </FirebaseContext.Provider>
+    <AuthStateProvider auth={firebaseServices.auth} firestore={firebaseServices.firestore}>
+        {children}
+    </AuthStateProvider>
   );
 }
 
@@ -50,6 +71,7 @@ export function useFirebase() {
 export function useAuth() {
   const context = useFirebase();
   if (!context.auth) {
+    // This should theoretically not be hit if the provider logic is correct.
     throw new Error('Firebase Auth not available. Check FirebaseProvider props.');
   }
   return context.auth;
@@ -58,6 +80,7 @@ export function useAuth() {
 export function useFirestore() {
   const context = useFirebase();
   if (!context.firestore) {
+    // This should theoretically not be hit.
     throw new Error('Firestore not available. Check FirebaseProvider props.');
   }
   return context.firestore;
