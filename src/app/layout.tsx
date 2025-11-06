@@ -2,6 +2,8 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import { FirebaseClientProvider } from '@/firebase';
+import { AppProvider } from '@/context/app-context';
+import { ClientOnly } from '@/components/client-only';
 
 export const metadata: Metadata = {
   title: 'Torino ERP',
@@ -31,10 +33,14 @@ export default function RootLayout({
         />
       </head>
       <body className="font-body antialiased">
-        <FirebaseClientProvider>
-            {children}
+        <ClientOnly>
+          <FirebaseClientProvider>
+            <AppProvider>
+                {children}
+            </AppProvider>
             <Toaster />
-        </FirebaseClientProvider>
+          </FirebaseClientProvider>
+        </ClientOnly>
       </body>
     </html>
   );
