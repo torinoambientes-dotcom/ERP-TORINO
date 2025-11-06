@@ -1055,6 +1055,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     deleteQuoteMaterialCategory,
   ]);
 
+  if (isLoading) {
+    return <div className="flex h-screen w-full items-center justify-center"><p>Conectando...</p></div>;
+  }
+
 
   return (
     <AppContext.Provider value={value}>

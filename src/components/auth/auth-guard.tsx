@@ -15,11 +15,8 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   }, [user, isUserLoading, router]);
 
   if (isUserLoading || !user) {
-    return (
-      <div className="flex h-screen w-full items-center justify-center">
-        <p>A carregar...</p>
-      </div>
-    );
+    // The loading state will be handled by the parent layout
+    return null;
   }
 
   return <>{children}</>;
