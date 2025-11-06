@@ -707,7 +707,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
             const dispatchQuantity = Math.min(reservation.quantity, stockItem.quantity);
 
             if (dispatchQuantity <= 0) {
-                 throw new Error(`Estoque de "${stockItem.name}" está zerado. Não é possível despachar.`);
+                 // Do not throw error, just exit if nothing to dispatch.
+                 // This can happen in a race condition if stock becomes 0.
+                 console.warn(`Estoque de "${stockItem.name}" está zerado. Despacho cancelado.`);
+                 return;
             }
             
             const newStockQuantity = stockItem.quantity - dispatchQuantity;
