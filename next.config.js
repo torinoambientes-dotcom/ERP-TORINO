@@ -28,16 +28,6 @@ const nextConfig = {
       },
     ],
   },
-  devIndicators: {
-    buildActivity: false,
-  },
-  experimental: {
-    allowedDevOrigins: [
-      'https://*.cloudworkstations.dev',
-      'https://identitytoolkit.googleapis.com',
-      'https://studio-9055172080-bc4a0.firebaseapp.com',
-    ],
-  },
 };
 
 module.exports = nextConfig;
