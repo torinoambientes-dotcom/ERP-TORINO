@@ -216,7 +216,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return projectId;
   }, [firestore]);
   
-    const updateProject = useCallback(async (updatedProject: Project, originalProject?: Project) => {
+  const updateProject = useCallback(async (updatedProject: Project, originalProject?: Project) => {
     if (!firestore || !stockItems) return;
 
     let projectWithCompletion = { ...updatedProject };
@@ -233,7 +233,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (allStagesDone && !updatedProject.completedAt) {
       projectWithCompletion.completedAt = new Date().toISOString();
     }
-
 
     projectWithCompletion = cleanupUndefinedFields(projectWithCompletion);
     
@@ -261,7 +260,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         });
     });
 
-
     // Find removed/modified materials to remove/update reservations
     originalMaterials.forEach(origMat => {
         if (origMat.stockItemId) {
@@ -280,7 +278,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     // Find added/modified materials to add/update reservations
     updatedMaterials.forEach(updMat => {
-        if (updMat.stockItemId) {
+        // BUG FIX: Check if the material has already been dispatched. If so, do not create a reservation.
+        const alreadyDispatched = (updMat.dispatches || []).length > 0;
+        
+        if (updMat.stockItemId && !alreadyDispatched) {
             const origMat = originalMaterials.find(om => om.id === updMat.id);
             // If it's a new stock item OR the quantity/item itself changed
             if (!origMat || origMat.stockItemId !== updMat.stockItemId || origMat.quantity !== updMat.quantity) {
@@ -1054,11 +1055,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addQuoteMaterialCategory,
     deleteQuoteMaterialCategory,
   ]);
-
-  if (isLoading) {
-    return <div className="flex h-screen w-full items-center justify-center"><p>Conectando...</p></div>;
-  }
-
 
   return (
     <AppContext.Provider value={value}>
