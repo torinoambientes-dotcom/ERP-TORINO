@@ -76,10 +76,12 @@ export function SidebarNav() {
   
   const isAdmin = loggedInMember?.role === 'Administrativo';
 
+  const stockItemMap = useMemo(() => new Map(stockItems.map(item => [item.id, item])), [stockItems]);
+
   const pendingPurchasesCount = useMemo(() => {
     let count = 0;
     if (!projects || !stockItems || !purchaseRequests) return 0;
-
+  
     // 1. Low Stock Items (only if not handled and not awaiting receipt)
     count += stockItems.filter(item => {
         const totalReserved = (item.reservations || []).reduce((acc, res) => acc + res.quantity, 0);
@@ -87,24 +89,42 @@ export function SidebarNav() {
         const hasDemandAlert = totalReserved > (item.quantity + (item.awaitingReceipt?.quantity || 0));
         return (hasMinStockAlert || hasDemandAlert) && !item.awaitingReceipt;
     }).length;
-
-    // 2. Project materials
+  
+    // 2. Project materials, glass, and doors
     const activeProjects = projects.filter(p => !p.completedAt);
     activeProjects.forEach(project => {
         project.environments.forEach(environment => {
             environment.furniture.forEach(furniture => {
-                count += (furniture.materials || []).filter(m => !m.stockItemId && !m.purchased).length;
+                // Materials
+                (furniture.materials || []).forEach(m => {
+                    if (m.purchased || m.reservationCancelledAt) return;
+
+                    // If it's not a stock item, it must be bought
+                    if (!m.stockItemId) {
+                        count++;
+                        return;
+                    }
+
+                    // If it is a stock item, check if there's enough stock
+                    const stockItem = stockItemMap.get(m.stockItemId);
+                    if (!stockItem || m.quantity > stockItem.quantity) {
+                        count++;
+                    }
+                });
+
+                // Glass
                 count += (furniture.glassItems || []).filter(g => !g.purchased).length;
+                // Profile Doors
                 count += (furniture.profileDoors || []).filter(d => !d.purchased).length;
             });
         });
     });
-
+  
     // 3. Ad-hoc purchase requests
     count += purchaseRequests.filter(req => req.status === 'pending').length;
-
+  
     return count;
-  }, [projects, stockItems, purchaseRequests]);
+  }, [projects, stockItems, purchaseRequests, stockItemMap]);
 
 
   const handleLogout = async () => {
