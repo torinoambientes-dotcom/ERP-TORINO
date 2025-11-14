@@ -165,6 +165,10 @@
           "type": "string",
           "format": "date-time",
           "description": "Timestamp for when a stock reservation for this item was cancelled."
+        },
+        "reservationCancellationReason": {
+          "type": "string",
+          "description": "The reason why a stock reservation was cancelled."
         }
       },
       "required": ["id", "name", "quantity", "unit"]
@@ -213,6 +217,7 @@
         "width": { "type": "number" },
         "quantity": { "type": "number" },
         "hinges": { "type": "array", "items": { "type": "object", "properties": { "position": { "type": "number" } } } },
+        "hingeSide": { "type": "string", "enum": ["left", "right"], "description": "The side where the hinges are placed on a 'Giro' door." },
         "isPair": { "type": "boolean" },
         "handlePosition": { "type": "string", "enum": ["top", "bottom", "left", "right"] },
         "handleWidth": { "type": "number" },

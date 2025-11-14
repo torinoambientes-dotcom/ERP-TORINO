@@ -105,6 +105,7 @@ export interface ProfileDoorItem {
   width: number;
   quantity: number;
   hinges?: { position: number }[];
+  hingeSide?: 'left' | 'right';
   isPair?: boolean;
   handlePosition?: 'top' | 'bottom' | 'left' | 'right';
   handleWidth?: number;

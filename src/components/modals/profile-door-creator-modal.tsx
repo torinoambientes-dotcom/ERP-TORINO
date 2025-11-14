@@ -70,6 +70,7 @@ const doorCreatorSchema = z.object({
   height: z.coerce.number().min(1, 'Altura deve ser positiva.'),
   quantity: z.coerce.number().min(1, 'Quantidade mínima de 1.'),
   hinges: z.array(hingeSchema).optional(),
+  hingeSide: z.enum(['left', 'right']).optional(),
   isPair: z.boolean().optional(),
   handlePosition: z.enum(['top', 'bottom', 'left', 'right']).default('left'),
   handleWidth: z.coerce.number().optional(),
@@ -104,6 +105,7 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
       glassType: 'Incolor',
       handleType: handleTypes[0],
       hinges: [{position: 100}, {position: 600}],
+      hingeSide: 'left',
       isPair: false,
       handlePosition: 'left',
       handleWidth: 150,
@@ -133,6 +135,7 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
           doorType: doorToEdit.doorType || 'Giro',
           handlePosition: doorToEdit.handlePosition || 'left',
           handleType: doorToEdit.handleType || 'Sem Puxador',
+          hingeSide: doorToEdit.hingeSide || 'left',
           doorSet: {
             count: doorToEdit.doorSet?.count || 1,
             doors: doorToEdit.doorSet?.doors || [{ handlePosition: 'left' }],
@@ -219,12 +222,15 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
 
         if (data.doorType === 'Giro' && data.hinges) {
             doc.setFillColor(255, 0, 0);
+            const hingeSide = data.hingeSide || 'left';
+            const drawOnLeft = (hingeSide === 'left' && !mirrored) || (hingeSide === 'right' && mirrored);
+
             data.hinges.forEach(hinge => {
                 const hingeY = startY + doorHeightPx - (hinge.position * scale);
                 const hingeCenterInProfilePx = (profileWidthMM / 2) * scale;
-                const hingeX = mirrored
-                    ? startX + doorWidthPx - hingeCenterInProfilePx
-                    : startX + hingeCenterInProfilePx;
+                const hingeX = drawOnLeft
+                    ? startX + hingeCenterInProfilePx
+                    : startX + doorWidthPx - hingeCenterInProfilePx;
                 doc.circle(hingeX, hingeY, (hingeDiameterMM / 2) * scale, 'F');
             });
         }
@@ -300,6 +306,7 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
 
     if (data.doorType === 'Giro' && data.hinges && data.hinges.length > 0) {
         currentY += 4;
+        writeSpec(`Lado Dobradiças: ${data.hingeSide === 'left' ? 'Esquerda' : 'Direita'}`);
         writeSpec('Dobradiças (da base):');
         doc.setFontSize(11);
         data.hinges.forEach((hinge, index) => { doc.text(`- Furo ${index + 1}: ${hinge.position}mm`, margin + 5, currentY); currentY += 5; });
@@ -334,7 +341,7 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
     doc.save(`Porta_${clientName || 'especificacao'}.pdf`);
   };
 
-  const { width: doorWidth = 0, height: doorHeight = 0, hinges } = doorData;
+  const { width: doorWidth = 0, height: doorHeight = 0, hinges, hingeSide } = doorData;
 
   const profileColorClass = {
     'Preto': 'bg-gray-800',
@@ -444,9 +451,17 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
           {doorType === 'Giro' && hinges?.map((hinge, index) => {
             const hingeDiameter = 35;
             const style: React.CSSProperties = { bottom: `calc(${(hinge.position - (hingeDiameter/2)) / doorHeight * 100}%)`, width: `${hingeDiameter / doorWidth * 100}%`, aspectRatio: '1/1' };
+            
             const hingeCenterInProfile = (PROFILE_WIDTH_MM / 2) - (hingeDiameter / 2);
-            if (mirrored) { style.right = `calc(${hingeCenterInProfile / doorWidth * 100}%)`; }
-            else { style.left = `calc(${hingeCenterInProfile / doorWidth * 100}%)`; }
+            
+            const drawOnLeft = (hingeSide === 'left' && !mirrored) || (hingeSide === 'right' && mirrored);
+
+            if (drawOnLeft) {
+                style.left = `calc(${hingeCenterInProfile / doorWidth * 100}%)`;
+            } else {
+                style.right = `calc(${hingeCenterInProfile / doorWidth * 100}%)`;
+            }
+
             return <div key={index} className="absolute bg-red-500 rounded-full" style={style}></div>;
           })}
           <HandleVisualizer mirrored={mirrored} positionOverride={positionOverride} />
@@ -591,8 +606,25 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
 
                     {doorType === 'Giro' && (
                       <div>
-                        <FormLabel>Dobradiças (distância da base em mm)</FormLabel>
+                        <FormLabel>Dobradiças</FormLabel>
                         <div className='space-y-2 mt-2'>
+                          <FormField
+                            control={form.control}
+                            name="hingeSide"
+                            render={({ field }) => (
+                              <FormItem>
+                                <Select onValueChange={field.onChange} value={field.value}>
+                                  <FormControl><SelectTrigger><SelectValue placeholder="Lado das Dobradiças" /></SelectTrigger></FormControl>
+                                  <SelectContent>
+                                    <SelectItem value="left">Esquerda</SelectItem>
+                                    <SelectItem value="right">Direita</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <p className="text-xs text-muted-foreground">Distância da base em mm</p>
                           {hingeFields.map((field, index) => (
                             <div key={field.id} className="flex items-center gap-2">
                               <FormField control={form.control} name={`hinges.${index}.position`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input type="number" placeholder={`Altura furo ${index + 1}`} {...field} /></FormControl><FormMessage /></FormItem> )} />
@@ -630,7 +662,12 @@ export function ProfileDoorCreatorModal({ isOpen, onClose, onSave, clientName, d
                                 )}
                               </div>
                           )}
-                          {doorData.doorType === 'Giro' && <p><strong>Dobradiças (da base):</strong> {hinges?.map(h => `${h.position}mm`).join(', ')}</p>}
+                          {doorData.doorType === 'Giro' && (
+                            <>
+                              <p><strong>Lado Dobradiças:</strong> {hingeSide === 'left' ? 'Esquerda' : 'Direita'}</p>
+                              <p><strong>Dobradiças (da base):</strong> {hinges?.map(h => `${h.position}mm`).join(', ')}</p>
+                            </>
+                          )}
                       </div>
                   </div>
               </div>
