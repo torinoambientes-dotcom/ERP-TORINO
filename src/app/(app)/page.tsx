@@ -203,7 +203,7 @@ export default function DashboardPage() {
   const todaysTasks = useMemo(() => {
     if (!loggedInMember) return [];
   
-    const allKnownTasks = [...allTasks, ...appointments];
+    const allKnownTasks = [...(allTasks || []), ...(appointments || [])];
   
     const projectTasks: CalendarTask[] = projects.flatMap(p =>
       p.environments.flatMap(e =>
@@ -234,7 +234,7 @@ export default function DashboardPage() {
     );
   
     const otherTasks: CalendarTask[] = allKnownTasks
-        .filter((task: any) => task.assigneeIds?.includes(loggedInMember.id) || task.memberIds?.includes(loggedInMember.id))
+        .filter((task: any) => (task.assigneeIds?.includes(loggedInMember.id) || task.memberIds?.includes(loggedInMember.id)) && (task.dueDate || task.start))
         .map((task: any) => {
             const date = parseISO(task.dueDate || task.start);
             const isAppointment = !!task.start;
