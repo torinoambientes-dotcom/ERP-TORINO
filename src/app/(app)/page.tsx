@@ -58,6 +58,27 @@ export default function DashboardPage() {
     teamMembers.forEach(member => map.set(member.id, member));
     return map;
   }, [teamMembers]);
+  
+  const isTaskCompleted = useCallback((task: CalendarTask): boolean => {
+    if (task.type === 'project' && task.rawData.projectId) {
+      const project = projects.find(p => p.id === task.rawData.projectId);
+      if (!project || !task.rawData.stageKey) return false;
+      const env = project.environments.find(e => e.id === task.rawData.envId);
+      const fur = env?.furniture.find(f => f.id === task.rawData.furId);
+      const stage = fur?.[task.rawData.stageKey] as ProductionStage;
+      return stage?.status === 'done';
+    }
+    if (task.type === 'task' && task.rawData.taskId) {
+      const genericTask = allTasks.find(t => t.id === task.rawData.taskId);
+      return genericTask?.status === 'done';
+    }
+    // Appointments are considered "not completed" until they are deleted via checkbox.
+    // We check if it still exists in the main appointments list.
+    if (task.type === 'appointment' && task.rawData.appointmentId) {
+        return !appointments.some(a => a.id === task.rawData.appointmentId);
+    }
+    return false;
+  }, [projects, allTasks, appointments]);
 
   const allMemberTasks = useMemo(() => {
     if (isLoading || !loggedInMember) return [];
@@ -108,13 +129,15 @@ export default function DashboardPage() {
     
     const priorityOrder: Record<Priority, number> = { high: 1, medium: 2, low: 3 };
 
-    return tasks.sort((a, b) => {
+    return tasks
+      .filter(task => !isTaskCompleted(task))
+      .sort((a, b) => {
         const priorityA = a.priority || 'medium';
         const priorityB = b.priority || 'medium';
         return priorityOrder[priorityA] - priorityOrder[priorityB];
     });
 
-  }, [projects, appointments, allTasks, isLoading, loggedInMember]);
+  }, [projects, appointments, allTasks, isLoading, loggedInMember, isTaskCompleted]);
 
     const delegatedTasks = useMemo(() => {
         if (!loggedInMember || !allTasks) return [];
@@ -178,37 +201,38 @@ export default function DashboardPage() {
   }, [projects, updateProject, updateTaskStatus, deleteAppointment, toast]);
 
 
-  const isTaskCompleted = useCallback((task: CalendarTask): boolean => {
-    if (task.type === 'project' && task.rawData.projectId) {
-      const project = projects.find(p => p.id === task.rawData.projectId);
-      if (!project || !task.rawData.stageKey) return false;
-      const env = project.environments.find(e => e.id === task.rawData.envId);
-      const fur = env?.furniture.find(f => f.id === task.rawData.furId);
-      const stage = fur?.[task.rawData.stageKey] as ProductionStage;
-      return stage?.status === 'done';
-    }
-    if (task.type === 'task' && task.rawData.taskId) {
-      const genericTask = allTasks.find(t => t.id === task.rawData.taskId);
-      return genericTask?.status === 'done';
-    }
-    // Appointments are considered "not completed" until they are deleted via checkbox.
-    // We check if it still exists in the main appointments list.
-    if (task.type === 'appointment' && task.rawData.appointmentId) {
-        return !appointments.some(a => a.id === task.rawData.appointmentId);
-    }
-    return false;
-  }, [projects, allTasks, appointments]);
-
-
   const todaysTasks = useMemo(() => {
-    return allMemberTasks
-      .filter(task => {
-          const isCompleted = isTaskCompleted(task);
+    const allTasksForToday = allTasks.concat(appointments as any).concat(
+      projects.flatMap(p => 
+        p.environments.flatMap(e => 
+          e.furniture.flatMap(f => 
+            Object.keys(f)
+              .filter(k => typeof f[k as keyof Furniture] === 'object' && (f[k as keyof Furniture] as ProductionStage)?.scheduledFor)
+              .map(stageKey => ({
+                id: `${f.id}-${stageKey}`,
+                title: `${f.name} (${p.clientName})`,
+                subtitle: `Etapa: ${STAGE_STATUSES[stageKey as keyof typeof STAGE_STATUSES]}`,
+                date: (f[stageKey as keyof Furniture] as ProductionStage).scheduledFor!,
+                type: 'project',
+                ...f[stageKey as keyof Furniture]
+              }))
+          )
+        )
+      )
+    );
+    
+    return allTasksForToday
+      .filter((task: any) => task.assigneeIds?.includes(loggedInMember?.id) || task.responsibleIds?.includes(loggedInMember?.id) || task.memberIds?.includes(loggedInMember?.id))
+      .filter((task: any) => {
+          const taskDate = task.dueDate || task.start || task.scheduledFor;
+          if(!taskDate) return false;
+
+          const isCompleted = isTaskCompleted(task as CalendarTask);
           // Include if it's for today OR if it's in the past and not completed
-          return isToday(task.date) || (isPast(endOfDay(task.date)) && !isCompleted);
+          return isToday(parseISO(taskDate)) || (isPast(endOfDay(parseISO(taskDate))) && !isCompleted);
       })
-      .sort((a, b) => a.date.getTime() - b.date.getTime()); // Sort by date, oldest first
-  }, [allMemberTasks, isTaskCompleted]);
+      .sort((a:any, b:any) => new Date(a.dueDate || a.start || a.scheduledFor).getTime() - new Date(b.dueDate || b.start || b.scheduledFor).getTime()); // Sort by date, oldest first
+  }, [allTasks, appointments, projects, loggedInMember, isTaskCompleted]);
 
   const ongoingProjectsForMember = useMemo(() => {
     if (!projects || !loggedInMember) return [];
@@ -362,10 +386,11 @@ export default function DashboardPage() {
                 <CardContent>
                 {todaysTasks.length > 0 ? (
                     <ul className="space-y-3">
-                    {todaysTasks.map(task => {
+                    {todaysTasks.map((task: any) => {
                         const isCompletable = true; // All tasks in this list are completable
                         const isCompleted = isTaskCompleted(task);
-                        const isOverdue = isPast(endOfDay(task.date)) && !isCompleted;
+                        const taskDate = task.dueDate || task.start || task.scheduledFor;
+                        const isOverdue = isPast(endOfDay(parseISO(taskDate))) && !isCompleted;
                         
                         return (
                           <li key={task.id} className={cn("flex items-start gap-3 rounded-lg p-3 border", isOverdue ? 'bg-destructive/10 border-destructive/20' : 'bg-muted/50')}>
@@ -376,14 +401,14 @@ export default function DashboardPage() {
                               onCheckedChange={(checked) => handleToggleTaskStatus(task, Boolean(checked))}
                               disabled={isCompleted && task.type === 'appointment'} // Can't "un-delete" an appointment
                             />
-                            <div className={cn("w-1.5 h-auto self-stretch rounded-full")} style={{backgroundColor: task.responsible[0]?.color || '#ccc'}}></div>
+                            <div className={cn("w-1.5 h-auto self-stretch rounded-full")} style={{backgroundColor: (task.responsible?.[0]?.color || loggedInMember.color)}}></div>
                             <div className="flex-grow overflow-hidden">
                                 <div className="flex items-center gap-2">
                                   {isOverdue && <AlertTriangle className="h-4 w-4 text-destructive flex-shrink-0" />}
                                   <label htmlFor={`task-check-${task.id}`} className={cn("font-semibold truncate", isCompleted && "line-through text-muted-foreground")}>{task.title}</label>
                                 </div>
-                                <p className={cn("text-sm text-muted-foreground truncate", isCompleted && "line-through")}>{task.subtitle}</p>
-                                {isOverdue && <p className="text-xs font-bold text-destructive">Atrasado - Prazo: {format(task.date, 'dd/MM/yyyy')}</p>}
+                                <p className={cn("text-sm text-muted-foreground truncate", isCompleted && "line-through")}>{task.subtitle || task.description}</p>
+                                {isOverdue && <p className="text-xs font-bold text-destructive">Atrasado - Prazo: {format(parseISO(taskDate), 'dd/MM/yyyy')}</p>}
                             </div>
                             {task.priority && <Flag className={cn("h-5 w-5 flex-shrink-0", priorityMap[task.priority].className)} />}
                           </li>
