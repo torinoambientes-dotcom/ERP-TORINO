@@ -10,7 +10,7 @@ import { cn, getInitials } from '@/lib/utils';
 import { format, isToday, parseISO, isPast, endOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import type { CalendarTask } from './calendar/page';
-import type { TeamMember, StockItem, Priority, Task, StageStatus, ProductionStage } from '@/lib/types';
+import type { TeamMember, StockItem, Priority, Task, StageStatus, ProductionStage, Furniture } from '@/lib/types';
 import { STAGE_STATUSES } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, ShoppingCart, RectangleHorizontal, DoorOpen, AlertTriangle, Cake, StickyNote, Flag, Users } from 'lucide-react';
@@ -60,6 +60,7 @@ export default function DashboardPage() {
   }, [teamMembers]);
   
   const isTaskCompleted = useCallback((task: CalendarTask): boolean => {
+    if (!task.rawData) return false;
     if (task.type === 'project' && task.rawData.projectId) {
       const project = projects.find(p => p.id === task.rawData.projectId);
       if (!project || !task.rawData.stageKey) return false;
@@ -72,8 +73,6 @@ export default function DashboardPage() {
       const genericTask = allTasks.find(t => t.id === task.rawData.taskId);
       return genericTask?.status === 'done';
     }
-    // Appointments are considered "not completed" until they are deleted via checkbox.
-    // We check if it still exists in the main appointments list.
     if (task.type === 'appointment' && task.rawData.appointmentId) {
         return !appointments.some(a => a.id === task.rawData.appointmentId);
     }
@@ -202,36 +201,68 @@ export default function DashboardPage() {
 
 
   const todaysTasks = useMemo(() => {
-    const allTasksForToday = allTasks.concat(appointments as any).concat(
-      projects.flatMap(p => 
-        p.environments.flatMap(e => 
-          e.furniture.flatMap(f => 
-            Object.keys(f)
-              .filter(k => typeof f[k as keyof Furniture] === 'object' && (f[k as keyof Furniture] as ProductionStage)?.scheduledFor)
-              .map(stageKey => ({
+    if (!loggedInMember) return [];
+  
+    const allKnownTasks = [...allTasks, ...appointments];
+  
+    const projectTasks: CalendarTask[] = projects.flatMap(p =>
+      p.environments.flatMap(e =>
+        e.furniture.flatMap(f =>
+          (['measurement', 'cutting', 'purchase', 'assembly'] as const)
+            .filter(key => {
+                const stage = f[key as keyof Furniture] as ProductionStage;
+                return stage?.scheduledFor && stage?.responsibleIds?.includes(loggedInMember.id);
+            })
+            .map(stageKey => {
+              const stage = f[stageKey as keyof Furniture] as ProductionStage;
+              return {
                 id: `${f.id}-${stageKey}`,
+                type: 'project' as const,
                 title: `${f.name} (${p.clientName})`,
-                subtitle: `Etapa: ${STAGE_STATUSES[stageKey as keyof typeof STAGE_STATUSES]}`,
-                date: (f[stageKey as keyof Furniture] as ProductionStage).scheduledFor!,
-                type: 'project',
-                ...f[stageKey as keyof Furniture]
-              }))
-          )
+                subtitle: `Etapa: ${STAGE_STATUSES[stageKey]}`,
+                link: `/projects/${p.id}`,
+                responsible: [loggedInMember],
+                date: parseISO(stage.scheduledFor!),
+                start: parseISO(stage.scheduledFor!),
+                end: parseISO(stage.scheduledFor!),
+                priority: stage.priority,
+                rawData: { projectId: p.id, envId: e.id, furId: f.id, stageKey },
+              };
+            })
         )
       )
     );
-    
-    return allTasksForToday
-      .filter((task: any) => task.assigneeIds?.includes(loggedInMember?.id) || task.responsibleIds?.includes(loggedInMember?.id) || task.memberIds?.includes(loggedInMember?.id))
-      .filter((task: any) => {
-          const taskDate = task.dueDate || task.start || task.scheduledFor;
-          if(!taskDate) return false;
-
-          const isCompleted = isTaskCompleted(task as CalendarTask);
-          // Include if it's for today OR if it's in the past and not completed
-          return isToday(parseISO(taskDate)) || (isPast(endOfDay(parseISO(taskDate))) && !isCompleted);
+  
+    const otherTasks: CalendarTask[] = allKnownTasks
+        .filter((task: any) => task.assigneeIds?.includes(loggedInMember.id) || task.memberIds?.includes(loggedInMember.id))
+        .map((task: any) => {
+            const date = parseISO(task.dueDate || task.start);
+            const isAppointment = !!task.start;
+            return {
+                id: task.id,
+                type: isAppointment ? 'appointment' : 'task',
+                title: task.title,
+                subtitle: task.description,
+                responsible: [loggedInMember],
+                date: date,
+                start: date,
+                end: isAppointment ? parseISO(task.end) : date,
+                priority: task.priority || 'medium',
+                rawData: {
+                    ...(isAppointment ? { appointmentId: task.id } : { taskId: task.id })
+                },
+            }
+        });
+  
+    const combinedTasks: CalendarTask[] = [...projectTasks, ...otherTasks];
+  
+    return combinedTasks
+      .filter((task) => {
+        if (!task.date || !Number.isFinite(task.date.getTime())) return false; // Ensure date is valid
+        const isCompleted = isTaskCompleted(task);
+        return isToday(task.date) || (isPast(endOfDay(task.date)) && !isCompleted);
       })
-      .sort((a:any, b:any) => new Date(a.dueDate || a.start || a.scheduledFor).getTime() - new Date(b.dueDate || b.start || b.scheduledFor).getTime()); // Sort by date, oldest first
+      .sort((a, b) => a.date.getTime() - b.date.getTime());
   }, [allTasks, appointments, projects, loggedInMember, isTaskCompleted]);
 
   const ongoingProjectsForMember = useMemo(() => {
@@ -386,11 +417,9 @@ export default function DashboardPage() {
                 <CardContent>
                 {todaysTasks.length > 0 ? (
                     <ul className="space-y-3">
-                    {todaysTasks.map((task: any) => {
-                        const isCompletable = true; // All tasks in this list are completable
+                    {todaysTasks.map((task: CalendarTask) => {
                         const isCompleted = isTaskCompleted(task);
-                        const taskDate = task.dueDate || task.start || task.scheduledFor;
-                        const isOverdue = isPast(endOfDay(parseISO(taskDate))) && !isCompleted;
+                        const isOverdue = isPast(endOfDay(task.date)) && !isCompleted;
                         
                         return (
                           <li key={task.id} className={cn("flex items-start gap-3 rounded-lg p-3 border", isOverdue ? 'bg-destructive/10 border-destructive/20' : 'bg-muted/50')}>
@@ -407,8 +436,8 @@ export default function DashboardPage() {
                                   {isOverdue && <AlertTriangle className="h-4 w-4 text-destructive flex-shrink-0" />}
                                   <label htmlFor={`task-check-${task.id}`} className={cn("font-semibold truncate", isCompleted && "line-through text-muted-foreground")}>{task.title}</label>
                                 </div>
-                                <p className={cn("text-sm text-muted-foreground truncate", isCompleted && "line-through")}>{task.subtitle || task.description}</p>
-                                {isOverdue && <p className="text-xs font-bold text-destructive">Atrasado - Prazo: {format(parseISO(taskDate), 'dd/MM/yyyy')}</p>}
+                                <p className={cn("text-sm text-muted-foreground truncate", isCompleted && "line-through")}>{task.subtitle || ''}</p>
+                                {isOverdue && <p className="text-xs font-bold text-destructive">Atrasado - Prazo: {format(task.date, 'dd/MM/yyyy')}</p>}
                             </div>
                             {task.priority && <Flag className={cn("h-5 w-5 flex-shrink-0", priorityMap[task.priority].className)} />}
                           </li>
@@ -421,13 +450,13 @@ export default function DashboardPage() {
                 </CardContent>
             </Card>
 
+            {allMemberTasks.length > 0 && (
             <Card>
                 <CardHeader>
                     <CardTitle>Todas as Tarefas Agendadas</CardTitle>
                     <CardDescription>Uma visão geral de todas as suas tarefas futuras, ordenadas por prioridade.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                {allMemberTasks.length > 0 ? (
                     <ul className="space-y-3 max-h-96 overflow-y-auto pr-2">
                     {allMemberTasks.map(task => {
                         const isCompleted = isTaskCompleted(task);
@@ -455,11 +484,9 @@ export default function DashboardPage() {
                         );
                     })}
                     </ul>
-                ) : (
-                    <p className="text-sm text-muted-foreground text-center py-8">Você não tem nenhuma tarefa agendada.</p>
-                )}
                 </CardContent>
             </Card>
+            )}
 
             {delegatedTasks.length > 0 && (
                 <Card>
