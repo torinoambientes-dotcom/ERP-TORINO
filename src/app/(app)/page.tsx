@@ -142,7 +142,8 @@ export default function DashboardPage() {
         if (!loggedInMember || !allTasks) return [];
         return allTasks.filter(task => 
             task.creatorId === loggedInMember.id && 
-            !task.assigneeIds.includes(loggedInMember.id)
+            !task.assigneeIds.includes(loggedInMember.id) &&
+            task.status !== 'done'
         ).sort((a, b) => new Date(b.dueDate || 0).getTime() - new Date(a.dueDate || 0).getTime());
     }, [allTasks, loggedInMember]);
   
@@ -460,6 +461,7 @@ export default function DashboardPage() {
                     <ul className="space-y-3 max-h-96 overflow-y-auto pr-2">
                     {allMemberTasks.map(task => {
                         const isCompleted = isTaskCompleted(task);
+                        if (isCompleted) return null;
                         
                         return (
                             <li key={task.id} className="flex items-start gap-3 rounded-lg p-3 bg-muted/50 border">
