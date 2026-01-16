@@ -1,7 +1,42 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /{document=**} {
+    // Public read for factory display
+    match /projects/{projectId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+    match /team_members/{memberId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // Default to private for all other collections
+    match /appointments/{appointmentId} {
+      allow read, write: if request.auth != null;
+    }
+    match /tasks/{taskId} {
+      allow read, write: if request.auth != null;
+    }
+    match /stock_items/{stockItemId} {
+      allow read, write: if request.auth != null;
+    }
+    match /stock_categories/{stockCategoryId} {
+      allow read, write: if request.auth != null;
+    }
+    match /stock_movements/{movementId} {
+      allow read, write: if request.auth != null;
+    }
+    match /purchase_requests/{purchaseRequestId} {
+      allow read, write: if request.auth != null;
+    }
+    match /quotes/{quoteId} {
+      allow read, write: if request.auth != null;
+    }
+    match /quote_materials/{quoteMaterialId} {
+      allow read, write: if request.auth != null;
+    }
+    match /quote_material_categories/{quoteMaterialCategoryId} {
       allow read, write: if request.auth != null;
     }
   }

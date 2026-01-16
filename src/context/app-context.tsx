@@ -157,18 +157,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const auth = useAuth();
   const { user } = useUser();
 
+  // Public queries - always fetched
   const projectsQuery = useMemoFirebase(() => firestore ? collection(firestore, 'projects') : null, [firestore]);
   const teamMembersQuery = useMemoFirebase(() => firestore ? collection(firestore, 'team_members') : null, [firestore]);
-  const appointmentsQuery = useMemoFirebase(() => firestore ? collection(firestore, 'appointments') : null, [firestore]);
-  const tasksQuery = useMemoFirebase(() => firestore ? collection(firestore, 'tasks') : null, [firestore]);
-  const stockItemsQuery = useMemoFirebase(() => firestore ? collection(firestore, 'stock_items') : null, [firestore]);
-  const stockCategoriesQuery = useMemoFirebase(() => firestore ? collection(firestore, 'stock_categories') : null, [firestore]);
-  const stockMovementsQuery = useMemoFirebase(() => firestore ? collection(firestore, 'stock_movements') : null, [firestore]);
-  const purchaseRequestsQuery = useMemoFirebase(() => firestore ? collection(firestore, 'purchase_requests') : null, [firestore]);
-  const quotesQuery = useMemoFirebase(() => firestore ? collection(firestore, 'quotes') : null, [firestore]);
-  const quoteMaterialsQuery = useMemoFirebase(() => firestore ? collection(firestore, 'quote_materials') : null, [firestore]);
-  const quoteMaterialCategoriesQuery = useMemoFirebase(() => firestore ? collection(firestore, 'quote_material_categories') : null, [firestore]);
 
+  // Private queries - fetched only when user is logged in
+  const appointmentsQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'appointments') : null, [firestore, user]);
+  const tasksQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'tasks') : null, [firestore, user]);
+  const stockItemsQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'stock_items') : null, [firestore, user]);
+  const stockCategoriesQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'stock_categories') : null, [firestore, user]);
+  const stockMovementsQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'stock_movements') : null, [firestore, user]);
+  const purchaseRequestsQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'purchase_requests') : null, [firestore, user]);
+  const quotesQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'quotes') : null, [firestore, user]);
+  const quoteMaterialsQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'quote_materials') : null, [firestore, user]);
+  const quoteMaterialCategoriesQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'quote_material_categories') : null, [firestore, user]);
 
   const { data: projects, isLoading: isLoadingProjects } = useCollection<Project>(projectsQuery);
   const { data: teamMembersData, isLoading: isLoadingTeamMembers } = useCollection<TeamMember>(teamMembersQuery);
