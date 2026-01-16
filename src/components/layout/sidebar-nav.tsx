@@ -42,7 +42,7 @@ const menuItems = [
   { href: '/calendar', label: 'Calendário', icon: Calendar, adminOnly: false },
   { href: '/purchases', label: 'Compras', icon: ShoppingCart, adminOnly: false, restrictedRoles: ['Projetista'] },
   { href: '/stock', label: 'Estoque', icon: Boxes, adminOnly: false, restrictedRoles: ['Projetista'] },
-  { href: '/factory-display', label: 'Ecrã Fábrica', icon: MonitorPlay, adminOnly: false, restrictedRoles: ['Projetista'] },
+  { href: '/ecra-fabrica', label: 'Ecrã Fábrica', icon: MonitorPlay, adminOnly: false, restrictedRoles: ['Projetista'] },
   { href: '/reports', label: 'Relatórios', icon: BarChart3, adminOnly: false, restrictedRoles: ['Projetista'] },
   { href: '/team', label: 'Equipe', icon: Users, adminOnly: true },
 ];
@@ -202,7 +202,7 @@ export function SidebarNav() {
                       <item.icon className="h-5 w-5" />
                       <span className="text-base">{item.label}</span>
                        {showBadge && (
-                          <Badge className="absolute right-2 top-1/2 -translate-y-1/2 h-5 min-w-[20px] justify-center p-1 text-xs group-data-[collapsible=icon]:right-0 group-data-[collapsible=icon]:top-0">
+                          <Badge className="absolute right-2 top-1/2 -translate-y-1/2 h-5 min-w-[20px] justify-center px-1.5 text-xs group-data-[collapsible=icon]:right-0 group-data-[collapsible=icon]:top-0">
                               {pendingPurchasesCount}
                           </Badge>
                       )}

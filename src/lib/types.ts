@@ -302,3 +302,11 @@ export interface QuoteMaterial {
   cost: number;
   category: string;
 }
+
+export interface ExtraProject {
+    id: string;
+    name: string;
+    description: string;
+    assignedTo: string[];
+    isCompleted: boolean;
+}
