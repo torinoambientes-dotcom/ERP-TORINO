@@ -1,9 +1,9 @@
 'use client';
 import { useMemo } from 'react';
 import type { Project, Appointment, TeamMember } from '@/lib/types';
-import { format, isSameDay, parseISO, isToday } from 'date-fns';
+import { format, isSameDay, parseISO, isToday, isPast, endOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Hammer, Truck, Clock, CheckCircle2, User } from 'lucide-react';
+import { Hammer, Truck, Clock, CheckCircle2, User, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface DayScheduleSlideProps {
@@ -21,6 +21,7 @@ interface ScheduleItem {
     location?: string;
     responsible: string[];
     isDone: boolean;
+    isDelayed: boolean;
     category?: 'producao' | 'montagem';
 }
 
@@ -35,8 +36,6 @@ export function DayScheduleSlide({ day, projects, appointments, teamMembers, sel
     projects.forEach(project => {
       project.environments.forEach(env => {
         env.furniture.forEach(fur => {
-          // Ignorar Etapa de Corte conforme solicitação
-          
           // Etapa de Pré-Montagem
           const stage = fur.assembly;
           if (stage?.scheduledFor && isSameDay(parseISO(stage.scheduledFor), day)) {
@@ -44,12 +43,16 @@ export function DayScheduleSlide({ day, projects, appointments, teamMembers, sel
                                (stage.responsibleIds || []).some(id => selectedCarpenterIds.includes(id));
 
             if (isRelevant) {
+                const isDone = stage.status === 'done';
+                const isDelayed = !isDone && isPast(endOfDay(day));
+
                 prodItems.push({
                     id: fur.id,
                     title: fur.name,
                     description: project.clientName,
                     responsible: (stage.responsibleIds || []).map(id => memberMap.get(id)?.name.split(' ')[0] || '').filter(Boolean),
-                    isDone: stage.status === 'done',
+                    isDone,
+                    isDelayed,
                     category: 'producao'
                 });
             }
@@ -58,16 +61,20 @@ export function DayScheduleSlide({ day, projects, appointments, teamMembers, sel
       });
     });
 
-    // 2. Adicionar Compromissos Manuais (Ignorar categoria 'corte')
+    // 2. Adicionar Compromissos Manuais
     appointments.forEach(apt => {
         if (apt.start && isSameDay(parseISO(apt.start), day)) {
+            const isDone = apt.status === 'done';
+            const isDelayed = apt.status === 'delayed' || (!isDone && isPast(endOfDay(day)));
+
             if (apt.category === 'producao') {
                 prodItems.push({
                     id: apt.id,
                     title: apt.title,
                     description: apt.description,
                     responsible: (apt.memberIds || []).map(id => memberMap.get(id)?.name.split(' ')[0] || '').filter(Boolean),
-                    isDone: apt.status === 'done',
+                    isDone,
+                    isDelayed,
                     category: 'producao'
                 });
             } else if (apt.category === 'montagem') {
@@ -77,7 +84,8 @@ export function DayScheduleSlide({ day, projects, appointments, teamMembers, sel
                     description: apt.description,
                     location: apt.location,
                     responsible: (apt.memberIds || []).map(id => memberMap.get(id)?.name.split(' ')[0] || '').filter(Boolean),
-                    isDone: apt.status === 'done',
+                    isDone,
+                    isDelayed,
                     category: 'montagem'
                 });
             }
@@ -94,7 +102,7 @@ export function DayScheduleSlide({ day, projects, appointments, teamMembers, sel
 
   return (
     <div className="flex flex-col h-full gap-6">
-      {/* Indicador de Dia - Ultra Legível */}
+      {/* Indicador de Dia */}
       <div className="flex items-center justify-center">
         <div className={cn(
             "px-12 py-4 rounded-3xl border-4 flex flex-col items-center min-w-[350px] shadow-sm",
@@ -156,13 +164,22 @@ function ScheduleCard({ item, type }: { item: ScheduleItem, type: 'producao' | '
         <div className={cn(
             "p-5 rounded-3xl border-4 bg-white shadow-sm relative transition-all",
             item.isDone ? "opacity-40 grayscale" : "opacity-100",
-            isProducao ? "border-l-[16px] border-blue-600 border-slate-100" : "border-l-[16px] border-emerald-600 border-slate-100"
+            item.isDelayed && !item.isDone && "bg-red-50 border-red-200",
+            isProducao ? "border-l-[16px] border-blue-600 border-slate-100" : "border-l-[16px] border-emerald-600 border-slate-100",
+            item.isDelayed && !item.isDone && (isProducao ? "border-l-blue-800" : "border-l-emerald-800")
         )}>
             <div className="flex justify-between items-start gap-4">
                 <div className="flex-grow min-w-0">
-                    <h3 className={cn("text-4xl font-black tracking-tight truncate leading-tight text-slate-900", item.isDone && "line-through")}>
-                        {item.title}
-                    </h3>
+                    <div className="flex items-center gap-3 mb-1">
+                        <h3 className={cn("text-4xl font-black tracking-tight truncate leading-tight text-slate-900", item.isDone && "line-through")}>
+                            {item.title}
+                        </h3>
+                        {item.isDelayed && !item.isDone && (
+                            <span className="bg-red-600 text-white text-xl font-black px-3 py-1 rounded-xl flex items-center gap-2 animate-pulse">
+                                <AlertCircle className="h-5 w-5" /> EM ATRASO
+                            </span>
+                        )}
+                    </div>
                     <p className="text-2xl text-slate-600 font-bold tracking-tight truncate">
                         {item.description}
                     </p>
