@@ -3,7 +3,7 @@ import { useMemo } from 'react';
 import type { Project, Appointment, TeamMember, ProductionStage } from '@/lib/types';
 import { format, isSameDay, parseISO, isToday } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Hammer, Truck, Clock, CheckCircle2, User } from 'lucide-react';
+import { Hammer, Truck, Clock, CheckCircle2, User, Scissors } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface DayScheduleSlideProps {
@@ -21,6 +21,7 @@ interface ScheduleItem {
     location?: string;
     responsible: string[];
     isDone: boolean;
+    category?: 'corte' | 'producao' | 'montagem';
 }
 
 export function DayScheduleSlide({ day, projects, appointments, teamMembers, selectedCarpenterIds }: DayScheduleSlideProps) {
@@ -30,13 +31,25 @@ export function DayScheduleSlide({ day, projects, appointments, teamMembers, sel
     const prodItems: ScheduleItem[] = [];
     const montItems: ScheduleItem[] = [];
 
-    // 1. Processar Produção (Fábrica)
+    // 1. Processar Projetos (Cortes e Produção)
     projects.forEach(project => {
       project.environments.forEach(env => {
         env.furniture.forEach(fur => {
-          const stage = fur.assembly; // Etapa de produção
+          // Etapa de Corte
+          if (fur.cutting?.scheduledFor && isSameDay(parseISO(fur.cutting.scheduledFor), day)) {
+             prodItems.push({
+                id: `cut-${fur.id}`,
+                title: `[CORTE] ${fur.name}`,
+                description: project.clientName,
+                responsible: (fur.cutting.responsibleIds || []).map(id => memberMap.get(id)?.name.split(' ')[0] || '').filter(Boolean),
+                isDone: fur.cutting.status === 'done',
+                category: 'corte'
+            });
+          }
+
+          // Etapa de Pré-Montagem
+          const stage = fur.assembly;
           if (stage?.scheduledFor && isSameDay(parseISO(stage.scheduledFor), day)) {
-            // Filtrar por marceneiros selecionados se houver filtro
             const isRelevant = !selectedCarpenterIds || 
                                (stage.responsibleIds || []).some(id => selectedCarpenterIds.includes(id));
 
@@ -46,7 +59,8 @@ export function DayScheduleSlide({ day, projects, appointments, teamMembers, sel
                     title: fur.name,
                     description: project.clientName,
                     responsible: (stage.responsibleIds || []).map(id => memberMap.get(id)?.name.split(' ')[0] || '').filter(Boolean),
-                    isDone: stage.status === 'done'
+                    isDone: stage.status === 'done',
+                    category: 'producao'
                 });
             }
           }
@@ -54,34 +68,36 @@ export function DayScheduleSlide({ day, projects, appointments, teamMembers, sel
       });
     });
 
-    // 2. Adicionar Compromissos Manuais de Produção
+    // 2. Adicionar Compromissos Manuais
     appointments.forEach(apt => {
-        if (apt.start && isSameDay(parseISO(apt.start), day) && apt.category === 'producao') {
-            prodItems.push({
-                id: apt.id,
-                title: apt.title,
-                description: apt.description,
-                responsible: (apt.memberIds || []).map(id => memberMap.get(id)?.name.split(' ')[0] || '').filter(Boolean),
-                isDone: apt.status === 'done'
-            });
+        if (apt.start && isSameDay(parseISO(apt.start), day)) {
+            if (apt.category === 'producao' || apt.category === 'corte') {
+                prodItems.push({
+                    id: apt.id,
+                    title: apt.category === 'corte' ? `[CORTE] ${apt.title}` : apt.title,
+                    description: apt.description,
+                    responsible: (apt.memberIds || []).map(id => memberMap.get(id)?.name.split(' ')[0] || '').filter(Boolean),
+                    isDone: apt.status === 'done',
+                    category: apt.category as any
+                });
+            } else if (apt.category === 'montagem') {
+                montItems.push({
+                    id: apt.id,
+                    title: apt.title,
+                    description: apt.description,
+                    location: apt.location,
+                    responsible: (apt.memberIds || []).map(id => memberMap.get(id)?.name.split(' ')[0] || '').filter(Boolean),
+                    isDone: apt.status === 'done',
+                    category: 'montagem'
+                });
+            }
         }
     });
 
-    // 3. Processar Montagem (Externo)
-    appointments.forEach(apt => {
-        if (apt.start && isSameDay(parseISO(apt.start), day) && apt.category === 'montagem') {
-            montItems.push({
-                id: apt.id,
-                title: apt.title,
-                description: apt.description,
-                location: apt.location,
-                responsible: (apt.memberIds || []).map(id => memberMap.get(id)?.name.split(' ')[0] || '').filter(Boolean),
-                isDone: apt.status === 'done'
-            });
-        }
-    });
-
-    return { producao: prodItems, montagem: montItems };
+    return { 
+        producao: prodItems.sort((a, b) => (a.category === 'corte' ? -1 : 1)), 
+        montagem: montItems 
+    };
   }, [day, projects, appointments, memberMap, selectedCarpenterIds]);
 
   const isActive = isToday(day);
@@ -140,12 +156,13 @@ export function DayScheduleSlide({ day, projects, appointments, teamMembers, sel
 
 function ScheduleCard({ item, type }: { item: ScheduleItem, type: 'producao' | 'montagem' }) {
     const isProducao = type === 'producao';
+    const isCorte = item.category === 'corte';
     
     return (
         <div className={cn(
             "p-6 rounded-3xl border-l-[12px] bg-gray-900/80 border-gray-800 relative transition-all duration-300",
             item.isDone ? "opacity-40" : "opacity-100",
-            isProducao ? "border-l-blue-600" : "border-l-green-600"
+            isCorte ? "border-l-orange-600" : (isProducao ? "border-l-blue-600" : "border-l-green-600")
         )}>
             <div className="flex justify-between items-start gap-4">
                 <div className="flex-grow min-w-0">
@@ -164,6 +181,7 @@ function ScheduleCard({ item, type }: { item: ScheduleItem, type: 'producao' | '
                 {item.isDone ? (
                     <CheckCircle2 className="h-10 w-10 text-green-500 flex-shrink-0" />
                 ) : (
+                    isCorte ? <Scissors className="h-10 w-10 text-orange-500 flex-shrink-0" /> :
                     <Clock className={cn("h-10 w-10 flex-shrink-0", isProducao ? "text-blue-500" : "text-green-500")} />
                 )}
             </div>

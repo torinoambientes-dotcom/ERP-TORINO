@@ -1,4 +1,3 @@
-
 'use client';
 
 import { createContext, type ReactNode, useCallback, useMemo, useEffect, useState } from 'react';
@@ -146,9 +145,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Public queries - always fetched
   const projectsQuery = useMemoFirebase(() => firestore ? collection(firestore, 'projects') : null, [firestore]);
   const teamMembersQuery = useMemoFirebase(() => firestore ? collection(firestore, 'team_members') : null, [firestore]);
+  const appointmentsQuery = useMemoFirebase(() => firestore ? collection(firestore, 'appointments') : null, [firestore]);
 
   // Private queries - fetched only when user is logged in
-  const appointmentsQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'appointments') : null, [firestore, user]);
   const tasksQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'tasks') : null, [firestore, user]);
   const stockItemsQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'stock_items') : null, [firestore, user]);
   const stockCategoriesQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'stock_categories') : null, [firestore, user]);
@@ -612,7 +611,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 }
                 return fur;
             });
-            return { ...env, furniture: newFurnitures };
+            return { ...env, furniture: newFurniture };
         }
         return env;
     });
@@ -661,7 +660,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
                                 }
                                 return mat;
                             });
-                            return { ...fur, materials: newFurnitures };
+                            return { ...fur, materials: newMaterials };
                         }
                         return fur;
                     });
