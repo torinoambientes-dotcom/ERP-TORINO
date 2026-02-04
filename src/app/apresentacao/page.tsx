@@ -55,28 +55,28 @@ function FactoryDisplayContent() {
 
   if (isLoading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-black text-white">
+      <div className="flex h-screen items-center justify-center bg-white text-slate-900">
         <p className="text-5xl font-black animate-pulse uppercase tracking-tighter">Carregando Programação...</p>
       </div>
     );
   }
 
   return (
-    <div className="bg-black text-white min-h-screen flex flex-col relative overflow-hidden select-none">
-        {/* Header Fixo do Ecrã - Mais Robusto */}
-        <header className="p-8 border-b border-zinc-800 bg-zinc-900/80 backdrop-blur-xl flex justify-between items-center z-10 shadow-2xl">
+    <div className="bg-slate-50 text-slate-900 min-h-screen flex flex-col relative overflow-hidden select-none">
+        {/* Header Fixo - Alto Contraste */}
+        <header className="p-6 border-b-4 border-slate-200 bg-white flex justify-between items-center z-10 shadow-sm">
             <div className="flex items-center gap-6">
-                <div className="h-16 w-3 bg-primary rounded-full shadow-[0_0_20px_rgba(var(--primary),0.6)]"></div>
-                <h1 className="text-6xl font-black tracking-tighter uppercase">Programação da Oficina</h1>
+                <div className="h-12 w-4 bg-primary rounded-full shadow-sm"></div>
+                <h1 className="text-5xl font-black tracking-tighter uppercase text-slate-800">Programação Torino</h1>
             </div>
             <div className="text-right">
-                <p className="text-zinc-400 text-3xl font-bold uppercase tracking-[0.2em]">
+                <p className="text-slate-500 text-2xl font-bold uppercase tracking-wider">
                     {format(new Date(), "eeee, dd 'de' MMMM", { locale: ptBR })}
                 </p>
             </div>
         </header>
 
-        <main className="flex-1 flex flex-col justify-center p-10">
+        <main className="flex-1 flex flex-col justify-center p-6">
             <Carousel
                 setApi={setApi}
                 plugins={[Autoplay({ delay: rotationTime, stopOnInteraction: false })]}
@@ -98,23 +98,23 @@ function FactoryDisplayContent() {
             </Carousel>
         </main>
 
-        {/* Indicadores de Progresso dos Slides - Mais Elegantes */}
-        <div className="flex justify-center gap-6 pb-10">
+        {/* Indicadores de Progresso */}
+        <div className="flex justify-center gap-4 pb-6">
             {weekDays.map((_, index) => (
                 <div
                     key={index}
-                    className={`h-4 rounded-full transition-all duration-1000 ease-in-out ${
+                    className={`h-3 rounded-full transition-all duration-700 ease-in-out ${
                         index === currentSlide 
-                        ? 'w-32 bg-primary shadow-[0_0_25px_rgba(var(--primary),0.8)]' 
-                        : 'w-4 bg-zinc-800'
+                        ? 'w-24 bg-primary shadow-sm' 
+                        : 'w-3 bg-slate-300'
                     }`}
                 />
             ))}
         </div>
 
         {customMessage && (
-            <footer className="bg-primary/20 border-t-2 border-primary/30 p-6 text-center shadow-[0_-10px_40px_rgba(0,0,0,0.5)]">
-                <p className="text-4xl font-black text-primary animate-pulse uppercase tracking-widest">
+            <footer className="bg-primary border-t-4 border-white p-4 text-center">
+                <p className="text-3xl font-black text-white uppercase tracking-widest">
                     {customMessage}
                 </p>
             </footer>
@@ -125,7 +125,7 @@ function FactoryDisplayContent() {
 
 export default function ApresentacaoPage() {
   return (
-    <Suspense fallback={<div className="flex h-screen items-center justify-center bg-black text-white"><p className="text-4xl font-black">Carregando...</p></div>}>
+    <Suspense fallback={<div className="flex h-screen items-center justify-center bg-white text-slate-900"><p className="text-4xl font-black">Carregando...</p></div>}>
       <FactoryDisplayContent />
     </Suspense>
   );
