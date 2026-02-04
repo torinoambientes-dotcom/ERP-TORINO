@@ -10,7 +10,7 @@ import {
   type CarouselApi,
 } from '@/components/ui/carousel';
 import Autoplay from 'embla-carousel-autoplay';
-import { startOfWeek, addDays, format, isSameDay } from 'date-fns';
+import { startOfWeek, addDays, format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 function FactoryDisplayContent() {
@@ -55,28 +55,28 @@ function FactoryDisplayContent() {
 
   if (isLoading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-gray-950 text-white">
-        <p className="text-3xl font-bold animate-pulse">Carregando Programação da Fábrica...</p>
+      <div className="flex h-screen items-center justify-center bg-black text-white">
+        <p className="text-5xl font-black animate-pulse uppercase tracking-tighter">Carregando Programação...</p>
       </div>
     );
   }
 
   return (
-    <div className="bg-gray-950 text-white min-h-screen flex flex-col relative overflow-hidden">
-        {/* Header Fixo do Ecrã */}
-        <header className="p-6 border-b border-gray-800 bg-gray-900/50 backdrop-blur-md flex justify-between items-center z-10">
-            <div className="flex items-center gap-4">
-                <div className="h-12 w-1 bg-primary rounded-full"></div>
-                <h1 className="text-4xl font-black tracking-tighter uppercase">Programação da Oficina</h1>
+    <div className="bg-black text-white min-h-screen flex flex-col relative overflow-hidden select-none">
+        {/* Header Fixo do Ecrã - Mais Robusto */}
+        <header className="p-8 border-b border-zinc-800 bg-zinc-900/80 backdrop-blur-xl flex justify-between items-center z-10 shadow-2xl">
+            <div className="flex items-center gap-6">
+                <div className="h-16 w-3 bg-primary rounded-full shadow-[0_0_20px_rgba(var(--primary),0.6)]"></div>
+                <h1 className="text-6xl font-black tracking-tighter uppercase">Programação da Oficina</h1>
             </div>
             <div className="text-right">
-                <p className="text-gray-400 text-xl font-medium uppercase tracking-widest">
+                <p className="text-zinc-400 text-3xl font-bold uppercase tracking-[0.2em]">
                     {format(new Date(), "eeee, dd 'de' MMMM", { locale: ptBR })}
                 </p>
             </div>
         </header>
 
-        <main className="flex-grow flex flex-col justify-center p-8">
+        <main className="flex-1 flex flex-col justify-center p-10">
             <Carousel
                 setApi={setApi}
                 plugins={[Autoplay({ delay: rotationTime, stopOnInteraction: false })]}
@@ -98,21 +98,23 @@ function FactoryDisplayContent() {
             </Carousel>
         </main>
 
-        {/* Indicadores de Progresso dos Slides */}
-        <div className="flex justify-center gap-3 pb-8">
+        {/* Indicadores de Progresso dos Slides - Mais Elegantes */}
+        <div className="flex justify-center gap-6 pb-10">
             {weekDays.map((_, index) => (
                 <div
                     key={index}
-                    className={`h-3 rounded-full transition-all duration-500 ${
-                        index === currentSlide ? 'w-16 bg-primary shadow-[0_0_15px_rgba(var(--primary),0.5)]' : 'w-3 bg-gray-800'
+                    className={`h-4 rounded-full transition-all duration-1000 ease-in-out ${
+                        index === currentSlide 
+                        ? 'w-32 bg-primary shadow-[0_0_25px_rgba(var(--primary),0.8)]' 
+                        : 'w-4 bg-zinc-800'
                     }`}
                 />
             ))}
         </div>
 
         {customMessage && (
-            <footer className="bg-primary/10 border-t border-primary/20 p-4 text-center">
-                <p className="text-2xl font-bold text-primary animate-bounce uppercase tracking-wide">
+            <footer className="bg-primary/20 border-t-2 border-primary/30 p-6 text-center shadow-[0_-10px_40px_rgba(0,0,0,0.5)]">
+                <p className="text-4xl font-black text-primary animate-pulse uppercase tracking-widest">
                     {customMessage}
                 </p>
             </footer>
@@ -123,7 +125,7 @@ function FactoryDisplayContent() {
 
 export default function ApresentacaoPage() {
   return (
-    <Suspense fallback={<div className="flex h-screen items-center justify-center bg-gray-950 text-white"><p>Carregando...</p></div>}>
+    <Suspense fallback={<div className="flex h-screen items-center justify-center bg-black text-white"><p className="text-4xl font-black">Carregando...</p></div>}>
       <FactoryDisplayContent />
     </Suspense>
   );
