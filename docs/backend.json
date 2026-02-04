@@ -274,7 +274,8 @@
           "items": { "type": "string" },
           "description": "A list of team member IDs assigned to this appointment."
         },
-        "category": { "type": "string", "enum": ["generic", "montagem"] }
+        "category": { "type": "string", "enum": ["generic", "montagem", "corte", "producao"] },
+        "status": { "type": "string", "enum": ["todo", "done", "delayed"], "description": "The status of the manual appointment." }
       },
       "required": ["id", "title", "start", "end", "memberIds"]
     },

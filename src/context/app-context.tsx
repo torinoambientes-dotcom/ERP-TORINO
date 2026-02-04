@@ -1,3 +1,4 @@
+
 'use client';
 
 import { createContext, type ReactNode, useCallback, useMemo, useEffect, useState } from 'react';
@@ -114,21 +115,6 @@ export const AppContext = createContext<AppContextType>({
   addQuoteMaterialCategory: () => {},
   deleteQuoteMaterialCategory: () => {},
 });
-
-const isProjectComplete = (project: Project): boolean => {
-  if (!project.environments || project.environments.length === 0) {
-    return false; // Ou true, dependendo da regra de negócio para projetos vazios
-  }
-
-  return project.environments.every(env =>
-    env.furniture.every(fur =>
-      fur.measurement.status === 'done' &&
-      fur.cutting.status === 'done' &&
-      fur.purchase.status === 'done' &&
-      fur.assembly.status === 'done'
-    )
-  );
-};
 
 const cleanupUndefinedFields = (obj: any) => {
   if (obj === null || typeof obj !== 'object') {
@@ -403,7 +389,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const addAppointment = useCallback((appointmentData: Omit<Appointment, 'id'>) => {
         if (!firestore) return;
         const appointmentId = generateId('apt');
-        const newAppointment = { ...appointmentData, id: appointmentId };
+        const newAppointment: Appointment = { 
+          ...appointmentData, 
+          id: appointmentId,
+          status: 'todo'
+        };
         const appointmentRef = doc(firestore, 'appointments', appointmentId);
         setDocumentNonBlocking(appointmentRef, newAppointment, { merge: false });
     }, [firestore]);
@@ -622,7 +612,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 }
                 return fur;
             });
-            return { ...env, furniture: newFurniture };
+            return { ...env, furniture: newFurnitures };
         }
         return env;
     });
@@ -671,7 +661,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
                                 }
                                 return mat;
                             });
-                            return { ...fur, materials: newMaterials };
+                            return { ...fur, materials: newFurnitures };
                         }
                         return fur;
                     });

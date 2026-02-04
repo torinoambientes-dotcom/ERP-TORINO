@@ -157,6 +157,7 @@ export interface Appointment {
   end: string;   // ISO string
   memberIds: string[];
   category?: 'generic' | 'montagem' | 'corte' | 'producao';
+  status?: 'todo' | 'done' | 'delayed';
 }
 
 export interface Task {
