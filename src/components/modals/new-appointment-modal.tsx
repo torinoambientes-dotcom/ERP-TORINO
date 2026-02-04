@@ -26,7 +26,7 @@ import { Input } from '@/components/ui/input';
 import { AppContext } from '@/context/app-context';
 import { useToast } from '@/hooks/use-toast';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
-import { CalendarIcon, MapPin } from 'lucide-react';
+import { CalendarIcon, MapPin, Scissors, Hammer, Truck } from 'lucide-react';
 import { Calendar } from '../ui/calendar';
 import { format, set } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -54,7 +54,7 @@ const appointmentSchema = z.object({
   timeType: z.enum(['all_day', 'morning', 'afternoon', 'specific']),
   startTime: z.string().optional(),
   endTime: z.string().optional(),
-  category: z.enum(['generic', 'montagem']).default('generic'),
+  category: z.enum(['generic', 'montagem', 'corte', 'producao']).default('generic'),
 }).refine(data => {
     if (data.timeType === 'specific') {
         return !!data.startTime && !!data.endTime;
@@ -72,7 +72,7 @@ interface NewAppointmentModalProps {
   onClose: () => void;
   selectedDate?: Date;
   onDateConsumed?: () => void;
-  defaultCategory?: 'generic' | 'montagem';
+  defaultCategory?: 'generic' | 'montagem' | 'corte' | 'producao';
 }
 
 export function NewAppointmentModal({ isOpen, onClose, selectedDate, onDateConsumed, defaultCategory = 'generic' }: NewAppointmentModalProps) {
@@ -93,6 +93,8 @@ export function NewAppointmentModal({ isOpen, onClose, selectedDate, onDateConsu
       category: defaultCategory,
     },
   });
+
+  const selectedCategory = form.watch('category');
 
   useEffect(() => {
     if (isOpen) {
@@ -160,17 +162,41 @@ export function NewAppointmentModal({ isOpen, onClose, selectedDate, onDateConsu
 
   const { memberIds, timeType } = form.watch();
 
+  const getCategoryIcon = (cat: string) => {
+    switch (cat) {
+      case 'corte': return <Scissors className="h-4 w-4 mr-2" />;
+      case 'producao': return <Hammer className="h-4 w-4 mr-2" />;
+      case 'montagem': return <Truck className="h-4 w-4 mr-2" />;
+      default: return null;
+    }
+  };
+
+  const getTitleLabel = () => {
+    switch (selectedCategory) {
+      case 'corte': return 'Projeto / Cliente para Corte';
+      case 'producao': return 'Projeto / Móvel em Produção';
+      case 'montagem': return 'Projeto / Cliente para Montagem';
+      default: return 'Título / Evento';
+    }
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle className="font-headline">
-            {defaultCategory === 'montagem' ? 'Nova Montagem Externo' : 'Novo Compromisso'}
+          <DialogTitle className="font-headline flex items-center">
+            {getCategoryIcon(selectedCategory)}
+            Novo Agendamento: {
+              selectedCategory === 'montagem' ? 'Montagem' : 
+              selectedCategory === 'corte' ? 'Plano de Corte' : 
+              selectedCategory === 'producao' ? 'Produção' : 'Compromisso'
+            }
           </DialogTitle>
           <DialogDescription>
-            {defaultCategory === 'montagem' 
-              ? 'Agende o local e descreva o trabalho de montagem da equipa.' 
-              : 'Agende uma tarefa ou evento para um ou mais membros da equipa.'}
+            {selectedCategory === 'montagem' ? 'Agende o local e descreva o trabalho de montagem.' : 
+             selectedCategory === 'corte' ? 'Agende qual projeto terá o plano de corte executado.' :
+             selectedCategory === 'producao' ? 'Agende a produção de móveis na fábrica.' :
+             'Agende uma tarefa ou evento geral.'}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -180,37 +206,39 @@ export function NewAppointmentModal({ isOpen, onClose, selectedDate, onDateConsu
               name="title"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Título / Cliente</FormLabel>
+                  <FormLabel>{getTitleLabel()}</FormLabel>
                   <FormControl>
-                    <Input placeholder="Ex: Montagem - Cliente João" {...field} />
+                    <Input placeholder="Ex: Projeto Residencial X" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            <FormField
-              control={form.control}
-              name="location"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="flex items-center gap-2">
-                    <MapPin className="h-3 w-3" /> Local / Endereço
-                  </FormLabel>
-                  <FormControl>
-                    <Input placeholder="Ex: Rua das Flores, 123" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {selectedCategory === 'montagem' && (
+              <FormField
+                control={form.control}
+                name="location"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="flex items-center gap-2">
+                      <MapPin className="h-3 w-3" /> Local / Endereço
+                    </FormLabel>
+                    <FormControl>
+                      <Input placeholder="Ex: Rua das Flores, 123" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
             <FormField
               control={form.control}
               name="description"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Descrição do Trabalho</FormLabel>
+                  <FormLabel>Descrição / Observações</FormLabel>
                   <FormControl>
-                    <Textarea placeholder="Descreva o que será feito..." {...field} />
+                    <Textarea placeholder="Detalhes adicionais sobre o trabalho..." {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -286,7 +314,7 @@ export function NewAppointmentModal({ isOpen, onClose, selectedDate, onDateConsu
               name="memberIds"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Equipa Responsável</FormLabel>
+                  <FormLabel>Responsáveis</FormLabel>
                   <Popover>
                     <PopoverTrigger asChild>
                        <FormControl>
@@ -342,7 +370,7 @@ export function NewAppointmentModal({ isOpen, onClose, selectedDate, onDateConsu
               <Button type="button" variant="ghost" onClick={onClose}>
                 Cancelar
               </Button>
-              <Button type="submit">Guardar Agendamento</Button>
+              <Button type="submit">Guardar</Button>
             </DialogFooter>
           </form>
         </Form>

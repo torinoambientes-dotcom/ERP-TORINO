@@ -156,7 +156,7 @@ export interface Appointment {
   start: string; // ISO string
   end: string;   // ISO string
   memberIds: string[];
-  category?: 'generic' | 'montagem';
+  category?: 'generic' | 'montagem' | 'corte' | 'producao';
 }
 
 export interface Task {

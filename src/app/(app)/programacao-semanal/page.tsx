@@ -4,9 +4,8 @@
 import { useContext, useMemo, useState, useEffect } from 'react';
 import { AppContext } from '@/context/app-context';
 import { PageHeader } from '@/components/layout/page-header';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn, getInitials } from '@/lib/utils';
 import { 
@@ -16,12 +15,11 @@ import {
   eachDayOfInterval, 
   isSameDay, 
   parseISO, 
-  isWithinInterval,
   isToday
 } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import type { TeamMember, Priority, Project, ProductionStage } from '@/lib/types';
-import { Scissors, Hammer, Truck, Plus, MapPin, User, Clock } from 'lucide-react';
+import type { TeamMember, Priority } from '@/lib/types';
+import { Scissors, Hammer, Truck, Plus, MapPin, PlusCircle } from 'lucide-react';
 import { NewAppointmentModal } from '@/components/modals/new-appointment-modal';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -35,6 +33,7 @@ interface WeeklyItem {
   responsible: TeamMember[];
   priority?: Priority;
   projectId?: string;
+  isManual?: boolean;
 }
 
 export default function WeeklySchedulePage() {
@@ -42,6 +41,7 @@ export default function WeeklySchedulePage() {
   const [isClient, setIsClient] = useState(false);
   const [isAptModalOpen, setAptModalOpen] = useState(false);
   const [selectedDayForAdd, setSelectedDayForAdd] = useState<Date | undefined>(undefined);
+  const [selectedCategoryForAdd, setSelectedCategoryForAdd] = useState<'montagem' | 'corte' | 'producao'>('montagem');
 
   useEffect(() => {
     setIsClient(true);
@@ -72,7 +72,7 @@ export default function WeeklySchedulePage() {
       const dayKey = format(day, 'yyyy-MM-dd');
       data[dayKey] = [];
 
-      // 1. Cortes (Planos de Corte)
+      // 1. Cortes (Planos de Corte dos Projetos)
       projects.forEach(project => {
         project.environments.forEach(env => {
           env.furniture.forEach(fur => {
@@ -91,7 +91,7 @@ export default function WeeklySchedulePage() {
         });
       });
 
-      // 2. Produção (Pré-montagem na fábrica)
+      // 2. Produção (Pré-montagem dos Projetos)
       projects.forEach(project => {
         project.environments.forEach(env => {
           env.furniture.forEach(fur => {
@@ -110,17 +110,20 @@ export default function WeeklySchedulePage() {
         });
       });
 
-      // 3. Montagem (Compromissos externos)
+      // 3. Agendamentos Manuais (Appointments)
       appointments.forEach(apt => {
-        if (apt.start && isSameDay(parseISO(apt.start), day) && apt.category === 'montagem') {
-          data[dayKey].push({
-            id: apt.id,
-            type: 'montagem',
-            title: apt.title,
-            description: apt.description,
-            location: apt.location,
-            responsible: (apt.memberIds || []).map(id => memberMap.get(id)).filter((m): m is TeamMember => !!m),
-          });
+        if (apt.start && isSameDay(parseISO(apt.start), day)) {
+          if (apt.category === 'montagem' || apt.category === 'corte' || apt.category === 'producao') {
+            data[dayKey].push({
+              id: apt.id,
+              type: apt.category as any,
+              title: apt.title,
+              description: apt.description,
+              location: apt.location,
+              isManual: true,
+              responsible: (apt.memberIds || []).map(id => memberMap.get(id)).filter((m): m is TeamMember => !!m),
+            });
+          }
         }
       });
     });
@@ -128,8 +131,9 @@ export default function WeeklySchedulePage() {
     return data;
   }, [projects, appointments, isLoading, memberMap, daysOfWeek]);
 
-  const handleQuickAdd = (day: Date) => {
+  const handleQuickAdd = (day: Date, category: 'montagem' | 'corte' | 'producao') => {
     setSelectedDayForAdd(day);
+    setSelectedCategoryForAdd(category);
     setAptModalOpen(true);
   };
 
@@ -144,10 +148,6 @@ export default function WeeklySchedulePage() {
           title="Programação Semanal"
           description={`Planeamento de ${format(weekRange.start, "dd 'de' MMMM", { locale: ptBR })} a ${format(weekRange.end, "dd 'de' MMMM", { locale: ptBR })}.`}
         />
-        <Button onClick={() => handleQuickAdd(new Date())}>
-          <Plus className="mr-2 h-4 w-4" />
-          Novo Agendamento
-        </Button>
       </div>
 
       <div className="grid grid-cols-1 gap-8">
@@ -178,9 +178,6 @@ export default function WeeklySchedulePage() {
                     {activeToday && <Badge variant="secondary" className="mt-1">Hoje</Badge>}
                   </div>
                 </div>
-                <Button variant="ghost" size="sm" onClick={() => handleQuickAdd(day)}>
-                  <Plus className="h-4 w-4 mr-1" /> Agendar
-                </Button>
               </CardHeader>
               
               <CardContent className="p-0">
@@ -192,14 +189,20 @@ export default function WeeklySchedulePage() {
                       <h3 className="font-bold flex items-center gap-2 text-orange-600">
                         <Scissors className="h-4 w-4" /> Cortes
                       </h3>
-                      <Badge variant="outline">{cortes.length}</Badge>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-orange-600 hover:bg-orange-50" onClick={() => handleQuickAdd(day, 'corte')}>
+                        <PlusCircle className="h-5 w-5" />
+                      </Button>
                     </div>
                     <div className="space-y-3">
                       {cortes.length > 0 ? cortes.map(item => (
                         <div key={item.id} className="bg-muted/30 p-3 rounded-lg border text-sm">
-                          <Link href={`/projects/${item.projectId}`} className="font-semibold hover:underline block">
-                            {item.title}
-                          </Link>
+                          {item.projectId ? (
+                            <Link href={`/projects/${item.projectId}`} className="font-semibold hover:underline block">
+                              {item.title}
+                            </Link>
+                          ) : (
+                            <span className="font-semibold block">{item.title}</span>
+                          )}
                           <ResponsibleList responsible={item.responsible} />
                         </div>
                       )) : <EmptySection message="Nenhum plano de corte." />}
@@ -212,14 +215,20 @@ export default function WeeklySchedulePage() {
                       <h3 className="font-bold flex items-center gap-2 text-blue-600">
                         <Hammer className="h-4 w-4" /> Produção Fábrica
                       </h3>
-                      <Badge variant="outline">{producao.length}</Badge>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-600 hover:bg-blue-50" onClick={() => handleQuickAdd(day, 'producao')}>
+                        <PlusCircle className="h-5 w-5" />
+                      </Button>
                     </div>
                     <div className="space-y-3">
                       {producao.length > 0 ? producao.map(item => (
                         <div key={item.id} className="bg-muted/30 p-3 rounded-lg border text-sm">
-                          <Link href={`/projects/${item.projectId}`} className="font-semibold hover:underline block">
-                            {item.title}
-                          </Link>
+                          {item.projectId ? (
+                            <Link href={`/projects/${item.projectId}`} className="font-semibold hover:underline block">
+                              {item.title}
+                            </Link>
+                          ) : (
+                            <span className="font-semibold block">{item.title}</span>
+                          )}
                           <ResponsibleList responsible={item.responsible} />
                         </div>
                       )) : <EmptySection message="Nada em produção hoje." />}
@@ -232,7 +241,9 @@ export default function WeeklySchedulePage() {
                       <h3 className="font-bold flex items-center gap-2 text-green-600">
                         <Truck className="h-4 w-4" /> Montagem Externo
                       </h3>
-                      <Badge variant="outline">{montagem.length}</Badge>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-green-600 hover:bg-green-50" onClick={() => handleQuickAdd(day, 'montagem')}>
+                        <PlusCircle className="h-5 w-5" />
+                      </Button>
                     </div>
                     <div className="space-y-3">
                       {montagem.length > 0 ? montagem.map(item => (
@@ -265,7 +276,7 @@ export default function WeeklySchedulePage() {
         isOpen={isAptModalOpen}
         onClose={() => setAptModalOpen(false)}
         selectedDate={selectedDayForAdd}
-        defaultCategory="montagem"
+        defaultCategory={selectedCategoryForAdd}
       />
     </div>
   );
