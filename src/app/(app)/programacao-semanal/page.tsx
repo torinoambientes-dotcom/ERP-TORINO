@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useContext, useMemo, useState, useEffect } from 'react';
@@ -364,10 +363,10 @@ function WeeklyItemCard({ item, onToggleComplete, onRemove, onMarkDelayed }: { i
           <div className="mt-2 flex flex-wrap gap-1">
             {item.responsible.length > 0 ? (
               <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Responsáveis: {item.responsible.map(m => m.name.split(' ')[0]).join(', ')}
+                Marceneiro: {item.responsible.map(m => m.name.split(' ')[0]).join(', ')}
               </span>
             ) : (
-              <span className="text-[10px] italic text-muted-foreground">Sem responsável</span>
+              <span className="text-[10px] italic text-muted-foreground">Sem Marceneiro</span>
             )}
           </div>
         </div>

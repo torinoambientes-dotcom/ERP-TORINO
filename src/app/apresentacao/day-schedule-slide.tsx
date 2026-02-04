@@ -184,7 +184,7 @@ function ScheduleCard({ item, type }: { item: ScheduleItem, type: 'producao' | '
             <div className="mt-4 pt-3 border-t border-slate-100 flex flex-wrap gap-3 items-center">
                 <User className="h-6 w-6 text-slate-400" />
                 <span className="text-xl font-bold text-slate-700 uppercase tracking-tight">
-                    {item.responsible.length > 0 ? item.responsible.join('  •  ') : 'Equipa Torino'}
+                    {item.responsible.length > 0 ? `Marceneiro: ${item.responsible.join('  •  ')}` : 'Equipa Torino'}
                 </span>
             </div>
         </div>
