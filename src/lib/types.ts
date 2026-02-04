@@ -1,3 +1,4 @@
+
 'use client';
 
 export interface TeamMember {
@@ -151,9 +152,11 @@ export interface Appointment {
   id: string;
   title: string;
   description: string;
+  location?: string;
   start: string; // ISO string
   end: string;   // ISO string
   memberIds: string[];
+  category?: 'generic' | 'montagem';
 }
 
 export interface Task {

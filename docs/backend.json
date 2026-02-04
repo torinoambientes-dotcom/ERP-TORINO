@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "Project": {
@@ -217,7 +218,6 @@
         "width": { "type": "number" },
         "quantity": { "type": "number" },
         "hinges": { "type": "array", "items": { "type": "object", "properties": { "position": { "type": "number" } } } },
-        "hingeSide": { "type": "string", "enum": ["left", "right"], "description": "The side where the hinges are placed on a 'Giro' door." },
         "isPair": { "type": "boolean" },
         "handlePosition": { "type": "string", "enum": ["top", "bottom", "left", "right"] },
         "handleWidth": { "type": "number" },
@@ -266,13 +266,15 @@
         "id": { "type": "string" },
         "title": { "type": "string" },
         "description": { "type": "string" },
+        "location": { "type": "string", "description": "Physical location of the appointment." },
         "start": { "type": "string", "format": "date-time", "description": "The start date and time of the appointment." },
         "end": { "type": "string", "format": "date-time", "description": "The end date and time of the appointment." },
         "memberIds": {
           "type": "array",
           "items": { "type": "string" },
           "description": "A list of team member IDs assigned to this appointment."
-        }
+        },
+        "category": { "type": "string", "enum": ["generic", "montagem"] }
       },
       "required": ["id", "title", "start", "end", "memberIds"]
     },

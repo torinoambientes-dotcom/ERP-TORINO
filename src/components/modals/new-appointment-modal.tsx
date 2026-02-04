@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useContext, useEffect } from 'react';
@@ -25,7 +26,7 @@ import { Input } from '@/components/ui/input';
 import { AppContext } from '@/context/app-context';
 import { useToast } from '@/hooks/use-toast';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
-import { CalendarIcon } from 'lucide-react';
+import { CalendarIcon, MapPin } from 'lucide-react';
 import { Calendar } from '../ui/calendar';
 import { format, set } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -47,11 +48,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 const appointmentSchema = z.object({
   title: z.string().min(3, 'O título deve ter pelo menos 3 caracteres.'),
   description: z.string().optional(),
+  location: z.string().optional(),
   date: z.date({ required_error: 'A data é obrigatória.'}),
   memberIds: z.array(z.string()).min(1, 'Selecione pelo menos um membro da equipe.'),
   timeType: z.enum(['all_day', 'morning', 'afternoon', 'specific']),
   startTime: z.string().optional(),
   endTime: z.string().optional(),
+  category: z.enum(['generic', 'montagem']).default('generic'),
 }).refine(data => {
     if (data.timeType === 'specific') {
         return !!data.startTime && !!data.endTime;
@@ -69,9 +72,10 @@ interface NewAppointmentModalProps {
   onClose: () => void;
   selectedDate?: Date;
   onDateConsumed?: () => void;
+  defaultCategory?: 'generic' | 'montagem';
 }
 
-export function NewAppointmentModal({ isOpen, onClose, selectedDate, onDateConsumed }: NewAppointmentModalProps) {
+export function NewAppointmentModal({ isOpen, onClose, selectedDate, onDateConsumed, defaultCategory = 'generic' }: NewAppointmentModalProps) {
   const { teamMembers, addAppointment } = useContext(AppContext);
   const { toast } = useToast();
 
@@ -80,11 +84,13 @@ export function NewAppointmentModal({ isOpen, onClose, selectedDate, onDateConsu
     defaultValues: {
       title: '',
       description: '',
+      location: '',
       date: new Date(),
       memberIds: [],
       timeType: 'all_day',
       startTime: '09:00',
       endTime: '18:00',
+      category: defaultCategory,
     },
   });
 
@@ -93,14 +99,16 @@ export function NewAppointmentModal({ isOpen, onClose, selectedDate, onDateConsu
       form.reset({
         title: '',
         description: '',
+        location: '',
         date: selectedDate || new Date(),
         memberIds: [],
         timeType: 'all_day',
         startTime: '09:00',
         endTime: '18:00',
+        category: defaultCategory,
       });
     }
-  }, [isOpen, selectedDate, form]);
+  }, [isOpen, selectedDate, form, defaultCategory]);
 
   const onSubmit = (data: AppointmentFormValues) => {
     let start = data.date;
@@ -133,14 +141,16 @@ export function NewAppointmentModal({ isOpen, onClose, selectedDate, onDateConsu
     addAppointment({
       title: data.title,
       description: data.description || '',
+      location: data.location || '',
       start: start.toISOString(),
       end: end.toISOString(),
       memberIds: data.memberIds,
+      category: data.category,
     });
 
     toast({
-      title: 'Compromisso criado!',
-      description: `O compromisso "${data.title}" foi agendado.`,
+      title: 'Agendamento criado!',
+      description: `"${data.title}" foi agendado com sucesso.`,
     });
     
     form.reset();
@@ -154,9 +164,13 @@ export function NewAppointmentModal({ isOpen, onClose, selectedDate, onDateConsu
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle className="font-headline">Novo Compromisso</DialogTitle>
+          <DialogTitle className="font-headline">
+            {defaultCategory === 'montagem' ? 'Nova Montagem Externo' : 'Novo Compromisso'}
+          </DialogTitle>
           <DialogDescription>
-            Agende uma tarefa ou evento para um ou mais membros da equipe.
+            {defaultCategory === 'montagem' 
+              ? 'Agende o local e descreva o trabalho de montagem da equipa.' 
+              : 'Agende uma tarefa ou evento para um ou mais membros da equipa.'}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -166,9 +180,24 @@ export function NewAppointmentModal({ isOpen, onClose, selectedDate, onDateConsu
               name="title"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Título</FormLabel>
+                  <FormLabel>Título / Cliente</FormLabel>
                   <FormControl>
-                    <Input placeholder="Ex: Medição na casa do cliente" {...field} />
+                    <Input placeholder="Ex: Montagem - Cliente João" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="location"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="flex items-center gap-2">
+                    <MapPin className="h-3 w-3" /> Local / Endereço
+                  </FormLabel>
+                  <FormControl>
+                    <Input placeholder="Ex: Rua das Flores, 123" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -179,9 +208,9 @@ export function NewAppointmentModal({ isOpen, onClose, selectedDate, onDateConsu
               name="description"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Descrição (Opcional)</FormLabel>
+                  <FormLabel>Descrição do Trabalho</FormLabel>
                   <FormControl>
-                    <Textarea placeholder="Detalhes sobre o compromisso..." {...field} />
+                    <Textarea placeholder="Descreva o que será feito..." {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -257,7 +286,7 @@ export function NewAppointmentModal({ isOpen, onClose, selectedDate, onDateConsu
               name="memberIds"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Membros Responsáveis</FormLabel>
+                  <FormLabel>Equipa Responsável</FormLabel>
                   <Popover>
                     <PopoverTrigger asChild>
                        <FormControl>
@@ -313,7 +342,7 @@ export function NewAppointmentModal({ isOpen, onClose, selectedDate, onDateConsu
               <Button type="button" variant="ghost" onClick={onClose}>
                 Cancelar
               </Button>
-              <Button type="submit">Salvar Compromisso</Button>
+              <Button type="submit">Guardar Agendamento</Button>
             </DialogFooter>
           </form>
         </Form>

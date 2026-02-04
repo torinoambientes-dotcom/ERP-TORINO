@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useContext, useMemo, useState, useEffect } from 'react';
@@ -16,23 +17,31 @@ import {
   isSameDay, 
   parseISO, 
   isWithinInterval,
-  addDays,
   isToday
 } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import type { TeamMember, Priority, CalendarTask } from '../calendar/page';
-import { CalendarIcon, Flag, Clock, User, CheckCircle2 } from 'lucide-react';
-import { STAGE_STATUSES } from '@/lib/types';
+import type { TeamMember, Priority, Project, ProductionStage } from '@/lib/types';
+import { Scissors, Hammer, Truck, Plus, MapPin, User, Clock } from 'lucide-react';
+import { NewAppointmentModal } from '@/components/modals/new-appointment-modal';
+import { Button } from '@/components/ui/button';
+import Link from 'next/link';
 
-const priorityMap: Record<Priority, { label: string; className: string }> = {
-    low: { label: 'Baixa', className: 'text-gray-400' },
-    medium: { label: 'Média', className: 'text-yellow-500' },
-    high: { label: 'Alta', className: 'text-red-500' },
-};
+interface WeeklyItem {
+  id: string;
+  type: 'corte' | 'producao' | 'montagem';
+  title: string;
+  description?: string;
+  location?: string;
+  responsible: TeamMember[];
+  priority?: Priority;
+  projectId?: string;
+}
 
 export default function WeeklySchedulePage() {
-  const { projects, teamMembers, appointments, tasks, isLoading } = useContext(AppContext);
+  const { projects, teamMembers, appointments, isLoading } = useContext(AppContext);
   const [isClient, setIsClient] = useState(false);
+  const [isAptModalOpen, setAptModalOpen] = useState(false);
+  const [selectedDayForAdd, setSelectedDayForAdd] = useState<Date | undefined>(undefined);
 
   useEffect(() => {
     setIsClient(true);
@@ -55,95 +64,74 @@ export default function WeeklySchedulePage() {
     return map;
   }, [teamMembers]);
 
-  const weeklyActivities = useMemo(() => {
-    if (isLoading) return [];
+  const weeklyData = useMemo(() => {
+    const data: Record<string, WeeklyItem[]> = {};
+    if (isLoading) return data;
 
-    const activities: CalendarTask[] = [];
+    daysOfWeek.forEach(day => {
+      const dayKey = format(day, 'yyyy-MM-dd');
+      data[dayKey] = [];
 
-    // 1. Project Stages
-    projects.forEach(project => {
-      project.environments.forEach(env => {
-        env.furniture.forEach(fur => {
-          (['measurement', 'cutting', 'purchase', 'assembly'] as const).forEach(stageKey => {
-            const stage = fur[stageKey];
-            if (stage?.scheduledFor) {
-              const date = parseISO(stage.scheduledFor);
-              if (isWithinInterval(date, { start: weekRange.start, end: weekRange.end })) {
-                const responsible = (stage.responsibleIds || [])
-                  .map(id => memberMap.get(id))
-                  .filter((m): m is TeamMember => !!m);
-
-                activities.push({
-                  id: `${fur.id}-${stageKey}`,
-                  type: 'project',
-                  title: `${fur.name} (${project.clientName})`,
-                  subtitle: `Etapa: ${STAGE_STATUSES[stageKey]}`,
-                  responsible,
-                  date,
-                  start: date,
-                  end: date,
-                  priority: stage.priority || 'medium',
-                  rawData: { projectId: project.id, envId: env.id, furId: fur.id, stageKey },
-                });
-              }
+      // 1. Cortes (Planos de Corte)
+      projects.forEach(project => {
+        project.environments.forEach(env => {
+          env.furniture.forEach(fur => {
+            const stage = fur.cutting;
+            if (stage?.scheduledFor && isSameDay(parseISO(stage.scheduledFor), day)) {
+              data[dayKey].push({
+                id: `cut-${fur.id}`,
+                type: 'corte',
+                title: `${fur.name} (${project.clientName})`,
+                responsible: (stage.responsibleIds || []).map(id => memberMap.get(id)).filter((m): m is TeamMember => !!m),
+                priority: stage.priority,
+                projectId: project.id,
+              });
             }
           });
         });
       });
-    });
 
-    // 2. Appointments
-    appointments.forEach(apt => {
-      if (apt.start) {
-        const date = parseISO(apt.start);
-        if (isWithinInterval(date, { start: weekRange.start, end: weekRange.end })) {
-          const responsible = (apt.memberIds || [])
-            .map(id => memberMap.get(id))
-            .filter((m): m is TeamMember => !!m);
+      // 2. Produção (Pré-montagem na fábrica)
+      projects.forEach(project => {
+        project.environments.forEach(env => {
+          env.furniture.forEach(fur => {
+            const stage = fur.assembly;
+            if (stage?.scheduledFor && isSameDay(parseISO(stage.scheduledFor), day)) {
+              data[dayKey].push({
+                id: `prod-${fur.id}`,
+                type: 'producao',
+                title: `${fur.name} (${project.clientName})`,
+                responsible: (stage.responsibleIds || []).map(id => memberMap.get(id)).filter((m): m is TeamMember => !!m),
+                priority: stage.priority,
+                projectId: project.id,
+              });
+            }
+          });
+        });
+      });
 
-          activities.push({
+      // 3. Montagem (Compromissos externos)
+      appointments.forEach(apt => {
+        if (apt.start && isSameDay(parseISO(apt.start), day) && apt.category === 'montagem') {
+          data[dayKey].push({
             id: apt.id,
-            type: 'appointment',
+            type: 'montagem',
             title: apt.title,
-            subtitle: apt.description,
-            responsible,
-            date,
-            start: date,
-            end: parseISO(apt.end),
-            priority: 'medium',
-            rawData: { appointmentId: apt.id },
+            description: apt.description,
+            location: apt.location,
+            responsible: (apt.memberIds || []).map(id => memberMap.get(id)).filter((m): m is TeamMember => !!m),
           });
         }
-      }
+      });
     });
 
-    // 3. Generic Tasks
-    (tasks || []).forEach(task => {
-      if (task.dueDate) {
-        const date = parseISO(task.dueDate);
-        if (isWithinInterval(date, { start: weekRange.start, end: weekRange.end })) {
-          const responsible = (task.assigneeIds || [])
-            .map(id => memberMap.get(id))
-            .filter((m): m is TeamMember => !!m);
+    return data;
+  }, [projects, appointments, isLoading, memberMap, daysOfWeek]);
 
-          activities.push({
-            id: task.id,
-            type: 'task',
-            title: task.title,
-            subtitle: task.description,
-            responsible,
-            date,
-            start: date,
-            end: date,
-            priority: task.priority || 'medium',
-            rawData: { taskId: task.id },
-          });
-        }
-      }
-    });
-
-    return activities.sort((a, b) => a.date.getTime() - b.date.getTime());
-  }, [projects, appointments, tasks, isLoading, memberMap, weekRange]);
+  const handleQuickAdd = (day: Date) => {
+    setSelectedDayForAdd(day);
+    setAptModalOpen(true);
+  };
 
   if (!isClient || isLoading) {
     return <div className="flex h-full w-full items-center justify-center p-12">Carregando programação...</div>;
@@ -151,92 +139,161 @@ export default function WeeklySchedulePage() {
 
   return (
     <div className="space-y-8">
-      <PageHeader
-        title="Programação Semanal"
-        description={`Atividades planeadas de ${format(weekRange.start, "dd 'de' MMMM", { locale: ptBR })} a ${format(weekRange.end, "dd 'de' MMMM", { locale: ptBR })}.`}
-      />
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <PageHeader
+          title="Programação Semanal"
+          description={`Planeamento de ${format(weekRange.start, "dd 'de' MMMM", { locale: ptBR })} a ${format(weekRange.end, "dd 'de' MMMM", { locale: ptBR })}.`}
+        />
+        <Button onClick={() => handleQuickAdd(new Date())}>
+          <Plus className="mr-2 h-4 w-4" />
+          Novo Agendamento
+        </Button>
+      </div>
 
-      <div className="grid grid-cols-1 gap-6">
+      <div className="grid grid-cols-1 gap-8">
         {daysOfWeek.map(day => {
-          const dayActivities = weeklyActivities.filter(a => isSameDay(a.date, day));
+          const dayKey = format(day, 'yyyy-MM-dd');
+          const dayItems = weeklyData[dayKey] || [];
           const activeToday = isToday(day);
 
+          const cortes = dayItems.filter(i => i.type === 'corte');
+          const producao = dayItems.filter(i => i.type === 'producao');
+          const montagem = dayItems.filter(i => i.type === 'montagem');
+
           return (
-            <Card key={day.toISOString()} className={cn(activeToday && "border-primary shadow-md")}>
-              <CardHeader className={cn("py-4", activeToday && "bg-primary/5")}>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className={cn(
-                      "flex flex-col items-center justify-center w-12 h-12 rounded-lg border",
-                      activeToday ? "bg-primary text-primary-foreground border-primary" : "bg-muted text-muted-foreground"
-                    )}>
-                      <span className="text-xs uppercase font-bold">{format(day, 'EEE', { locale: ptBR })}</span>
-                      <span className="text-lg font-bold leading-none">{format(day, 'dd')}</span>
-                    </div>
-                    <div>
-                      <CardTitle className="text-xl capitalize">
-                        {format(day, 'eeee', { locale: ptBR })}
-                        {activeToday && <span className="ml-2 text-sm font-normal text-primary">(Hoje)</span>}
-                      </CardTitle>
-                      <CardDescription>
-                        {dayActivities.length} atividade(s) agendada(s)
-                      </CardDescription>
-                    </div>
+            <Card key={dayKey} className={cn("overflow-hidden border-l-4", activeToday ? "border-l-primary shadow-md" : "border-l-muted")}>
+              <CardHeader className={cn("py-4 flex flex-row items-center justify-between", activeToday && "bg-primary/5")}>
+                <div className="flex items-center gap-4">
+                  <div className={cn(
+                    "flex flex-col items-center justify-center w-14 h-14 rounded-lg border",
+                    activeToday ? "bg-primary text-primary-foreground border-primary" : "bg-muted/50"
+                  )}>
+                    <span className="text-xs uppercase font-bold">{format(day, 'EEE', { locale: ptBR })}</span>
+                    <span className="text-xl font-bold leading-none">{format(day, 'dd')}</span>
+                  </div>
+                  <div>
+                    <CardTitle className="text-2xl capitalize">
+                      {format(day, 'eeee', { locale: ptBR })}
+                    </CardTitle>
+                    {activeToday && <Badge variant="secondary" className="mt-1">Hoje</Badge>}
                   </div>
                 </div>
+                <Button variant="ghost" size="sm" onClick={() => handleQuickAdd(day)}>
+                  <Plus className="h-4 w-4 mr-1" /> Agendar
+                </Button>
               </CardHeader>
-              <CardContent className="pt-0">
-                {dayActivities.length > 0 ? (
-                  <div className="space-y-3 mt-2">
-                    {dayActivities.map(activity => (
-                      <div 
-                        key={activity.id} 
-                        className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 rounded-md bg-muted/30 border gap-4"
-                      >
-                        <div className="flex items-start gap-3 flex-grow">
-                          <div className={cn(
-                            "w-1 h-10 rounded-full shrink-0",
-                            activity.type === 'project' ? "bg-blue-500" : activity.type === 'appointment' ? "bg-purple-500" : "bg-orange-500"
-                          )} />
-                          <div className="overflow-hidden">
-                            <p className="font-semibold text-base truncate">{activity.title}</p>
-                            <p className="text-sm text-muted-foreground truncate">{activity.subtitle}</p>
-                          </div>
+              
+              <CardContent className="p-0">
+                <div className="grid grid-cols-1 lg:grid-cols-3 divide-y lg:divide-y-0 lg:divide-x border-t">
+                  
+                  {/* CORTES SECTION */}
+                  <div className="p-4 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-bold flex items-center gap-2 text-orange-600">
+                        <Scissors className="h-4 w-4" /> Cortes
+                      </h3>
+                      <Badge variant="outline">{cortes.length}</Badge>
+                    </div>
+                    <div className="space-y-3">
+                      {cortes.length > 0 ? cortes.map(item => (
+                        <div key={item.id} className="bg-muted/30 p-3 rounded-lg border text-sm">
+                          <Link href={`/projects/${item.projectId}`} className="font-semibold hover:underline block">
+                            {item.title}
+                          </Link>
+                          <ResponsibleList responsible={item.responsible} />
                         </div>
-
-                        <div className="flex items-center gap-4 shrink-0 w-full sm:w-auto justify-end">
-                          <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground bg-background border px-2 py-1 rounded">
-                            <Clock className="h-3.5 w-3.5" />
-                            {activity.type === 'appointment' ? `${format(activity.start, 'HH:mm')} - ${format(activity.end, 'HH:mm')}` : 'Dia todo'}
-                          </div>
-                          
-                          {activity.priority && (
-                            <Flag className={cn("h-4 w-4", priorityMap[activity.priority].className)} />
-                          )}
-
-                          <div className="flex items-center -space-x-2">
-                            {activity.responsible.map(member => (
-                              <Avatar key={member.id} className="h-7 w-7 border-2 border-background">
-                                {member.avatarUrl && <AvatarImage src={member.avatarUrl} />}
-                                <AvatarFallback style={{ backgroundColor: member.color }} className="text-[10px]">
-                                  {getInitials(member.name)}
-                                </AvatarFallback>
-                              </Avatar>
-                            ))}
-                            {activity.responsible.length === 0 && <User className="h-5 w-5 text-muted-foreground/50" />}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
+                      )) : <EmptySection message="Nenhum plano de corte." />}
+                    </div>
                   </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground italic py-4 text-center">Nenhuma atividade para este dia.</p>
-                )}
+
+                  {/* PRODUÇÃO SECTION */}
+                  <div className="p-4 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-bold flex items-center gap-2 text-blue-600">
+                        <Hammer className="h-4 w-4" /> Produção Fábrica
+                      </h3>
+                      <Badge variant="outline">{producao.length}</Badge>
+                    </div>
+                    <div className="space-y-3">
+                      {producao.length > 0 ? producao.map(item => (
+                        <div key={item.id} className="bg-muted/30 p-3 rounded-lg border text-sm">
+                          <Link href={`/projects/${item.projectId}`} className="font-semibold hover:underline block">
+                            {item.title}
+                          </Link>
+                          <ResponsibleList responsible={item.responsible} />
+                        </div>
+                      )) : <EmptySection message="Nada em produção hoje." />}
+                    </div>
+                  </div>
+
+                  {/* MONTAGEM SECTION */}
+                  <div className="p-4 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-bold flex items-center gap-2 text-green-600">
+                        <Truck className="h-4 w-4" /> Montagem Externo
+                      </h3>
+                      <Badge variant="outline">{montagem.length}</Badge>
+                    </div>
+                    <div className="space-y-3">
+                      {montagem.length > 0 ? montagem.map(item => (
+                        <div key={item.id} className="bg-muted/30 p-3 rounded-lg border text-sm space-y-2">
+                          <p className="font-bold text-base">{item.title}</p>
+                          {item.location && (
+                            <p className="flex items-center gap-1 text-muted-foreground italic">
+                              <MapPin className="h-3 w-3" /> {item.location}
+                            </p>
+                          )}
+                          {item.description && (
+                            <p className="text-muted-foreground border-l-2 pl-2 text-xs line-clamp-2">
+                              {item.description}
+                            </p>
+                          )}
+                          <ResponsibleList responsible={item.responsible} />
+                        </div>
+                      )) : <EmptySection message="Nenhuma montagem externa." />}
+                    </div>
+                  </div>
+
+                </div>
               </CardContent>
             </Card>
           );
         })}
       </div>
+
+      <NewAppointmentModal
+        isOpen={isAptModalOpen}
+        onClose={() => setAptModalOpen(false)}
+        selectedDate={selectedDayForAdd}
+        defaultCategory="montagem"
+      />
+    </div>
+  );
+}
+
+function ResponsibleList({ responsible }: { responsible: TeamMember[] }) {
+  if (responsible.length === 0) return null;
+  return (
+    <div className="flex items-center -space-x-2 mt-2">
+      {responsible.map(member => (
+        <Avatar key={member.id} className="h-6 w-6 border-2 border-background">
+          <AvatarImage src={member.avatarUrl} />
+          <AvatarFallback style={{ backgroundColor: member.color }} className="text-[8px]">
+            {getInitials(member.name)}
+          </AvatarFallback>
+        </Avatar>
+      ))}
+      <span className="ml-4 text-[10px] text-muted-foreground">
+        {responsible.map(m => m.name.split(' ')[0]).join(', ')}
+      </span>
+    </div>
+  );
+}
+
+function EmptySection({ message }: { message: string }) {
+  return (
+    <div className="h-16 flex items-center justify-center border-2 border-dashed rounded-lg bg-background/50">
+      <p className="text-xs text-muted-foreground italic">{message}</p>
     </div>
   );
 }
