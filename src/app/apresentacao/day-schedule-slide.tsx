@@ -163,22 +163,28 @@ function ScheduleCard({ item, type }: { item: ScheduleItem, type: 'producao' | '
     return (
         <div className={cn(
             "p-5 rounded-3xl border-4 bg-white shadow-sm relative transition-all",
-            item.isDone ? "opacity-40 grayscale" : "opacity-100",
+            item.isDone ? "bg-emerald-50 border-emerald-200" : "opacity-100",
             item.isDelayed && !item.isDone && "bg-red-50 border-red-200",
-            isProducao ? "border-l-[16px] border-blue-600 border-slate-100" : "border-l-[16px] border-emerald-600 border-slate-100",
-            item.isDelayed && !item.isDone && (isProducao ? "border-l-blue-800" : "border-l-emerald-800")
+            isProducao ? "border-l-[16px] border-blue-600" : "border-l-[16px] border-emerald-600",
+            // Sobrescreve cores de borda para estados especiais
+            item.isDone && "border-l-emerald-600",
+            item.isDelayed && !item.isDone && "border-l-red-600"
         )}>
             <div className="flex justify-between items-start gap-4">
                 <div className="flex-grow min-w-0">
                     <div className="flex items-center gap-3 mb-1">
-                        <h3 className={cn("text-4xl font-black tracking-tight truncate leading-tight text-slate-900", item.isDone && "line-through")}>
+                        <h3 className={cn("text-4xl font-black tracking-tight truncate leading-tight text-slate-900", item.isDone && "line-through opacity-70")}>
                             {item.title}
                         </h3>
-                        {item.isDelayed && !item.isDone && (
+                        {item.isDone ? (
+                            <span className="bg-emerald-600 text-white text-xl font-black px-3 py-1 rounded-xl flex items-center gap-2">
+                                <CheckCircle2 className="h-5 w-5" /> CONCLUÍDO
+                            </span>
+                        ) : item.isDelayed && !item.isDone ? (
                             <span className="bg-red-600 text-white text-xl font-black px-3 py-1 rounded-xl flex items-center gap-2 animate-pulse">
                                 <AlertCircle className="h-5 w-5" /> EM ATRASO
                             </span>
-                        )}
+                        ) : null}
                     </div>
                     <p className="text-2xl text-slate-600 font-bold tracking-tight truncate">
                         {item.description}
