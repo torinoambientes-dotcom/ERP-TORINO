@@ -2,9 +2,7 @@
 import { useContext, useMemo, useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { AppContext } from '@/context/app-context';
-import type { TeamMember } from '@/lib/types';
-import { CarpenterSlide } from './carpenter-slide';
-import { OngoingProjectsSlide } from './ongoing-projects-slide';
+import { DayScheduleSlide } from './day-schedule-slide';
 import {
   Carousel,
   CarouselContent,
@@ -12,18 +10,20 @@ import {
   type CarouselApi,
 } from '@/components/ui/carousel';
 import Autoplay from 'embla-carousel-autoplay';
-import type { ExtraProject } from '@/lib/types';
+import { startOfWeek, addDays, format, isSameDay } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 function FactoryDisplayContent() {
-  const { teamMembers, isLoading } = useContext(AppContext);
+  const { projects, teamMembers, appointments, isLoading } = useContext(AppContext);
   const searchParams = useSearchParams();
 
   const [api, setApi] = useState<CarouselApi>();
   const [currentSlide, setCurrentSlide] = useState(0);
 
+  // Configurações via URL
   const rotationTime = useMemo(() => {
     const time = searchParams.get('time');
-    return time ? parseInt(time, 10) * 1000 : 60000;
+    return time ? parseInt(time, 10) * 1000 : 30000; // Default 30s
   }, [searchParams]);
 
   const customMessage = useMemo(() => searchParams.get('message'), [searchParams]);
@@ -33,102 +33,88 @@ function FactoryDisplayContent() {
     return ids ? ids.split(',') : null;
   }, [searchParams]);
 
-  const extraProjects = useMemo((): ExtraProject[] => {
-    const data = searchParams.get('extraProjects');
-    try {
-        return data ? JSON.parse(data) : [];
-    } catch {
-        return [];
-    }
-  }, [searchParams]);
-
-  const marceneiros = useMemo(() => {
-    const allMarceneiros = (teamMembers || []).filter((member) => member.role === 'Marceneiro');
-    if (selectedCarpenterIds) {
-      return allMarceneiros.filter(m => selectedCarpenterIds.includes(m.id));
-    }
-    return allMarceneiros;
-  }, [teamMembers, selectedCarpenterIds]);
+  // Gerar os 5 dias úteis da semana atual (Segunda a Sexta)
+  const weekDays = useMemo(() => {
+    const start = startOfWeek(new Date(), { weekStartsOn: 1 });
+    return Array.from({ length: 5 }).map((_, i) => addDays(start, i));
+  }, []);
 
   useEffect(() => {
-    if (!api) {
-      return;
-    }
-
-    const onSelect = () => {
-      setCurrentSlide(api.selectedScrollSnap());
-    };
-
+    if (!api) return;
+    const onSelect = () => setCurrentSlide(api.selectedScrollSnap());
     api.on('select', onSelect);
-
-    return () => {
-      api.off('select', onSelect);
-    };
+    return () => api.off('select', onSelect);
   }, [api]);
   
   useEffect(() => {
     const elem = document.documentElement;
     if (elem.requestFullscreen) {
-      elem.requestFullscreen().catch(err => {
-        console.error(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
-      });
+      elem.requestFullscreen().catch(() => {});
     }
   }, []);
-  
-  const totalSlides = marceneiros.length > 0 ? marceneiros.length + 1 : 0;
 
   if (isLoading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-gray-900 text-white">
-        <p className="text-2xl font-bold">A carregar dados da fábrica...</p>
+      <div className="flex h-screen items-center justify-center bg-gray-950 text-white">
+        <p className="text-3xl font-bold animate-pulse">Carregando Programação da Fábrica...</p>
       </div>
     );
   }
 
   return (
-    <div className="bg-gray-900 text-white min-h-screen p-8 flex flex-col justify-center relative">
-        <main className="flex-grow flex flex-col justify-center">
-            {marceneiros.length > 0 ? (
-            <>
-                <Carousel
-                setApi={setApi}
-                plugins={[Autoplay({ delay: rotationTime, stopOnInteraction: true })]}
-                className="w-full"
-                >
-                <CarouselContent>
-                    {marceneiros.map((marceneiro) => (
-                    <CarouselItem key={marceneiro.id}>
-                        <CarpenterSlide marceneiro={marceneiro} extraProjects={extraProjects} />
-                    </CarouselItem>
-                    ))}
-                    <CarouselItem key="ongoing-projects">
-                        <OngoingProjectsSlide />
-                    </CarouselItem>
-                </CarouselContent>
-                </Carousel>
-                <div className="flex justify-center gap-2 py-4">
-                {Array.from({ length: totalSlides }).map((_, index) => (
-                    <div
-                    key={index}
-                    className={`h-2 w-8 rounded-full transition-all ${
-                        index === currentSlide ? 'bg-primary' : 'bg-gray-600'
-                    }`}
-                    />
-                ))}
-                </div>
-            </>
-            ) : (
-            <div className="flex items-center justify-center h-96">
-                <p className="text-xl text-gray-400">
-                Nenhum marceneiro selecionado para exibir.
+    <div className="bg-gray-950 text-white min-h-screen flex flex-col relative overflow-hidden">
+        {/* Header Fixo do Ecrã */}
+        <header className="p-6 border-b border-gray-800 bg-gray-900/50 backdrop-blur-md flex justify-between items-center z-10">
+            <div className="flex items-center gap-4">
+                <div className="h-12 w-1 bg-primary rounded-full"></div>
+                <h1 className="text-4xl font-black tracking-tighter uppercase">Programação da Oficina</h1>
+            </div>
+            <div className="text-right">
+                <p className="text-gray-400 text-xl font-medium uppercase tracking-widest">
+                    {format(new Date(), "eeee, dd 'de' MMMM", { locale: ptBR })}
                 </p>
             </div>
-            )}
+        </header>
+
+        <main className="flex-grow flex flex-col justify-center p-8">
+            <Carousel
+                setApi={setApi}
+                plugins={[Autoplay({ delay: rotationTime, stopOnInteraction: false })]}
+                className="w-full h-full"
+            >
+                <CarouselContent>
+                    {weekDays.map((day) => (
+                        <CarouselItem key={day.toISOString()} className="h-full">
+                            <DayScheduleSlide 
+                                day={day} 
+                                projects={projects} 
+                                appointments={appointments}
+                                teamMembers={teamMembers}
+                                selectedCarpenterIds={selectedCarpenterIds}
+                            />
+                        </CarouselItem>
+                    ))}
+                </CarouselContent>
+            </Carousel>
         </main>
 
+        {/* Indicadores de Progresso dos Slides */}
+        <div className="flex justify-center gap-3 pb-8">
+            {weekDays.map((_, index) => (
+                <div
+                    key={index}
+                    className={`h-3 rounded-full transition-all duration-500 ${
+                        index === currentSlide ? 'w-16 bg-primary shadow-[0_0_15px_rgba(var(--primary),0.5)]' : 'w-3 bg-gray-800'
+                    }`}
+                />
+            ))}
+        </div>
+
         {customMessage && (
-            <footer className="absolute bottom-8 left-1/2 -translate-x-1/2 text-center text-2xl font-semibold text-amber-300 tracking-wide">
-                <p>{customMessage}</p>
+            <footer className="bg-primary/10 border-t border-primary/20 p-4 text-center">
+                <p className="text-2xl font-bold text-primary animate-bounce uppercase tracking-wide">
+                    {customMessage}
+                </p>
             </footer>
         )}
     </div>
@@ -137,7 +123,7 @@ function FactoryDisplayContent() {
 
 export default function ApresentacaoPage() {
   return (
-    <Suspense fallback={<div className="flex h-screen items-center justify-center bg-gray-900 text-white"><p>A carregar...</p></div>}>
+    <Suspense fallback={<div className="flex h-screen items-center justify-center bg-gray-950 text-white"><p>Carregando...</p></div>}>
       <FactoryDisplayContent />
     </Suspense>
   );
