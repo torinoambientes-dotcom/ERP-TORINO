@@ -3,7 +3,7 @@ import { useMemo } from 'react';
 import type { Project, Appointment, TeamMember } from '@/lib/types';
 import { format, isSameDay, parseISO, isToday } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Hammer, Truck, Clock, CheckCircle2, User, Scissors } from 'lucide-react';
+import { Hammer, Truck, Clock, CheckCircle2, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface DayScheduleSlideProps {
@@ -21,7 +21,7 @@ interface ScheduleItem {
     location?: string;
     responsible: string[];
     isDone: boolean;
-    category?: 'corte' | 'producao' | 'montagem';
+    category?: 'producao' | 'montagem';
 }
 
 export function DayScheduleSlide({ day, projects, appointments, teamMembers, selectedCarpenterIds }: DayScheduleSlideProps) {
@@ -31,22 +31,12 @@ export function DayScheduleSlide({ day, projects, appointments, teamMembers, sel
     const prodItems: ScheduleItem[] = [];
     const montItems: ScheduleItem[] = [];
 
-    // 1. Processar Projetos (Cortes e Produção)
+    // 1. Processar Projetos (Apenas Produção/Pré-Montagem)
     projects.forEach(project => {
       project.environments.forEach(env => {
         env.furniture.forEach(fur => {
-          // Etapa de Corte
-          if (fur.cutting?.scheduledFor && isSameDay(parseISO(fur.cutting.scheduledFor), day)) {
-             prodItems.push({
-                id: `cut-${fur.id}`,
-                title: fur.name,
-                description: project.clientName,
-                responsible: (fur.cutting.responsibleIds || []).map(id => memberMap.get(id)?.name.split(' ')[0] || '').filter(Boolean),
-                isDone: fur.cutting.status === 'done',
-                category: 'corte'
-            });
-          }
-
+          // Ignorar Etapa de Corte conforme solicitação
+          
           // Etapa de Pré-Montagem
           const stage = fur.assembly;
           if (stage?.scheduledFor && isSameDay(parseISO(stage.scheduledFor), day)) {
@@ -68,17 +58,17 @@ export function DayScheduleSlide({ day, projects, appointments, teamMembers, sel
       });
     });
 
-    // 2. Adicionar Compromissos Manuais
+    // 2. Adicionar Compromissos Manuais (Ignorar categoria 'corte')
     appointments.forEach(apt => {
         if (apt.start && isSameDay(parseISO(apt.start), day)) {
-            if (apt.category === 'producao' || apt.category === 'corte') {
+            if (apt.category === 'producao') {
                 prodItems.push({
                     id: apt.id,
                     title: apt.title,
                     description: apt.description,
                     responsible: (apt.memberIds || []).map(id => memberMap.get(id)?.name.split(' ')[0] || '').filter(Boolean),
                     isDone: apt.status === 'done',
-                    category: apt.category as any
+                    category: 'producao'
                 });
             } else if (apt.category === 'montagem') {
                 montItems.push({
@@ -95,7 +85,7 @@ export function DayScheduleSlide({ day, projects, appointments, teamMembers, sel
     });
 
     return { 
-        producao: prodItems.sort((a, b) => (a.category === 'corte' ? -1 : 1)), 
+        producao: prodItems, 
         montagem: montItems 
     };
   }, [day, projects, appointments, memberMap, selectedCarpenterIds]);
@@ -161,25 +151,18 @@ export function DayScheduleSlide({ day, projects, appointments, teamMembers, sel
 
 function ScheduleCard({ item, type }: { item: ScheduleItem, type: 'producao' | 'montagem' }) {
     const isProducao = type === 'producao';
-    const isCorte = item.category === 'corte';
     
     return (
         <div className={cn(
             "p-5 rounded-3xl border-4 bg-white shadow-sm relative transition-all",
             item.isDone ? "opacity-40 grayscale" : "opacity-100",
-            isCorte ? "border-l-[16px] border-orange-500 border-slate-100" : 
-            (isProducao ? "border-l-[16px] border-blue-600 border-slate-100" : "border-l-[16px] border-emerald-600 border-slate-100")
+            isProducao ? "border-l-[16px] border-blue-600 border-slate-100" : "border-l-[16px] border-emerald-600 border-slate-100"
         )}>
             <div className="flex justify-between items-start gap-4">
                 <div className="flex-grow min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                        {isCorte && (
-                            <span className="px-2 py-0.5 bg-orange-500 text-white text-lg font-black rounded-md uppercase">Corte</span>
-                        )}
-                        <h3 className={cn("text-4xl font-black tracking-tight truncate leading-tight text-slate-900", item.isDone && "line-through")}>
-                            {item.title}
-                        </h3>
-                    </div>
+                    <h3 className={cn("text-4xl font-black tracking-tight truncate leading-tight text-slate-900", item.isDone && "line-through")}>
+                        {item.title}
+                    </h3>
                     <p className="text-2xl text-slate-600 font-bold tracking-tight truncate">
                         {item.description}
                     </p>
@@ -193,7 +176,6 @@ function ScheduleCard({ item, type }: { item: ScheduleItem, type: 'producao' | '
                     {item.isDone ? (
                         <CheckCircle2 className="h-12 w-12 text-emerald-600" />
                     ) : (
-                        isCorte ? <Scissors className="h-12 w-12 text-orange-500" /> :
                         <Clock className={cn("h-12 w-12", isProducao ? "text-blue-600" : "text-emerald-600")} />
                     )}
                 </div>
