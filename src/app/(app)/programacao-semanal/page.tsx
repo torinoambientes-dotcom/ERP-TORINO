@@ -15,11 +15,13 @@ import {
   parseISO, 
   isToday,
   isPast,
-  endOfDay
+  endOfDay,
+  addWeeks,
+  subWeeks
 } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import type { TeamMember, Priority, Appointment, StageStatus } from '@/lib/types';
-import { Scissors, Hammer, Truck, PlusCircle, MapPin, CheckCircle2, Trash2, AlertCircle, Clock } from 'lucide-react';
+import { Scissors, Hammer, Truck, PlusCircle, MapPin, CheckCircle2, Trash2, AlertCircle, Clock, ChevronLeft, ChevronRight, CalendarDays } from 'lucide-react';
 import { NewAppointmentModal } from '@/components/modals/new-appointment-modal';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -49,17 +51,19 @@ export default function WeeklySchedulePage() {
   const [isAptModalOpen, setAptModalOpen] = useState(false);
   const [selectedDayForAdd, setSelectedDayForAdd] = useState<Date | undefined>(undefined);
   const [selectedCategoryForAdd, setSelectedCategoryForAdd] = useState<'montagem' | 'corte' | 'producao'>('montagem');
+  
+  // Estado para controlar a semana visualizada
+  const [currentViewDate, setCurrentViewDate] = useState(new Date());
 
   useEffect(() => {
     setIsClient(true);
   }, []);
 
   const weekRange = useMemo(() => {
-    const now = new Date();
-    const start = startOfWeek(now, { weekStartsOn: 1, locale: ptBR });
-    const end = endOfWeek(now, { weekStartsOn: 1, locale: ptBR });
+    const start = startOfWeek(currentViewDate, { weekStartsOn: 1, locale: ptBR });
+    const end = endOfWeek(currentViewDate, { weekStartsOn: 1, locale: ptBR });
     return { start, end };
-  }, []);
+  }, [currentViewDate]);
 
   const daysOfWeek = useMemo(() => {
     return eachDayOfInterval({ start: weekRange.start, end: weekRange.end });
@@ -205,10 +209,17 @@ export default function WeeklySchedulePage() {
         updateAppointment(item.id, { status: 'delayed' });
         toast({ title: "Agendamento marcado como em atraso." });
     } else if (item.projectId && item.envId && item.furId) {
-        // For project stages, "delayed" is visual based on date, 
-        // but we can't explicitly set a 'delayed' status in the StageStatus enum (it's todo/in_progress/done).
-        // So we just show a toast or handle it visually.
         toast({ title: "Tarefa de projeto assinalada como prioritária/atrasada." });
+    }
+  };
+
+  const navigateWeek = (direction: 'prev' | 'next' | 'today') => {
+    if (direction === 'prev') {
+      setCurrentViewDate(subWeeks(currentViewDate, 1));
+    } else if (direction === 'next') {
+      setCurrentViewDate(addWeeks(currentViewDate, 1));
+    } else {
+      setCurrentViewDate(new Date());
     }
   };
 
@@ -224,6 +235,30 @@ export default function WeeklySchedulePage() {
             title="Programação Semanal"
             description={`Planeamento de ${format(weekRange.start, "dd 'de' MMMM", { locale: ptBR })} a ${format(weekRange.end, "dd 'de' MMMM", { locale: ptBR })}.`}
           />
+          <div className="flex items-center gap-2 bg-muted/50 p-1 rounded-lg border">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon" onClick={() => navigateWeek('prev')} className="h-9 w-9">
+                  <ChevronLeft className="h-5 w-5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Semana Anterior</TooltipContent>
+            </Tooltip>
+            
+            <Button variant="outline" size="sm" onClick={() => navigateWeek('today')} className="px-4 font-semibold">
+              <CalendarDays className="mr-2 h-4 w-4" />
+              Semana Atual
+            </Button>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon" onClick={() => navigateWeek('next')} className="h-9 w-9">
+                  <ChevronRight className="h-5 w-5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Próxima Semana</TooltipContent>
+            </Tooltip>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 gap-8">
