@@ -36,7 +36,6 @@ export function DayScheduleSlide({ day, projects, appointments, teamMembers, sel
     projects.forEach(project => {
       project.environments.forEach(env => {
         env.furniture.forEach(fur => {
-          // Etapa de Pré-Montagem
           const stage = fur.assembly;
           if (stage?.scheduledFor && isSameDay(parseISO(stage.scheduledFor), day)) {
             const isRelevant = !selectedCarpenterIds || 
@@ -101,30 +100,30 @@ export function DayScheduleSlide({ day, projects, appointments, teamMembers, sel
   const isActive = isToday(day);
 
   return (
-    <div className="flex flex-col h-full gap-6">
-      {/* Indicador de Dia */}
+    <div className="flex flex-col h-full gap-4 px-4 pb-4">
+      {/* Indicador de Dia - Mais Compacto */}
       <div className="flex items-center justify-center">
         <div className={cn(
-            "px-12 py-4 rounded-3xl border-4 flex flex-col items-center min-w-[350px] shadow-sm",
+            "px-10 py-3 rounded-2xl border-4 flex flex-col items-center min-w-[300px] shadow-lg",
             isActive ? "bg-primary text-white border-primary" : "bg-white border-slate-200 text-slate-800"
         )}>
-            <span className="text-2xl font-bold uppercase tracking-[0.2em] leading-none mb-1">
+            <span className="text-xl font-bold uppercase tracking-[0.2em] leading-none mb-1">
                 {format(day, 'eeee', { locale: ptBR })}
             </span>
-            <span className="text-7xl font-black tracking-tighter">
+            <span className="text-6xl font-black tracking-tighter">
                 {format(day, 'dd/MM')}
             </span>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-8 flex-grow overflow-hidden pb-2">
+      <div className="grid grid-cols-2 gap-6 flex-grow overflow-hidden">
         {/* Coluna Produção */}
-        <section className="flex flex-col gap-4">
-            <div className="flex items-center gap-3 text-blue-700 bg-blue-50 p-3 rounded-2xl border border-blue-100">
-                <Hammer className="h-10 w-10" />
-                <h2 className="text-4xl font-black uppercase tracking-tight">Produção Fábrica</h2>
+        <section className="flex flex-col gap-3 min-h-0">
+            <div className="flex items-center gap-3 text-blue-700 bg-blue-50 p-3 rounded-xl border border-blue-100 flex-shrink-0">
+                <Hammer className="h-8 w-8" />
+                <h2 className="text-3xl font-black uppercase tracking-tight">Produção Fábrica</h2>
             </div>
-            <div className="grid grid-cols-1 gap-4 overflow-y-auto pr-2 custom-scrollbar">
+            <div className="flex-grow overflow-y-auto pr-2 custom-scrollbar space-y-3 pb-4">
                 {producao.length > 0 ? producao.map(item => (
                     <ScheduleCard key={item.id} item={item} type="producao" />
                 )) : (
@@ -134,12 +133,12 @@ export function DayScheduleSlide({ day, projects, appointments, teamMembers, sel
         </section>
 
         {/* Coluna Montagem */}
-        <section className="flex flex-col gap-4">
-            <div className="flex items-center gap-3 text-emerald-700 bg-emerald-50 p-3 rounded-2xl border border-emerald-100">
-                <Truck className="h-10 w-10" />
-                <h2 className="text-4xl font-black uppercase tracking-tight">Montagem Externo</h2>
+        <section className="flex flex-col gap-3 min-h-0">
+            <div className="flex items-center gap-3 text-emerald-700 bg-emerald-50 p-3 rounded-xl border border-emerald-100 flex-shrink-0">
+                <Truck className="h-8 w-8" />
+                <h2 className="text-3xl font-black uppercase tracking-tight">Montagem Externo</h2>
             </div>
-            <div className="grid grid-cols-1 gap-4 overflow-y-auto pr-2 custom-scrollbar">
+            <div className="flex-grow overflow-y-auto pr-2 custom-scrollbar space-y-3 pb-4">
                 {montagem.length > 0 ? montagem.map(item => (
                     <ScheduleCard key={item.id} item={item} type="montagem" />
                 )) : (
@@ -149,9 +148,9 @@ export function DayScheduleSlide({ day, projects, appointments, teamMembers, sel
         </section>
       </div>
       <style jsx global>{`
-        .custom-scrollbar::-webkit-scrollbar { width: 10px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 10px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; border: 2px solid #f1f5f9; }
+        .custom-scrollbar::-webkit-scrollbar { width: 8px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
       `}</style>
     </div>
   );
@@ -162,51 +161,50 @@ function ScheduleCard({ item, type }: { item: ScheduleItem, type: 'producao' | '
     
     return (
         <div className={cn(
-            "p-5 rounded-3xl border-4 bg-white shadow-sm relative transition-all",
-            item.isDone ? "bg-emerald-50 border-emerald-200" : "opacity-100",
-            item.isDelayed && !item.isDone && "bg-red-50 border-red-200",
-            isProducao ? "border-l-[16px] border-blue-600" : "border-l-[16px] border-emerald-600",
-            // Sobrescreve cores de borda para estados especiais
+            "p-4 rounded-2xl border-4 bg-white shadow-md relative transition-all",
+            item.isDone ? "bg-emerald-50 border-emerald-300" : "border-slate-200",
+            item.isDelayed && !item.isDone && "bg-red-50 border-red-300",
+            isProducao ? "border-l-[12px] border-l-blue-600" : "border-l-[12px] border-l-emerald-600",
             item.isDone && "border-l-emerald-600",
             item.isDelayed && !item.isDone && "border-l-red-600"
         )}>
-            <div className="flex justify-between items-start gap-4">
+            <div className="flex justify-between items-start gap-3">
                 <div className="flex-grow min-w-0">
-                    <div className="flex items-center gap-3 mb-1">
-                        <h3 className={cn("text-4xl font-black tracking-tight truncate leading-tight text-slate-900", item.isDone && "line-through opacity-70")}>
+                    <div className="flex flex-wrap items-center gap-2 mb-1">
+                        <h3 className={cn("text-3xl font-black tracking-tight truncate leading-tight text-slate-900", item.isDone && "line-through opacity-60")}>
                             {item.title}
                         </h3>
                         {item.isDone ? (
-                            <span className="bg-emerald-600 text-white text-xl font-black px-3 py-1 rounded-xl flex items-center gap-2">
-                                <CheckCircle2 className="h-5 w-5" /> CONCLUÍDO
+                            <span className="bg-emerald-600 text-white text-lg font-black px-2 py-0.5 rounded-lg flex items-center gap-1.5 shadow-sm">
+                                <CheckCircle2 className="h-4 w-4" /> CONCLUÍDO
                             </span>
                         ) : item.isDelayed && !item.isDone ? (
-                            <span className="bg-red-600 text-white text-xl font-black px-3 py-1 rounded-xl flex items-center gap-2 animate-pulse">
-                                <AlertCircle className="h-5 w-5" /> EM ATRASO
+                            <span className="bg-red-600 text-white text-lg font-black px-2 py-0.5 rounded-lg flex items-center gap-1.5 shadow-sm animate-pulse">
+                                <AlertCircle className="h-4 w-4" /> EM ATRASO
                             </span>
                         ) : null}
                     </div>
-                    <p className="text-2xl text-slate-600 font-bold tracking-tight truncate">
+                    <p className="text-xl text-slate-600 font-bold tracking-tight truncate">
                         {item.description}
                     </p>
                     {item.location && (
-                        <div className="text-xl text-primary font-bold italic mt-2 flex items-center gap-2 bg-slate-50 px-3 py-1 rounded-xl w-fit">
-                            <Truck className="h-5 w-5" /> {item.location}
+                        <div className="text-lg text-primary font-bold italic mt-1 flex items-center gap-2 bg-slate-50 px-2 py-0.5 rounded-lg w-fit border border-slate-100">
+                            <Truck className="h-4 w-4" /> {item.location}
                         </div>
                     )}
                 </div>
                 <div className="flex-shrink-0 pt-1">
                     {item.isDone ? (
-                        <CheckCircle2 className="h-12 w-12 text-emerald-600" />
+                        <CheckCircle2 className="h-10 w-10 text-emerald-600" />
                     ) : (
-                        <Clock className={cn("h-12 w-12", isProducao ? "text-blue-600" : "text-emerald-600")} />
+                        <Clock className={cn("h-10 w-10", isProducao ? "text-blue-600" : "text-emerald-600")} />
                     )}
                 </div>
             </div>
 
-            <div className="mt-4 pt-3 border-t border-slate-100 flex flex-wrap gap-3 items-center">
-                <User className="h-6 w-6 text-slate-400" />
-                <span className="text-xl font-bold text-slate-700 uppercase tracking-tight">
+            <div className="mt-3 pt-2 border-t border-slate-100 flex flex-wrap gap-2 items-center">
+                <User className="h-5 w-5 text-slate-400" />
+                <span className="text-lg font-black text-slate-800 uppercase tracking-tight">
                     {item.responsible.length > 0 ? `Marceneiro: ${item.responsible.join('  •  ')}` : 'Equipa Torino'}
                 </span>
             </div>
@@ -216,8 +214,8 @@ function ScheduleCard({ item, type }: { item: ScheduleItem, type: 'producao' | '
 
 function EmptyState({ message }: { message: string }) {
     return (
-        <div className="h-32 flex items-center justify-center border-4 border-dashed border-slate-200 rounded-3xl bg-slate-50">
-            <p className="text-2xl text-slate-400 font-black uppercase tracking-widest italic">{message}</p>
+        <div className="h-24 flex items-center justify-center border-4 border-dashed border-slate-200 rounded-2xl bg-slate-50/50">
+            <p className="text-xl text-slate-400 font-black uppercase tracking-widest italic">{message}</p>
         </div>
     );
 }

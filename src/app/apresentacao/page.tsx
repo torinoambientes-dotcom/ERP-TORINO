@@ -1,4 +1,3 @@
-
 'use client';
 import { useContext, useMemo, useState, useEffect, Suspense, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
@@ -13,7 +12,7 @@ import {
 import Autoplay from 'embla-carousel-autoplay';
 import { startOfWeek, addDays, format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Maximize, MonitorPlay } from 'lucide-react';
+import { Maximize } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 function FactoryDisplayContent() {
@@ -24,10 +23,9 @@ function FactoryDisplayContent() {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
-  // Configurações via URL
   const rotationTime = useMemo(() => {
     const time = searchParams.get('time');
-    return time ? parseInt(time, 10) * 1000 : 30000; // Default 30s
+    return time ? parseInt(time, 10) * 1000 : 30000;
   }, [searchParams]);
 
   const customMessage = useMemo(() => searchParams.get('message'), [searchParams]);
@@ -37,7 +35,6 @@ function FactoryDisplayContent() {
     return ids ? ids.split(',') : null;
   }, [searchParams]);
 
-  // Gerar os 5 dias úteis da semana atual (Segunda a Sexta)
   const weekDays = useMemo(() => {
     const start = startOfWeek(new Date(), { weekStartsOn: 1 });
     return Array.from({ length: 5 }).map((_, i) => addDays(start, i));
@@ -70,45 +67,45 @@ function FactoryDisplayContent() {
 
   if (isLoading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-white text-slate-900">
+      <div className="flex h-screen items-center justify-center bg-slate-50 text-slate-900">
         <p className="text-5xl font-black animate-pulse uppercase tracking-tighter">Carregando Programação...</p>
       </div>
     );
   }
 
   return (
-    <div className="bg-slate-50 text-slate-900 min-h-screen flex flex-col relative overflow-hidden select-none">
+    <div className="bg-slate-100 text-slate-900 h-screen flex flex-col relative overflow-hidden select-none">
         
-        {/* Botão de Ecrã Inteiro (Apenas visível se não estiver em fullscreen) */}
         {!isFullscreen && (
-          <div className="absolute top-4 right-4 z-50 animate-bounce">
-            <Button size="lg" onClick={toggleFullscreen} className="bg-primary hover:bg-primary/90 text-white font-black px-8 py-6 rounded-2xl shadow-2xl flex gap-3 text-xl">
-              <Maximize className="h-8 w-8" />
+          <div className="absolute top-6 right-6 z-50 animate-bounce">
+            <Button size="lg" onClick={toggleFullscreen} className="bg-primary hover:bg-primary/90 text-white font-black px-10 py-8 rounded-3xl shadow-2xl flex gap-4 text-2xl border-4 border-white">
+              <Maximize className="h-10 w-10" />
               ATIVAR ECRÃ INTEIRO
             </Button>
           </div>
         )}
 
-        {/* Header Fixo - Alto Contraste */}
-        <header className="p-6 border-b-4 border-slate-200 bg-white flex justify-between items-center z-10 shadow-sm">
+        {/* Header Fixo - Reduzi a altura para ganhar espaço vertical */}
+        <header className="px-8 py-4 border-b-4 border-slate-200 bg-white flex justify-between items-center z-10 shadow-md">
             <div className="flex items-center gap-6">
-                <div className="h-12 w-4 bg-primary rounded-full shadow-sm"></div>
-                <h1 className="text-5xl font-black tracking-tighter uppercase text-slate-800">Programação Torino</h1>
+                <div className="h-10 w-4 bg-primary rounded-full shadow-sm"></div>
+                <h1 className="text-4xl font-black tracking-tighter uppercase text-slate-800">Programação Torino</h1>
             </div>
             <div className="text-right">
-                <p className="text-slate-500 text-2xl font-bold uppercase tracking-wider">
+                <p className="text-slate-500 text-xl font-bold uppercase tracking-widest">
                     {format(new Date(), "eeee, dd 'de' MMMM", { locale: ptBR })}
                 </p>
             </div>
         </header>
 
-        <main className="flex-1 flex flex-col justify-center p-6">
+        {/* Main Content - Flex grow para ocupar tudo */}
+        <main className="flex-1 flex flex-col min-h-0 pt-4">
             <Carousel
                 setApi={setApi}
                 plugins={[Autoplay({ delay: rotationTime, stopOnInteraction: false })]}
                 className="w-full h-full"
             >
-                <CarouselContent>
+                <CarouselContent className="h-full">
                     {weekDays.map((day) => (
                         <CarouselItem key={day.toISOString()} className="h-full">
                             <DayScheduleSlide 
@@ -124,23 +121,23 @@ function FactoryDisplayContent() {
             </Carousel>
         </main>
 
-        {/* Indicadores de Progresso */}
-        <div className="flex justify-center gap-4 pb-6">
+        {/* Indicadores de Progresso - Mais visíveis */}
+        <div className="flex justify-center gap-6 pb-4">
             {weekDays.map((_, index) => (
                 <div
                     key={index}
-                    className={`h-3 rounded-full transition-all duration-700 ease-in-out ${
+                    className={`h-4 rounded-full transition-all duration-700 ease-in-out border-2 ${
                         index === currentSlide 
-                        ? 'w-24 bg-primary shadow-sm' 
-                        : 'w-3 bg-slate-300'
+                        ? 'w-32 bg-primary border-primary shadow-lg scale-110' 
+                        : 'w-4 bg-slate-300 border-slate-200'
                     }`}
                 />
             ))}
         </div>
 
         {customMessage && (
-            <footer className="bg-primary border-t-4 border-white p-4 text-center">
-                <p className="text-3xl font-black text-white uppercase tracking-widest">
+            <footer className="bg-primary border-t-4 border-white p-3 text-center shadow-2xl relative z-20">
+                <p className="text-3xl font-black text-white uppercase tracking-[0.3em] animate-pulse">
                     {customMessage}
                 </p>
             </footer>
