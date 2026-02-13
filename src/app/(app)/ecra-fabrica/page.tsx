@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useMemo, useContext, useEffect } from 'react';
 import { PageHeader } from '@/components/layout/page-header';
@@ -6,15 +7,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { MonitorPlay, Check, ChevronsUpDown } from 'lucide-react';
+import { MonitorPlay, Check, ChevronsUpDown, Info, Tv } from 'lucide-react';
 import Link from 'next/link';
 import { AppContext } from '@/context/app-context';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
 import type { TeamMember } from '@/lib/types';
-import { Badge } from '@/components/ui/badge';
 import useLocalStorage from '@/hooks/use-local-storage';
+import { Separator } from '@/components/ui/separator';
 
 export default function EcrãFabricaSettingsPage() {
   const { teamMembers } = useContext(AppContext);
@@ -27,7 +28,6 @@ export default function EcrãFabricaSettingsPage() {
     return (teamMembers || []).filter(member => member.role === 'Marceneiro');
   }, [teamMembers]);
 
-  // Selecionar todos por padrão
   useEffect(() => {
     if (marceneiros.length > 0 && selectedMarceneiros.length === 0) {
       setSelectedMarceneiros(marceneiros.map(m => m.id));
@@ -66,7 +66,7 @@ export default function EcrãFabricaSettingsPage() {
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <div className="space-y-2">
-                    <Label>Filtrar Produção (Opcional)</Label>
+                    <Label>Filtrar Marceneiros (Opcional)</Label>
                     <Popover open={open} onOpenChange={setOpen}>
                       <PopoverTrigger asChild>
                         <Button
@@ -135,27 +135,66 @@ export default function EcrãFabricaSettingsPage() {
                       id="custom-message"
                       value={customMessage}
                       onChange={e => setCustomMessage(e.target.value)}
-                      placeholder="Ex: Entrega importante amanhã! Foco total no Projeto X."
+                      placeholder="Ex: Meta da semana: Projeto Torino X concluído!"
                     />
                   </div>
                 </CardContent>
             </Card>
+
+            <Card className="bg-primary/5 border-primary/20">
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                        <Tv className="h-5 w-5 text-primary" />
+                        Guia de Instalação na Fábrica
+                    </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4 text-sm">
+                    <div className="flex gap-3">
+                        <div className="h-6 w-6 rounded-full bg-primary text-white flex items-center justify-center shrink-0 font-bold">1</div>
+                        <div>
+                            <p className="font-bold">Hardware Ideal</p>
+                            <p className="text-muted-foreground">Utilize um Mini PC (ex: NUC ou Beelink) ou um Raspberry Pi ligado à TV via HDMI. Browsers de Smart TVs costumam falhar com o tempo.</p>
+                        </div>
+                    </div>
+                    <Separator />
+                    <div className="flex gap-3">
+                        <div className="h-6 w-6 rounded-full bg-primary text-white flex items-center justify-center shrink-0 font-bold">2</div>
+                        <div>
+                            <p className="font-bold">Modo Quiosque (Recomendado)</p>
+                            <p className="text-muted-foreground">Configure o atalho do Chrome para abrir automaticamente em Modo Quiosque. Comando: <code className="bg-muted px-1 rounded">chrome.exe --kiosk "URL_DA_APRESENTACAO"</code></p>
+                        </div>
+                    </div>
+                    <Separator />
+                    <div className="flex gap-3">
+                        <div className="h-6 w-6 rounded-full bg-primary text-white flex items-center justify-center shrink-0 font-bold">3</div>
+                        <div>
+                            <p className="font-bold">Energia e Rede</p>
+                            <p className="text-muted-foreground">Configure o PC para "Nunca Suspender" e use cabo de rede (Ethernet) para evitar desconexões do Wi-Fi.</p>
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
         </div>
         <div className="lg:col-span-1">
-            <Card className="sticky top-8 border-primary bg-primary/5">
+            <Card className="sticky top-8 border-primary bg-primary shadow-xl text-primary-foreground">
                 <CardHeader>
-                    <CardTitle>Iniciar Apresentação</CardTitle>
-                    <CardDescription>
-                        Abre a programação em ecrã inteiro numa nova aba.
+                    <CardTitle className="flex items-center gap-2">
+                        <MonitorPlay className="h-6 w-6" />
+                        Lançar Monitor
+                    </CardTitle>
+                    <CardDescription className="text-primary-foreground/80">
+                        Abre a programação otimizada para TVs em uma nova janela.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
                     <Link href={generatePlayUrl()} passHref target="_blank">
-                        <Button size="lg" className="w-full text-lg font-bold" disabled={selectedMarceneiros.length === 0}>
-                            <MonitorPlay className="mr-2 h-6 w-6" />
+                        <Button size="lg" variant="secondary" className="w-full text-lg font-black h-16" disabled={selectedMarceneiros.length === 0}>
                             ABRIR NO MONITOR
                         </Button>
                     </Link>
+                    <p className="mt-4 text-xs text-center opacity-70">
+                        Após abrir, clique no botão "Ativar Ecrã Inteiro" que aparecerá no canto superior da nova aba.
+                    </p>
                 </CardContent>
             </Card>
         </div>

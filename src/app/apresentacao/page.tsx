@@ -1,5 +1,6 @@
+
 'use client';
-import { useContext, useMemo, useState, useEffect, Suspense } from 'react';
+import { useContext, useMemo, useState, useEffect, Suspense, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { AppContext } from '@/context/app-context';
 import { DayScheduleSlide } from './day-schedule-slide';
@@ -12,6 +13,8 @@ import {
 import Autoplay from 'embla-carousel-autoplay';
 import { startOfWeek, addDays, format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { Maximize, MonitorPlay } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 function FactoryDisplayContent() {
   const { projects, teamMembers, appointments, isLoading } = useContext(AppContext);
@@ -19,6 +22,7 @@ function FactoryDisplayContent() {
 
   const [api, setApi] = useState<CarouselApi>();
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   // Configurações via URL
   const rotationTime = useMemo(() => {
@@ -46,11 +50,22 @@ function FactoryDisplayContent() {
     return () => api.off('select', onSelect);
   }, [api]);
   
-  useEffect(() => {
-    const elem = document.documentElement;
-    if (elem.requestFullscreen) {
-      elem.requestFullscreen().catch(() => {});
+  const toggleFullscreen = useCallback(() => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch((err) => {
+        console.error(`Erro ao ativar ecrã inteiro: ${err.message}`);
+      });
+    } else {
+      document.exitFullscreen();
     }
+  }, []);
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, []);
 
   if (isLoading) {
@@ -63,6 +78,17 @@ function FactoryDisplayContent() {
 
   return (
     <div className="bg-slate-50 text-slate-900 min-h-screen flex flex-col relative overflow-hidden select-none">
+        
+        {/* Botão de Ecrã Inteiro (Apenas visível se não estiver em fullscreen) */}
+        {!isFullscreen && (
+          <div className="absolute top-4 right-4 z-50 animate-bounce">
+            <Button size="lg" onClick={toggleFullscreen} className="bg-primary hover:bg-primary/90 text-white font-black px-8 py-6 rounded-2xl shadow-2xl flex gap-3 text-xl">
+              <Maximize className="h-8 w-8" />
+              ATIVAR ECRÃ INTEIRO
+            </Button>
+          </div>
+        )}
+
         {/* Header Fixo - Alto Contraste */}
         <header className="p-6 border-b-4 border-slate-200 bg-white flex justify-between items-center z-10 shadow-sm">
             <div className="flex items-center gap-6">
