@@ -31,6 +31,7 @@ interface AppContextType {
   updateTeamMember: (updatedMember: TeamMember) => void;
   deleteTeamMember: (memberId: string) => void;
   addAppointment: (appointmentData: Omit<Appointment, 'id'>) => void;
+  addAppointments: (appointmentsData: Omit<Appointment, 'id'>[]) => void;
   updateAppointment: (appointmentId: string, updates: Partial<Appointment>) => void;
   deleteAppointment: (appointmentId: string) => void;
   addTasks: (tasksData: Omit<Task, 'id'>[]) => void;
@@ -83,6 +84,7 @@ export const AppContext = createContext<AppContextType>({
   updateTeamMember: () => {},
   deleteTeamMember: () => {},
   addAppointment: () => {},
+  addAppointments: () => {},
   updateAppointment: () => {},
   deleteAppointment: () => {},
   addTasks: () => {},
@@ -396,6 +398,31 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const appointmentRef = doc(firestore, 'appointments', appointmentId);
         setDocumentNonBlocking(appointmentRef, newAppointment, { merge: false });
     }, [firestore]);
+
+    const addAppointments = useCallback((appointmentsData: Omit<Appointment, 'id'>[]) => {
+      if (!firestore) return;
+      const batch = writeBatch(firestore);
+      const allAppointments: Appointment[] = [];
+
+      appointmentsData.forEach(data => {
+        const id = generateId('apt');
+        const newApt: Appointment = { ...data, id, status: 'todo' };
+        allAppointments.push(newApt);
+        const ref = doc(firestore, 'appointments', id);
+        batch.set(ref, newApt);
+      });
+
+      batch.commit().catch(error => {
+        errorEmitter.emit(
+          'permission-error',
+          new FirestorePermissionError({
+            path: 'appointments',
+            operation: 'write',
+            requestResourceData: allAppointments,
+          })
+        );
+      });
+    }, [firestore]);
     
     const updateAppointment = useCallback((appointmentId: string, updates: Partial<Appointment>) => {
         if (!firestore) return;
@@ -611,7 +638,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 }
                 return fur;
             });
-            return { ...env, furniture: newFurniture };
+            return { ...env, furniture: newFurnitures };
         }
         return env;
     });
@@ -965,6 +992,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     updateTeamMember,
     deleteTeamMember,
     addAppointment,
+    addAppointments,
     updateAppointment,
     deleteAppointment,
     addTasks,
@@ -1015,6 +1043,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     updateTeamMember, 
     deleteTeamMember,
     addAppointment,
+    addAppointments,
     updateAppointment,
     deleteAppointment,
     addTasks,

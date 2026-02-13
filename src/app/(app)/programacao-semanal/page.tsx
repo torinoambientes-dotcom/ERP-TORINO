@@ -21,8 +21,9 @@ import {
 } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import type { TeamMember, Priority, Appointment, StageStatus } from '@/lib/types';
-import { Scissors, Hammer, Truck, PlusCircle, MapPin, CheckCircle2, Trash2, AlertCircle, Clock, ChevronLeft, ChevronRight, CalendarDays } from 'lucide-react';
+import { Scissors, Hammer, Truck, PlusCircle, MapPin, CheckCircle2, Trash2, AlertCircle, Clock, ChevronLeft, ChevronRight, CalendarDays, Zap } from 'lucide-react';
 import { NewAppointmentModal } from '@/components/modals/new-appointment-modal';
+import { BulkWeeklyEntryModal } from '@/components/modals/bulk-weekly-entry-modal';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -49,6 +50,7 @@ export default function WeeklySchedulePage() {
   const { toast } = useToast();
   const [isClient, setIsClient] = useState(false);
   const [isAptModalOpen, setAptModalOpen] = useState(false);
+  const [isBulkModalOpen, setBulkModalOpen] = useState(false);
   const [selectedDayForAdd, setSelectedDayForAdd] = useState<Date | undefined>(undefined);
   const [selectedCategoryForAdd, setSelectedCategoryForAdd] = useState<'montagem' | 'corte' | 'producao'>('montagem');
   
@@ -235,29 +237,36 @@ export default function WeeklySchedulePage() {
             title="Programação Semanal"
             description={`Planeamento de ${format(weekRange.start, "dd 'de' MMMM", { locale: ptBR })} a ${format(weekRange.end, "dd 'de' MMMM", { locale: ptBR })}.`}
           />
-          <div className="flex items-center gap-2 bg-muted/50 p-1 rounded-lg border">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" onClick={() => navigateWeek('prev')} className="h-9 w-9">
-                  <ChevronLeft className="h-5 w-5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Semana Anterior</TooltipContent>
-            </Tooltip>
-            
-            <Button variant="outline" size="sm" onClick={() => navigateWeek('today')} className="px-4 font-semibold">
-              <CalendarDays className="mr-2 h-4 w-4" />
-              Semana Atual
+          <div className='flex items-center gap-4 w-full sm:w-auto'>
+            <Button onClick={() => setBulkModalOpen(true)} className="bg-primary hover:bg-primary/90 text-white font-bold">
+              <Zap className="mr-2 h-4 w-4" />
+              Lançamento em Massa
             </Button>
 
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" onClick={() => navigateWeek('next')} className="h-9 w-9">
-                  <ChevronRight className="h-5 w-5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Próxima Semana</TooltipContent>
-            </Tooltip>
+            <div className="flex items-center gap-2 bg-muted/50 p-1 rounded-lg border">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" size="icon" onClick={() => navigateWeek('prev')} className="h-9 w-9">
+                    <ChevronLeft className="h-5 w-5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Semana Anterior</TooltipContent>
+              </Tooltip>
+              
+              <Button variant="outline" size="sm" onClick={() => navigateWeek('today')} className="px-4 font-semibold">
+                <CalendarDays className="mr-2 h-4 w-4" />
+                Semana Atual
+              </Button>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" size="icon" onClick={() => navigateWeek('next')} className="h-9 w-9">
+                    <ChevronRight className="h-5 w-5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Próxima Semana</TooltipContent>
+              </Tooltip>
+            </div>
           </div>
         </div>
 
@@ -357,6 +366,12 @@ export default function WeeklySchedulePage() {
           onClose={() => setAptModalOpen(false)}
           selectedDate={selectedDayForAdd}
           defaultCategory={selectedCategoryForAdd}
+        />
+
+        <BulkWeeklyEntryModal
+          isOpen={isBulkModalOpen}
+          onClose={() => setBulkModalOpen(false)}
+          initialDate={currentViewDate}
         />
       </div>
     </TooltipProvider>
