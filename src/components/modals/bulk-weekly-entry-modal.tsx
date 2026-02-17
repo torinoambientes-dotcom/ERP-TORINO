@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useContext, useEffect } from 'react';
@@ -25,9 +26,9 @@ import { Input } from '@/components/ui/input';
 import { AppContext } from '@/context/app-context';
 import { useToast } from '@/hooks/use-toast';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
-import { CalendarIcon, PlusCircle, Trash2, Scissors, Hammer, Truck } from 'lucide-react';
+import { CalendarIcon, PlusCircle, Trash2 } from 'lucide-react';
 import { Calendar } from '../ui/calendar';
-import { format, set } from 'date-fns';
+import { format, set, isBefore, startOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn, getInitials } from '@/lib/utils';
 import {
@@ -47,9 +48,15 @@ import { ScrollArea } from '../ui/scroll-area';
 const singleEntrySchema = z.object({
   title: z.string().min(2, 'Título obrigatório.'),
   category: z.enum(['montagem', 'corte', 'producao']),
-  date: z.date({ required_error: 'Data obrigatória.' }),
+  startDate: z.date({ required_error: 'Início obrigatório.' }),
+  endDate: z.date({ required_error: 'Fim obrigatório.' }),
   memberIds: z.array(z.string()).min(1, 'Selecione ao menos um.'),
   location: z.string().optional(),
+}).refine(data => {
+    return !isBefore(startOfDay(data.endDate), startOfDay(data.startDate));
+}, {
+    message: 'Fim inválido',
+    path: ['endDate'],
 });
 
 const bulkSchema = z.object({
@@ -72,7 +79,7 @@ export function BulkWeeklyEntryModal({ isOpen, onClose, initialDate }: BulkWeekl
     resolver: zodResolver(bulkSchema),
     defaultValues: {
       entries: [
-        { title: '', category: 'montagem', date: initialDate || new Date(), memberIds: [], location: '' }
+        { title: '', category: 'montagem', startDate: initialDate || new Date(), endDate: initialDate || new Date(), memberIds: [], location: '' }
       ],
     },
   });
@@ -84,9 +91,10 @@ export function BulkWeeklyEntryModal({ isOpen, onClose, initialDate }: BulkWeekl
 
   useEffect(() => {
     if (isOpen) {
+      const initial = initialDate || new Date();
       form.reset({
         entries: [
-          { title: '', category: 'montagem', date: initialDate || new Date(), memberIds: [], location: '' }
+          { title: '', category: 'montagem', startDate: initial, endDate: initial, memberIds: [], location: '' }
         ],
       });
     }
@@ -94,8 +102,8 @@ export function BulkWeeklyEntryModal({ isOpen, onClose, initialDate }: BulkWeekl
 
   const onSubmit = (data: BulkFormValues) => {
     const appointmentsToAdd = data.entries.map(entry => {
-      const start = set(entry.date, { hours: 0, minutes: 0, seconds: 0, milliseconds: 0 });
-      const end = set(entry.date, { hours: 23, minutes: 59, seconds: 59, milliseconds: 999 });
+      const start = set(entry.startDate, { hours: 0, minutes: 0, seconds: 0, milliseconds: 0 });
+      const end = set(entry.endDate, { hours: 23, minutes: 59, seconds: 59, milliseconds: 999 });
 
       return {
         title: entry.title,
@@ -121,11 +129,11 @@ export function BulkWeeklyEntryModal({ isOpen, onClose, initialDate }: BulkWeekl
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-[90vw] w-[1000px] h-[85vh] flex flex-col">
+      <DialogContent className="max-w-[95vw] w-[1200px] h-[85vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="font-headline text-2xl">Lançamento em Massa</DialogTitle>
           <DialogDescription>
-            Alimente a programação semanal de forma rápida adicionando múltiplas linhas.
+            Pode definir um período para cada projeto. Ele aparecerá todos os dias entre o início e o fim.
           </DialogDescription>
         </DialogHeader>
 
@@ -146,7 +154,7 @@ export function BulkWeeklyEntryModal({ isOpen, onClose, initialDate }: BulkWeekl
                       <Trash2 className="h-4 w-4" />
                     </Button>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 w-full">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 w-full">
                       <FormField
                         control={form.control}
                         name={`entries.${index}.category`}
@@ -170,9 +178,9 @@ export function BulkWeeklyEntryModal({ isOpen, onClose, initialDate }: BulkWeekl
                         control={form.control}
                         name={`entries.${index}.title`}
                         render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Título / Projeto</FormLabel>
-                            <FormControl><Input placeholder="Ex: Projeto Cozinha X" {...field} /></FormControl>
+                          <FormItem className="lg:col-span-1">
+                            <FormLabel>Projeto / Cliente</FormLabel>
+                            <FormControl><Input placeholder="Ex: Torino Cozinha" {...field} /></FormControl>
                             <FormMessage />
                           </FormItem>
                         )}
@@ -180,15 +188,39 @@ export function BulkWeeklyEntryModal({ isOpen, onClose, initialDate }: BulkWeekl
 
                       <FormField
                         control={form.control}
-                        name={`entries.${index}.date`}
+                        name={`entries.${index}.startDate`}
                         render={({ field }) => (
                           <FormItem className="flex flex-col">
-                            <FormLabel>Data</FormLabel>
+                            <FormLabel>Início</FormLabel>
                             <Popover>
                               <PopoverTrigger asChild>
                                 <FormControl>
                                   <Button variant="outline" className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
-                                    {field.value ? format(field.value, "dd/MM/yy") : "Selecione"}
+                                    {field.value ? format(field.value, "dd/MM/yy") : "Início"}
+                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                  </Button>
+                                </FormControl>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-auto p-0" align="start">
+                                <Calendar mode="single" selected={field.value} onSelect={field.onChange} locale={ptBR} initialFocus />
+                              </PopoverContent>
+                            </Popover>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name={`entries.${index}.endDate`}
+                        render={({ field }) => (
+                          <FormItem className="flex flex-col">
+                            <FormLabel>Fim</FormLabel>
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <FormControl>
+                                  <Button variant="outline" className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
+                                    {field.value ? format(field.value, "dd/MM/yy") : "Término"}
                                     <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                                   </Button>
                                 </FormControl>
@@ -212,7 +244,7 @@ export function BulkWeeklyEntryModal({ isOpen, onClose, initialDate }: BulkWeekl
                               <PopoverTrigger asChild>
                                 <FormControl>
                                   <Button variant="outline" className="w-full justify-start text-left font-normal truncate">
-                                    {formField.value?.length > 0 ? `${formField.value.length} selecionado(s)` : "Selecionar..."}
+                                    {formField.value?.length > 0 ? `${formField.value.length} membro(s)` : "Selecionar..."}
                                   </Button>
                                 </FormControl>
                               </PopoverTrigger>
@@ -251,23 +283,19 @@ export function BulkWeeklyEntryModal({ isOpen, onClose, initialDate }: BulkWeekl
                           </FormItem>
                         )}
                       />
-                    </div>
 
-                    {form.watch(`entries.${index}.category`) === 'montagem' && (
-                      <div className="w-full lg:w-1/3">
-                        <FormField
-                          control={form.control}
-                          name={`entries.${index}.location`}
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Local da Montagem</FormLabel>
-                              <FormControl><Input placeholder="Endereço ou Cliente" {...field} /></FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-                    )}
+                      <FormField
+                        control={form.control}
+                        name={`entries.${index}.location`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Local (Opcional)</FormLabel>
+                            <FormControl><Input placeholder="Ex: Rua X" {...field} /></FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
                   </div>
                 ))}
 
@@ -276,7 +304,7 @@ export function BulkWeeklyEntryModal({ isOpen, onClose, initialDate }: BulkWeekl
                   variant="outline"
                   size="sm"
                   className="w-full h-12 border-dashed"
-                  onClick={() => append({ title: '', category: 'montagem', date: initialDate || new Date(), memberIds: [], location: '' })}
+                  onClick={() => append({ title: '', category: 'montagem', startDate: initialDate || new Date(), endDate: initialDate || new Date(), memberIds: [], location: '' })}
                 >
                   <PlusCircle className="mr-2 h-4 w-4" />
                   Adicionar Outra Linha
@@ -286,7 +314,7 @@ export function BulkWeeklyEntryModal({ isOpen, onClose, initialDate }: BulkWeekl
 
             <DialogFooter className="pt-6 border-t mt-4">
               <Button type="button" variant="ghost" onClick={onClose}>Cancelar</Button>
-              <Button type="submit" size="lg" className="px-12">Salvar Toda a Programação</Button>
+              <Button type="submit" size="lg" className="px-12">Salvar Tudo</Button>
             </DialogFooter>
           </form>
         </Form>

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useContext, useMemo, useState, useEffect } from 'react';
@@ -16,8 +17,10 @@ import {
   isToday,
   isPast,
   endOfDay,
+  startOfDay,
   addWeeks,
-  subWeeks
+  subWeeks,
+  isWithinInterval
 } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import type { TeamMember, Priority, Appointment, StageStatus } from '@/lib/types';
@@ -43,6 +46,8 @@ interface WeeklyItem {
   isManual?: boolean;
   status?: 'todo' | 'done' | 'delayed';
   date: Date;
+  start?: Date;
+  end?: Date;
 }
 
 export default function WeeklySchedulePage() {
@@ -54,7 +59,6 @@ export default function WeeklySchedulePage() {
   const [selectedDayForAdd, setSelectedDayForAdd] = useState<Date | undefined>(undefined);
   const [selectedCategoryForAdd, setSelectedCategoryForAdd] = useState<'montagem' | 'corte' | 'producao'>('montagem');
   
-  // Estado para controlar a semana visualizada
   const [currentViewDate, setCurrentViewDate] = useState(new Date());
 
   useEffect(() => {
@@ -133,19 +137,26 @@ export default function WeeklySchedulePage() {
 
       // 3. Agendamentos Manuais (Appointments)
       appointments.forEach(apt => {
-        if (apt.start && isSameDay(parseISO(apt.start), day)) {
-          if (apt.category === 'montagem' || apt.category === 'corte' || apt.category === 'producao') {
-            data[dayKey].push({
-              id: apt.id,
-              type: apt.category as any,
-              title: apt.title,
-              description: apt.description,
-              location: apt.location,
-              isManual: true,
-              responsible: (apt.memberIds || []).map(id => memberMap.get(id)).filter((m): m is TeamMember => !!m),
-              status: apt.status || (isPast(endOfDay(day)) ? 'delayed' : 'todo'),
-              date: day,
-            });
+        if (apt.start && apt.end) {
+          const start = startOfDay(parseISO(apt.start));
+          const end = endOfDay(parseISO(apt.end));
+          
+          if (isWithinInterval(day, { start, end })) {
+            if (apt.category === 'montagem' || apt.category === 'corte' || apt.category === 'producao') {
+              data[dayKey].push({
+                id: apt.id,
+                type: apt.category as any,
+                title: apt.title,
+                description: apt.description,
+                location: apt.location,
+                isManual: true,
+                responsible: (apt.memberIds || []).map(id => memberMap.get(id)).filter((m): m is TeamMember => !!m),
+                status: apt.status || (isPast(endOfDay(day)) ? 'delayed' : 'todo'),
+                date: day,
+                start: start,
+                end: end
+              });
+            }
           }
         }
       });
@@ -315,7 +326,7 @@ export default function WeeklySchedulePage() {
                       </div>
                       <div className="space-y-3">
                         {cortes.length > 0 ? cortes.map(item => (
-                          <WeeklyItemCard key={item.id} item={item} onToggleComplete={handleToggleComplete} onRemove={handleRemove} onMarkDelayed={handleMarkDelayed} />
+                          <WeeklyItemCard key={`${item.id}-${dayKey}`} item={item} onToggleComplete={handleToggleComplete} onRemove={handleRemove} onMarkDelayed={handleMarkDelayed} />
                         )) : <EmptySection message="Nenhum plano de corte." />}
                       </div>
                     </div>
@@ -332,7 +343,7 @@ export default function WeeklySchedulePage() {
                       </div>
                       <div className="space-y-3">
                         {producao.length > 0 ? producao.map(item => (
-                          <WeeklyItemCard key={item.id} item={item} onToggleComplete={handleToggleComplete} onRemove={handleRemove} onMarkDelayed={handleMarkDelayed} />
+                          <WeeklyItemCard key={`${item.id}-${dayKey}`} item={item} onToggleComplete={handleToggleComplete} onRemove={handleRemove} onMarkDelayed={handleMarkDelayed} />
                         )) : <EmptySection message="Nada em produção hoje." />}
                       </div>
                     </div>
@@ -349,7 +360,7 @@ export default function WeeklySchedulePage() {
                       </div>
                       <div className="space-y-3">
                         {montagem.length > 0 ? montagem.map(item => (
-                          <WeeklyItemCard key={item.id} item={item} onToggleComplete={handleToggleComplete} onRemove={handleRemove} onMarkDelayed={handleMarkDelayed} />
+                          <WeeklyItemCard key={`${item.id}-${dayKey}`} item={item} onToggleComplete={handleToggleComplete} onRemove={handleRemove} onMarkDelayed={handleMarkDelayed} />
                         )) : <EmptySection message="Nenhuma montagem externa." />}
                       </div>
                     </div>

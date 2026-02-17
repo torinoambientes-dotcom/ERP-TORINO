@@ -1,7 +1,8 @@
+
 'use client';
 import { useMemo } from 'react';
 import type { Project, Appointment, TeamMember } from '@/lib/types';
-import { format, isSameDay, parseISO, isToday, isPast, endOfDay } from 'date-fns';
+import { format, isSameDay, parseISO, isToday, isPast, endOfDay, startOfDay, isWithinInterval } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Hammer, Truck, Clock, CheckCircle2, User, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -60,33 +61,38 @@ export function DayScheduleSlide({ day, projects, appointments, teamMembers, sel
       });
     });
 
-    // 2. Adicionar Compromissos Manuais
+    // 2. Adicionar Compromissos Manuais (Suporta intervalo de datas)
     appointments.forEach(apt => {
-        if (apt.start && isSameDay(parseISO(apt.start), day)) {
-            const isDone = apt.status === 'done';
-            const isDelayed = apt.status === 'delayed' || (!isDone && isPast(endOfDay(day)));
+        if (apt.start && apt.end) {
+            const start = startOfDay(parseISO(apt.start));
+            const end = endOfDay(parseISO(apt.end));
 
-            if (apt.category === 'producao') {
-                prodItems.push({
-                    id: apt.id,
-                    title: apt.title,
-                    description: apt.description,
-                    responsible: (apt.memberIds || []).map(id => memberMap.get(id)?.name.split(' ')[0] || '').filter(Boolean),
-                    isDone,
-                    isDelayed,
-                    category: 'producao'
-                });
-            } else if (apt.category === 'montagem') {
-                montItems.push({
-                    id: apt.id,
-                    title: apt.title,
-                    description: apt.description,
-                    location: apt.location,
-                    responsible: (apt.memberIds || []).map(id => memberMap.get(id)?.name.split(' ')[0] || '').filter(Boolean),
-                    isDone,
-                    isDelayed,
-                    category: 'montagem'
-                });
+            if (isWithinInterval(day, { start, end })) {
+                const isDone = apt.status === 'done';
+                const isDelayed = apt.status === 'delayed' || (!isDone && isPast(endOfDay(day)));
+
+                if (apt.category === 'producao') {
+                    prodItems.push({
+                        id: apt.id,
+                        title: apt.title,
+                        description: apt.description,
+                        responsible: (apt.memberIds || []).map(id => memberMap.get(id)?.name.split(' ')[0] || '').filter(Boolean),
+                        isDone,
+                        isDelayed,
+                        category: 'producao'
+                    });
+                } else if (apt.category === 'montagem') {
+                    montItems.push({
+                        id: apt.id,
+                        title: apt.title,
+                        description: apt.description,
+                        location: apt.location,
+                        responsible: (apt.memberIds || []).map(id => memberMap.get(id)?.name.split(' ')[0] || '').filter(Boolean),
+                        isDone,
+                        isDelayed,
+                        category: 'montagem'
+                    });
+                }
             }
         }
     });
@@ -101,7 +107,7 @@ export function DayScheduleSlide({ day, projects, appointments, teamMembers, sel
 
   return (
     <div className="flex flex-col h-full gap-4 px-4 pb-4">
-      {/* Indicador de Dia - Mais Compacto */}
+      {/* Indicador de Dia */}
       <div className="flex items-center justify-center">
         <div className={cn(
             "px-10 py-3 rounded-2xl border-4 flex flex-col items-center min-w-[300px] shadow-lg",
@@ -125,7 +131,7 @@ export function DayScheduleSlide({ day, projects, appointments, teamMembers, sel
             </div>
             <div className="flex-grow overflow-y-auto pr-2 custom-scrollbar space-y-3 pb-4">
                 {producao.length > 0 ? producao.map(item => (
-                    <ScheduleCard key={item.id} item={item} type="producao" />
+                    <ScheduleCard key={`${item.id}-${format(day, 'yyyy-MM-dd')}`} item={item} type="producao" />
                 )) : (
                     <EmptyState message="Sem produção agendada" />
                 )}
@@ -140,7 +146,7 @@ export function DayScheduleSlide({ day, projects, appointments, teamMembers, sel
             </div>
             <div className="flex-grow overflow-y-auto pr-2 custom-scrollbar space-y-3 pb-4">
                 {montagem.length > 0 ? montagem.map(item => (
-                    <ScheduleCard key={item.id} item={item} type="montagem" />
+                    <ScheduleCard key={`${item.id}-${format(day, 'yyyy-MM-dd')}`} item={item} type="montagem" />
                 )) : (
                     <EmptyState message="Sem montagens externas" />
                 )}

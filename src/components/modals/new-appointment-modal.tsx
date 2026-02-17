@@ -28,7 +28,8 @@ import { useToast } from '@/hooks/use-toast';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { CalendarIcon, MapPin, Scissors, Hammer, Truck } from 'lucide-react';
 import { Calendar } from '../ui/calendar';
-import { format, set } from 'date-fns';
+import { format, set, isBefore, startOfDay } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import {
   Command,
@@ -49,7 +50,8 @@ const appointmentSchema = z.object({
   title: z.string().min(3, 'O título deve ter pelo menos 3 caracteres.'),
   description: z.string().optional(),
   location: z.string().optional(),
-  date: z.date({ required_error: 'A data é obrigatória.'}),
+  startDate: z.date({ required_error: 'A data de início é obrigatória.'}),
+  endDate: z.date({ required_error: 'A data de término é obrigatória.'}),
   memberIds: z.array(z.string()).min(1, 'Selecione pelo menos um membro da equipe.'),
   timeType: z.enum(['all_day', 'morning', 'afternoon', 'specific']),
   startTime: z.string().optional(),
@@ -63,6 +65,11 @@ const appointmentSchema = z.object({
 }, {
     message: 'Hora de início e fim são obrigatórias para horário específico.',
     path: ['startTime'],
+}).refine(data => {
+    return !isBefore(startOfDay(data.endDate), startOfDay(data.startDate));
+}, {
+    message: 'A data de término não pode ser anterior à data de início.',
+    path: ['endDate'],
 });
 
 type AppointmentFormValues = z.infer<typeof appointmentSchema>;
@@ -85,7 +92,8 @@ export function NewAppointmentModal({ isOpen, onClose, selectedDate, onDateConsu
       title: '',
       description: '',
       location: '',
-      date: new Date(),
+      startDate: new Date(),
+      endDate: new Date(),
       memberIds: [],
       timeType: 'all_day',
       startTime: '09:00',
@@ -98,11 +106,13 @@ export function NewAppointmentModal({ isOpen, onClose, selectedDate, onDateConsu
 
   useEffect(() => {
     if (isOpen) {
+      const initialDate = selectedDate || new Date();
       form.reset({
         title: '',
         description: '',
         location: '',
-        date: selectedDate || new Date(),
+        startDate: initialDate,
+        endDate: initialDate,
         memberIds: [],
         timeType: 'all_day',
         startTime: '09:00',
@@ -113,30 +123,30 @@ export function NewAppointmentModal({ isOpen, onClose, selectedDate, onDateConsu
   }, [isOpen, selectedDate, form, defaultCategory]);
 
   const onSubmit = (data: AppointmentFormValues) => {
-    let start = data.date;
-    let end = data.date;
+    let start = data.startDate;
+    let end = data.endDate;
 
     switch (data.timeType) {
         case 'morning':
-            start = set(data.date, { hours: 9, minutes: 0, seconds: 0, milliseconds: 0 });
-            end = set(data.date, { hours: 12, minutes: 0, seconds: 0, milliseconds: 0 });
+            start = set(data.startDate, { hours: 9, minutes: 0, seconds: 0, milliseconds: 0 });
+            end = set(data.endDate, { hours: 12, minutes: 0, seconds: 0, milliseconds: 0 });
             break;
         case 'afternoon':
-            start = set(data.date, { hours: 13, minutes: 0, seconds: 0, milliseconds: 0 });
-            end = set(data.date, { hours: 18, minutes: 0, seconds: 0, milliseconds: 0 });
+            start = set(data.startDate, { hours: 13, minutes: 0, seconds: 0, milliseconds: 0 });
+            end = set(data.endDate, { hours: 18, minutes: 0, seconds: 0, milliseconds: 0 });
             break;
         case 'specific':
             if (data.startTime && data.endTime) {
                 const [startH, startM] = data.startTime.split(':').map(Number);
                 const [endH, endM] = data.endTime.split(':').map(Number);
-                start = set(data.date, { hours: startH, minutes: startM, seconds: 0, milliseconds: 0 });
-                end = set(data.date, { hours: endH, minutes: endM, seconds: 0, milliseconds: 0 });
+                start = set(data.startDate, { hours: startH, minutes: startM, seconds: 0, milliseconds: 0 });
+                end = set(data.endDate, { hours: endH, minutes: endM, seconds: 0, milliseconds: 0 });
             }
             break;
         case 'all_day':
         default:
-            start = set(data.date, { hours: 0, minutes: 0, seconds: 0, milliseconds: 0 });
-            end = set(data.date, { hours: 23, minutes: 59, seconds: 59, milliseconds: 999 });
+            start = set(data.startDate, { hours: 0, minutes: 0, seconds: 0, milliseconds: 0 });
+            end = set(data.endDate, { hours: 23, minutes: 59, seconds: 59, milliseconds: 999 });
             break;
     }
 
@@ -193,10 +203,7 @@ export function NewAppointmentModal({ isOpen, onClose, selectedDate, onDateConsu
             }
           </DialogTitle>
           <DialogDescription>
-            {selectedCategory === 'montagem' ? 'Agende o local e descreva o trabalho de montagem.' : 
-             selectedCategory === 'corte' ? 'Agende qual projeto terá o plano de corte executado.' :
-             selectedCategory === 'producao' ? 'Agende a produção de móveis na fábrica.' :
-             'Agende uma tarefa ou evento geral.'}
+            Defina o período e os responsáveis. O status será mantido durante todos os dias selecionados.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -244,13 +251,14 @@ export function NewAppointmentModal({ isOpen, onClose, selectedDate, onDateConsu
                 </FormItem>
               )}
             />
-             <div className="grid grid-cols-2 gap-4">
+             
+            <div className="grid grid-cols-2 gap-4">
                 <FormField
                 control={form.control}
-                name="date"
+                name="startDate"
                 render={({ field }) => (
                     <FormItem className="flex flex-col">
-                    <FormLabel>Data</FormLabel>
+                    <FormLabel>Data de Início</FormLabel>
                     <Popover>
                         <PopoverTrigger asChild>
                         <FormControl>
@@ -262,7 +270,7 @@ export function NewAppointmentModal({ isOpen, onClose, selectedDate, onDateConsu
                             )}
                             >
                             {field.value
-                                ? format(field.value, "PPP")
+                                ? format(field.value, "dd/MM/yyyy")
                                 : 'Escolha uma data'}
                             <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                             </Button>
@@ -273,6 +281,7 @@ export function NewAppointmentModal({ isOpen, onClose, selectedDate, onDateConsu
                             mode="single"
                             selected={field.value}
                             onSelect={field.onChange}
+                            locale={ptBR}
                             initialFocus
                         />
                         </PopoverContent>
@@ -283,10 +292,49 @@ export function NewAppointmentModal({ isOpen, onClose, selectedDate, onDateConsu
                 />
                 <FormField
                 control={form.control}
+                name="endDate"
+                render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                    <FormLabel>Data de Término</FormLabel>
+                    <Popover>
+                        <PopoverTrigger asChild>
+                        <FormControl>
+                            <Button
+                            variant={'outline'}
+                            className={cn(
+                                'w-full pl-3 text-left font-normal',
+                                !field.value && 'text-muted-foreground'
+                            )}
+                            >
+                            {field.value
+                                ? format(field.value, "dd/MM/yyyy")
+                                : 'Escolha uma data'}
+                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                            </Button>
+                        </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                            mode="single"
+                            selected={field.value}
+                            onSelect={field.onChange}
+                            locale={ptBR}
+                            initialFocus
+                        />
+                        </PopoverContent>
+                    </Popover>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
+            </div>
+
+            <FormField
+                control={form.control}
                 name="timeType"
                 render={({ field }) => (
                     <FormItem>
-                    <FormLabel>Horário</FormLabel>
+                    <FormLabel>Horário (Aplica-se a todos os dias)</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl>
                         <SelectContent>
@@ -299,8 +347,7 @@ export function NewAppointmentModal({ isOpen, onClose, selectedDate, onDateConsu
                     <FormMessage />
                     </FormItem>
                 )}
-                />
-            </div>
+            />
             
             {timeType === 'specific' && (
                 <div className="grid grid-cols-2 gap-4">
@@ -370,7 +417,7 @@ export function NewAppointmentModal({ isOpen, onClose, selectedDate, onDateConsu
               <Button type="button" variant="ghost" onClick={onClose}>
                 Cancelar
               </Button>
-              <Button type="submit">Guardar</Button>
+              <Button type="submit">Salvar Agendamento</Button>
             </DialogFooter>
           </form>
         </Form>
