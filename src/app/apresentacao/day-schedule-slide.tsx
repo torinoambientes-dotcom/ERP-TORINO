@@ -2,7 +2,7 @@
 'use client';
 import { useMemo } from 'react';
 import type { Project, Appointment, TeamMember } from '@/lib/types';
-import { format, isSameDay, parseISO, isToday, isPast, endOfDay, startOfDay, isWithinInterval } from 'date-fns';
+import { format, isSameDay, parseISO, isToday, isPast, endOfDay, startOfDay, isWithinInterval, isBefore } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Hammer, Truck, Clock, CheckCircle2, User, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -29,6 +29,18 @@ interface ScheduleItem {
 export function DayScheduleSlide({ day, projects, appointments, teamMembers, selectedCarpenterIds }: DayScheduleSlideProps) {
   const memberMap = useMemo(() => new Map(teamMembers.map(m => [m.id, m])), [teamMembers]);
 
+  // Helper to determine delay strictly
+  const checkIfDelayed = (status: string | undefined, deadlineDate: Date): boolean => {
+    if (status === 'done') return false;
+    if (status === 'delayed') return true;
+    
+    const today = startOfDay(new Date());
+    const target = startOfDay(deadlineDate);
+    
+    // Delayed only if target date is strictly in the past
+    return isBefore(target, today);
+  };
+
   const { producao, montagem } = useMemo(() => {
     const prodItems: ScheduleItem[] = [];
     const montItems: ScheduleItem[] = [];
@@ -44,7 +56,7 @@ export function DayScheduleSlide({ day, projects, appointments, teamMembers, sel
 
             if (isRelevant) {
                 const isDone = stage.status === 'done';
-                const isDelayed = !isDone && isPast(endOfDay(day));
+                const isDelayed = checkIfDelayed(stage.status, parseISO(stage.scheduledFor));
 
                 prodItems.push({
                     id: fur.id,
@@ -69,7 +81,7 @@ export function DayScheduleSlide({ day, projects, appointments, teamMembers, sel
 
             if (isWithinInterval(day, { start, end })) {
                 const isDone = apt.status === 'done';
-                const isDelayed = apt.status === 'delayed' || (!isDone && isPast(endOfDay(day)));
+                const isDelayed = checkIfDelayed(apt.status, parseISO(apt.end));
 
                 if (apt.category === 'producao') {
                     prodItems.push({

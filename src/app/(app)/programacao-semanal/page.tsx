@@ -20,7 +20,8 @@ import {
   startOfDay,
   addWeeks,
   subWeeks,
-  isWithinInterval
+  isWithinInterval,
+  isBefore
 } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import type { TeamMember, Priority, Appointment, StageStatus } from '@/lib/types';
@@ -44,7 +45,7 @@ interface WeeklyItem {
   envId?: string;
   furId?: string;
   isManual?: boolean;
-  status?: 'todo' | 'done' | 'delayed';
+  status?: 'todo' | 'done' | 'delayed' | 'in_progress';
   date: Date;
   start?: Date;
   end?: Date;
@@ -81,6 +82,22 @@ export default function WeeklySchedulePage() {
     return map;
   }, [teamMembers]);
 
+  // Helper to calculate status strictly
+  const calculateItemStatus = (currentStatus: string | undefined, deadlineDate: Date): any => {
+    if (currentStatus === 'done') return 'done';
+    if (currentStatus === 'delayed') return 'delayed';
+    
+    const today = startOfDay(new Date());
+    const target = startOfDay(deadlineDate);
+    
+    // Only delayed if the deadline was strictly YESTERDAY or before
+    if (isBefore(target, today)) {
+      return 'delayed';
+    }
+    
+    return currentStatus || 'todo';
+  };
+
   const weeklyData = useMemo(() => {
     const data: Record<string, WeeklyItem[]> = {};
     if (isLoading) return data;
@@ -104,7 +121,7 @@ export default function WeeklySchedulePage() {
                 projectId: project.id,
                 envId: env.id,
                 furId: fur.id,
-                status: stage.status === 'done' ? 'done' : (isPast(endOfDay(day)) ? 'delayed' : 'todo'),
+                status: calculateItemStatus(stage.status, parseISO(stage.scheduledFor)),
                 date: day,
               });
             }
@@ -127,7 +144,7 @@ export default function WeeklySchedulePage() {
                 projectId: project.id,
                 envId: env.id,
                 furId: fur.id,
-                status: stage.status === 'done' ? 'done' : (isPast(endOfDay(day)) ? 'delayed' : 'todo'),
+                status: calculateItemStatus(stage.status, parseISO(stage.scheduledFor)),
                 date: day,
               });
             }
@@ -151,7 +168,7 @@ export default function WeeklySchedulePage() {
                 location: apt.location,
                 isManual: true,
                 responsible: (apt.memberIds || []).map(id => memberMap.get(id)).filter((m): m is TeamMember => !!m),
-                status: apt.status || (isPast(endOfDay(day)) ? 'delayed' : 'todo'),
+                status: calculateItemStatus(apt.status, parseISO(apt.end)),
                 date: day,
                 start: start,
                 end: end
