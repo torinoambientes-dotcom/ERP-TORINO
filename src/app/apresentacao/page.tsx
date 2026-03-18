@@ -53,7 +53,9 @@ function FactoryDisplayContent() {
         console.error(`Erro ao ativar ecrã inteiro: ${err.message}`);
       });
     } else {
-      document.exitFullscreen();
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      }
     }
   }, []);
 
@@ -68,38 +70,42 @@ function FactoryDisplayContent() {
   if (isLoading) {
     return (
       <div className="flex h-screen items-center justify-center bg-slate-50 text-slate-900">
-        <p className="text-5xl font-black animate-pulse uppercase tracking-tighter">Carregando Programação...</p>
+        <p className="text-4xl font-black animate-pulse uppercase tracking-tighter">Carregando Programação...</p>
       </div>
     );
   }
 
   return (
-    <div className="bg-slate-100 text-slate-900 h-screen flex flex-col relative overflow-hidden select-none">
+    <div className="bg-slate-100 text-slate-900 h-screen w-screen flex flex-col relative overflow-hidden select-none">
         
         {!isFullscreen && (
-          <div className="absolute top-6 right-6 z-50 animate-bounce">
-            <Button size="lg" onClick={toggleFullscreen} className="bg-primary hover:bg-primary/90 text-white font-black px-10 py-8 rounded-3xl shadow-2xl flex gap-4 text-2xl border-4 border-white">
-              <Maximize className="h-10 w-10" />
-              ATIVAR ECRÃ INTEIRO
+          <div className="absolute top-4 right-4 z-[100]">
+            <Button 
+              size="sm" 
+              onClick={toggleFullscreen} 
+              className="bg-primary hover:bg-primary/90 text-white font-bold px-4 py-2 rounded-full shadow-lg flex gap-2 border-2 border-white"
+            >
+              <Maximize className="h-4 w-4" />
+              TELA CHEIA
             </Button>
           </div>
         )}
 
-        {/* Header Fixo - Reduzi a altura para ganhar espaço vertical */}
-        <header className="px-8 py-4 border-b-4 border-slate-200 bg-white flex justify-between items-center z-10 shadow-md">
-            <div className="flex items-center gap-6">
-                <div className="h-10 w-4 bg-primary rounded-full shadow-sm"></div>
-                <h1 className="text-4xl font-black tracking-tighter uppercase text-slate-800">Programação Torino</h1>
+        {/* Header Fixo - Compacto para ganhar espaço */}
+        <header className="px-6 py-3 border-b-2 border-slate-200 bg-white flex justify-between items-center z-10 shadow-sm flex-shrink-0">
+            <div className="flex items-center gap-4">
+                <div className="h-8 w-3 bg-primary rounded-full shadow-sm"></div>
+                <h1 className="text-3xl font-black tracking-tighter uppercase text-slate-800">Programação Torino</h1>
             </div>
             <div className="text-right">
-                <p className="text-slate-500 text-xl font-bold uppercase tracking-widest">
+                <p className="text-slate-500 text-lg font-bold uppercase tracking-widest">
                     {format(new Date(), "eeee, dd 'de' MMMM", { locale: ptBR })}
                 </p>
             </div>
         </header>
 
-        {/* Main Content - Flex grow para ocupar tudo */}
-        <main className="flex-1 flex flex-col min-h-0 pt-4">
+        {/* Main Content - Flex-1 para ocupar o restante da tela */}
+        <main className="flex-1 min-h-0 relative">
             <Carousel
                 setApi={setApi}
                 plugins={[Autoplay({ delay: rotationTime, stopOnInteraction: false })]}
@@ -121,34 +127,37 @@ function FactoryDisplayContent() {
             </Carousel>
         </main>
 
-        {/* Indicadores de Progresso - Mais visíveis */}
-        <div className="flex justify-center gap-6 pb-4">
-            {weekDays.map((_, index) => (
-                <div
-                    key={index}
-                    className={`h-4 rounded-full transition-all duration-700 ease-in-out border-2 ${
-                        index === currentSlide 
-                        ? 'w-32 bg-primary border-primary shadow-lg scale-110' 
-                        : 'w-4 bg-slate-300 border-slate-200'
-                    }`}
-                />
-            ))}
-        </div>
-
-        {customMessage && (
-            <footer className="bg-primary border-t-4 border-white p-3 text-center shadow-2xl relative z-20">
-                <p className="text-3xl font-black text-white uppercase tracking-[0.3em] animate-pulse">
-                    {customMessage}
-                </p>
-            </footer>
-        )}
+        {/* Rodapé Dinâmico */}
+        <footer className="flex-shrink-0 bg-white border-t-2 border-slate-200">
+            {customMessage && (
+                <div className="bg-primary py-2 text-center shadow-inner">
+                    <p className="text-2xl font-black text-white uppercase tracking-[0.2em] animate-pulse">
+                        {customMessage}
+                    </p>
+                </div>
+            )}
+            
+            {/* Indicadores de Progresso */}
+            <div className="flex justify-center gap-4 py-2 bg-white">
+                {weekDays.map((_, index) => (
+                    <div
+                        key={index}
+                        className={`h-2 rounded-full transition-all duration-700 ease-in-out ${
+                            index === currentSlide 
+                            ? 'w-16 bg-primary' 
+                            : 'w-2 bg-slate-300'
+                        }`}
+                    />
+                ))}
+            </div>
+        </footer>
     </div>
   );
 }
 
 export default function ApresentacaoPage() {
   return (
-    <Suspense fallback={<div className="flex h-screen items-center justify-center bg-white text-slate-900"><p className="text-4xl font-black">Carregando...</p></div>}>
+    <Suspense fallback={<div className="flex h-screen items-center justify-center bg-white text-slate-900"><p className="text-2xl font-black">Carregando...</p></div>}>
       <FactoryDisplayContent />
     </Suspense>
   );
