@@ -1,8 +1,9 @@
+
 'use client';
 import { useState, useContext, useMemo } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BarChart3, LayoutGrid, PlusCircle, Users, Boxes, LogOut, ShoppingCart, User, X, Calendar, Home, FileText, Recycle, MonitorPlay, CalendarRange } from 'lucide-react';
+import { BarChart3, LayoutGrid, PlusCircle, Users, Boxes, LogOut, ShoppingCart, User, X, Calendar, Home, FileText, Recycle, MonitorPlay, CalendarRange, Scissors } from 'lucide-react';
 import {
   SidebarHeader,
   SidebarContent,
@@ -41,6 +42,7 @@ const menuItems = [
   { href: '/quotes', label: 'Orçamentos', icon: FileText, adminOnly: false },
   { href: '/calendar', label: 'Calendário', icon: Calendar, adminOnly: false },
   { href: '/programacao-semanal', label: 'Prog. Semanal', icon: CalendarRange, adminOnly: false },
+  { href: '/cutting-order', label: 'Ordem de Corte', icon: Scissors, adminOnly: false },
   { href: '/purchases', label: 'Compras', icon: ShoppingCart, adminOnly: false, restrictedRoles: ['Projetista'] },
   { href: '/stock', label: 'Estoque', icon: Boxes, adminOnly: false, restrictedRoles: ['Projetista'] },
   { href: '/ecra-fabrica', label: 'Ecrã Fábrica', icon: MonitorPlay, adminOnly: false, restrictedRoles: ['Projetista'] },
@@ -65,7 +67,7 @@ export function SidebarNav() {
   const auth = useAuth();
   const router = useRouter();
   const { user } = useUser();
-  const { teamMembers, projects, stockItems, updateTeamMember, purchaseRequests } = useContext(AppContext);
+  const { teamMembers, projects, stockItems, updateTeamMember, purchaseRequests, cuttingOrders } = useContext(AppContext);
   const { toast } = useToast();
   
   const [isAvatarPopoverOpen, setAvatarPopoverOpen] = useState(false);
@@ -127,6 +129,10 @@ export function SidebarNav() {
     return count;
   }, [projects, stockItems, purchaseRequests, stockItemMap]);
 
+  const pendingCuttingCount = useMemo(() => {
+    return (cuttingOrders || []).filter(o => o.status === 'pending').length;
+  }, [cuttingOrders]);
+
 
   const handleLogout = async () => {
     try {
@@ -168,7 +174,7 @@ export function SidebarNav() {
 
   const visibleMenuItems = useMemo(() => {
     const internal = filterMenuItems(menuItems).sort((a, b) => {
-        const order = ['Dashboard', 'Projetos', 'Orçamentos', 'Calendário', 'Prog. Semanal', 'Compras', 'Estoque', 'Ecrã Fábrica', 'Relatórios', 'Equipe'];
+        const order = ['Dashboard', 'Projetos', 'Orçamentos', 'Calendário', 'Prog. Semanal', 'Ordem de Corte', 'Compras', 'Estoque', 'Ecrã Fábrica', 'Relatórios', 'Equipe'];
         return order.indexOf(a.label) - order.indexOf(b.label);
       });
     const external = filterMenuItems(externalMenuItems);
@@ -187,7 +193,8 @@ export function SidebarNav() {
         <SidebarMenu>
           {visibleMenuItems.map((item) => {
             const isInternalLink = menuItems.some(i => i.href === item.href);
-            const showBadge = item.href === '/purchases' && pendingPurchasesCount > 0;
+            const showBadge = (item.href === '/purchases' && pendingPurchasesCount > 0) || (item.href === '/cutting-order' && pendingCuttingCount > 0);
+            const badgeCount = item.href === '/purchases' ? pendingPurchasesCount : pendingCuttingCount;
             const isActive = isInternalLink && (item.href === '/' ? pathname === '/' : pathname.startsWith(item.href));
             
             return (
@@ -203,8 +210,8 @@ export function SidebarNav() {
                       <item.icon className="h-5 w-5" />
                       <span className="text-base">{item.label}</span>
                        {showBadge && (
-                          <Badge className="absolute right-2 top-1/2 -translate-y-1/2 h-5 min-w-[20px] justify-center px-1.5 text-xs group-data-[collapsible=icon]:right-0 group-data-[collapsible=icon]:top-0">
-                              {pendingPurchasesCount}
+                          <Badge variant={item.href === '/cutting-order' ? 'destructive' : 'default'} className="absolute right-2 top-1/2 -translate-y-1/2 h-5 min-w-[20px] justify-center px-1.5 text-xs group-data-[collapsible=icon]:right-0 group-data-[collapsible=icon]:top-0">
+                              {badgeCount}
                           </Badge>
                       )}
                     </Link>

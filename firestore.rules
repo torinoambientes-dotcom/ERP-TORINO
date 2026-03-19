@@ -1,3 +1,4 @@
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -38,6 +39,9 @@ service cloud.firestore {
       allow read, write: if request.auth != null;
     }
     match /quote_material_categories/{quoteMaterialCategoryId} {
+      allow read, write: if request.auth != null;
+    }
+    match /cutting_orders/{cuttingOrderId} {
       allow read, write: if request.auth != null;
     }
   }

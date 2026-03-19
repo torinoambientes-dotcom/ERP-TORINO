@@ -1,9 +1,10 @@
+
 'use client';
 
 import { createContext, type ReactNode, useCallback, useMemo, useEffect, useState } from 'react';
-import { collection, doc, serverTimestamp, deleteField, writeBatch, getDocs, runTransaction, query, where } from 'firebase/firestore';
+import { collection, doc, serverTimestamp, deleteField, writeBatch, getDocs, runTransaction, query, where, orderBy } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useAuth, useUser } from '@/firebase';
-import type { Project, TeamMember, StageStatus, StockItem, StockMovement, StockCategory, Furniture, Environment, MaterialItem, StockReservation, ProductionStage, Appointment, PurchaseRequest, PurchaseRequestStatus, Quote, QuoteStage, QuoteEnvironment, QuoteFurniture, QuoteMaterial, QuoteMaterialCategory, Dispatch, Task } from '@/lib/types';
+import type { Project, TeamMember, StageStatus, StockItem, StockMovement, StockCategory, Furniture, Environment, MaterialItem, StockReservation, ProductionStage, Appointment, PurchaseRequest, PurchaseRequestStatus, Quote, QuoteStage, QuoteEnvironment, QuoteFurniture, QuoteMaterial, QuoteMaterialCategory, Dispatch, Task, CuttingOrder } from '@/lib/types';
 import { generateId } from '@/lib/utils';
 import { setDocumentNonBlocking, deleteDocumentNonBlocking, addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
@@ -23,6 +24,7 @@ interface AppContextType {
   quotes: Quote[];
   quoteMaterials: QuoteMaterial[];
   quoteMaterialCategories: QuoteMaterialCategory[];
+  cuttingOrders: CuttingOrder[];
   isLoading: boolean;
   addProject: (projectData: any) => string | undefined;
   updateProject: (updatedProject: Project, originalProject?: Project) => void;
@@ -62,6 +64,10 @@ interface AppContextType {
   deleteQuoteMaterial: (itemId: string) => void;
   addQuoteMaterialCategory: (categoryData: Omit<QuoteMaterialCategory, 'id'>) => void;
   deleteQuoteMaterialCategory: (categoryId: string) => void;
+  addCuttingOrder: (folderName: string) => void;
+  updateCuttingOrderStatus: (orderId: string, status: 'pending' | 'completed') => void;
+  reorderCuttingOrders: (orders: CuttingOrder[]) => void;
+  deleteCuttingOrder: (orderId: string) => void;
 }
 
 export const AppContext = createContext<AppContextType>({
@@ -76,6 +82,7 @@ export const AppContext = createContext<AppContextType>({
   quotes: [],
   quoteMaterials: [],
   quoteMaterialCategories: [],
+  cuttingOrders: [],
   isLoading: true,
   addProject: () => undefined,
   updateProject: () => {},
@@ -115,6 +122,10 @@ export const AppContext = createContext<AppContextType>({
   deleteQuoteMaterial: () => {},
   addQuoteMaterialCategory: () => {},
   deleteQuoteMaterialCategory: () => {},
+  addCuttingOrder: () => {},
+  updateCuttingOrderStatus: () => {},
+  reorderCuttingOrders: () => {},
+  deleteCuttingOrder: () => {},
 });
 
 const cleanupUndefinedFields = (obj: any) => {
@@ -158,6 +169,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const quotesQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'quotes') : null, [firestore, user]);
   const quoteMaterialsQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'quote_materials') : null, [firestore, user]);
   const quoteMaterialCategoriesQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'quote_material_categories') : null, [firestore, user]);
+  const cuttingOrdersQuery = useMemoFirebase(() => (firestore && user) ? query(collection(firestore, 'cutting_orders'), orderBy('index', 'asc')) : null, [firestore, user]);
 
   const { data: projects, isLoading: isLoadingProjects } = useCollection<Project>(projectsQuery);
   const { data: teamMembersData, isLoading: isLoadingTeamMembers } = useCollection<TeamMember>(teamMembersQuery);
@@ -170,10 +182,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const { data: quotes, isLoading: isLoadingQuotes } = useCollection<Quote>(quotesQuery);
   const { data: quoteMaterials, isLoading: isLoadingQuoteMaterials } = useCollection<QuoteMaterial>(quoteMaterialsQuery);
   const { data: quoteMaterialCategories, isLoading: isLoadingQuoteMaterialCategories } = useCollection<QuoteMaterialCategory>(quoteMaterialCategoriesQuery);
+  const { data: cuttingOrders, isLoading: isLoadingCuttingOrders } = useCollection<CuttingOrder>(cuttingOrdersQuery);
 
   const teamMembers = useMemo(() => teamMembersData || [], [teamMembersData]);
   const stockCategories = useMemo(() => stockCategoriesData || [], [stockCategoriesData]);
-  const isLoading = isLoadingProjects || isLoadingTeamMembers || isLoadingAppointments || isLoadingTasks || isLoadingStockItems || isLoadingStockCategories || isLoadingMovements || isLoadingPurchaseRequests || isLoadingQuotes || isLoadingQuoteMaterials || isLoadingQuoteMaterialCategories;
+  const isLoading = isLoadingProjects || isLoadingTeamMembers || isLoadingAppointments || isLoadingTasks || isLoadingStockItems || isLoadingStockCategories || isLoadingMovements || isLoadingPurchaseRequests || isLoadingQuotes || isLoadingQuoteMaterials || isLoadingQuoteMaterialCategories || isLoadingCuttingOrders;
   
   const addProject = useCallback((projectData: Omit<Project, 'id' | 'environments'> & { environments: Array<Omit<Project['environments'][0], 'id' | 'furniture'> & { furniture: Array<Omit<Furniture, 'id' | 'measurement' | 'cutting' | 'purchase' | 'assembly' | 'comments' | 'pendencies' | 'materials' | 'glassItems' | 'profileDoors'>>}>}) => {
     if (!firestore) return;
@@ -638,7 +651,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 }
                 return fur;
             });
-            return { ...env, furniture: newFurnitures };
+            return { ...env, furniture: newFurniture };
         }
         return env;
     });
@@ -687,7 +700,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
                                 }
                                 return mat;
                             });
-                            return { ...fur, materials: newMaterials };
+                            return { ...fur, materials: newFurnitures };
                         }
                         return fur;
                     });
@@ -971,6 +984,43 @@ export function AppProvider({ children }: { children: ReactNode }) {
         deleteDocumentNonBlocking(categoryRef);
     }, [firestore]);
 
+    const addCuttingOrder = useCallback((folderName: string) => {
+      if (!firestore) return;
+      const id = generateId('cnc');
+      const index = (cuttingOrders?.length || 0);
+      const newOrder: CuttingOrder = {
+        id,
+        folderName,
+        status: 'pending',
+        index,
+        createdAt: new Date().toISOString(),
+      };
+      const ref = doc(firestore, 'cutting_orders', id);
+      setDocumentNonBlocking(ref, newOrder, { merge: false });
+    }, [firestore, cuttingOrders]);
+
+    const updateCuttingOrderStatus = useCallback((orderId: string, status: 'pending' | 'completed') => {
+      if (!firestore) return;
+      const ref = doc(firestore, 'cutting_orders', orderId);
+      updateDocumentNonBlocking(ref, { status });
+    }, [firestore]);
+
+    const reorderCuttingOrders = useCallback(async (newOrders: CuttingOrder[]) => {
+      if (!firestore) return;
+      const batch = writeBatch(firestore);
+      newOrders.forEach((order, i) => {
+        const ref = doc(firestore, 'cutting_orders', order.id);
+        batch.update(ref, { index: i });
+      });
+      await batch.commit();
+    }, [firestore]);
+
+    const deleteCuttingOrder = useCallback((orderId: string) => {
+      if (!firestore) return;
+      const ref = doc(firestore, 'cutting_orders', orderId);
+      deleteDocumentNonBlocking(ref);
+    }, [firestore]);
+
 
   const value = useMemo(() => ({
     projects: projects || [],
@@ -984,6 +1034,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     quotes: quotes || [],
     quoteMaterials: quoteMaterials || [],
     quoteMaterialCategories: quoteMaterialCategories || [],
+    cuttingOrders: cuttingOrders || [],
     isLoading,
     addProject,
     updateProject,
@@ -1023,6 +1074,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     deleteQuoteMaterial,
     addQuoteMaterialCategory,
     deleteQuoteMaterialCategory,
+    addCuttingOrder,
+    updateCuttingOrderStatus,
+    reorderCuttingOrders,
+    deleteCuttingOrder,
   }), [
     projects, 
     teamMembers, 
@@ -1035,6 +1090,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     quotes,
     quoteMaterials,
     quoteMaterialCategories,
+    cuttingOrders,
     isLoading,
     addProject, 
     updateProject, 
@@ -1074,6 +1130,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     deleteQuoteMaterial,
     addQuoteMaterialCategory,
     deleteQuoteMaterialCategory,
+    addCuttingOrder,
+    updateCuttingOrderStatus,
+    reorderCuttingOrders,
+    deleteCuttingOrder,
   ]);
 
   return (

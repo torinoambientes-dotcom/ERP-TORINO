@@ -314,3 +314,11 @@ export interface ExtraProject {
     assignedTo: string[];
     isCompleted: boolean;
 }
+
+export interface CuttingOrder {
+  id: string;
+  folderName: string;
+  status: 'pending' | 'completed';
+  index: number;
+  createdAt: string;
+}

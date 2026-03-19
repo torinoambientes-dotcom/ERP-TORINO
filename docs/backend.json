@@ -266,16 +266,13 @@
         "id": { "type": "string" },
         "title": { "type": "string" },
         "description": { "type": "string" },
-        "location": { "type": "string", "description": "Physical location of the appointment." },
         "start": { "type": "string", "format": "date-time", "description": "The start date and time of the appointment." },
         "end": { "type": "string", "format": "date-time", "description": "The end date and time of the appointment." },
         "memberIds": {
           "type": "array",
           "items": { "type": "string" },
           "description": "A list of team member IDs assigned to this appointment."
-        },
-        "category": { "type": "string", "enum": ["generic", "montagem", "corte", "producao"] },
-        "status": { "type": "string", "enum": ["todo", "done", "delayed"], "description": "The status of the manual appointment." }
+        }
       },
       "required": ["id", "title", "start", "end", "memberIds"]
     },
@@ -514,6 +511,19 @@
         "name": { "type": "string" }
       },
       "required": ["id", "name"]
+    },
+    "CuttingOrder": {
+      "title": "Cutting Order",
+      "type": "object",
+      "description": "Represents a CNC cutting job.",
+      "properties": {
+        "id": { "type": "string" },
+        "folderName": { "type": "string", "description": "The name of the folder containing CNC files." },
+        "status": { "type": "string", "enum": ["pending", "completed"] },
+        "index": { "type": "number", "description": "Order of the job in the queue." },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "folderName", "status", "index", "createdAt"]
     }
   },
   "auth": {
@@ -565,6 +575,10 @@
     "/quote_material_categories/{quoteMaterialCategoryId}": {
       "schema": { "$ref": "#/entities/QuoteMaterialCategory" },
       "description": "Stores the categories for quoting materials."
+    },
+    "/cutting_orders/{cuttingOrderId}": {
+      "schema": { "$ref": "#/entities/CuttingOrder" },
+      "description": "Stores CNC cutting queue."
     }
   }
 }
