@@ -7,7 +7,7 @@ import { PageHeader } from '@/components/layout/page-header';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { PlusCircle, GripVertical, CheckCircle2, Trash2, Scissors, History, Clock, ArrowLeft } from 'lucide-react';
+import { PlusCircle, GripVertical, CheckCircle2, Trash2, Scissors, History, Clock, ArrowLeft, Pencil, Zap, Check, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
   DndContext,
@@ -34,7 +34,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 
 export default function CuttingOrderPage() {
-  const { cuttingOrders, addCuttingOrder, updateCuttingOrderStatus, reorderCuttingOrders, deleteCuttingOrder, isLoading } = useContext(AppContext);
+  const { cuttingOrders, addCuttingOrder, updateCuttingOrderStatus, updateCuttingOrder, reorderCuttingOrders, deleteCuttingOrder, isLoading } = useContext(AppContext);
   const { toast } = useToast();
   const [newFolderName, setNewFolderName] = useState('');
   const [showHistory, setShowHistory] = useState(false);
@@ -140,6 +140,7 @@ export default function CuttingOrderPage() {
                           toast({ title: "Corte Concluído!", description: `A pasta ${order.folderName} foi removida da fila.` });
                         }}
                         onDelete={() => deleteCuttingOrder(order.id)}
+                        onUpdate={(updates) => updateCuttingOrder(order.id, updates)}
                       />
                     ))
                   ) : (
@@ -182,7 +183,10 @@ export default function CuttingOrderPage() {
   );
 }
 
-function SortableOrderItem({ order, onComplete, onDelete }: { order: CuttingOrder, onComplete: () => void, onDelete: () => void }) {
+function SortableOrderItem({ order, onComplete, onDelete, onUpdate }: { order: CuttingOrder, onComplete: () => void, onDelete: () => void, onUpdate: (updates: Partial<CuttingOrder>) => void }) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editValue, setEditValue] = useState(order.folderName);
+
   const {
     attributes,
     listeners,
@@ -198,12 +202,20 @@ function SortableOrderItem({ order, onComplete, onDelete }: { order: CuttingOrde
     zIndex: isDragging ? 10 : 1,
   };
 
+  const handleSaveEdit = () => {
+    if (editValue.trim() && editValue.trim() !== order.folderName) {
+      onUpdate({ folderName: editValue.trim() });
+    }
+    setIsEditing(false);
+  };
+
   return (
     <div
       ref={setNodeRef}
       style={style}
       className={cn(
-        "flex items-center gap-4 p-4 bg-white border-2 rounded-xl shadow-sm transition-shadow",
+        "flex items-center gap-4 p-4 bg-white border-2 rounded-xl shadow-sm transition-all",
+        order.isUrgent ? "border-red-500 bg-red-50/30 ring-4 ring-red-500/10 animate-pulse" : "border-border",
         isDragging && "shadow-xl border-primary ring-2 ring-primary/20"
       )}
     >
@@ -212,9 +224,37 @@ function SortableOrderItem({ order, onComplete, onDelete }: { order: CuttingOrde
       </div>
       
       <div className="flex-grow min-w-0">
-        <p className="text-lg font-black tracking-tight text-slate-900 truncate">
-          {order.folderName}
-        </p>
+        {isEditing ? (
+          <div className="flex items-center gap-2">
+            <Input 
+              value={editValue} 
+              onChange={(e) => setEditValue(e.target.value)}
+              className="h-8 py-0"
+              autoFocus
+              onKeyDown={(e) => e.key === 'Enter' && handleSaveEdit()}
+            />
+            <Button size="icon" variant="ghost" className="h-8 w-8 text-green-600" onClick={handleSaveEdit}><Check className="h-4 w-4" /></Button>
+            <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => { setEditValue(order.folderName); setIsEditing(false); }}><X className="h-4 w-4" /></Button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 group/title">
+            <p className={cn(
+              "text-lg font-black tracking-tight truncate",
+              order.isUrgent ? "text-red-700" : "text-slate-900"
+            )}>
+              {order.folderName}
+            </p>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-6 w-6 opacity-0 group-hover/title:opacity-100 transition-opacity" 
+              onClick={() => setIsEditing(true)}
+            >
+              <Pencil className="h-3 w-3 text-muted-foreground" />
+            </Button>
+            {order.isUrgent && <Badge className="bg-red-600 text-white animate-bounce">URGENTE</Badge>}
+          </div>
+        )}
         <p className="text-xs text-muted-foreground">
           Fila #{order.index + 1} • Adicionado em {format(parseISO(order.createdAt), "dd/MM 'às' HH:mm")}
         </p>
@@ -222,13 +262,28 @@ function SortableOrderItem({ order, onComplete, onDelete }: { order: CuttingOrde
 
       <div className="flex items-center gap-2">
         <Button 
+          variant={order.isUrgent ? "destructive" : "outline"}
+          size="sm"
+          className={cn(
+            "font-bold",
+            !order.isUrgent && "hover:bg-red-50 hover:text-red-600 hover:border-red-200"
+          )}
+          onClick={() => onUpdate({ isUrgent: !order.isUrgent })}
+        >
+          <Zap className={cn("mr-2 h-4 w-4", order.isUrgent && "fill-white")} />
+          {order.isUrgent ? "URGÊNCIA ATIVA" : "MARCAR URGENTE"}
+        </Button>
+
+        <Separator orientation="vertical" className="h-8" />
+
+        <Button 
           variant="outline" 
           size="sm" 
           onClick={onComplete}
           className="bg-green-50 text-green-700 border-green-200 hover:bg-green-600 hover:text-white font-bold"
         >
           <CheckCircle2 className="mr-2 h-4 w-4" />
-          CORTE CONCLUÍDO
+          CONCLUÍDO
         </Button>
         <Separator orientation="vertical" className="h-8" />
         <Button variant="ghost" size="icon" onClick={onDelete} className="text-muted-foreground hover:text-destructive">

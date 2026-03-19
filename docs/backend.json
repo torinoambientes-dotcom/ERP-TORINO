@@ -521,7 +521,8 @@
         "folderName": { "type": "string", "description": "The name of the folder containing CNC files." },
         "status": { "type": "string", "enum": ["pending", "completed"] },
         "index": { "type": "number", "description": "Order of the job in the queue." },
-        "createdAt": { "type": "string", "format": "date-time" }
+        "createdAt": { "type": "string", "format": "date-time" },
+        "isUrgent": { "type": "boolean" }
       },
       "required": ["id", "folderName", "status", "index", "createdAt"]
     }

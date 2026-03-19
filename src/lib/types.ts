@@ -321,4 +321,5 @@ export interface CuttingOrder {
   status: 'pending' | 'completed';
   index: number;
   createdAt: string;
+  isUrgent?: boolean;
 }

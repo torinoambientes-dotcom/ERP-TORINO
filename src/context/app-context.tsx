@@ -65,6 +65,7 @@ interface AppContextType {
   addQuoteMaterialCategory: (categoryData: Omit<QuoteMaterialCategory, 'id'>) => void;
   deleteQuoteMaterialCategory: (categoryId: string) => void;
   addCuttingOrder: (folderName: string) => void;
+  updateCuttingOrder: (orderId: string, updates: Partial<CuttingOrder>) => void;
   updateCuttingOrderStatus: (orderId: string, status: 'pending' | 'completed') => void;
   reorderCuttingOrders: (orders: CuttingOrder[]) => void;
   deleteCuttingOrder: (orderId: string) => void;
@@ -123,6 +124,7 @@ export const AppContext = createContext<AppContextType>({
   addQuoteMaterialCategory: () => {},
   deleteQuoteMaterialCategory: () => {},
   addCuttingOrder: () => {},
+  updateCuttingOrder: () => {},
   updateCuttingOrderStatus: () => {},
   reorderCuttingOrders: () => {},
   deleteCuttingOrder: () => {},
@@ -999,10 +1001,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
         status: 'pending',
         index,
         createdAt: new Date().toISOString(),
+        isUrgent: false,
       };
       const ref = doc(firestore, 'cutting_orders', id);
       setDocumentNonBlocking(ref, newOrder, { merge: false });
     }, [firestore, cuttingOrders]);
+
+    const updateCuttingOrder = useCallback((orderId: string, updates: Partial<CuttingOrder>) => {
+      if (!firestore) return;
+      const ref = doc(firestore, 'cutting_orders', orderId);
+      updateDocumentNonBlocking(ref, updates);
+    }, [firestore]);
 
     const updateCuttingOrderStatus = useCallback((orderId: string, status: 'pending' | 'completed') => {
       if (!firestore) return;
@@ -1080,6 +1089,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addQuoteMaterialCategory,
     deleteQuoteMaterialCategory,
     addCuttingOrder,
+    updateCuttingOrder,
     updateCuttingOrderStatus,
     reorderCuttingOrders,
     deleteCuttingOrder,
@@ -1103,41 +1113,42 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addTeamMember, 
     updateTeamMember, 
     deleteTeamMember,
-    addAppointment,
-    addAppointments,
-    updateAppointment,
-    deleteAppointment,
-    addTasks,
-    updateTaskStatus,
-    completeProjectStages,
-    addStockItem,
-    updateStockItem,
-    deleteStockItem,
-    addStockMovement,
-    addStockCategory,
-    deleteStockCategory,
-    handleStockAlert,
-    toggleItemPurchasedStatus,
-    toggleMaterialPurchased,
-    cancelStockReservation,
-    dispatchItemToProduction,
-    registerPurchase,
-    confirmStockReceipt,
-    addPurchaseRequest,
-    updatePurchaseRequest,
-    updatePurchaseRequestStatus,
-    deletePurchaseRequest,
-    addQuote,
-    updateQuote,
-    deleteQuote,
-    addQuoteMaterial,
-    updateQuoteMaterial,
-    deleteQuoteMaterial,
-    addQuoteMaterialCategory,
-    deleteQuoteMaterialCategory,
-    addCuttingOrder,
-    updateCuttingOrderStatus,
-    reorderCuttingOrders,
+    addAppointment, 
+    addAppointments, 
+    updateAppointment, 
+    deleteAppointment, 
+    addTasks, 
+    updateTaskStatus, 
+    completeProjectStages, 
+    addStockItem, 
+    updateStockItem, 
+    deleteStockItem, 
+    addStockMovement, 
+    addStockCategory, 
+    deleteStockCategory, 
+    handleStockAlert, 
+    toggleItemPurchasedStatus, 
+    toggleMaterialPurchased, 
+    cancelStockReservation, 
+    dispatchItemToProduction, 
+    registerPurchase, 
+    confirmStockReceipt, 
+    addPurchaseRequest, 
+    updatePurchaseRequest, 
+    updatePurchaseRequestStatus, 
+    deletePurchaseRequest, 
+    addQuote, 
+    updateQuote, 
+    deleteQuote, 
+    addQuoteMaterial, 
+    updateQuoteMaterial, 
+    deleteQuoteMaterial, 
+    addQuoteMaterialCategory, 
+    deleteQuoteMaterialCategory, 
+    addCuttingOrder, 
+    updateCuttingOrder,
+    updateCuttingOrderStatus, 
+    reorderCuttingOrders, 
     deleteCuttingOrder,
   ]);
 
