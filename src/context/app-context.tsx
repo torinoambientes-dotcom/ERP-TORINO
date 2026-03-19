@@ -186,7 +186,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const teamMembers = useMemo(() => teamMembersData || [], [teamMembersData]);
   const stockCategories = useMemo(() => stockCategoriesData || [], [stockCategoriesData]);
-  const isLoading = isLoadingProjects || isLoadingTeamMembers || isLoadingAppointments || isLoadingTasks || isLoadingStockItems || isLoadingStockCategories || isLoadingMovements || isLoadingPurchaseRequests || isLoadingQuotes || isLoadingQuoteMaterials || isLoadingQuoteMaterialCategories || isLoadingCuttingOrders;
+  
+  // Refined loading state to handle optional private collections correctly
+  const isLoading = isLoadingProjects || isLoadingTeamMembers || isLoadingAppointments || 
+                    (user ? (isLoadingTasks || isLoadingStockItems || isLoadingStockCategories || 
+                             isLoadingMovements || isLoadingPurchaseRequests || isLoadingQuotes || 
+                             isLoadingQuoteMaterials || isLoadingQuoteMaterialCategories || isLoadingCuttingOrders) : false);
   
   const addProject = useCallback((projectData: Omit<Project, 'id' | 'environments'> & { environments: Array<Omit<Project['environments'][0], 'id' | 'furniture'> & { furniture: Array<Omit<Furniture, 'id' | 'measurement' | 'cutting' | 'purchase' | 'assembly' | 'comments' | 'pendencies' | 'materials' | 'glassItems' | 'profileDoors'>>}>}) => {
     if (!firestore) return;
@@ -280,7 +285,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     // Find added/modified materials to add/update reservations
     updatedMaterials.forEach(updMat => {
-        // BUG FIX: Check if the material has already been dispatched. If so, do not create a reservation.
+        // Check if the material has already been dispatched. If so, do not create a reservation.
         const alreadyDispatched = (updMat.dispatches || []).length > 0;
         
         if (updMat.stockItemId && !alreadyDispatched) {

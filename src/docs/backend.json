@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "Project": {
@@ -510,6 +511,19 @@
         "name": { "type": "string" }
       },
       "required": ["id", "name"]
+    },
+    "CuttingOrder": {
+      "title": "Cutting Order",
+      "type": "object",
+      "description": "Represents a CNC cutting job.",
+      "properties": {
+        "id": { "type": "string" },
+        "folderName": { "type": "string", "description": "The name of the folder containing CNC files." },
+        "status": { "type": "string", "enum": ["pending", "completed"] },
+        "index": { "type": "number", "description": "Order of the job in the queue." },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "folderName", "status", "index", "createdAt"]
     }
   },
   "auth": {
@@ -561,6 +575,10 @@
     "/quote_material_categories/{quoteMaterialCategoryId}": {
       "schema": { "$ref": "#/entities/QuoteMaterialCategory" },
       "description": "Stores the categories for quoting materials."
+    },
+    "/cutting_orders/{cuttingOrderId}": {
+      "schema": { "$ref": "#/entities/CuttingOrder" },
+      "description": "Stores CNC cutting queue."
     }
   }
 }

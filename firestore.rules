@@ -2,7 +2,7 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Public read for factory display
+    // Public read for factory display and general access
     match /projects/{projectId} {
       allow read: if true;
       allow write: if request.auth != null;
@@ -16,7 +16,7 @@ service cloud.firestore {
       allow write: if request.auth != null;
     }
 
-    // Default to private for all other collections
+    // Authenticated access only
     match /tasks/{taskId} {
       allow read, write: if request.auth != null;
     }
@@ -41,6 +41,9 @@ service cloud.firestore {
     match /quote_material_categories/{quoteMaterialCategoryId} {
       allow read, write: if request.auth != null;
     }
+    
+    // Cutting Orders - explicit authenticated access
+    // Force redeploy comment: cnc security patch applied
     match /cutting_orders/{cuttingOrderId} {
       allow read, write: if request.auth != null;
     }
