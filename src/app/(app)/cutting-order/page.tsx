@@ -7,7 +7,7 @@ import { PageHeader } from '@/components/layout/page-header';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { PlusCircle, GripVertical, CheckCircle2, Trash2, Scissors, History, Clock, ArrowLeft, Pencil, Zap, Check, X } from 'lucide-react';
+import { PlusCircle, GripVertical, CheckCircle2, Trash2, Scissors, History, Clock, ArrowLeft, Pencil, Zap, Check, X, MonitorPlay } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
   DndContext,
@@ -32,6 +32,7 @@ import { ptBR } from 'date-fns/locale';
 import type { CuttingOrder } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import Link from 'next/link';
 
 export default function CuttingOrderPage() {
   const { cuttingOrders, addCuttingOrder, updateCuttingOrderStatus, updateCuttingOrder, reorderCuttingOrders, deleteCuttingOrder, isLoading } = useContext(AppContext);
@@ -84,10 +85,18 @@ export default function CuttingOrderPage() {
           title="Ordem de Corte (CNC)"
           description="Gerencie a fila de arquivos para o operador da CNC."
         />
-        <Button variant="outline" onClick={() => setShowHistory(!showHistory)}>
-          {showHistory ? <ArrowLeft className="mr-2 h-4 w-4" /> : <History className="mr-2 h-4 w-4" />}
-          {showHistory ? "Voltar para Fila" : "Ver Histórico"}
-        </Button>
+        <div className='flex gap-2 w-full sm:w-auto'>
+          <Button variant="outline" asChild>
+            <Link href="/apresentacao-corte" target="_blank">
+              <MonitorPlay className="mr-2 h-4 w-4" />
+              Lançar Monitor CNC
+            </Link>
+          </Button>
+          <Button variant="outline" onClick={() => setShowHistory(!showHistory)}>
+            {showHistory ? <ArrowLeft className="mr-2 h-4 w-4" /> : <History className="mr-2 h-4 w-4" />}
+            {showHistory ? "Voltar para Fila" : "Ver Histórico"}
+          </Button>
+        </div>
       </div>
 
       {!showHistory ? (

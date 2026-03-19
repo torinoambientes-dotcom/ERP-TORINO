@@ -15,6 +15,12 @@ service cloud.firestore {
       allow read: if true;
       allow write: if request.auth != null;
     }
+    
+    // Cutting Orders - Public read for factory monitors
+    match /cutting_orders/{cuttingOrderId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
 
     // Authenticated access only
     match /tasks/{taskId} {
@@ -39,12 +45,6 @@ service cloud.firestore {
       allow read, write: if request.auth != null;
     }
     match /quote_material_categories/{quoteMaterialCategoryId} {
-      allow read, write: if request.auth != null;
-    }
-    
-    // Cutting Orders - explicit authenticated access
-    // Force redeploy comment: cnc security patch applied
-    match /cutting_orders/{cuttingOrderId} {
       allow read, write: if request.auth != null;
     }
   }
