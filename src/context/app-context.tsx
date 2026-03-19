@@ -157,10 +157,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const auth = useAuth();
   const { user } = useUser();
 
-  // Public queries - always fetched
+  // Public queries - always fetched (independente de login)
   const projectsQuery = useMemoFirebase(() => firestore ? collection(firestore, 'projects') : null, [firestore]);
   const teamMembersQuery = useMemoFirebase(() => firestore ? collection(firestore, 'team_members') : null, [firestore]);
   const appointmentsQuery = useMemoFirebase(() => firestore ? collection(firestore, 'appointments') : null, [firestore]);
+  const cuttingOrdersQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'cutting_orders'), orderBy('index', 'asc')) : null, [firestore]);
 
   // Private queries - fetched only when user is logged in
   const tasksQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'tasks') : null, [firestore, user]);
@@ -171,11 +172,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const quotesQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'quotes') : null, [firestore, user]);
   const quoteMaterialsQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'quote_materials') : null, [firestore, user]);
   const quoteMaterialCategoriesQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'quote_material_categories') : null, [firestore, user]);
-  const cuttingOrdersQuery = useMemoFirebase(() => (firestore && user) ? query(collection(firestore, 'cutting_orders'), orderBy('index', 'asc')) : null, [firestore, user]);
 
   const { data: projects, isLoading: isLoadingProjects } = useCollection<Project>(projectsQuery);
   const { data: teamMembersData, isLoading: isLoadingTeamMembers } = useCollection<TeamMember>(teamMembersQuery);
   const { data: appointments, isLoading: isLoadingAppointments } = useCollection<Appointment>(appointmentsQuery);
+  const { data: cuttingOrders, isLoading: isLoadingCuttingOrders } = useCollection<CuttingOrder>(cuttingOrdersQuery);
+  
   const { data: tasks, isLoading: isLoadingTasks } = useCollection<Task>(tasksQuery);
   const { data: stockItems, isLoading: isLoadingStockItems } = useCollection<StockItem>(stockItemsQuery);
   const { data: stockCategoriesData, isLoading: isLoadingStockCategories } = useCollection<StockCategory>(stockCategoriesQuery);
@@ -184,16 +186,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const { data: quotes, isLoading: isLoadingQuotes } = useCollection<Quote>(quotesQuery);
   const { data: quoteMaterials, isLoading: isLoadingQuoteMaterials } = useCollection<QuoteMaterial>(quoteMaterialsQuery);
   const { data: quoteMaterialCategories, isLoading: isLoadingQuoteMaterialCategories } = useCollection<QuoteMaterialCategory>(quoteMaterialCategoriesQuery);
-  const { data: cuttingOrders, isLoading: isLoadingCuttingOrders } = useCollection<CuttingOrder>(cuttingOrdersQuery);
 
   const teamMembers = useMemo(() => teamMembersData || [], [teamMembersData]);
   const stockCategories = useMemo(() => stockCategoriesData || [], [stockCategoriesData]);
   
-  // Refined loading state to handle optional private collections correctly
-  const isLoading = isLoadingProjects || isLoadingTeamMembers || isLoadingAppointments || 
+  // Refined loading state
+  const isLoading = isLoadingProjects || isLoadingTeamMembers || isLoadingAppointments || isLoadingCuttingOrders ||
                     (user ? (isLoadingTasks || isLoadingStockItems || isLoadingStockCategories || 
                              isLoadingMovements || isLoadingPurchaseRequests || isLoadingQuotes || 
-                             isLoadingQuoteMaterials || isLoadingQuoteMaterialCategories || isLoadingCuttingOrders) : false);
+                             isLoadingQuoteMaterials || isLoadingQuoteMaterialCategories) : false);
   
   const addProject = useCallback((projectData: Omit<Project, 'id' | 'environments'> & { environments: Array<Omit<Project['environments'][0], 'id' | 'furniture'> & { furniture: Array<Omit<Furniture, 'id' | 'measurement' | 'cutting' | 'purchase' | 'assembly' | 'comments' | 'pendencies' | 'materials' | 'glassItems' | 'profileDoors'>>}>}) => {
     if (!firestore) return;
@@ -204,7 +205,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       environments: projectData.environments.map((env) => ({
         ...env,
         id: generateId('env'),
-        furniture: env.furniture.map((fur: any) => ({ // Cast fur to any to access productionTime
+        furniture: env.furniture.map((fur: any) => ({ 
           ...fur,
           id: generateId('fur'),
           productionTime: fur.productionTime || 0,
@@ -250,7 +251,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const projectRef = doc(firestore, 'projects', projectWithCompletion.id);
     batch.set(projectRef, projectWithCompletion, { merge: true });
 
-    // --- Handle stock reservations ---
     const originalMaterials = originalProject?.environments.flatMap(e => e.furniture.flatMap(f => (f.materials || []).map(m => ({ ...m, projectId: originalProject.id })))) || [];
     const updatedMaterials = projectWithCompletion.environments.flatMap(e => e.furniture.flatMap(f => (f.materials || []).map(m => ({...m, projectId: projectWithCompletion.id}))));
     
@@ -269,11 +269,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         });
     });
 
-    // Find removed/modified materials to remove/update reservations
     originalMaterials.forEach(origMat => {
         if (origMat.stockItemId) {
             const updatedMat = updatedMaterials.find(updMat => updMat.id === origMat.id);
-            // If material was removed OR is no longer a stock item, remove reservation
             if (!updatedMat || !updatedMat.stockItemId) {
                  const stockItem = stockItems.find(si => si.id === origMat.stockItemId);
                  if (stockItem) {
@@ -285,14 +283,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
     });
 
-    // Find added/modified materials to add/update reservations
     updatedMaterials.forEach(updMat => {
-        // Check if the material has already been dispatched. If so, do not create a reservation.
         const alreadyDispatched = (updMat.dispatches || []).length > 0;
         
         if (updMat.stockItemId && !alreadyDispatched) {
             const origMat = originalMaterials.find(om => om.id === updMat.id);
-            // If it's a new stock item OR the quantity/item itself changed
             if (!origMat || origMat.stockItemId !== updMat.stockItemId || origMat.quantity !== updMat.quantity) {
                 const stockItem = stockItems.find(si => si.id === updMat.stockItemId);
                 if (stockItem) {
@@ -309,7 +304,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
                             furnitureName: details.furName,
                             materialId: updMat.id,
                             quantity: updMat.quantity,
-                            status: 'reservado', // Default status for new reservations
+                            status: 'reservado',
                         };
                         const finalReservations = [...otherReservations, newReservation];
                         batch.update(stockItemRef, { reservations: finalReservations });
@@ -318,7 +313,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
             }
         }
     });
-
 
     await batch.commit();
 
@@ -332,7 +326,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     const batch = writeBatch(firestore);
 
-    // Remove reservations associated with this project
     const materialsInProject = projectToDelete.environments.flatMap(e => e.furniture.flatMap(f => f.materials || []));
     const stockItemsToUpdate = new Map<string, StockReservation[]>();
 
@@ -351,7 +344,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         batch.update(stockItemRef, { reservations });
     });
 
-    // Delete the project document
     const projectRef = doc(firestore, 'projects', projectId);
     batch.delete(projectRef);
 
@@ -560,14 +552,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
           newQuantity = currentQuantity - movementQuantity;
         }
 
-        // Update stock item quantity
         const updateData: { quantity: number; alertHandledAt?: any } = { quantity: newQuantity };
         if (typeof itemData.minStock === 'number' && newQuantity >= itemData.minStock) {
             updateData.alertHandledAt = deleteField();
         }
         transaction.update(itemRef, updateData);
 
-        // Add movement record
         const movementId = generateId('move');
         const newMovement: StockMovement = {
           ...movementData,
@@ -658,7 +648,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 }
                 return fur;
             });
-            return { ...env, furniture: newFurniture };
+            return { ...env, furniture: newFurnitures };
         }
         return env;
     });
@@ -683,13 +673,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
             const stockItemData = stockItemDoc.data() as StockItem;
             const projectData = projectDoc.data() as Project;
 
-            // 1. Remove a reserva do item de estoque
             const updatedReservations = (stockItemData.reservations || []).filter(
                 res => res.materialId !== reservationToCancel.materialId
             );
             transaction.update(stockItemRef, { reservations: updatedReservations });
 
-            // 2. Desvincula o material no projeto (remove stockItemId) e adiciona o motivo da anulação
             const newProjectEnvs = projectData.environments.map(env => {
                 if (env.id === reservationToCancel.environmentId) {
                     const newFurnitures = env.furniture.map(fur => {
@@ -707,7 +695,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
                                 }
                                 return mat;
                             });
-                            return { ...fur, materials: newFurnitures };
+                            return { ...fur, materials: newMaterials };
                         }
                         return fur;
                     });
@@ -747,8 +735,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
             const dispatchQuantity = Math.min(reservation.quantity, stockItem.quantity);
 
             if (dispatchQuantity <= 0) {
-                 // Do not throw error, just exit if nothing to dispatch.
-                 // This can happen in a race condition if stock becomes 0.
                  console.warn(`Estoque de "${stockItem.name}" está zerado. Despacho cancelado.`);
                  return;
             }
@@ -758,12 +744,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
             let finalReservations = stockItem.reservations || [];
             if (remainingReservationQty <= 0) {
-                // Remove reservation if fully dispatched
                 finalReservations = finalReservations.filter(
                     res => res.materialId !== reservation.materialId
                 );
             } else {
-                // Update reservation with remaining quantity
                 finalReservations = finalReservations.map(res => 
                     res.materialId === reservation.materialId 
                         ? { ...res, quantity: remainingReservationQty } 
@@ -835,14 +819,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const batch = writeBatch(firestore);
     const itemRef = doc(firestore, 'stock_items', item.id);
 
-    // Update quantity and remove awaitingReceipt field
     const newQuantity = item.quantity + item.awaitingReceipt.quantity;
     batch.update(itemRef, {
       quantity: newQuantity,
       awaitingReceipt: deleteField(),
     });
 
-    // Add movement record
     const movementId = generateId('move');
     const newMovement: StockMovement = {
       id: movementId,
@@ -910,7 +892,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const now = new Date().toISOString();
       const quoteId = generateId('quote');
       
-      // We need to cast the environments here to ensure they match the Quote's structure
       const quoteEnvironments: QuoteEnvironment[] = quoteData.environments.map((env: any) => ({
         id: generateId('env'),
         name: env.name,
