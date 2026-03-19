@@ -10,9 +10,11 @@ import { cn } from '@/lib/utils';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Badge } from '@/components/ui/badge';
+import { useToast } from '@/hooks/use-toast';
 
 export default function ApresentacaoCortePage() {
   const { cuttingOrders, updateCuttingOrderStatus, isLoading } = useContext(AppContext);
+  const { toast } = useToast();
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   const pendingOrders = useMemo(() => 
@@ -22,9 +24,13 @@ export default function ApresentacaoCortePage() {
 
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen();
+      document.documentElement.requestFullscreen().catch((err) => {
+        console.error(`Erro ao ativar ecrã inteiro: ${err.message}`);
+      });
     } else {
-      document.exitFullscreen();
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      }
     }
   };
 
@@ -33,6 +39,14 @@ export default function ApresentacaoCortePage() {
     document.addEventListener('fullscreenchange', handleFs);
     return () => document.removeEventListener('fullscreenchange', handleFs);
   }, []);
+
+  const handleComplete = (orderId: string, folderName: string) => {
+    updateCuttingOrderStatus(orderId, 'completed');
+    toast({
+      title: "Corte Concluído!",
+      description: `O projeto ${folderName} foi removido da fila.`,
+    });
+  };
 
   if (isLoading) {
     return (
@@ -122,7 +136,7 @@ export default function ApresentacaoCortePage() {
 
                 {/* Actions */}
                 <Button 
-                  onClick={() => updateCuttingOrderStatus(order.id, 'completed')}
+                  onClick={() => handleComplete(order.id, order.folderName)}
                   className={cn(
                     "h-24 px-10 text-3xl font-black rounded-2xl flex gap-4 shadow-xl active:scale-95 transition-transform",
                     order.isUrgent ? "bg-red-600 hover:bg-red-700" : "bg-green-600 hover:bg-green-700"
