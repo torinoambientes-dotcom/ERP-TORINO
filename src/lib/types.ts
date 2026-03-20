@@ -322,4 +322,5 @@ export interface CuttingOrder {
   index: number;
   createdAt: string;
   isUrgent?: boolean;
+  notes?: string;
 }

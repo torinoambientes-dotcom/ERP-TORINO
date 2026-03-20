@@ -64,7 +64,7 @@ interface AppContextType {
   deleteQuoteMaterial: (itemId: string) => void;
   addQuoteMaterialCategory: (categoryData: Omit<QuoteMaterialCategory, 'id'>) => void;
   deleteQuoteMaterialCategory: (categoryId: string) => void;
-  addCuttingOrder: (folderName: string) => void;
+  addCuttingOrder: (folderName: string, notes?: string) => void;
   updateCuttingOrder: (orderId: string, updates: Partial<CuttingOrder>) => void;
   updateCuttingOrderStatus: (orderId: string, status: 'pending' | 'completed') => void;
   reorderCuttingOrders: (orders: CuttingOrder[]) => void;
@@ -972,7 +972,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         deleteDocumentNonBlocking(categoryRef);
     }, [firestore]);
 
-    const addCuttingOrder = useCallback((folderName: string) => {
+    const addCuttingOrder = useCallback((folderName: string, notes?: string) => {
       if (!firestore) return;
       const id = generateId('cnc');
       const index = (cuttingOrders?.length || 0);
@@ -983,6 +983,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         index,
         createdAt: new Date().toISOString(),
         isUrgent: false,
+        notes: notes || '',
       };
       const ref = doc(firestore, 'cutting_orders', id);
       setDocumentNonBlocking(ref, newOrder, { merge: false });

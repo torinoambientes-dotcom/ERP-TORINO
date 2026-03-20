@@ -5,7 +5,7 @@ import { useContext, useState, useMemo, useEffect } from 'react';
 import { AppContext } from '@/context/app-context';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { CheckCircle2, Clock, Maximize, Scissors, Zap, AlertCircle } from 'lucide-react';
+import { CheckCircle2, Clock, Maximize, Scissors, Zap, AlertCircle, MessageSquareText } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -128,6 +128,16 @@ export default function ApresentacaoCortePage() {
                   )}>
                     {order.folderName}
                   </h2>
+                  
+                  {order.notes && (
+                    <div className="mb-3 p-4 bg-orange-100 border-l-8 border-orange-500 rounded-xl flex items-start gap-3">
+                      <MessageSquareText className="h-8 w-8 text-orange-600 shrink-0 mt-1" />
+                      <p className="text-3xl font-black text-orange-800 uppercase tracking-tight">
+                        {order.notes}
+                      </p>
+                    </div>
+                  )}
+
                   <div className="flex items-center gap-4 text-slate-500 font-bold text-xl uppercase tracking-tighter">
                     <Clock className="h-6 w-6" />
                     Adicionado às {format(parseISO(order.createdAt), "HH:mm")}

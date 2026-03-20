@@ -7,7 +7,7 @@ import { PageHeader } from '@/components/layout/page-header';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { PlusCircle, GripVertical, CheckCircle2, Trash2, Scissors, History, Clock, ArrowLeft, Pencil, Zap, Check, X, MonitorPlay } from 'lucide-react';
+import { PlusCircle, GripVertical, CheckCircle2, Trash2, Scissors, History, Clock, ArrowLeft, Pencil, Zap, Check, X, MonitorPlay, MessageSquareText } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
   DndContext,
@@ -38,6 +38,7 @@ export default function CuttingOrderPage() {
   const { cuttingOrders, addCuttingOrder, updateCuttingOrderStatus, updateCuttingOrder, reorderCuttingOrders, deleteCuttingOrder, isLoading } = useContext(AppContext);
   const { toast } = useToast();
   const [newFolderName, setNewFolderName] = useState('');
+  const [newNotes, setNewNotes] = useState('');
   const [showHistory, setShowHistory] = useState(false);
 
   const sensors = useSensors(
@@ -61,8 +62,9 @@ export default function CuttingOrderPage() {
   const handleAddOrder = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newFolderName.trim()) return;
-    addCuttingOrder(newFolderName.trim());
+    addCuttingOrder(newFolderName.trim(), newNotes.trim());
     setNewFolderName('');
+    setNewNotes('');
     toast({ title: "Nova ordem de corte adicionada!" });
   };
 
@@ -104,20 +106,28 @@ export default function CuttingOrderPage() {
           <Card className="border-primary/20 bg-primary/5">
             <CardHeader className="pb-3">
               <CardTitle className="text-lg">Adicionar Pasta à Fila</CardTitle>
-              <CardDescription>Informe o nome exato da pasta que está no computador da CNC.</CardDescription>
+              <CardDescription>Informe o nome exato da pasta e observações para o operador.</CardDescription>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleAddOrder} className="flex gap-2">
-                <Input 
-                  placeholder="Nome da pasta (Ex: Projeto_Torino_V1)" 
-                  value={newFolderName}
-                  onChange={(e) => setNewFolderName(e.target.value)}
-                  className="bg-white"
-                />
-                <Button type="submit" disabled={!newFolderName.trim()}>
-                  <PlusCircle className="mr-2 h-4 w-4" />
-                  Adicionar
-                </Button>
+              <form onSubmit={handleAddOrder} className="space-y-3">
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <Input 
+                    placeholder="Nome da pasta (Ex: Projeto_Torino_V1)" 
+                    value={newFolderName}
+                    onChange={(e) => setNewFolderName(e.target.value)}
+                    className="bg-white"
+                  />
+                  <Input 
+                    placeholder="Observações (Ex: Usar Fresa 6mm, MDF 18mm)" 
+                    value={newNotes}
+                    onChange={(e) => setNewNotes(e.target.value)}
+                    className="bg-white"
+                  />
+                  <Button type="submit" disabled={!newFolderName.trim()} className="shrink-0">
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Adicionar
+                  </Button>
+                </div>
               </form>
             </CardContent>
           </Card>
@@ -194,7 +204,8 @@ export default function CuttingOrderPage() {
 
 function SortableOrderItem({ order, onComplete, onDelete, onUpdate }: { order: CuttingOrder, onComplete: () => void, onDelete: () => void, onUpdate: (updates: Partial<CuttingOrder>) => void }) {
   const [isEditing, setIsEditing] = useState(false);
-  const [editValue, setEditValue] = useState(order.folderName);
+  const [editName, setEditName] = useState(order.folderName);
+  const [editNotes, setEditNotes] = useState(order.notes || '');
 
   const {
     attributes,
@@ -212,9 +223,10 @@ function SortableOrderItem({ order, onComplete, onDelete, onUpdate }: { order: C
   };
 
   const handleSaveEdit = () => {
-    if (editValue.trim() && editValue.trim() !== order.folderName) {
-      onUpdate({ folderName: editValue.trim() });
-    }
+    onUpdate({ 
+      folderName: editName.trim() || order.folderName,
+      notes: editNotes.trim()
+    });
     setIsEditing(false);
   };
 
@@ -234,37 +246,53 @@ function SortableOrderItem({ order, onComplete, onDelete, onUpdate }: { order: C
       
       <div className="flex-grow min-w-0">
         {isEditing ? (
-          <div className="flex items-center gap-2">
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Input 
+                value={editName} 
+                onChange={(e) => setEditName(e.target.value)}
+                className="h-8 py-0"
+                autoFocus
+                placeholder="Nome da pasta"
+              />
+              <Button size="icon" variant="ghost" className="h-8 w-8 text-green-600" onClick={handleSaveEdit}><Check className="h-4 w-4" /></Button>
+              <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => { setEditName(order.folderName); setEditNotes(order.notes || ''); setIsEditing(false); }}><X className="h-4 w-4" /></Button>
+            </div>
             <Input 
-              value={editValue} 
-              onChange={(e) => setEditValue(e.target.value)}
-              className="h-8 py-0"
-              autoFocus
-              onKeyDown={(e) => e.key === 'Enter' && handleSaveEdit()}
+              value={editNotes}
+              onChange={(e) => setEditNotes(e.target.value)}
+              className="h-8 py-0 text-xs"
+              placeholder="Observações"
             />
-            <Button size="icon" variant="ghost" className="h-8 w-8 text-green-600" onClick={handleSaveEdit}><Check className="h-4 w-4" /></Button>
-            <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => { setEditValue(order.folderName); setIsEditing(false); }}><X className="h-4 w-4" /></Button>
           </div>
         ) : (
-          <div className="flex items-center gap-2 group/title">
-            <p className={cn(
-              "text-lg font-black tracking-tight truncate",
-              order.isUrgent ? "text-red-700" : "text-slate-900"
-            )}>
-              {order.folderName}
-            </p>
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="h-6 w-6 opacity-0 group-hover/title:opacity-100 transition-opacity" 
-              onClick={() => setIsEditing(true)}
-            >
-              <Pencil className="h-3 w-3 text-muted-foreground" />
-            </Button>
-            {order.isUrgent && <Badge className="bg-red-600 text-white animate-bounce">URGENTE</Badge>}
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 group/title">
+              <p className={cn(
+                "text-lg font-black tracking-tight truncate",
+                order.isUrgent ? "text-red-700" : "text-slate-900"
+              )}>
+                {order.folderName}
+              </p>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-6 w-6 opacity-0 group-hover/title:opacity-100 transition-opacity" 
+                onClick={() => setIsEditing(true)}
+              >
+                <Pencil className="h-3 w-3 text-muted-foreground" />
+              </Button>
+              {order.isUrgent && <Badge className="bg-red-600 text-white animate-bounce">URGENTE</Badge>}
+            </div>
+            {order.notes && (
+              <div className="flex items-center gap-1.5 text-blue-600 font-bold text-xs uppercase italic bg-blue-50 w-fit px-2 py-0.5 rounded">
+                <MessageSquareText className="h-3 w-3" />
+                {order.notes}
+              </div>
+            )}
           </div>
         )}
-        <p className="text-xs text-muted-foreground">
+        <p className="text-xs text-muted-foreground mt-1">
           Fila #{order.index + 1} • Adicionado em {format(parseISO(order.createdAt), "dd/MM 'às' HH:mm")}
         </p>
       </div>

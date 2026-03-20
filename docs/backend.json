@@ -522,7 +522,8 @@
         "status": { "type": "string", "enum": ["pending", "completed"] },
         "index": { "type": "number", "description": "Order of the job in the queue." },
         "createdAt": { "type": "string", "format": "date-time" },
-        "isUrgent": { "type": "boolean" }
+        "isUrgent": { "type": "boolean" },
+        "notes": { "type": "string", "description": "Observações para o operador." }
       },
       "required": ["id", "folderName", "status", "index", "createdAt"]
     }
