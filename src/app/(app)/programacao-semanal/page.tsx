@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useContext, useMemo, useState, useEffect } from 'react';
@@ -21,11 +20,12 @@ import {
   addWeeks,
   subWeeks,
   isWithinInterval,
-  isBefore
+  isBefore,
+  add
 } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import type { TeamMember, Priority, Appointment, StageStatus } from '@/lib/types';
-import { Scissors, Hammer, Truck, PlusCircle, MapPin, CheckCircle2, Trash2, AlertCircle, Clock, ChevronLeft, ChevronRight, CalendarDays, Zap } from 'lucide-react';
+import { Scissors, Hammer, Truck, PlusCircle, MapPin, CheckCircle2, Trash2, AlertCircle, Clock, ChevronLeft, ChevronRight, CalendarDays, Zap, CalendarPlus } from 'lucide-react';
 import { NewAppointmentModal } from '@/components/modals/new-appointment-modal';
 import { BulkWeeklyEntryModal } from '@/components/modals/bulk-weekly-entry-modal';
 import { Button } from '@/components/ui/button';
@@ -214,6 +214,31 @@ export default function WeeklySchedulePage() {
     }
   };
 
+  const handleExtendDeadline = (item: WeeklyItem) => {
+    if (item.isManual) {
+      if (!item.end) return;
+      const newEndDate = add(item.end, { days: 1 });
+      updateAppointment(item.id, { end: newEndDate.toISOString() });
+      toast({ title: "Prazo estendido por 1 dia." });
+    } else if (item.projectId && item.envId && item.furId) {
+      const project = projects.find(p => p.id === item.projectId);
+      if (!project) return;
+
+      const newProject = JSON.parse(JSON.stringify(project));
+      const env = newProject.environments.find((e: any) => e.id === item.envId);
+      const fur = env?.furniture.find((f: any) => f.id === item.furId);
+      if (fur) {
+        const stageKey = item.type === 'corte' ? 'cutting' : 'assembly';
+        const currentScheduled = fur[stageKey].scheduledFor ? parseISO(fur[stageKey].scheduledFor) : new Date();
+        const newScheduled = add(currentScheduled, { days: 1 });
+        fur[stageKey].scheduledFor = newScheduled.toISOString();
+        
+        updateProject(newProject, project);
+        toast({ title: "Prazo da tarefa estendido por 1 dia." });
+      }
+    }
+  };
+
   const handleRemove = (item: WeeklyItem) => {
     if (item.isManual) {
       deleteAppointment(item.id);
@@ -343,7 +368,7 @@ export default function WeeklySchedulePage() {
                       </div>
                       <div className="space-y-3">
                         {cortes.length > 0 ? cortes.map(item => (
-                          <WeeklyItemCard key={`${item.id}-${dayKey}`} item={item} onToggleComplete={handleToggleComplete} onRemove={handleRemove} onMarkDelayed={handleMarkDelayed} />
+                          <WeeklyItemCard key={`${item.id}-${dayKey}`} item={item} onToggleComplete={handleToggleComplete} onRemove={handleRemove} onMarkDelayed={handleMarkDelayed} onExtend={handleExtendDeadline} />
                         )) : <EmptySection message="Nenhum plano de corte." />}
                       </div>
                     </div>
@@ -360,7 +385,7 @@ export default function WeeklySchedulePage() {
                       </div>
                       <div className="space-y-3">
                         {producao.length > 0 ? producao.map(item => (
-                          <WeeklyItemCard key={`${item.id}-${dayKey}`} item={item} onToggleComplete={handleToggleComplete} onRemove={handleRemove} onMarkDelayed={handleMarkDelayed} />
+                          <WeeklyItemCard key={`${item.id}-${dayKey}`} item={item} onToggleComplete={handleToggleComplete} onRemove={handleRemove} onMarkDelayed={handleMarkDelayed} onExtend={handleExtendDeadline} />
                         )) : <EmptySection message="Nada em produção hoje." />}
                       </div>
                     </div>
@@ -377,7 +402,7 @@ export default function WeeklySchedulePage() {
                       </div>
                       <div className="space-y-3">
                         {montagem.length > 0 ? montagem.map(item => (
-                          <WeeklyItemCard key={`${item.id}-${dayKey}`} item={item} onToggleComplete={handleToggleComplete} onRemove={handleRemove} onMarkDelayed={handleMarkDelayed} />
+                          <WeeklyItemCard key={`${item.id}-${dayKey}`} item={item} onToggleComplete={handleToggleComplete} onRemove={handleRemove} onMarkDelayed={handleMarkDelayed} onExtend={handleExtendDeadline} />
                         )) : <EmptySection message="Nenhuma montagem externa." />}
                       </div>
                     </div>
@@ -406,7 +431,19 @@ export default function WeeklySchedulePage() {
   );
 }
 
-function WeeklyItemCard({ item, onToggleComplete, onRemove, onMarkDelayed }: { item: WeeklyItem, onToggleComplete: (i: WeeklyItem) => void, onRemove: (i: WeeklyItem) => void, onMarkDelayed: (i: WeeklyItem) => void }) {
+function WeeklyItemCard({ 
+  item, 
+  onToggleComplete, 
+  onRemove, 
+  onMarkDelayed, 
+  onExtend 
+}: { 
+  item: WeeklyItem, 
+  onToggleComplete: (i: WeeklyItem) => void, 
+  onRemove: (i: WeeklyItem) => void, 
+  onMarkDelayed: (i: WeeklyItem) => void,
+  onExtend: (i: WeeklyItem) => void
+}) {
   const isDone = item.status === 'done';
   const isDelayed = item.status === 'delayed';
 
@@ -465,19 +502,35 @@ function WeeklyItemCard({ item, onToggleComplete, onRemove, onMarkDelayed }: { i
           </Tooltip>
 
           {!isDone && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className={cn("h-7 w-7", isDelayed ? "text-red-600" : "text-muted-foreground hover:text-red-600")}
-                  onClick={() => onMarkDelayed(item)}
-                >
-                  <AlertCircle className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Marcar como em atraso</TooltipContent>
-            </Tooltip>
+            <>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-7 w-7 text-muted-foreground hover:text-blue-600"
+                    onClick={() => onExtend(item)}
+                  >
+                    <CalendarPlus className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Estender prazo (+1 dia)</TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className={cn("h-7 w-7", isDelayed ? "text-red-600" : "text-muted-foreground hover:text-red-600")}
+                    onClick={() => onMarkDelayed(item)}
+                  >
+                    <AlertCircle className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Marcar como em atraso</TooltipContent>
+              </Tooltip>
+            </>
           )}
 
           <Tooltip>
