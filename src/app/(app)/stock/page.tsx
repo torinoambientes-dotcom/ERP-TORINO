@@ -1,3 +1,4 @@
+
 'use client';
 import { useContext, useState, useMemo, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -224,7 +225,7 @@ export default function StockPage() {
       cancelStockReservation(reservationToCancel.item.id, reservationToCancel.reservation, cancellationReason);
       toast({
           title: 'Reserva Anulada!',
-          description: `A reserva para o projeto ${reservationToCancel.reservation.projectName} foi removida. O material agora precisa ser comprado manually.`,
+          description: `A reserva para o projeto ${reservationToCancel.reservation.projectName} foi removida. O material agora precisa ser comprado manualmente.`,
       });
       setReservationToCancel(null);
       setReservationCancelAlertOpen(false);
@@ -329,7 +330,7 @@ export default function StockPage() {
                                   <div className="truncate">
                                       <Link href={`/projects/${res.projectId}`} className="truncate hover:underline">
                                         <p className="font-medium truncate">{res.projectName}</p>
-                                        <p className="text-xs text-muted-foreground truncate">{res.furnitureName}</p>
+                                        <p className="text-xs text-muted-foreground truncate">{res.environmentName} > {res.furnitureName}</p>
                                       </Link>
                                   </div>
                                   <div className="flex items-center gap-1 flex-shrink-0">
