@@ -340,3 +340,26 @@ export interface CuttingOrder {
   pendencies?: CuttingOrderPendency[];
   sheets?: CuttingSheet[];
 }
+
+export type TransactionType = 'income' | 'expense';
+
+export interface Transaction {
+  id: string;
+  type: TransactionType;
+  category: string;
+  amount: number;
+  description: string;
+  date: string; // ISO date string
+  relatedProjectId?: string;
+  relatedQuoteId?: string;
+  paymentMethod?: string;
+  status: 'pending' | 'completed' | 'cancelled';
+}
+
+export interface FinanceSummary {
+  totalIncome: number;
+  totalExpense: number;
+  balance: number;
+  pendingReceivables: number;
+  pendingPayables: number;
+}

@@ -4,7 +4,7 @@
 import { createContext, type ReactNode, useCallback, useMemo, useEffect, useState } from 'react';
 import { collection, doc, serverTimestamp, deleteField, writeBatch, getDocs, runTransaction, query, where, orderBy } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useAuth, useUser } from '@/firebase';
-import type { Project, TeamMember, StageStatus, StockItem, StockMovement, StockCategory, Furniture, Environment, MaterialItem, StockReservation, ProductionStage, Appointment, PurchaseRequest, PurchaseRequestStatus, Quote, QuoteStage, QuoteEnvironment, QuoteFurniture, QuoteMaterial, QuoteMaterialCategory, Dispatch, Task, CuttingOrder } from '@/lib/types';
+import type { Project, TeamMember, StageStatus, StockItem, StockMovement, StockCategory, Furniture, Environment, MaterialItem, StockReservation, ProductionStage, Appointment, PurchaseRequest, PurchaseRequestStatus, Quote, QuoteStage, QuoteEnvironment, QuoteFurniture, QuoteMaterial, QuoteMaterialCategory, Dispatch, Task, CuttingOrder, Transaction } from '@/lib/types';
 import { generateId } from '@/lib/utils';
 import { setDocumentNonBlocking, deleteDocumentNonBlocking, addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
@@ -25,6 +25,7 @@ interface AppContextType {
   quoteMaterials: QuoteMaterial[];
   quoteMaterialCategories: QuoteMaterialCategory[];
   cuttingOrders: CuttingOrder[];
+  transactions: Transaction[];
   isLoading: boolean;
   addProject: (projectData: any) => string | undefined;
   updateProject: (updatedProject: Project, originalProject?: Project) => void;
@@ -69,6 +70,9 @@ interface AppContextType {
   updateCuttingOrderStatus: (orderId: string, status: 'pending' | 'completed') => void;
   reorderCuttingOrders: (orders: CuttingOrder[]) => void;
   deleteCuttingOrder: (orderId: string) => void;
+  addTransaction: (transactionData: Omit<Transaction, 'id'>) => void;
+  updateTransaction: (transactionId: string, updates: Partial<Transaction>) => void;
+  deleteTransaction: (transactionId: string) => void;
 }
 
 export const AppContext = createContext<AppContextType>({
@@ -84,6 +88,7 @@ export const AppContext = createContext<AppContextType>({
   quoteMaterials: [],
   quoteMaterialCategories: [],
   cuttingOrders: [],
+  transactions: [],
   isLoading: true,
   addProject: () => undefined,
   updateProject: () => {},
@@ -128,6 +133,9 @@ export const AppContext = createContext<AppContextType>({
   updateCuttingOrderStatus: () => {},
   reorderCuttingOrders: () => {},
   deleteCuttingOrder: () => {},
+  addTransaction: () => {},
+  updateTransaction: () => {},
+  deleteTransaction: () => {},
 });
 
 const cleanupUndefinedFields = (obj: any) => {
@@ -172,6 +180,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const quotesQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'quotes') : null, [firestore, user]);
   const quoteMaterialsQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'quote_materials') : null, [firestore, user]);
   const quoteMaterialCategoriesQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'quote_material_categories') : null, [firestore, user]);
+  const transactionsQuery = useMemoFirebase(() => (firestore && user) ? query(collection(firestore, 'transactions'), orderBy('date', 'desc')) : null, [firestore, user]);
 
   const { data: projects, isLoading: isLoadingProjects } = useCollection<Project>(projectsQuery);
   const { data: teamMembersData, isLoading: isLoadingTeamMembers } = useCollection<TeamMember>(teamMembersQuery);
@@ -186,6 +195,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const { data: quotes, isLoading: isLoadingQuotes } = useCollection<Quote>(quotesQuery);
   const { data: quoteMaterials, isLoading: isLoadingQuoteMaterials } = useCollection<QuoteMaterial>(quoteMaterialsQuery);
   const { data: quoteMaterialCategories, isLoading: isLoadingQuoteMaterialCategories } = useCollection<QuoteMaterialCategory>(quoteMaterialCategoriesQuery);
+  const { data: transactions, isLoading: isLoadingTransactions } = useCollection<Transaction>(transactionsQuery);
 
   const teamMembers = useMemo(() => teamMembersData || [], [teamMembersData]);
   const stockCategories = useMemo(() => stockCategoriesData || [], [stockCategoriesData]);
@@ -194,7 +204,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const isLoading = isLoadingProjects || isLoadingTeamMembers || isLoadingAppointments || isLoadingCuttingOrders ||
                     (user ? (isLoadingTasks || isLoadingStockItems || isLoadingStockCategories || 
                              isLoadingMovements || isLoadingPurchaseRequests || isLoadingQuotes || 
-                             isLoadingQuoteMaterials || isLoadingQuoteMaterialCategories) : false);
+                             isLoadingQuoteMaterials || isLoadingQuoteMaterialCategories || isLoadingTransactions) : false);
   
   const addProject = useCallback((projectData: Omit<Project, 'id' | 'environments'> & { environments: Array<Omit<Project['environments'][0], 'id' | 'furniture'> & { furniture: Array<Omit<Furniture, 'id' | 'measurement' | 'cutting' | 'purchase' | 'assembly' | 'comments' | 'pendencies' | 'materials' | 'glassItems' | 'profileDoors'>>}>}) => {
     if (!firestore) return;
@@ -1017,6 +1027,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
       deleteDocumentNonBlocking(ref);
     }, [firestore]);
 
+    const addTransaction = useCallback((transactionData: Omit<Transaction, 'id'>) => {
+      if (!firestore) return;
+      const id = generateId('trans');
+      const newTransaction: Transaction = { ...transactionData, id };
+      const ref = doc(firestore, 'transactions', id);
+      setDocumentNonBlocking(ref, newTransaction, { merge: false });
+    }, [firestore]);
+
+    const updateTransaction = useCallback((transactionId: string, updates: Partial<Transaction>) => {
+      if (!firestore) return;
+      const ref = doc(firestore, 'transactions', transactionId);
+      updateDocumentNonBlocking(ref, updates);
+    }, [firestore]);
+
+    const deleteTransaction = useCallback((transactionId: string) => {
+      if (!firestore) return;
+      const ref = doc(firestore, 'transactions', transactionId);
+      deleteDocumentNonBlocking(ref);
+    }, [firestore]);
+
 
   const value = useMemo(() => ({
     projects: projects || [],
@@ -1031,6 +1061,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     quoteMaterials: quoteMaterials || [],
     quoteMaterialCategories: quoteMaterialCategories || [],
     cuttingOrders: cuttingOrders || [],
+    transactions: transactions || [],
     isLoading,
     addProject,
     updateProject,
@@ -1075,6 +1106,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     updateCuttingOrderStatus,
     reorderCuttingOrders,
     deleteCuttingOrder,
+    addTransaction,
+    updateTransaction,
+    deleteTransaction,
   }), [
     projects, 
     teamMembers, 
@@ -1088,6 +1122,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     quoteMaterials,
     quoteMaterialCategories,
     cuttingOrders,
+    transactions,
     isLoading,
     addProject, 
     updateProject, 
@@ -1132,6 +1167,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     updateCuttingOrderStatus, 
     reorderCuttingOrders, 
     deleteCuttingOrder,
+    addTransaction,
+    updateTransaction,
+    deleteTransaction,
   ]);
 
   return (

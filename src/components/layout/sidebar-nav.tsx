@@ -3,7 +3,7 @@
 import { useState, useContext, useMemo } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BarChart3, LayoutGrid, PlusCircle, Users, Boxes, LogOut, ShoppingCart, User, X, Calendar, Home, FileText, Recycle, MonitorPlay, CalendarRange, Scissors } from 'lucide-react';
+import { BarChart3, LayoutGrid, PlusCircle, Users, Boxes, LogOut, ShoppingCart, User, X, Calendar, Home, FileText, Recycle, MonitorPlay, CalendarRange, Scissors, Wallet } from 'lucide-react';
 import {
   SidebarHeader,
   SidebarContent,
@@ -40,6 +40,7 @@ const menuItems = [
   { href: '/', label: 'Dashboard', icon: Home, adminOnly: false },
   { href: '/projects', label: 'Projetos', icon: LayoutGrid, adminOnly: false },
   { href: '/quotes', label: 'Orçamentos', icon: FileText, adminOnly: false },
+  { href: '/finance', label: 'Financeiro', icon: Wallet, adminOnly: true },
   { href: '/calendar', label: 'Calendário', icon: Calendar, adminOnly: false },
   { href: '/programacao-semanal', label: 'Prog. Semanal', icon: CalendarRange, adminOnly: false },
   { href: '/cutting-order', label: 'Ordem de Corte', icon: Scissors, adminOnly: false },
@@ -174,7 +175,7 @@ export function SidebarNav() {
 
   const visibleMenuItems = useMemo(() => {
     const internal = filterMenuItems(menuItems).sort((a, b) => {
-        const order = ['Dashboard', 'Projetos', 'Orçamentos', 'Calendário', 'Prog. Semanal', 'Ordem de Corte', 'Compras', 'Estoque', 'Ecrã Fábrica', 'Relatórios', 'Equipe'];
+        const order = ['Dashboard', 'Projetos', 'Orçamentos', 'Financeiro', 'Calendário', 'Prog. Semanal', 'Ordem de Corte', 'Compras', 'Estoque', 'Ecrã Fábrica', 'Relatórios', 'Equipe'];
         return order.indexOf(a.label) - order.indexOf(b.label);
       });
     const external = filterMenuItems(externalMenuItems);
