@@ -315,6 +315,20 @@ export interface ExtraProject {
     isCompleted: boolean;
 }
 
+export interface CuttingOrderPendency {
+  id: string;
+  text: string;
+  isResolved: boolean;
+  createdAt: string;
+}
+
+export interface CuttingSheet {
+  id: string;
+  name: string;
+  isCut: boolean;
+  cutAt?: string; // ISO date string
+}
+
 export interface CuttingOrder {
   id: string;
   folderName: string;
@@ -323,4 +337,6 @@ export interface CuttingOrder {
   createdAt: string;
   isUrgent?: boolean;
   notes?: string;
+  pendencies?: CuttingOrderPendency[];
+  sheets?: CuttingSheet[];
 }

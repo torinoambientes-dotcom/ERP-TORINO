@@ -5,7 +5,7 @@ import { useContext, useState, useMemo, useEffect } from 'react';
 import { AppContext } from '@/context/app-context';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { CheckCircle2, Clock, Maximize, Scissors, Zap, AlertCircle, MessageSquareText } from 'lucide-react';
+import { CheckCircle2, Clock, Maximize, Scissors, Zap, AlertCircle, MessageSquareText, CalendarDays, ClipboardList, Square, CheckSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -13,7 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 
 export default function ApresentacaoCortePage() {
-  const { cuttingOrders, updateCuttingOrderStatus, isLoading } = useContext(AppContext);
+  const { cuttingOrders, updateCuttingOrderStatus, updateCuttingOrder, isLoading } = useContext(AppContext);
   const { toast } = useToast();
   const [isFullscreen, setIsFullscreen] = useState(false);
 
@@ -139,9 +139,68 @@ export default function ApresentacaoCortePage() {
                   )}
 
                   <div className="flex items-center gap-4 text-slate-500 font-bold text-xl uppercase tracking-tighter">
-                    <Clock className="h-6 w-6" />
-                    Adicionado às {format(parseISO(order.createdAt), "HH:mm")}
+                    <CalendarDays className="h-6 w-6" />
+                    Incluído em {format(parseISO(order.createdAt), "dd/MM/yy 'às' HH:mm")}
                   </div>
+
+                  {/* Sheets checklist */}
+                  {(order.sheets && order.sheets.length > 0) && (
+                    <div className="mt-4 p-4 bg-slate-50 border-2 border-slate-200 rounded-2xl">
+                      <div className="flex items-center gap-3 mb-3">
+                        <ClipboardList className="h-6 w-6 text-slate-600" />
+                        <span className="text-xl font-black text-slate-700 uppercase tracking-tight">Chapas</span>
+                        <span className="text-lg font-black text-slate-400">
+                          {order.sheets.filter(s => s.isCut).length}/{order.sheets.length}
+                        </span>
+                        {/* Progress bar */}
+                        <div className="flex-1 bg-slate-200 rounded-full h-3 overflow-hidden">
+                          <div
+                            className={cn(
+                              "h-full rounded-full transition-all duration-500",
+                              order.sheets.filter(s => s.isCut).length === order.sheets.length ? "bg-green-500" : "bg-blue-500"
+                            )}
+                            style={{ width: `${Math.round((order.sheets.filter(s => s.isCut).length / order.sheets.length) * 100)}%` }}
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                        {order.sheets.map(sheet => (
+                          <button
+                            key={sheet.id}
+                            onClick={() => {
+                              const updatedSheets = order.sheets!.map(s =>
+                                s.id === sheet.id ? { ...s, isCut: !s.isCut, cutAt: !s.isCut ? new Date().toISOString() : undefined } : s
+                              );
+                              updateCuttingOrder(order.id, { sheets: updatedSheets });
+                            }}
+                            className={cn(
+                              "flex items-center gap-3 p-3 rounded-xl border-2 text-left transition-all active:scale-95",
+                              sheet.isCut
+                                ? "bg-green-100 border-green-300 text-green-800"
+                                : "bg-white border-slate-200 text-slate-800 hover:border-blue-300 hover:bg-blue-50"
+                            )}
+                          >
+                            {sheet.isCut ? (
+                              <CheckSquare className="h-7 w-7 text-green-600 shrink-0" />
+                            ) : (
+                              <Square className="h-7 w-7 text-slate-400 shrink-0" />
+                            )}
+                            <div className="min-w-0">
+                              <p className={cn(
+                                "text-lg font-black truncate",
+                                sheet.isCut && "line-through"
+                              )}>{sheet.name}</p>
+                              {sheet.isCut && sheet.cutAt && (
+                                <p className="text-sm font-bold text-green-600">
+                                  {format(parseISO(sheet.cutAt), "HH:mm")}
+                                </p>
+                              )}
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Actions */}
