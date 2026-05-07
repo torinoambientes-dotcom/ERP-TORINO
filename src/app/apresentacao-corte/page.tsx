@@ -212,9 +212,6 @@ export default function ApresentacaoCortePage() {
                     </div>
                   )}
                 </div>
-
-                  )}
-                </div>
               </div>
             ))
           ) : (
