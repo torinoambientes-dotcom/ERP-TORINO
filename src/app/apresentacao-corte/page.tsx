@@ -95,15 +95,15 @@ export default function ApresentacaoCortePage() {
               <div 
                 key={order.id}
                 className={cn(
-                  "p-6 rounded-3xl border-4 bg-white shadow-xl flex items-center gap-8 transition-all",
-                  order.isUrgent ? "border-red-600 bg-red-50/50 animate-pulse" : "border-slate-200",
-                  index === 0 && !order.isUrgent && "border-blue-500 ring-8 ring-blue-500/10"
+                  "p-8 rounded-[2.5rem] border-4 bg-white/90 backdrop-blur-sm shadow-2xl flex flex-col lg:flex-row items-start lg:items-center gap-10 transition-all",
+                  order.isUrgent ? "border-red-600 bg-red-50/80 animate-pulse" : "border-slate-100",
+                  index === 0 && !order.isUrgent && "border-blue-500 ring-[12px] ring-blue-500/10"
                 )}
               >
                 {/* Position */}
                 <div className={cn(
-                  "h-24 w-24 rounded-2xl flex items-center justify-center text-5xl font-black flex-shrink-0 shadow-inner",
-                  order.isUrgent ? "bg-red-600 text-white" : (index === 0 ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-400")
+                  "h-32 w-32 rounded-[2rem] flex items-center justify-center text-6xl font-black flex-shrink-0 shadow-xl",
+                  order.isUrgent ? "bg-red-600 text-white" : (index === 0 ? "bg-blue-600 text-white" : "bg-slate-200 text-slate-500")
                 )}>
                   {index + 1}
                 </div>
@@ -123,8 +123,8 @@ export default function ApresentacaoCortePage() {
                     )}
                   </div>
                   <h2 className={cn(
-                    "text-6xl font-black tracking-tight truncate leading-none mb-2",
-                    order.isUrgent ? "text-red-800" : "text-slate-900"
+                    "text-7xl font-black tracking-tighter truncate leading-tight mb-4",
+                    order.isUrgent ? "text-red-900" : "text-slate-900"
                   )}>
                     {order.folderName}
                   </h2>
@@ -138,22 +138,24 @@ export default function ApresentacaoCortePage() {
                     </div>
                   )}
 
-                  <div className="flex items-center gap-4 text-slate-500 font-bold text-xl uppercase tracking-tighter">
-                    <CalendarDays className="h-6 w-6" />
-                    Incluído em {format(parseISO(order.createdAt), "dd/MM/yy 'às' HH:mm")}
+                  <div className="flex flex-wrap items-center gap-8 text-slate-500 font-bold text-2xl uppercase tracking-tighter mt-4">
+                    <div className="flex items-center gap-3">
+                      <CalendarDays className="h-8 w-8 text-slate-400" />
+                      <span>Incluído em {format(parseISO(order.createdAt), "dd/MM/yy 'às' HH:mm")}</span>
+                    </div>
                   </div>
 
                   {/* Sheets checklist */}
                   {(order.sheets && order.sheets.length > 0) && (
-                    <div className="mt-4 p-4 bg-slate-50 border-2 border-slate-200 rounded-2xl">
-                      <div className="flex items-center gap-3 mb-3">
-                        <ClipboardList className="h-6 w-6 text-slate-600" />
-                        <span className="text-xl font-black text-slate-700 uppercase tracking-tight">Chapas</span>
-                        <span className="text-lg font-black text-slate-400">
+                    <div className="mt-8 p-6 bg-slate-100/50 border-2 border-slate-200 rounded-[2rem]">
+                      <div className="flex items-center gap-4 mb-6">
+                        <ClipboardList className="h-8 w-8 text-slate-600" />
+                        <span className="text-2xl font-black text-slate-800 uppercase tracking-tight">Chapas do Corte</span>
+                        <span className="text-2xl font-black text-slate-400 ml-auto">
                           {order.sheets.filter(s => s.isCut).length}/{order.sheets.length}
                         </span>
                         {/* Progress bar */}
-                        <div className="flex-1 bg-slate-200 rounded-full h-3 overflow-hidden">
+                        <div className="w-64 bg-slate-200 rounded-full h-4 overflow-hidden shadow-inner">
                           <div
                             className={cn(
                               "h-full rounded-full transition-all duration-500",
@@ -171,27 +173,35 @@ export default function ApresentacaoCortePage() {
                               const updatedSheets = order.sheets!.map(s =>
                                 s.id === sheet.id ? { ...s, isCut: !s.isCut, cutAt: !s.isCut ? new Date().toISOString() : undefined } : s
                               );
+                              
+                              // Check if all sheets are now cut
+                              const allCut = updatedSheets.every(s => s.isCut);
+                              
                               updateCuttingOrder(order.id, { sheets: updatedSheets });
+                              
+                              if (allCut) {
+                                handleComplete(order.id, order.folderName);
+                              }
                             }}
                             className={cn(
-                              "flex items-center gap-3 p-3 rounded-xl border-2 text-left transition-all active:scale-95",
+                              "flex items-center gap-4 p-5 rounded-2xl border-4 text-left transition-all active:scale-90",
                               sheet.isCut
-                                ? "bg-green-100 border-green-300 text-green-800"
-                                : "bg-white border-slate-200 text-slate-800 hover:border-blue-300 hover:bg-blue-50"
+                                ? "bg-green-100 border-green-500 text-green-900 shadow-md"
+                                : "bg-white border-slate-200 text-slate-800 hover:border-blue-500 hover:bg-blue-50 shadow-lg"
                             )}
                           >
                             {sheet.isCut ? (
-                              <CheckSquare className="h-7 w-7 text-green-600 shrink-0" />
+                              <CheckSquare className="h-10 w-10 text-green-600 shrink-0" />
                             ) : (
-                              <Square className="h-7 w-7 text-slate-400 shrink-0" />
+                              <Square className="h-10 w-10 text-slate-300 shrink-0" />
                             )}
                             <div className="min-w-0">
                               <p className={cn(
-                                "text-lg font-black truncate",
-                                sheet.isCut && "line-through"
+                                "text-2xl font-black truncate tracking-tight",
+                                sheet.isCut && "line-through opacity-50"
                               )}>{sheet.name}</p>
                               {sheet.isCut && sheet.cutAt && (
-                                <p className="text-sm font-bold text-green-600">
+                                <p className="text-lg font-bold text-green-600">
                                   {format(parseISO(sheet.cutAt), "HH:mm")}
                                 </p>
                               )}
@@ -203,17 +213,8 @@ export default function ApresentacaoCortePage() {
                   )}
                 </div>
 
-                {/* Actions */}
-                <Button 
-                  onClick={() => handleComplete(order.id, order.folderName)}
-                  className={cn(
-                    "h-24 px-10 text-3xl font-black rounded-2xl flex gap-4 shadow-xl active:scale-95 transition-transform",
-                    order.isUrgent ? "bg-red-600 hover:bg-red-700" : "bg-green-600 hover:bg-green-700"
                   )}
-                >
-                  <CheckCircle2 className="h-10 w-10" />
-                  CONCLUÍDO
-                </Button>
+                </div>
               </div>
             ))
           ) : (
