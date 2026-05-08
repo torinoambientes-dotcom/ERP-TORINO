@@ -19,7 +19,6 @@ service cloud.firestore {
     // Cutting Orders - Public read and status update for factory monitors
     match /cutting_orders/{cuttingOrderId} {
       allow read: if true;
-      // Permite que o operador conclua o corte mesmo sem login administrativo no monitor da fábrica
       allow write: if true;
     }
 
@@ -49,6 +48,12 @@ service cloud.firestore {
       allow read, write: if request.auth != null;
     }
     match /transactions/{transactionId} {
+      allow read, write: if request.auth != null;
+    }
+    match /suppliers/{supplierId} {
+      allow read, write: if request.auth != null;
+    }
+    match /invoices/{invoiceId} {
       allow read, write: if request.auth != null;
     }
   }

@@ -4,7 +4,7 @@
 import { createContext, type ReactNode, useCallback, useMemo, useEffect, useState } from 'react';
 import { collection, doc, serverTimestamp, deleteField, writeBatch, getDocs, runTransaction, query, where, orderBy } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useAuth, useUser } from '@/firebase';
-import type { Project, TeamMember, StageStatus, StockItem, StockMovement, StockCategory, Furniture, Environment, MaterialItem, StockReservation, ProductionStage, Appointment, PurchaseRequest, PurchaseRequestStatus, Quote, QuoteStage, QuoteEnvironment, QuoteFurniture, QuoteMaterial, QuoteMaterialCategory, Dispatch, Task, CuttingOrder, Transaction } from '@/lib/types';
+import type { Project, TeamMember, StageStatus, StockItem, StockMovement, StockCategory, Furniture, Environment, MaterialItem, StockReservation, ProductionStage, Appointment, PurchaseRequest, PurchaseRequestStatus, Quote, QuoteStage, QuoteEnvironment, QuoteFurniture, QuoteMaterial, QuoteMaterialCategory, Dispatch, Task, CuttingOrder, Transaction, Supplier, Invoice } from '@/lib/types';
 import { generateId } from '@/lib/utils';
 import { setDocumentNonBlocking, deleteDocumentNonBlocking, addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
@@ -26,6 +26,8 @@ interface AppContextType {
   quoteMaterialCategories: QuoteMaterialCategory[];
   cuttingOrders: CuttingOrder[];
   transactions: Transaction[];
+  suppliers: Supplier[];
+  invoices: Invoice[];
   isLoading: boolean;
   addProject: (projectData: any) => string | undefined;
   updateProject: (updatedProject: Project, originalProject?: Project) => void;
@@ -73,6 +75,12 @@ interface AppContextType {
   addTransaction: (transactionData: Omit<Transaction, 'id'>) => void;
   updateTransaction: (transactionId: string, updates: Partial<Transaction>) => void;
   deleteTransaction: (transactionId: string) => void;
+  addSupplier: (supplierData: Omit<Supplier, 'id'>) => void;
+  updateSupplier: (supplierId: string, updates: Partial<Supplier>) => void;
+  deleteSupplier: (supplierId: string) => void;
+  addInvoice: (invoiceData: Omit<Invoice, 'id' | 'status'>) => void;
+  updateInvoice: (invoiceId: string, updates: Partial<Invoice>) => void;
+  deleteInvoice: (invoiceId: string) => void;
 }
 
 export const AppContext = createContext<AppContextType>({
@@ -89,6 +97,8 @@ export const AppContext = createContext<AppContextType>({
   quoteMaterialCategories: [],
   cuttingOrders: [],
   transactions: [],
+  suppliers: [],
+  invoices: [],
   isLoading: true,
   addProject: () => undefined,
   updateProject: () => {},
@@ -136,6 +146,12 @@ export const AppContext = createContext<AppContextType>({
   addTransaction: () => {},
   updateTransaction: () => {},
   deleteTransaction: () => {},
+  addSupplier: () => {},
+  updateSupplier: () => {},
+  deleteSupplier: () => {},
+  addInvoice: () => {},
+  updateInvoice: () => {},
+  deleteInvoice: () => {},
 });
 
 const cleanupUndefinedFields = (obj: any) => {
@@ -181,6 +197,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const quoteMaterialsQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'quote_materials') : null, [firestore, user]);
   const quoteMaterialCategoriesQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'quote_material_categories') : null, [firestore, user]);
   const transactionsQuery = useMemoFirebase(() => (firestore && user) ? query(collection(firestore, 'transactions'), orderBy('date', 'desc')) : null, [firestore, user]);
+  const suppliersQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'suppliers') : null, [firestore, user]);
+  const invoicesQuery = useMemoFirebase(() => (firestore && user) ? query(collection(firestore, 'invoices'), orderBy('date', 'desc')) : null, [firestore, user]);
+
 
   const { data: projects, isLoading: isLoadingProjects } = useCollection<Project>(projectsQuery);
   const { data: teamMembersData, isLoading: isLoadingTeamMembers } = useCollection<TeamMember>(teamMembersQuery);
@@ -196,6 +215,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const { data: quoteMaterials, isLoading: isLoadingQuoteMaterials } = useCollection<QuoteMaterial>(quoteMaterialsQuery);
   const { data: quoteMaterialCategories, isLoading: isLoadingQuoteMaterialCategories } = useCollection<QuoteMaterialCategory>(quoteMaterialCategoriesQuery);
   const { data: transactions, isLoading: isLoadingTransactions } = useCollection<Transaction>(transactionsQuery);
+  const { data: suppliers, isLoading: isLoadingSuppliers } = useCollection<Supplier>(suppliersQuery);
+  const { data: invoices, isLoading: isLoadingInvoices } = useCollection<Invoice>(invoicesQuery);
+
 
   const teamMembers = useMemo(() => teamMembersData || [], [teamMembersData]);
   const stockCategories = useMemo(() => stockCategoriesData || [], [stockCategoriesData]);
@@ -658,7 +680,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 }
                 return fur;
             });
-            return { ...env, furniture: newFurnitures };
+            return { ...env, furniture: newFurniture };
         }
         return env;
     });
@@ -690,7 +712,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
             const newProjectEnvs = projectData.environments.map(env => {
                 if (env.id === reservationToCancel.environmentId) {
-                    const newFurnitures = env.furniture.map(fur => {
+                    const newFurniture = env.furniture.map(fur => {
                         if (fur.id === reservationToCancel.furnitureId) {
                             const newMaterials = (fur.materials || []).map(mat => {
                                 if (mat.id === reservationToCancel.materialId) {
@@ -709,7 +731,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
                         }
                         return fur;
                     });
-                    return { ...env, furniture: newFurnitures };
+                    return { ...env, furniture: newFurniture };
                 }
                 return env;
             });
@@ -1047,6 +1069,69 @@ export function AppProvider({ children }: { children: ReactNode }) {
       deleteDocumentNonBlocking(ref);
     }, [firestore]);
 
+    const addSupplier = useCallback((supplierData: Omit<Supplier, 'id'>) => {
+      if (!firestore) return;
+      const id = generateId('sup');
+      const newSupplier: Supplier = { ...supplierData, id };
+      const ref = doc(firestore, 'suppliers', id);
+      setDocumentNonBlocking(ref, newSupplier, { merge: false });
+    }, [firestore]);
+
+    const updateSupplier = useCallback((supplierId: string, updates: Partial<Supplier>) => {
+      if (!firestore) return;
+      const ref = doc(firestore, 'suppliers', supplierId);
+      updateDocumentNonBlocking(ref, updates);
+    }, [firestore]);
+
+    const deleteSupplier = useCallback((supplierId: string) => {
+      if (!firestore) return;
+      const ref = doc(firestore, 'suppliers', supplierId);
+      deleteDocumentNonBlocking(ref);
+    }, [firestore]);
+
+    const addInvoice = useCallback((invoiceData: Omit<Invoice, 'id' | 'status'>) => {
+      if (!firestore) return;
+      const id = generateId('inv');
+      
+      // Also create a transaction automatically
+      const transId = generateId('trans');
+      const newTransaction: Transaction = {
+        id: transId,
+        type: 'expense',
+        category: invoiceData.category || 'Nota Fiscal',
+        amount: invoiceData.amount,
+        description: `NF: ${invoiceData.number || ''} - ${invoiceData.supplierName}`,
+        date: invoiceData.date,
+        status: 'pending',
+      };
+
+      const newInvoice: Invoice = { 
+        ...invoiceData, 
+        id, 
+        status: 'pending', 
+        relatedTransactionId: transId 
+      };
+
+      const invoiceRef = doc(firestore, 'invoices', id);
+      const transRef = doc(firestore, 'transactions', transId);
+
+      setDocumentNonBlocking(invoiceRef, newInvoice, { merge: false });
+      setDocumentNonBlocking(transRef, newTransaction, { merge: false });
+    }, [firestore]);
+
+    const updateInvoice = useCallback((invoiceId: string, updates: Partial<Invoice>) => {
+      if (!firestore) return;
+      const ref = doc(firestore, 'invoices', invoiceId);
+      updateDocumentNonBlocking(ref, updates);
+    }, [firestore]);
+
+    const deleteInvoice = useCallback((invoiceId: string) => {
+      if (!firestore) return;
+      const ref = doc(firestore, 'invoices', invoiceId);
+      deleteDocumentNonBlocking(ref);
+    }, [firestore]);
+
+
 
   const value = useMemo(() => ({
     projects: projects || [],
@@ -1062,6 +1147,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     quoteMaterialCategories: quoteMaterialCategories || [],
     cuttingOrders: cuttingOrders || [],
     transactions: transactions || [],
+    suppliers: suppliers || [],
+    invoices: invoices || [],
     isLoading,
     addProject,
     updateProject,
@@ -1109,6 +1196,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addTransaction,
     updateTransaction,
     deleteTransaction,
+    addSupplier,
+    updateSupplier,
+    deleteSupplier,
+    addInvoice,
+    updateInvoice,
+    deleteInvoice,
   }), [
     projects, 
     teamMembers, 
@@ -1123,6 +1216,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     quoteMaterialCategories,
     cuttingOrders,
     transactions,
+    suppliers,
+    invoices,
     isLoading,
     addProject, 
     updateProject, 
@@ -1170,6 +1265,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addTransaction,
     updateTransaction,
     deleteTransaction,
+    addSupplier,
+    updateSupplier,
+    deleteSupplier,
+    addInvoice,
+    updateInvoice,
+    deleteInvoice,
   ]);
 
   return (

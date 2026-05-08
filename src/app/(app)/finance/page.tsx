@@ -3,6 +3,7 @@
 
 import { useContext, useMemo, useState } from 'react';
 import { AppContext } from '@/context/app-context';
+import { useUser } from '@/firebase';
 import { PageHeader } from '@/components/layout/page-header';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -24,9 +25,17 @@ import { Transaction } from '@/lib/types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export default function FinancePage() {
-  const { transactions, isLoading, projects, quotes } = useContext(AppContext);
+  const { user } = useUser();
+  const { transactions, isLoading, projects, quotes, teamMembers } = useContext(AppContext);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('all');
+
+  const loggedInMember = useMemo(() => {
+    if (!user || !teamMembers) return null;
+    return teamMembers.find(member => member.id === user.uid);
+  }, [user, teamMembers]);
+
+  const isAdmin = loggedInMember?.role === 'Administrativo';
 
   const summary = useMemo(() => {
     const income = transactions.filter(t => t.type === 'income' && t.status === 'completed').reduce((acc, t) => acc + t.amount, 0);
@@ -59,8 +68,23 @@ export default function FinancePage() {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
   };
 
-  if (isLoading) {
+  if (isLoading || (user && !loggedInMember)) {
     return <div className="flex h-full w-full items-center justify-center"><p>Carregando financeiro...</p></div>;
+  }
+
+  if (!isAdmin) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[60vh] space-y-4">
+        <div className="p-6 bg-rose-50 rounded-full">
+           <Wallet className="h-12 w-12 text-rose-500" />
+        </div>
+        <h2 className="text-2xl font-black text-slate-800">Acesso Restrito</h2>
+        <p className="text-slate-500 text-center max-w-md">
+          Desculpe, você não tem permissão para visualizar as informações financeiras. 
+          Entre em contato com um administrador se precisar de acesso.
+        </p>
+      </div>
+    );
   }
 
   return (

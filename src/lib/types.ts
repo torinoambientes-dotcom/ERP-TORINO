@@ -363,3 +363,25 @@ export interface FinanceSummary {
   pendingReceivables: number;
   pendingPayables: number;
 }
+
+export interface Supplier {
+  id: string;
+  name: string;
+  document?: string; // CNPJ or CPF
+  email?: string;
+  phone?: string;
+  category?: string;
+}
+
+export interface Invoice {
+  id: string;
+  number?: string;
+  supplierId: string;
+  supplierName: string; // Denormalized for easier display
+  amount: number;
+  date: string; // ISO date string
+  category?: string;
+  notes?: string;
+  status: 'pending' | 'paid' | 'cancelled';
+  relatedTransactionId?: string;
+}
