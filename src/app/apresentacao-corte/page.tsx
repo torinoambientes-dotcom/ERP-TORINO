@@ -26,6 +26,16 @@ import { Input } from '@/components/ui/input';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 function LiveClock() {
   const [time, setTime] = useState(new Date());
@@ -46,6 +56,7 @@ export default function ApresentacaoCortePage() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [expandedOrders, setExpandedOrders] = useState<Set<string>>(new Set());
   const [operatorNotes, setOperatorNotes] = useState<Record<string, string>>({});
+  const [sheetToUnmark, setSheetToUnmark] = useState<{ orderId: string, sheetId: string, name: string } | null>(null);
 
   const pendingOrders = useMemo(() =>
     (cuttingOrders || []).filter(o => o.status === 'pending'),
@@ -90,6 +101,23 @@ export default function ApresentacaoCortePage() {
     const order = pendingOrders.find(o => o.id === orderId);
     if (!order?.sheets) return;
 
+    const sheet = order.sheets.find(s => s.id === sheetId);
+    if (!sheet) return;
+
+    // Se estiver tentando DESMARCAR, pede confirmação
+    if (sheet.isCut) {
+      setSheetToUnmark({ orderId, sheetId, name: sheet.name });
+      return;
+    }
+
+    // Se estiver MARCANDO, prossegue direto
+    processToggleSheet(orderId, sheetId);
+  };
+
+  const processToggleSheet = (orderId: string, sheetId: string) => {
+    const order = pendingOrders.find(o => o.id === orderId);
+    if (!order?.sheets) return;
+
     const updatedSheets = order.sheets.map(s =>
       s.id === sheetId
         ? { ...s, isCut: !s.isCut, cutAt: !s.isCut ? new Date().toISOString() : undefined }
@@ -105,6 +133,8 @@ export default function ApresentacaoCortePage() {
         description: `Confirme a conclusão de "${order.folderName}" quando estiver pronto.`,
       });
     }
+    
+    setSheetToUnmark(null);
   };
 
   const handleComplete = (orderId: string, folderName: string) => {
@@ -449,6 +479,31 @@ export default function ApresentacaoCortePage() {
         .cnc-scrollbar::-webkit-scrollbar-thumb { background: #374151; border-radius: 20px; }
         .cnc-scrollbar::-webkit-scrollbar-thumb:hover { background: #4b5563; }
       `}</style>
+
+      <AlertDialog open={!!sheetToUnmark} onOpenChange={(open) => !open && setSheetToUnmark(null)}>
+        <AlertDialogContent className="bg-gray-900 border-gray-700 text-white max-w-lg rounded-[2rem]">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-3xl font-black flex items-center gap-3">
+              <AlertTriangle className="h-8 w-8 text-orange-500" />
+              DESMARCAR CHAPA?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-gray-400 text-xl font-medium mt-4">
+              Você tem certeza que deseja desmarcar a chapa <span className="text-white font-black">"{sheetToUnmark?.name}"</span> como cortada?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="mt-8 gap-4">
+            <AlertDialogCancel className="bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700 hover:text-white h-16 text-xl rounded-2xl">
+              CANCELAR
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => sheetToUnmark && processToggleSheet(sheetToUnmark.orderId, sheetToUnmark.sheetId)}
+              className="bg-orange-600 hover:bg-orange-500 text-white h-16 text-xl font-black rounded-2xl"
+            >
+              SIM, DESMARCAR
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
