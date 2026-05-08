@@ -20,6 +20,7 @@ import {
   Trophy,
   AlertTriangle,
   Send,
+  X,
 } from 'lucide-react';
 import { cn, generateId } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
@@ -27,15 +28,13 @@ import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 function LiveClock() {
   const [time, setTime] = useState(new Date());
@@ -56,7 +55,7 @@ export default function ApresentacaoCortePage() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [expandedOrders, setExpandedOrders] = useState<Set<string>>(new Set());
   const [operatorNotes, setOperatorNotes] = useState<Record<string, string>>({});
-  const [sheetToUnmark, setSheetToUnmark] = useState<{ orderId: string, sheetId: string, name: string } | null>(null);
+  const [sheetToUnmark, setSheetToUnmark] = useState<{ orderId: string, sheetId: string, name: string, currentSheets: any[] } | null>(null);
 
   const pendingOrders = useMemo(() =>
     (cuttingOrders || []).filter(o => o.status === 'pending'),
@@ -104,24 +103,21 @@ export default function ApresentacaoCortePage() {
     const sheet = order.sheets.find(s => s.id === sheetId);
     if (!sheet) return;
 
-    // Se estiver tentando DESMARCAR, pede confirmação
     if (sheet.isCut) {
-      setSheetToUnmark({ orderId, sheetId, name: sheet.name });
+      setSheetToUnmark({ 
+        orderId, 
+        sheetId, 
+        name: sheet.name,
+        currentSheets: order.sheets
+      });
       return;
     }
 
-    // Se estiver MARCANDO, prossegue direto
-    processToggleSheet(orderId, sheetId);
+    processToggleSheet(orderId, sheetId, order.sheets);
   };
 
-  const processToggleSheet = (orderId: string, sheetId: string) => {
-    const order = cuttingOrders?.find(o => o.id === orderId);
-    if (!order?.sheets) return;
-
-    const sheet = order.sheets.find(s => s.id === sheetId);
-    if (!sheet) return;
-
-    const updatedSheets = order.sheets.map(s =>
+  const processToggleSheet = (orderId: string, sheetId: string, sheets: any[]) => {
+    const updatedSheets = sheets.map(s =>
       s.id === sheetId
         ? { ...s, isCut: !s.isCut, cutAt: !s.isCut ? new Date().toISOString() : undefined }
         : s
@@ -129,15 +125,10 @@ export default function ApresentacaoCortePage() {
 
     updateCuttingOrder(orderId, { sheets: updatedSheets });
     
-    // Feedback
-    if (sheet.isCut) {
-      toast({
-        title: 'Chapa desmarcada',
-        description: 'O status voltou para pendente.',
-      });
+    if (sheetToUnmark) {
+      toast({ title: 'Chapa desmarcada com sucesso.' });
+      setSheetToUnmark(null);
     }
-
-    setSheetToUnmark(null);
   };
 
   const handleComplete = (orderId: string, folderName: string) => {
@@ -483,35 +474,38 @@ export default function ApresentacaoCortePage() {
         .cnc-scrollbar::-webkit-scrollbar-thumb:hover { background: #4b5563; }
       `}</style>
 
-      <AlertDialog open={!!sheetToUnmark} onOpenChange={(open) => !open && setSheetToUnmark(null)}>
-        <AlertDialogContent className="bg-gray-900 border-gray-700 text-white max-w-lg rounded-[2rem]">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-3xl font-black flex items-center gap-3">
-              <AlertTriangle className="h-8 w-8 text-orange-500" />
+      <Dialog open={!!sheetToUnmark} onOpenChange={(open) => !open && setSheetToUnmark(null)}>
+        <DialogContent className="bg-gray-900 border-gray-700 text-white max-w-lg rounded-[2rem] p-8">
+          <DialogHeader>
+            <DialogTitle className="text-3xl font-black flex items-center gap-3 text-orange-500">
+              <AlertTriangle className="h-8 w-8" />
               DESMARCAR CHAPA?
-            </AlertDialogTitle>
-            <AlertDialogDescription className="text-gray-400 text-xl font-medium mt-4">
-              Você tem certeza que deseja desmarcar a chapa <span className="text-white font-black">"{sheetToUnmark?.name}"</span> como cortada?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="mt-8 flex flex-row gap-4 sm:space-x-0">
-            <AlertDialogCancel className="bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700 hover:text-white h-16 text-xl rounded-2xl w-full m-0">
-              VOLTAR
-            </AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={(e) => {
-                e.preventDefault();
+            </DialogTitle>
+            <DialogDescription className="text-gray-400 text-xl font-medium mt-4">
+              Deseja realmente desmarcar a chapa <span className="text-white font-black">"{sheetToUnmark?.name}"</span>? Ela voltará para a fila de pendentes.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="mt-8 flex flex-row gap-4 sm:justify-center">
+            <Button 
+              variant="outline" 
+              onClick={() => setSheetToUnmark(null)}
+              className="bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700 hover:text-white h-16 text-xl rounded-2xl flex-1 m-0"
+            >
+              CANCELAR
+            </Button>
+            <Button 
+              onClick={() => {
                 if (sheetToUnmark) {
-                  processToggleSheet(sheetToUnmark.orderId, sheetToUnmark.sheetId);
+                  processToggleSheet(sheetToUnmark.orderId, sheetToUnmark.sheetId, sheetToUnmark.currentSheets);
                 }
               }}
-              className="bg-orange-600 hover:bg-orange-500 text-white h-16 text-xl font-black rounded-2xl w-full m-0"
+              className="bg-orange-600 hover:bg-orange-500 text-white h-16 text-xl font-black rounded-2xl flex-1 m-0"
             >
               DESMARCAR
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
