@@ -7,7 +7,7 @@ import { useUser } from '@/firebase';
 import { PageHeader } from '@/components/layout/page-header';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, Wallet, ArrowUpCircle, ArrowDownCircle, Banknote, Calendar as CalendarIcon, Filter, Search, MoreHorizontal, TrendingUp, TrendingDown, DollarSign } from 'lucide-react';
+import { PlusCircle, Wallet, ArrowUpCircle, ArrowDownCircle, Banknote, Calendar as CalendarIcon, Filter, Search, MoreHorizontal, TrendingUp, TrendingDown, DollarSign, Receipt, CheckCircle, Trash2 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Badge } from '@/components/ui/badge';
@@ -24,6 +24,7 @@ import { cn } from '@/lib/utils';
 import { Transaction } from '@/lib/types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { RegisterTransactionModal } from '@/components/modals/register-transaction-modal';
+import { ReceiptModal } from '@/components/modals/receipt-modal';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -35,15 +36,24 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { Trash2 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export default function FinancePage() {
   const { user } = useUser();
-  const { transactions, isLoading, projects, quotes, teamMembers, deleteTransaction } = useContext(AppContext);
+  const { transactions, isLoading, projects, quotes, teamMembers, deleteTransaction, updateTransaction } = useContext(AppContext);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('all');
   const [isModalOpen, setModalOpen] = useState(false);
   const [dateFilter, setDateFilter] = useState<string>(format(new Date(), 'yyyy-MM'));
+  const [transactionToDelete, setTransactionToDelete] = useState<Transaction | null>(null);
+  const [receiptTransaction, setReceiptTransaction] = useState<Transaction | null>(null);
 
   const loggedInMember = useMemo(() => {
     if (!user || !teamMembers) return null;
@@ -242,8 +252,27 @@ export default function FinancePage() {
               {filteredTransactions.length > 0 ? (
                 filteredTransactions.map((t) => (
                   <TableRow key={t.id} className="hover:bg-slate-50/80 transition-colors">
-                    <TableCell className="font-medium text-slate-500">
-                      {format(parseISO(t.date), 'dd MMM yyyy', { locale: ptBR })}
+                    <TableCell className="font-medium">
+                      <div className="flex flex-col gap-0.5">
+                        {t.status === 'completed' && t.paymentDate ? (
+                          <>
+                            <span className="text-emerald-600 font-bold text-sm" title="Data do Pagamento">
+                              {format(parseISO(t.paymentDate), 'dd MMM yyyy', { locale: ptBR })}
+                            </span>
+                            {t.dueDate && (
+                              <span className="text-slate-400 text-xs">Venc: {format(parseISO(t.dueDate), 'dd/MM')}</span>
+                            )}
+                          </>
+                        ) : t.dueDate ? (
+                          <span className="text-amber-600 font-bold text-sm" title="Data de Vencimento">
+                            {format(parseISO(t.dueDate), 'dd MMM yyyy', { locale: ptBR })}
+                          </span>
+                        ) : (
+                          <span className="text-slate-500 text-sm">
+                            {format(parseISO(t.date), 'dd MMM yyyy', { locale: ptBR })}
+                          </span>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell>
                       <div className="font-semibold text-slate-800">{t.description}</div>
@@ -274,30 +303,50 @@ export default function FinancePage() {
                       {t.type === 'income' ? '+' : '-'} {formatCurrency(t.amount)}
                     </TableCell>
                     <TableCell>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-rose-600 hover:bg-rose-50">
-                            <Trash2 className="h-4 w-4" />
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" className="h-8 w-8 p-0">
+                            <span className="sr-only">Abrir menu</span>
+                            <MoreHorizontal className="h-4 w-4" />
                           </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Excluir Transação?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Esta ação removerá permanentemente o registro de <strong>{t.description}</strong> no valor de <strong>{formatCurrency(t.amount)}</strong>.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                            <AlertDialogAction
-                              className="bg-rose-600 hover:bg-rose-700 text-white"
-                              onClick={() => deleteTransaction(t.id)}
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-[160px] rounded-xl">
+                          <DropdownMenuLabel>Ações</DropdownMenuLabel>
+                          <DropdownMenuSeparator />
+                          
+                          {t.status === 'pending' && (
+                            <DropdownMenuItem 
+                              className="text-emerald-600 font-medium cursor-pointer"
+                              onClick={() => updateTransaction(t.id, { 
+                                status: 'completed', 
+                                paymentDate: new Date().toISOString().split('T')[0] 
+                              })}
                             >
-                              Sim, excluir
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
+                              <CheckCircle className="mr-2 h-4 w-4" />
+                              Marcar como Pago
+                            </DropdownMenuItem>
+                          )}
+
+                          {t.status === 'completed' && t.type === 'income' && (
+                            <DropdownMenuItem 
+                              className="text-blue-600 font-medium cursor-pointer"
+                              onClick={() => setReceiptTransaction(t)}
+                            >
+                              <Receipt className="mr-2 h-4 w-4" />
+                              Gerar Recibo
+                            </DropdownMenuItem>
+                          )}
+
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem 
+                            className="text-rose-600 font-medium cursor-pointer"
+                            onClick={() => setTransactionToDelete(t)}
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Excluir
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </TableCell>
                   </TableRow>
                 ))
@@ -312,10 +361,41 @@ export default function FinancePage() {
           </Table>
         </CardContent>
       </Card>
-      <RegisterTransactionModal 
-        isOpen={isModalOpen}
-        onClose={() => setModalOpen(false)}
-      />
-    </div>
-  );
-}
+        <RegisterTransactionModal 
+          isOpen={isModalOpen}
+          onClose={() => setModalOpen(false)}
+        />
+
+        <ReceiptModal
+          isOpen={!!receiptTransaction}
+          onClose={() => setReceiptTransaction(null)}
+          transaction={receiptTransaction}
+        />
+
+        <AlertDialog open={!!transactionToDelete} onOpenChange={(open) => !open && setTransactionToDelete(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Excluir Transação?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Esta ação removerá permanentemente o registro de <strong>{transactionToDelete?.description}</strong> no valor de <strong>{transactionToDelete ? formatCurrency(transactionToDelete.amount) : ''}</strong>.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-rose-600 hover:bg-rose-700 text-white"
+                onClick={() => {
+                  if (transactionToDelete) {
+                    deleteTransaction(transactionToDelete.id);
+                    setTransactionToDelete(null);
+                  }
+                }}
+              >
+                Sim, excluir
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
+    );
+  }

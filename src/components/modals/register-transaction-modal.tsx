@@ -60,7 +60,10 @@ export function RegisterTransactionModal({ isOpen, onClose }: RegisterTransactio
     amount: '',
     description: '',
     category: '',
-    date: new Date().toISOString().split('T')[0],
+    date: new Date().toISOString().split('T')[0], // reference date
+    dueDate: '',
+    paymentDate: new Date().toISOString().split('T')[0],
+    barcode: '',
     status: 'completed' as 'pending' | 'completed',
     relatedProjectId: '',
     paymentMethod: 'Pix'
@@ -84,7 +87,10 @@ export function RegisterTransactionModal({ isOpen, onClose }: RegisterTransactio
         amount: parseFloat(formData.amount),
         description: formData.description,
         category: formData.category,
-        date: formData.date,
+        date: formData.status === 'completed' ? formData.paymentDate : (formData.dueDate || formData.date),
+        dueDate: formData.dueDate || undefined,
+        paymentDate: formData.status === 'completed' ? formData.paymentDate : undefined,
+        barcode: formData.barcode || undefined,
         status: formData.status,
         relatedProjectId: formData.relatedProjectId || undefined,
         paymentMethod: formData.paymentMethod
@@ -101,6 +107,9 @@ export function RegisterTransactionModal({ isOpen, onClose }: RegisterTransactio
         description: '',
         category: '',
         date: new Date().toISOString().split('T')[0],
+        dueDate: '',
+        paymentDate: new Date().toISOString().split('T')[0],
+        barcode: '',
         status: 'completed',
         relatedProjectId: '',
         paymentMethod: 'Pix'
@@ -199,17 +208,45 @@ export function RegisterTransactionModal({ isOpen, onClose }: RegisterTransactio
                 />
               </div>
               <div className="grid w-full items-center gap-1.5">
-                <Label htmlFor="date">Data</Label>
-                <Input
-                  id="date"
-                  type="date"
-                  value={formData.date}
-                  onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                />
+                <Label htmlFor="status">Status</Label>
+                <Select 
+                  onValueChange={(value: any) => setFormData({ ...formData, status: value })}
+                  value={formData.status}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="completed">Concluído / Pago</SelectItem>
+                    <SelectItem value="pending">Pendente / A Pagar</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
+              {formData.status === 'pending' ? (
+                <div className="grid w-full items-center gap-1.5">
+                  <Label htmlFor="dueDate" className="text-amber-600 font-bold">Data de Vencimento</Label>
+                  <Input
+                    id="dueDate"
+                    type="date"
+                    value={formData.dueDate}
+                    onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
+                  />
+                </div>
+              ) : (
+                <div className="grid w-full items-center gap-1.5">
+                  <Label htmlFor="paymentDate" className="text-emerald-600 font-bold">Data do Pagamento</Label>
+                  <Input
+                    id="paymentDate"
+                    type="date"
+                    value={formData.paymentDate}
+                    onChange={(e) => setFormData({ ...formData, paymentDate: e.target.value })}
+                  />
+                </div>
+              )}
+              
               <div className="grid w-full items-center gap-1.5">
                 <Label htmlFor="category">Categoria</Label>
                 <Select 
@@ -226,22 +263,20 @@ export function RegisterTransactionModal({ isOpen, onClose }: RegisterTransactio
                   </SelectContent>
                 </Select>
               </div>
-              <div className="grid w-full items-center gap-1.5">
-                <Label htmlFor="status">Status</Label>
-                <Select 
-                  onValueChange={(value: any) => setFormData({ ...formData, status: value })}
-                  value={formData.status}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="completed">Concluído</SelectItem>
-                    <SelectItem value="pending">Pendente</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
             </div>
+
+            {formData.type === 'expense' && formData.status === 'pending' && (
+              <div className="grid w-full items-center gap-1.5">
+                <Label htmlFor="barcode">Código de Barras / Chave PIX (Opcional)</Label>
+                <Input
+                  id="barcode"
+                  placeholder="Cole aqui o código para facilitar o pagamento"
+                  value={formData.barcode}
+                  onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
+                  className="font-mono text-sm"
+                />
+              </div>
+            )}
 
             <div className="grid grid-cols-2 gap-4">
               <div className="grid w-full items-center gap-1.5">

@@ -349,7 +349,10 @@ export interface Transaction {
   category: string;
   amount: number;
   description: string;
-  date: string; // ISO date string
+  date: string; // ISO date string (used for creation/reference)
+  dueDate?: string; // ISO date string (when the bill is due)
+  paymentDate?: string; // ISO date string (when it was actually paid/received)
+  barcode?: string; // For boletos or PIX copy/paste
   relatedProjectId?: string;
   relatedQuoteId?: string;
   paymentMethod?: string;
