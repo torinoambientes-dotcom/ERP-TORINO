@@ -384,4 +384,5 @@ export interface Invoice {
   notes?: string;
   status: 'pending' | 'paid' | 'cancelled';
   relatedTransactionId?: string;
+  relatedProjectId?: string;
 }

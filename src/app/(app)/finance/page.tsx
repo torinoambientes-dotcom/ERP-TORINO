@@ -23,12 +23,27 @@ import {
 import { cn } from '@/lib/utils';
 import { Transaction } from '@/lib/types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { RegisterTransactionModal } from '@/components/modals/register-transaction-modal';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import { Trash2 } from 'lucide-react';
 
 export default function FinancePage() {
   const { user } = useUser();
-  const { transactions, isLoading, projects, quotes, teamMembers } = useContext(AppContext);
+  const { transactions, isLoading, projects, quotes, teamMembers, deleteTransaction } = useContext(AppContext);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('all');
+  const [isModalOpen, setModalOpen] = useState(false);
+  const [dateFilter, setDateFilter] = useState<string>(format(new Date(), 'yyyy-MM'));
 
   const loggedInMember = useMemo(() => {
     if (!user || !teamMembers) return null;
@@ -37,11 +52,27 @@ export default function FinancePage() {
 
   const isAdmin = loggedInMember?.role === 'Administrativo';
 
+  const filteredTransactions = useMemo(() => {
+    return (transactions || []).filter(t => {
+      const matchesSearch = t.description.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                           t.category.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesTab = activeTab === 'all' || 
+                        (activeTab === 'income' && t.type === 'income') || 
+                        (activeTab === 'expense' && t.type === 'expense') ||
+                        (activeTab === 'pending' && t.status === 'pending');
+      const matchesDate = !dateFilter || (t.date && t.date.startsWith(dateFilter));
+      
+      return matchesSearch && matchesTab && matchesDate;
+    });
+  }, [transactions, searchTerm, activeTab, dateFilter]);
+
   const summary = useMemo(() => {
-    const income = transactions.filter(t => t.type === 'income' && t.status === 'completed').reduce((acc, t) => acc + t.amount, 0);
-    const expense = transactions.filter(t => t.type === 'expense' && t.status === 'completed').reduce((acc, t) => acc + t.amount, 0);
-    const pendingReceivables = transactions.filter(t => t.type === 'income' && t.status === 'pending').reduce((acc, t) => acc + t.amount, 0);
-    const pendingPayables = transactions.filter(t => t.type === 'expense' && t.status === 'pending').reduce((acc, t) => acc + t.amount, 0);
+    const periodTransactions = transactions.filter(t => !dateFilter || (t.date && t.date.startsWith(dateFilter)));
+    
+    const income = periodTransactions.filter(t => t.type === 'income' && t.status === 'completed').reduce((acc, t) => acc + t.amount, 0);
+    const expense = periodTransactions.filter(t => t.type === 'expense' && t.status === 'completed').reduce((acc, t) => acc + t.amount, 0);
+    const pendingReceivables = periodTransactions.filter(t => t.type === 'income' && t.status === 'pending').reduce((acc, t) => acc + t.amount, 0);
+    const pendingPayables = periodTransactions.filter(t => t.type === 'expense' && t.status === 'pending').reduce((acc, t) => acc + t.amount, 0);
 
     return {
       income,
@@ -50,19 +81,7 @@ export default function FinancePage() {
       pendingReceivables,
       pendingPayables
     };
-  }, [transactions]);
-
-  const filteredTransactions = useMemo(() => {
-    return transactions.filter(t => {
-      const matchesSearch = t.description.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                           t.category.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesTab = activeTab === 'all' || 
-                        (activeTab === 'income' && t.type === 'income') || 
-                        (activeTab === 'expense' && t.type === 'expense') ||
-                        (activeTab === 'pending' && t.status === 'pending');
-      return matchesSearch && matchesTab;
-    });
-  }, [transactions, searchTerm, activeTab]);
+  }, [transactions, dateFilter]);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
@@ -95,10 +114,13 @@ export default function FinancePage() {
           description="Controle de entradas, saídas e fluxo de caixa da Torino Ambientes."
         />
         <div className="flex gap-2">
-          <Button variant="outline" className="gap-2">
-            <Filter className="h-4 w-4" /> Filtrar
-          </Button>
-          <Button className="gap-2">
+          <Input 
+            type="month"
+            className="w-full md:w-40 bg-white border-slate-200"
+            value={dateFilter}
+            onChange={(e) => setDateFilter(e.target.value)}
+          />
+          <Button onClick={() => setModalOpen(true)} className="gap-2 bg-slate-900 hover:bg-slate-800">
             <PlusCircle className="h-4 w-4" /> Nova Transação
           </Button>
         </div>
@@ -252,9 +274,30 @@ export default function FinancePage() {
                       {t.type === 'income' ? '+' : '-'} {formatCurrency(t.amount)}
                     </TableCell>
                     <TableCell>
-                      <Button variant="ghost" size="icon">
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-rose-600 hover:bg-rose-50">
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Excluir Transação?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Esta ação removerá permanentemente o registro de <strong>{t.description}</strong> no valor de <strong>{formatCurrency(t.amount)}</strong>.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction
+                              className="bg-rose-600 hover:bg-rose-700 text-white"
+                              onClick={() => deleteTransaction(t.id)}
+                            >
+                              Sim, excluir
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </TableCell>
                   </TableRow>
                 ))
@@ -269,6 +312,10 @@ export default function FinancePage() {
           </Table>
         </CardContent>
       </Card>
+      <RegisterTransactionModal 
+        isOpen={isModalOpen}
+        onClose={() => setModalOpen(false)}
+      />
     </div>
   );
 }

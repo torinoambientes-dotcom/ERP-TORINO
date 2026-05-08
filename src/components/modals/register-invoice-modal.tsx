@@ -28,16 +28,16 @@ interface RegisterInvoiceModalProps {
 }
 
 export function RegisterInvoiceModal({ isOpen, onClose }: RegisterInvoiceModalProps) {
-  const { addInvoice, suppliers } = useContext(AppContext);
+  const { addInvoice, suppliers, projects } = useContext(AppContext);
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
 
   const [formData, setFormData] = useState({
     number: '',
     supplierId: '',
-    amount: '',
-    date: new Date().toISOString().split('T')[0],
     category: 'Compra de Materiais',
+    status: 'pending' as 'pending' | 'paid',
+    relatedProjectId: '',
     notes: '',
   });
 
@@ -64,6 +64,8 @@ export function RegisterInvoiceModal({ isOpen, onClose }: RegisterInvoiceModalPr
         amount: parseFloat(formData.amount),
         date: formData.date,
         category: formData.category,
+        status: formData.status,
+        relatedProjectId: formData.relatedProjectId || undefined,
         notes: formData.notes,
       });
 
@@ -78,6 +80,8 @@ export function RegisterInvoiceModal({ isOpen, onClose }: RegisterInvoiceModalPr
         amount: '',
         date: new Date().toISOString().split('T')[0],
         category: 'Compra de Materiais',
+        status: 'pending',
+        relatedProjectId: '',
         notes: '',
       });
       onClose();
@@ -179,12 +183,55 @@ export function RegisterInvoiceModal({ isOpen, onClose }: RegisterInvoiceModalPr
             </div>
             <div className="grid w-full items-center gap-1.5">
               <Label htmlFor="category">Categoria</Label>
-              <Input
-                id="category"
-                placeholder="Ex: Materiais, Serviços"
+              <Select 
+                onValueChange={(value) => setFormData({ ...formData, category: value })}
                 value={formData.category}
-                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-              />
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Compra de Materiais">Compra de Materiais</SelectItem>
+                  <SelectItem value="Ferramentas">Ferramentas</SelectItem>
+                  <SelectItem value="Serviços">Serviços</SelectItem>
+                  <SelectItem value="Outras Saídas">Outras Saídas</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="grid w-full items-center gap-1.5">
+              <Label htmlFor="status">Status Inicial</Label>
+              <Select 
+                onValueChange={(value: any) => setFormData({ ...formData, status: value })}
+                value={formData.status}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="pending">Pendente (A Pagar)</SelectItem>
+                  <SelectItem value="paid">Pago</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid w-full items-center gap-1.5">
+              <Label htmlFor="project">Vincular ao Projeto (Opcional)</Label>
+              <Select 
+                onValueChange={(value) => setFormData({ ...formData, relatedProjectId: value })}
+                value={formData.relatedProjectId}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Nenhum (Geral)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Nenhum (Geral)</SelectItem>
+                  {(projects || []).map((p: any) => (
+                    <SelectItem key={p.id} value={p.id}>{p.clientName}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
@@ -192,7 +239,7 @@ export function RegisterInvoiceModal({ isOpen, onClose }: RegisterInvoiceModalPr
             <Label htmlFor="notes">Observações</Label>
             <Input
               id="notes"
-              placeholder="Alguma observação importante..."
+              placeholder="..."
               value={formData.notes}
               onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
             />
