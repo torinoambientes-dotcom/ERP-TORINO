@@ -35,6 +35,8 @@ export function RegisterInvoiceModal({ isOpen, onClose }: RegisterInvoiceModalPr
   const [formData, setFormData] = useState({
     number: '',
     supplierId: '',
+    amount: '',
+    date: new Date().toISOString().split('T')[0],
     category: 'Compra de Materiais',
     status: 'pending' as 'pending' | 'paid',
     relatedProjectId: '',
