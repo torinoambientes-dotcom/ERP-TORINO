@@ -57,7 +57,7 @@ export function RegisterInvoiceModal({ isOpen, onClose }: RegisterInvoiceModalPr
 
     setIsLoading(true);
     try {
-      addInvoice({
+      const payload: Omit<Invoice, 'id'> = {
         number: formData.number,
         supplierId: formData.supplierId,
         supplierName: selectedSupplier.name,
@@ -65,9 +65,12 @@ export function RegisterInvoiceModal({ isOpen, onClose }: RegisterInvoiceModalPr
         date: formData.date,
         category: formData.category,
         status: formData.status,
-        relatedProjectId: formData.relatedProjectId || undefined,
-        notes: formData.notes,
-      });
+      };
+
+      if (formData.relatedProjectId) payload.relatedProjectId = formData.relatedProjectId;
+      if (formData.notes) payload.notes = formData.notes;
+
+      addInvoice(payload);
 
       toast({
         title: 'Sucesso',

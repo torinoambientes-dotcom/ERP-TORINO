@@ -1103,8 +1103,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         description: `NF: ${invoiceData.number || ''} - ${invoiceData.supplierName}`,
         date: invoiceData.date,
         status: invoiceData.status === 'paid' ? 'completed' : 'pending',
-        relatedProjectId: invoiceData.relatedProjectId,
       };
+
+      if (invoiceData.relatedProjectId) newTransaction.relatedProjectId = invoiceData.relatedProjectId;
 
       const newInvoice: Invoice = { 
         ...invoiceData, 

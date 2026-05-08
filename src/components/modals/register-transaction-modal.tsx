@@ -82,19 +82,22 @@ export function RegisterTransactionModal({ isOpen, onClose }: RegisterTransactio
 
     setIsLoading(true);
     try {
-      addTransaction({
+      const payload: Omit<Transaction, 'id'> = {
         type: formData.type,
         amount: parseFloat(formData.amount),
         description: formData.description,
         category: formData.category,
         date: formData.status === 'completed' ? formData.paymentDate : (formData.dueDate || formData.date),
-        dueDate: formData.dueDate || undefined,
-        paymentDate: formData.status === 'completed' ? formData.paymentDate : undefined,
-        barcode: formData.barcode || undefined,
         status: formData.status,
-        relatedProjectId: formData.relatedProjectId || undefined,
         paymentMethod: formData.paymentMethod
-      });
+      };
+
+      if (formData.dueDate) payload.dueDate = formData.dueDate;
+      if (formData.status === 'completed' && formData.paymentDate) payload.paymentDate = formData.paymentDate;
+      if (formData.barcode) payload.barcode = formData.barcode;
+      if (formData.relatedProjectId) payload.relatedProjectId = formData.relatedProjectId;
+
+      addTransaction(payload);
 
       toast({
         title: 'Sucesso',
