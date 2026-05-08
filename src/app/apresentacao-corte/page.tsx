@@ -118,6 +118,9 @@ export default function ApresentacaoCortePage() {
     const order = cuttingOrders?.find(o => o.id === orderId);
     if (!order?.sheets) return;
 
+    const sheet = order.sheets.find(s => s.id === sheetId);
+    if (!sheet) return;
+
     const updatedSheets = order.sheets.map(s =>
       s.id === sheetId
         ? { ...s, isCut: !s.isCut, cutAt: !s.isCut ? new Date().toISOString() : undefined }
@@ -126,16 +129,14 @@ export default function ApresentacaoCortePage() {
 
     updateCuttingOrder(orderId, { sheets: updatedSheets });
     
-    // Feedback visual
-    const wasCut = order.sheets.find(s => s.id === sheetId)?.isCut;
-    if (wasCut) {
+    // Feedback
+    if (sheet.isCut) {
       toast({
         title: 'Chapa desmarcada',
-        description: 'O status da chapa voltou para pendente.',
+        description: 'O status voltou para pendente.',
       });
     }
 
-    // Fecha o diálogo e limpa o estado
     setSheetToUnmark(null);
   };
 
@@ -493,19 +494,20 @@ export default function ApresentacaoCortePage() {
               Você tem certeza que deseja desmarcar a chapa <span className="text-white font-black">"{sheetToUnmark?.name}"</span> como cortada?
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="mt-8 gap-4">
-            <AlertDialogCancel className="bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700 hover:text-white h-16 text-xl rounded-2xl flex-1">
-              VOLTAR (MANTER CORTADA)
+          <AlertDialogFooter className="mt-8 flex flex-row gap-4 sm:space-x-0">
+            <AlertDialogCancel className="bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700 hover:text-white h-16 text-xl rounded-2xl w-full m-0">
+              VOLTAR
             </AlertDialogCancel>
             <AlertDialogAction 
-              onClick={() => {
+              onClick={(e) => {
+                e.preventDefault();
                 if (sheetToUnmark) {
                   processToggleSheet(sheetToUnmark.orderId, sheetToUnmark.sheetId);
                 }
               }}
-              className="bg-orange-600 hover:bg-orange-500 text-white h-16 text-xl font-black rounded-2xl flex-1"
+              className="bg-orange-600 hover:bg-orange-500 text-white h-16 text-xl font-black rounded-2xl w-full m-0"
             >
-              CONFIRMAR E DESMARCAR
+              DESMARCAR
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
