@@ -117,19 +117,8 @@ export default function InvoicesPage() {
     return <div className="flex h-full w-full items-center justify-center"><p>Carregando dados...</p></div>;
   }
 
-  if (!isAdmin) {
-    return (
-      <div className="flex flex-col items-center justify-center h-[60vh] space-y-4">
-        <div className="p-6 bg-rose-50 rounded-full">
-           <FileText className="h-12 w-12 text-rose-500" />
-        </div>
-        <h2 className="text-2xl font-black text-slate-800">Acesso Restrito</h2>
-        <p className="text-slate-500 text-center max-w-md">
-          Você não tem permissão para visualizar esta página.
-        </p>
-      </div>
-    );
-  }
+  // Acesso liberado para todos os usuários autenticados
+
 
   return (
     <div className="space-y-8">
