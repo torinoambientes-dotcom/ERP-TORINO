@@ -112,17 +112,32 @@ export default function ApresentacaoCortePage() {
     processToggleSheet(orderId, sheetId, order.sheets);
   };
 
-  const processToggleSheet = (orderId: string, sheetId: string, sheets: any[]) => {
-    const updatedSheets = sheets.map(s =>
+  const processToggleSheet = (orderId: string, sheetId: string) => {
+    // Busca o projeto mais atualizado diretamente do estado
+    const order = (cuttingOrders || []).find(o => o.id === orderId);
+    if (!order?.sheets) return;
+
+    const updatedSheets = order.sheets.map(s =>
       s.id === sheetId
-        ? { ...s, isCut: !s.isCut, cutAt: !s.isCut ? new Date().toISOString() : undefined }
+        ? { 
+            ...s, 
+            isCut: !s.isCut, 
+            // Usa null para remover a data de corte se estiver desmarcando
+            cutAt: !s.isCut ? new Date().toISOString() : (null as any)
+          }
         : s
     );
 
+    // Dispara a atualização no banco de dados
     updateCuttingOrder(orderId, { sheets: updatedSheets });
-    setIsConfirmOpen(false);
     
-    // Pequeno delay para limpar o estado após o diálogo fechar
+    // Fecha o diálogo e dá feedback
+    setIsConfirmOpen(false);
+    toast({
+      title: "Status atualizado",
+      description: "A chapa foi desmarcada."
+    });
+
     setTimeout(() => setSheetToProcess(null), 300);
   };
 
@@ -491,7 +506,7 @@ export default function ApresentacaoCortePage() {
             <Button 
               onClick={() => {
                 if (sheetToProcess) {
-                  processToggleSheet(sheetToProcess.orderId, sheetToProcess.sheetId, sheetToProcess.sheets);
+                  processToggleSheet(sheetToProcess.orderId, sheetToProcess.sheetId, []);
                 }
               }}
               className="bg-orange-600 hover:bg-orange-500 text-white h-16 text-xl font-black rounded-2xl flex-1"
