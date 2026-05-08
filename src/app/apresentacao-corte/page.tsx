@@ -19,8 +19,10 @@ import {
   ChevronUp,
   Trophy,
   AlertTriangle,
+  Send,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, generateId } from '@/lib/utils';
+import { Input } from '@/components/ui/input';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
@@ -43,6 +45,7 @@ export default function ApresentacaoCortePage() {
   const { toast } = useToast();
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [expandedOrders, setExpandedOrders] = useState<Set<string>>(new Set());
+  const [operatorNotes, setOperatorNotes] = useState<Record<string, string>>({});
 
   const pendingOrders = useMemo(() =>
     (cuttingOrders || []).filter(o => o.status === 'pending'),
@@ -109,6 +112,30 @@ export default function ApresentacaoCortePage() {
     toast({
       title: '🎉 Corte Concluído!',
       description: `"${folderName}" foi removido da fila.`,
+    });
+  };
+
+  const handleAddOperatorNote = (orderId: string) => {
+    const noteText = operatorNotes[orderId];
+    if (!noteText?.trim()) return;
+
+    const order = pendingOrders.find(o => o.id === orderId);
+    if (!order) return;
+
+    const newPendency = {
+      id: generateId('pend'),
+      text: `[OPERADOR] ${noteText.trim()}`,
+      isResolved: false,
+      createdAt: new Date().toISOString(),
+    };
+
+    const currentPendencies = order.pendencies || [];
+    updateCuttingOrder(orderId, { pendencies: [...currentPendencies, newPendency] });
+    
+    setOperatorNotes(prev => ({ ...prev, [orderId]: '' }));
+    toast({
+      title: 'Nota registrada!',
+      description: 'A observação foi enviada para a gestão.',
     });
   };
 
@@ -270,6 +297,31 @@ export default function ApresentacaoCortePage() {
                 {/* Expanded: Sheets grid */}
                 {isExpanded && (
                   <div className="px-7 pb-7 border-t border-gray-700/50">
+                    
+                    {/* Campo de Notas do Operador */}
+                    <div className="mt-5 flex gap-3">
+                      <div className="relative flex-1">
+                        <MessageSquareText className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-500" />
+                        <Input 
+                          placeholder="Registrar algo sobre este corte... (Ex: Chapa riscada, falta material)"
+                          className="bg-gray-800 border-gray-700 text-white h-14 pl-12 text-lg rounded-2xl focus:ring-orange-500 focus:border-orange-500"
+                          value={operatorNotes[order.id] || ''}
+                          onChange={(e) => setOperatorNotes(prev => ({ ...prev, [order.id]: e.target.value }))}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleAddOperatorNote(order.id);
+                          }}
+                        />
+                      </div>
+                      <Button 
+                        onClick={() => handleAddOperatorNote(order.id)}
+                        disabled={!operatorNotes[order.id]?.trim()}
+                        className="h-14 px-6 bg-orange-600 hover:bg-orange-500 text-white rounded-2xl gap-2 font-bold"
+                      >
+                        <Send className="h-5 w-5" />
+                        ENVIAR
+                      </Button>
+                    </div>
+
                     {/* Pendências em aberto */}
                     {(() => {
                       const openPendencies = (order.pendencies || []).filter(p => !p.isResolved);
