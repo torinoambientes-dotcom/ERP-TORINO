@@ -55,7 +55,8 @@ export default function ApresentacaoCortePage() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [expandedOrders, setExpandedOrders] = useState<Set<string>>(new Set());
   const [operatorNotes, setOperatorNotes] = useState<Record<string, string>>({});
-  const [sheetToUnmark, setSheetToUnmark] = useState<{ orderId: string, sheetId: string, name: string, currentSheets: any[] } | null>(null);
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [sheetToProcess, setSheetToProcess] = useState<{ orderId: string, sheetId: string, name: string, sheets: any[] } | null>(null);
 
   const pendingOrders = useMemo(() =>
     (cuttingOrders || []).filter(o => o.status === 'pending'),
@@ -97,19 +98,14 @@ export default function ApresentacaoCortePage() {
   };
 
   const handleToggleSheet = (orderId: string, sheetId: string) => {
-    const order = pendingOrders.find(o => o.id === orderId);
+    const order = (cuttingOrders || []).find(o => o.id === orderId);
     if (!order?.sheets) return;
-
     const sheet = order.sheets.find(s => s.id === sheetId);
     if (!sheet) return;
 
     if (sheet.isCut) {
-      setSheetToUnmark({ 
-        orderId, 
-        sheetId, 
-        name: sheet.name,
-        currentSheets: order.sheets
-      });
+      setSheetToProcess({ orderId, sheetId, name: sheet.name, sheets: order.sheets });
+      setIsConfirmOpen(true);
       return;
     }
 
@@ -124,11 +120,10 @@ export default function ApresentacaoCortePage() {
     );
 
     updateCuttingOrder(orderId, { sheets: updatedSheets });
+    setIsConfirmOpen(false);
     
-    if (sheetToUnmark) {
-      toast({ title: 'Chapa desmarcada com sucesso.' });
-      setSheetToUnmark(null);
-    }
+    // Pequeno delay para limpar o estado após o diálogo fechar
+    setTimeout(() => setSheetToProcess(null), 300);
   };
 
   const handleComplete = (orderId: string, folderName: string) => {
@@ -474,32 +469,32 @@ export default function ApresentacaoCortePage() {
         .cnc-scrollbar::-webkit-scrollbar-thumb:hover { background: #4b5563; }
       `}</style>
 
-      <Dialog open={!!sheetToUnmark} onOpenChange={(open) => !open && setSheetToUnmark(null)}>
-        <DialogContent className="bg-gray-900 border-gray-700 text-white max-w-lg rounded-[2rem] p-8">
+      <Dialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
+        <DialogContent className="bg-gray-900 border-gray-700 text-white max-w-lg rounded-[2rem] p-8 shadow-2xl">
           <DialogHeader>
             <DialogTitle className="text-3xl font-black flex items-center gap-3 text-orange-500">
               <AlertTriangle className="h-8 w-8" />
               DESMARCAR CHAPA?
             </DialogTitle>
             <DialogDescription className="text-gray-400 text-xl font-medium mt-4">
-              Deseja realmente desmarcar a chapa <span className="text-white font-black">"{sheetToUnmark?.name}"</span>? Ela voltará para a fila de pendentes.
+              Deseja realmente desmarcar a chapa <span className="text-white font-black">"{sheetToProcess?.name}"</span>?
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="mt-8 flex flex-row gap-4 sm:justify-center">
             <Button 
               variant="outline" 
-              onClick={() => setSheetToUnmark(null)}
-              className="bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700 hover:text-white h-16 text-xl rounded-2xl flex-1 m-0"
+              onClick={() => setIsConfirmOpen(false)}
+              className="bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700 hover:text-white h-16 text-xl rounded-2xl flex-1"
             >
               CANCELAR
             </Button>
             <Button 
               onClick={() => {
-                if (sheetToUnmark) {
-                  processToggleSheet(sheetToUnmark.orderId, sheetToUnmark.sheetId, sheetToUnmark.currentSheets);
+                if (sheetToProcess) {
+                  processToggleSheet(sheetToProcess.orderId, sheetToProcess.sheetId, sheetToProcess.sheets);
                 }
               }}
-              className="bg-orange-600 hover:bg-orange-500 text-white h-16 text-xl font-black rounded-2xl flex-1 m-0"
+              className="bg-orange-600 hover:bg-orange-500 text-white h-16 text-xl font-black rounded-2xl flex-1"
             >
               DESMARCAR
             </Button>
