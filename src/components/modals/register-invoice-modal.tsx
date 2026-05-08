@@ -92,6 +92,26 @@ export function RegisterInvoiceModal({ isOpen, onClose }: RegisterInvoiceModalPr
     }
   };
 
+  const formatCurrency = (value: string) => {
+    if (!value) return '';
+    const number = parseFloat(value);
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+    }).format(number);
+  };
+
+  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value.replace(/\D/g, '');
+    if (!value) {
+      setFormData({ ...formData, amount: '' });
+      return;
+    }
+    const amountInCents = parseInt(value);
+    const amount = (amountInCents / 100).toFixed(2);
+    setFormData({ ...formData, amount });
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[425px]">
@@ -135,14 +155,14 @@ export function RegisterInvoiceModal({ isOpen, onClose }: RegisterInvoiceModalPr
               />
             </div>
             <div className="grid w-full items-center gap-1.5">
-              <Label htmlFor="amount">Valor (R$)</Label>
+              <Label htmlFor="amount">Valor Total</Label>
               <Input
                 id="amount"
-                type="number"
-                step="0.01"
-                placeholder="0,00"
-                value={formData.amount}
-                onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                type="text"
+                placeholder="R$ 0,00"
+                value={formatCurrency(formData.amount)}
+                onChange={handleAmountChange}
+                className="font-bold text-lg"
               />
             </div>
           </div>
