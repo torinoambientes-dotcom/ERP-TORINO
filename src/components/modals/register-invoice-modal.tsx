@@ -226,14 +226,14 @@ export function RegisterInvoiceModal({ isOpen, onClose }: RegisterInvoiceModalPr
             <div className="grid w-full items-center gap-1.5">
               <Label htmlFor="project">Vincular ao Projeto (Opcional)</Label>
               <Select 
-                onValueChange={(value) => setFormData({ ...formData, relatedProjectId: value })}
-                value={formData.relatedProjectId}
+                onValueChange={(value) => setFormData({ ...formData, relatedProjectId: value === 'none' ? '' : value })}
+                value={formData.relatedProjectId || 'none'}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Nenhum (Geral)" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Nenhum (Geral)</SelectItem>
+                  <SelectItem value="none">Nenhum (Geral)</SelectItem>
                   {(projects || []).map((p: any) => (
                     <SelectItem key={p.id} value={p.id}>{p.clientName}</SelectItem>
                   ))}

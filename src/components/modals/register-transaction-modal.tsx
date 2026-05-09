@@ -299,12 +299,12 @@ export function RegisterTransactionModal({ isOpen, onClose, defaultType = 'incom
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="project">Projeto (opcional)</Label>
-              <Select value={form.relatedProjectId} onValueChange={v => set('relatedProjectId', v)}>
+              <Select value={form.relatedProjectId || 'none'} onValueChange={v => set('relatedProjectId', v === 'none' ? '' : v)}>
                 <SelectTrigger id="project">
                   <SelectValue placeholder="Nenhum" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Nenhum</SelectItem>
+                  <SelectItem value="none">Nenhum</SelectItem>
                   {projects.map(p => (
                     <SelectItem key={p.id} value={p.id}>{p.clientName}</SelectItem>
                   ))}
