@@ -56,8 +56,11 @@ export default function InvoicesPage() {
   // Payment dialog
   const [payDialog, setPayDialog] = useState<{ invoices: Invoice[] } | null>(null);
   const [payMethod, setPayMethod] = useState('Boleto');
+  const [selectedCreditId, setSelectedCreditId] = useState('');
 
-  const { invoices, suppliers, teamMembers, isLoading, updateInvoice, deleteInvoice, updateTransaction } = useContext(AppContext);
+  const { invoices, suppliers, storeCredits, teamMembers, isLoading, updateInvoice, deleteInvoice, updateTransaction, updateStoreCredit } = useContext(AppContext);
+
+  const activeCredits = useMemo(() => (storeCredits || []).filter(c => c.status === 'active' && c.amount - c.usedAmount > 0), [storeCredits]);
 
   const loggedInMember = useMemo(() => {
     if (!user || !teamMembers) return null;
@@ -115,11 +118,24 @@ export default function InvoicesPage() {
   const handleDarBaixa = (invs: Invoice[]) => {
     setPayDialog({ invoices: invs });
     setPayMethod('Boleto');
+    setSelectedCreditId('');
   };
 
   const confirmPayment = () => {
     if (!payDialog) return;
     const today = new Date().toISOString().split('T')[0];
+
+    // If using store credit, deduct from selected credit
+    if (payMethod === 'Crédito em Loja' && selectedCreditId) {
+      const credit = (storeCredits || []).find(c => c.id === selectedCreditId);
+      if (credit) {
+        const totalToPay = payDialog.invoices.reduce((s, i) => s + i.amount, 0);
+        const newUsed = Math.min(credit.usedAmount + totalToPay, credit.amount);
+        const newStatus = newUsed >= credit.amount ? 'used' as const : 'active' as const;
+        updateStoreCredit(credit.id, { usedAmount: newUsed, status: newStatus });
+      }
+    }
+
     for (const inv of payDialog.invoices) {
       updateInvoice(inv.id, { status: 'paid' });
       if (inv.relatedTransactionId) {
@@ -484,8 +500,47 @@ export default function InvoicesPage() {
               </div>
 
               {payMethod === 'Crédito em Loja' && (
-                <div className="bg-violet-50 border border-violet-200 rounded-xl p-3 text-sm text-violet-800">
-                  <strong>Atenção:</strong> Lembre de atualizar o saldo do crédito na aba "Créditos em Loja" do Financeiro após confirmar.
+                <div className="space-y-2">
+                  <Label>Selecionar Crédito em Loja</Label>
+                  {activeCredits.length > 0 ? (
+                    <>
+                      <Select value={selectedCreditId || 'none'} onValueChange={v => setSelectedCreditId(v === 'none' ? '' : v)}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione o crédito..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Selecione...</SelectItem>
+                          {activeCredits.map(c => {
+                            const remaining = c.amount - c.usedAmount;
+                            return (
+                              <SelectItem key={c.id} value={c.id}>
+                                {c.supplierName} — Saldo: {fmt(remaining)} (Cliente: {c.clientName})
+                              </SelectItem>
+                            );
+                          })}
+                        </SelectContent>
+                      </Select>
+                      {selectedCreditId && (() => {
+                        const cr = activeCredits.find(c => c.id === selectedCreditId);
+                        if (!cr) return null;
+                        const remaining = cr.amount - cr.usedAmount;
+                        const payTotal = payDialog ? payDialog.invoices.reduce((s, i) => s + i.amount, 0) : 0;
+                        const afterPay = remaining - payTotal;
+                        return (
+                          <div className={cn('rounded-xl p-3 text-sm border', afterPay >= 0 ? 'bg-violet-50 border-violet-200 text-violet-800' : 'bg-rose-50 border-rose-200 text-rose-800')}>
+                            <p>Saldo atual: <strong>{fmt(remaining)}</strong></p>
+                            <p>Valor a debitar: <strong>{fmt(payTotal)}</strong></p>
+                            <p className="font-bold">Saldo após pagamento: {fmt(Math.max(afterPay, 0))}</p>
+                            {afterPay < 0 && <p className="text-rose-600 font-bold mt-1">⚠ O crédito não cobre o valor total. A diferença de {fmt(Math.abs(afterPay))} ficará como excedente.</p>}
+                          </div>
+                        );
+                      })()}
+                    </>
+                  ) : (
+                    <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-sm text-amber-800">
+                      Nenhum crédito em loja ativo. Cadastre um crédito na aba "Créditos em Loja" do Financeiro.
+                    </div>
+                  )}
                 </div>
               )}
 
