@@ -61,7 +61,7 @@ export default function InvoicesPage() {
   const [selectedSupplier, setSelectedSupplier] = useState<string>('all');
   const [dateFilter, setDateFilter] = useState<string>(format(new Date(), 'yyyy-MM'));
 
-  const { invoices, suppliers, teamMembers, isLoading, updateInvoice, deleteInvoice } = useContext(AppContext);
+  const { invoices, suppliers, teamMembers, isLoading, updateInvoice, deleteInvoice, addTransaction } = useContext(AppContext);
 
   const loggedInMember = useMemo(() => {
     if (!user || !teamMembers) return null;
@@ -265,7 +265,19 @@ export default function InvoicesPage() {
                                 variant="outline" 
                                 size="sm" 
                                 className="text-[10px] h-8 font-bold border-emerald-200 text-emerald-600 hover:bg-emerald-50"
-                                onClick={() => updateInvoice(inv.id, { status: 'paid' })}
+                                onClick={() => {
+                                  updateInvoice(inv.id, { status: 'paid' });
+                                  addTransaction({
+                                    type: 'expense',
+                                    description: `NF ${inv.number || ''} - ${inv.supplierName}`.trim(),
+                                    category: inv.category || 'Nota Fiscal',
+                                    amount: inv.amount,
+                                    date: new Date().toISOString().split('T')[0],
+                                    paymentDate: new Date().toISOString().split('T')[0],
+                                    status: 'completed',
+                                    paymentMethod: 'Boleto',
+                                  });
+                                }}
                               >
                                 Dar Baixa
                               </Button>

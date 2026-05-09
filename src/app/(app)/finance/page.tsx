@@ -17,7 +17,7 @@ import { ptBR } from 'date-fns/locale';
 import {
   PlusCircle, Wallet, ArrowUpCircle, ArrowDownCircle, DollarSign, CalendarClock,
   MoreHorizontal, Receipt, CheckCircle, Trash2, Search, RefreshCw, Copy, Check,
-  TrendingUp, TrendingDown,
+  TrendingUp, TrendingDown, Pencil,
 } from 'lucide-react';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
@@ -76,6 +76,8 @@ export default function FinancePage() {
   const [showRecurring, setShowRecurring] = useState(false);
   const [toDelete, setToDelete] = useState<Transaction | null>(null);
   const [receiptTx, setReceiptTx] = useState<Transaction | null>(null);
+  const [editingRecurring, setEditingRecurring] = useState<Transaction | null>(null);
+  const [editAmount, setEditAmount] = useState('');
 
   const loggedInMember = useMemo(() => {
     if (!user || !teamMembers) return null;
@@ -384,6 +386,9 @@ export default function FinancePage() {
                         <DropdownMenuContent align="end" className="rounded-xl w-52">
                           <DropdownMenuLabel>Ações</DropdownMenuLabel>
                           <DropdownMenuSeparator />
+                          <DropdownMenuItem className="text-blue-600 font-medium cursor-pointer" onClick={() => { setEditingRecurring(t); setEditAmount(t.amount.toFixed(2)); }}>
+                            <Pencil className="mr-2 h-4 w-4" /> Editar Valor
+                          </DropdownMenuItem>
                           {t.status === 'pending' && (
                             <DropdownMenuItem className="text-emerald-600 font-medium cursor-pointer" onClick={() => markPaid(t)}>
                               <CheckCircle className="mr-2 h-4 w-4" /> Marcar como Pago
@@ -455,6 +460,46 @@ export default function FinancePage() {
               onClick={() => { if (toDelete) { deleteTransaction(toDelete.id); setToDelete(null); } }}
             >
               Sim, excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Edit recurring amount dialog */}
+      <AlertDialog open={editingRecurring !== null} onOpenChange={open => { if (!open) setEditingRecurring(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Editar Valor da Conta</AlertDialogTitle>
+            <AlertDialogDescription>
+              Atualize o valor de <strong>{editingRecurring?.description}</strong> para este mês.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="py-4">
+            <Input
+              type="text"
+              inputMode="numeric"
+              placeholder="R$ 0,00"
+              value={editAmount ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(parseFloat(editAmount)) : ''}
+              onChange={e => {
+                const raw = e.target.value.replace(/\D/g, '');
+                if (!raw) { setEditAmount(''); return; }
+                setEditAmount((parseInt(raw) / 100).toFixed(2));
+              }}
+              className="font-bold text-lg text-center"
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-blue-600 hover:bg-blue-500 text-white"
+              onClick={() => {
+                if (editingRecurring && editAmount) {
+                  updateTransaction(editingRecurring.id, { amount: parseFloat(editAmount) });
+                  setEditingRecurring(null);
+                }
+              }}
+            >
+              Salvar Valor
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
