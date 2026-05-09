@@ -392,3 +392,16 @@ export interface Invoice {
   relatedTransactionId?: string;
   relatedProjectId?: string;
 }
+
+export interface StoreCredit {
+  id: string;
+  supplierName: string;       // Nome da loja/fornecedor
+  supplierId?: string;        // Link opcional ao fornecedor cadastrado
+  clientName: string;         // Nome do cliente que gerou o crédito
+  relatedProjectId?: string;  // Projeto relacionado
+  amount: number;             // Valor original do crédito
+  usedAmount: number;         // Quanto já foi utilizado
+  date: string;               // Data do crédito (ISO)
+  description?: string;       // Observação
+  status: 'active' | 'used' | 'expired'; // Status do crédito
+}

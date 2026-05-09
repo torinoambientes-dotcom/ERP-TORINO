@@ -49,7 +49,7 @@ const EXPENSE_CATEGORIES = [
   'Outras Saídas',
 ];
 
-const PAYMENT_METHODS = ['Pix', 'Transferência Bancária', 'Dinheiro', 'Boleto', 'Cartão de Débito', 'Cartão de Crédito'];
+const PAYMENT_METHODS = ['Pix', 'Transferência Bancária', 'Dinheiro', 'Boleto', 'Cartão de Débito', 'Cartão de Crédito', 'Crédito em Loja'];
 
 const initialState = (type: TransactionType) => ({
   type,

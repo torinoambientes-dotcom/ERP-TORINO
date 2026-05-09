@@ -11,13 +11,13 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
-import { Transaction } from '@/lib/types';
+import { Transaction, StoreCredit } from '@/lib/types';
 import { format, parseISO, isValid } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
   PlusCircle, Wallet, ArrowUpCircle, ArrowDownCircle, DollarSign, CalendarClock,
   MoreHorizontal, Receipt, CheckCircle, Trash2, Search, RefreshCw, Copy, Check,
-  TrendingUp, TrendingDown, Pencil,
+  TrendingUp, TrendingDown, Pencil, CreditCard, Store,
 } from 'lucide-react';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
@@ -29,6 +29,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { RegisterTransactionModal } from '@/components/modals/register-transaction-modal';
 import { RegisterRecurringModal } from '@/components/modals/register-recurring-modal';
+import { RegisterStoreCreditModal } from '@/components/modals/register-store-credit-modal';
 import { ReceiptModal } from '@/components/modals/receipt-modal';
 
 const fmt = (v: number) =>
@@ -67,7 +68,7 @@ function CopyBtn({ text }: { text: string }) {
 
 export default function FinancePage() {
   const { user } = useUser();
-  const { transactions, isLoading, teamMembers, deleteTransaction, updateTransaction, addTransaction } = useContext(AppContext);
+  const { transactions, storeCredits, isLoading, teamMembers, deleteTransaction, updateTransaction, addTransaction, updateStoreCredit, deleteStoreCredit } = useContext(AppContext);
 
   const [activeTab, setActiveTab] = useState('income');
   const [dateFilter, setDateFilter] = useState(format(new Date(), 'yyyy-MM'));
@@ -78,6 +79,8 @@ export default function FinancePage() {
   const [receiptTx, setReceiptTx] = useState<Transaction | null>(null);
   const [editingRecurring, setEditingRecurring] = useState<Transaction | null>(null);
   const [editAmount, setEditAmount] = useState('');
+  const [showCreditModal, setShowCreditModal] = useState(false);
+  const [creditToDelete, setCreditToDelete] = useState<StoreCredit | null>(null);
 
   const loggedInMember = useMemo(() => {
     if (!user || !teamMembers) return null;
@@ -207,6 +210,9 @@ export default function FinancePage() {
               <TabsTrigger value="recurring" className="gap-1.5">
                 <CalendarClock className="h-4 w-4 text-amber-500" /> Contas Fixas
               </TabsTrigger>
+              <TabsTrigger value="credits" className="gap-1.5">
+                <CreditCard className="h-4 w-4 text-violet-500" /> Créditos em Loja
+              </TabsTrigger>
             </TabsList>
             <div className="pb-1">
               {activeTab === 'income' && (
@@ -222,6 +228,11 @@ export default function FinancePage() {
               {activeTab === 'recurring' && (
                 <Button size="sm" onClick={() => setShowRecurring(true)} className="bg-amber-500 hover:bg-amber-400 gap-1.5">
                   <PlusCircle className="h-4 w-4" /> Nova Conta Fixa
+                </Button>
+              )}
+              {activeTab === 'credits' && (
+                <Button size="sm" onClick={() => setShowCreditModal(true)} className="bg-violet-600 hover:bg-violet-500 gap-1.5">
+                  <PlusCircle className="h-4 w-4" /> Novo Crédito
                 </Button>
               )}
             </div>
@@ -423,6 +434,95 @@ export default function FinancePage() {
               </TableBody>
             </Table>
           </TabsContent>
+
+          {/* CRÉDITOS EM LOJA */}
+          <TabsContent value="credits" className="m-0">
+            <Table>
+              <TableHeader className="bg-slate-50/50">
+                <TableRow>
+                  <TableHead>Data</TableHead>
+                  <TableHead>Loja</TableHead>
+                  <TableHead>Cliente</TableHead>
+                  <TableHead>Observação</TableHead>
+                  <TableHead>Utilizado</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Saldo</TableHead>
+                  <TableHead className="w-10" />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {(storeCredits || []).length > 0 ? (storeCredits || []).map(c => {
+                  const remaining = c.amount - c.usedAmount;
+                  return (
+                    <TableRow key={c.id} className="hover:bg-violet-50/30">
+                      <TableCell className="text-sm text-slate-500">
+                        {c.date ? (() => { try { return format(parseISO(c.date), 'dd MMM yyyy', { locale: ptBR }); } catch { return c.date; } })() : '—'}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1.5">
+                          <Store className="h-4 w-4 text-violet-400" />
+                          <span className="font-semibold text-slate-800">{c.supplierName}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-sm text-slate-600">{c.clientName}</TableCell>
+                      <TableCell className="text-sm text-slate-400 max-w-[150px] truncate">{c.description || '—'}</TableCell>
+                      <TableCell>
+                        <div className="flex flex-col gap-0.5">
+                          <div className="w-full bg-slate-100 rounded-full h-2">
+                            <div className="bg-violet-500 h-2 rounded-full transition-all" style={{ width: `${Math.min((c.usedAmount / c.amount) * 100, 100)}%` }} />
+                          </div>
+                          <span className="text-xs text-slate-400">{fmt(c.usedAmount)} de {fmt(c.amount)}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={cn(
+                          c.status === 'used' ? 'bg-slate-400' : c.status === 'expired' ? 'bg-rose-400' : 'bg-violet-500',
+                          'text-white'
+                        )}>
+                          {c.status === 'active' ? 'Ativo' : c.status === 'used' ? 'Utilizado' : 'Expirado'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right font-black text-violet-700">{fmt(remaining)}</TableCell>
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="h-8 w-8 p-0"><MoreHorizontal className="h-4 w-4" /></Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="rounded-xl w-52">
+                            <DropdownMenuLabel>Ações</DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            {c.status === 'active' && (
+                              <DropdownMenuItem className="text-violet-600 font-medium cursor-pointer" onClick={() => {
+                                updateStoreCredit(c.id, { usedAmount: c.amount, status: 'used' });
+                              }}>
+                                <CheckCircle className="mr-2 h-4 w-4" /> Marcar como Totalmente Usado
+                              </DropdownMenuItem>
+                            )}
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem className="text-rose-600 font-medium cursor-pointer" onClick={() => setCreditToDelete(c)}>
+                              <Trash2 className="mr-2 h-4 w-4" /> Excluir
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  );
+                }) : (
+                  <TableRow>
+                    <TableCell colSpan={8} className="h-28 text-center">
+                      <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                        <CreditCard className="h-8 w-8 opacity-30" />
+                        <p>Nenhum crédito em loja registrado.</p>
+                        <Button size="sm" variant="outline" onClick={() => setShowCreditModal(true)} className="mt-1 gap-1.5">
+                          <PlusCircle className="h-3.5 w-3.5" /> Registrar Crédito
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </TabsContent>
         </Tabs>
       </Card>
 
@@ -436,6 +536,11 @@ export default function FinancePage() {
       <RegisterRecurringModal
         isOpen={showRecurring}
         onClose={() => setShowRecurring(false)}
+      />
+
+      <RegisterStoreCreditModal
+        isOpen={showCreditModal}
+        onClose={() => setShowCreditModal(false)}
       />
 
       <ReceiptModal
@@ -500,6 +605,27 @@ export default function FinancePage() {
               }}
             >
               Salvar Valor
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete credit dialog */}
+      <AlertDialog open={creditToDelete !== null} onOpenChange={open => { if (!open) setCreditToDelete(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir Crédito?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Remover permanentemente o crédito de <strong>{creditToDelete ? fmt(creditToDelete.amount) : ''}</strong> em <strong>{creditToDelete?.supplierName}</strong>?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-rose-600 hover:bg-rose-700 text-white"
+              onClick={() => { if (creditToDelete) { deleteStoreCredit(creditToDelete.id); setCreditToDelete(null); } }}
+            >
+              Sim, excluir
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

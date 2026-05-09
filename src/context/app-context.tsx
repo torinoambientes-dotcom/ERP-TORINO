@@ -4,7 +4,7 @@
 import { createContext, type ReactNode, useCallback, useMemo, useEffect, useState } from 'react';
 import { collection, doc, serverTimestamp, deleteField, writeBatch, getDocs, runTransaction, query, where, orderBy } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useAuth, useUser } from '@/firebase';
-import type { Project, TeamMember, StageStatus, StockItem, StockMovement, StockCategory, Furniture, Environment, MaterialItem, StockReservation, ProductionStage, Appointment, PurchaseRequest, PurchaseRequestStatus, Quote, QuoteStage, QuoteEnvironment, QuoteFurniture, QuoteMaterial, QuoteMaterialCategory, Dispatch, Task, CuttingOrder, Transaction, Supplier, Invoice } from '@/lib/types';
+import type { Project, TeamMember, StageStatus, StockItem, StockMovement, StockCategory, Furniture, Environment, MaterialItem, StockReservation, ProductionStage, Appointment, PurchaseRequest, PurchaseRequestStatus, Quote, QuoteStage, QuoteEnvironment, QuoteFurniture, QuoteMaterial, QuoteMaterialCategory, Dispatch, Task, CuttingOrder, Transaction, Supplier, Invoice, StoreCredit } from '@/lib/types';
 import { generateId } from '@/lib/utils';
 import { setDocumentNonBlocking, deleteDocumentNonBlocking, addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
@@ -28,6 +28,7 @@ interface AppContextType {
   transactions: Transaction[];
   suppliers: Supplier[];
   invoices: Invoice[];
+  storeCredits: StoreCredit[];
   isLoading: boolean;
   addProject: (projectData: any) => string | undefined;
   updateProject: (updatedProject: Project, originalProject?: Project) => void;
@@ -81,6 +82,9 @@ interface AppContextType {
   addInvoice: (invoiceData: Omit<Invoice, 'id'>) => void;
   updateInvoice: (invoiceId: string, updates: Partial<Invoice>) => void;
   deleteInvoice: (invoiceId: string) => void;
+  addStoreCredit: (creditData: Omit<StoreCredit, 'id'>) => void;
+  updateStoreCredit: (creditId: string, updates: Partial<StoreCredit>) => void;
+  deleteStoreCredit: (creditId: string) => void;
 }
 
 export const AppContext = createContext<AppContextType>({
@@ -99,6 +103,7 @@ export const AppContext = createContext<AppContextType>({
   transactions: [],
   suppliers: [],
   invoices: [],
+  storeCredits: [],
   isLoading: true,
   addProject: () => undefined,
   updateProject: () => {},
@@ -152,6 +157,9 @@ export const AppContext = createContext<AppContextType>({
   addInvoice: () => {},
   updateInvoice: () => {},
   deleteInvoice: () => {},
+  addStoreCredit: () => {},
+  updateStoreCredit: () => {},
+  deleteStoreCredit: () => {},
 });
 
 const cleanupUndefinedFields = (obj: any) => {
@@ -199,6 +207,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const transactionsQuery = useMemoFirebase(() => (firestore && user) ? query(collection(firestore, 'transactions'), orderBy('date', 'desc')) : null, [firestore, user]);
   const suppliersQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'suppliers') : null, [firestore, user]);
   const invoicesQuery = useMemoFirebase(() => (firestore && user) ? query(collection(firestore, 'invoices'), orderBy('date', 'desc')) : null, [firestore, user]);
+  const storeCreditsQuery = useMemoFirebase(() => (firestore && user) ? query(collection(firestore, 'store_credits'), orderBy('date', 'desc')) : null, [firestore, user]);
 
 
   const { data: projects, isLoading: isLoadingProjects } = useCollection<Project>(projectsQuery);
@@ -217,6 +226,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const { data: transactions, isLoading: isLoadingTransactions } = useCollection<Transaction>(transactionsQuery);
   const { data: suppliers, isLoading: isLoadingSuppliers } = useCollection<Supplier>(suppliersQuery);
   const { data: invoices, isLoading: isLoadingInvoices } = useCollection<Invoice>(invoicesQuery);
+  const { data: storeCredits, isLoading: isLoadingStoreCredits } = useCollection<StoreCredit>(storeCreditsQuery);
 
 
   const teamMembers = useMemo(() => teamMembersData || [], [teamMembersData]);
@@ -1109,6 +1119,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
       deleteDocumentNonBlocking(ref);
     }, [firestore]);
 
+    const addStoreCredit = useCallback((creditData: Omit<StoreCredit, 'id'>) => {
+      if (!firestore) return;
+      const id = generateId('sc');
+      const newCredit: StoreCredit = { ...creditData, id };
+      const ref = doc(firestore, 'store_credits', id);
+      setDocumentNonBlocking(ref, newCredit, { merge: false });
+    }, [firestore]);
+
+    const updateStoreCredit = useCallback((creditId: string, updates: Partial<StoreCredit>) => {
+      if (!firestore) return;
+      const ref = doc(firestore, 'store_credits', creditId);
+      updateDocumentNonBlocking(ref, updates);
+    }, [firestore]);
+
+    const deleteStoreCredit = useCallback((creditId: string) => {
+      if (!firestore) return;
+      const ref = doc(firestore, 'store_credits', creditId);
+      deleteDocumentNonBlocking(ref);
+    }, [firestore]);
 
 
   const value = useMemo(() => ({
@@ -1127,6 +1156,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     transactions: transactions || [],
     suppliers: suppliers || [],
     invoices: invoices || [],
+    storeCredits: storeCredits || [],
     isLoading,
     addProject,
     updateProject,
@@ -1180,6 +1210,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addInvoice,
     updateInvoice,
     deleteInvoice,
+    addStoreCredit,
+    updateStoreCredit,
+    deleteStoreCredit,
   }), [
     projects, 
     teamMembers, 
@@ -1196,6 +1229,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     transactions,
     suppliers,
     invoices,
+    storeCredits,
     isLoading,
     addProject, 
     updateProject, 
@@ -1249,6 +1283,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addInvoice,
     updateInvoice,
     deleteInvoice,
+    addStoreCredit,
+    updateStoreCredit,
+    deleteStoreCredit,
   ]);
 
   return (
