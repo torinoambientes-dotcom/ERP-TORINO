@@ -357,6 +357,9 @@ export interface Transaction {
   relatedQuoteId?: string;
   paymentMethod?: string;
   status: 'pending' | 'completed' | 'cancelled';
+  clientName?: string; // Name of the client, used for generating receipts on income
+  isRecurring?: boolean; // Whether this is a monthly recurring bill
+  recurringDay?: number; // Day of the month the bill is due (1-31)
 }
 
 export interface FinanceSummary {

@@ -1092,79 +1092,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const addInvoice = useCallback((invoiceData: Omit<Invoice, 'id'>) => {
       if (!firestore) return;
       const id = generateId('inv');
-      
-      // Also create a transaction automatically
-      const transId = generateId('trans');
-      const newTransaction: Transaction = {
-        id: transId,
-        type: 'expense',
-        category: invoiceData.category || 'Nota Fiscal',
-        amount: invoiceData.amount,
-        description: `NF: ${invoiceData.number || ''} - ${invoiceData.supplierName}`,
-        date: invoiceData.date,
-        status: invoiceData.status === 'paid' ? 'completed' : 'pending',
-      };
-
-      if (invoiceData.relatedProjectId) newTransaction.relatedProjectId = invoiceData.relatedProjectId;
-
-      const newInvoice: Invoice = { 
-        ...invoiceData, 
-        id, 
-        relatedTransactionId: transId 
-      };
-
+      const newInvoice: Invoice = { ...invoiceData, id };
       const invoiceRef = doc(firestore, 'invoices', id);
-      const transRef = doc(firestore, 'transactions', transId);
-
       setDocumentNonBlocking(invoiceRef, newInvoice, { merge: false });
-      setDocumentNonBlocking(transRef, newTransaction, { merge: false });
     }, [firestore]);
 
     const updateInvoice = useCallback((invoiceId: string, updates: Partial<Invoice>) => {
-      if (!firestore || !invoices) return;
-      const invoice = invoices.find(inv => inv.id === invoiceId);
-      if (!invoice) return;
-
+      if (!firestore) return;
       const ref = doc(firestore, 'invoices', invoiceId);
       updateDocumentNonBlocking(ref, updates);
-
-      // Sincroniza com a transação relacionada se existir
-      if (invoice.relatedTransactionId) {
-        const transRef = doc(firestore, 'transactions', invoice.relatedTransactionId);
-        const transUpdates: any = {};
-        
-        if (updates.status) {
-          transUpdates.status = updates.status === 'paid' ? 'completed' : 
-                               updates.status === 'cancelled' ? 'cancelled' : 'pending';
-        }
-        if (updates.amount !== undefined) transUpdates.amount = updates.amount;
-        if (updates.date) transUpdates.date = updates.date;
-        if (updates.number !== undefined || updates.supplierName !== undefined) {
-          const num = updates.number !== undefined ? updates.number : invoice.number;
-          const sup = updates.supplierName !== undefined ? updates.supplierName : invoice.supplierName;
-          transUpdates.description = `NF: ${num || ''} - ${sup}`;
-        }
-        if (updates.category) transUpdates.category = updates.category;
-        if (updates.relatedProjectId !== undefined) transUpdates.relatedProjectId = updates.relatedProjectId;
-
-        if (Object.keys(transUpdates).length > 0) {
-          updateDocumentNonBlocking(transRef, transUpdates);
-        }
-      }
-    }, [firestore, invoices]);
+    }, [firestore]);
 
     const deleteInvoice = useCallback((invoiceId: string) => {
-      if (!firestore || !invoices) return;
-      const invoice = invoices.find(inv => inv.id === invoiceId);
-      
+      if (!firestore) return;
       const ref = doc(firestore, 'invoices', invoiceId);
       deleteDocumentNonBlocking(ref);
-
-      if (invoice?.relatedTransactionId) {
-        const transRef = doc(firestore, 'transactions', invoice.relatedTransactionId);
-        deleteDocumentNonBlocking(transRef);
-      }
-    }, [firestore, invoices]);
+    }, [firestore]);
 
 
 
