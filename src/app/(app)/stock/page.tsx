@@ -330,7 +330,7 @@ export default function StockPage() {
                                   <div className="truncate">
                                       <Link href={`/projects/${res.projectId}`} className="truncate hover:underline">
                                         <p className="font-medium truncate">{res.projectName}</p>
-                                        <p className="text-xs text-muted-foreground truncate">{res.environmentName} > {res.furnitureName}</p>
+                                        <p className="text-xs text-muted-foreground truncate">{res.environmentName}{' > '}{res.furnitureName}</p>
                                       </Link>
                                   </div>
                                   <div className="flex items-center gap-1 flex-shrink-0">

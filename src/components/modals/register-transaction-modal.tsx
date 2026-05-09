@@ -22,7 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from '@/lib/utils';
-import { TransactionType } from '@/lib/types';
+import { TransactionType, Transaction } from '@/lib/types';
 import { ArrowUpCircle, ArrowDownCircle } from 'lucide-react';
 
 interface RegisterTransactionModalProps {

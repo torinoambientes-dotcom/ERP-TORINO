@@ -7,22 +7,37 @@ import { useUser } from '@/firebase';
 import { PageHeader } from '@/components/layout/page-header';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, Wallet, ArrowUpCircle, ArrowDownCircle, Banknote, Calendar as CalendarIcon, Filter, Search, MoreHorizontal, TrendingUp, TrendingDown, DollarSign, Receipt, CheckCircle, Trash2 } from 'lucide-react';
+import {
+  PlusCircle,
+  Wallet,
+  ArrowUpCircle,
+  ArrowDownCircle,
+  Banknote,
+  Calendar as CalendarIcon,
+  Search,
+  MoreHorizontal,
+  TrendingUp,
+  TrendingDown,
+  DollarSign,
+  Receipt,
+  CheckCircle,
+  Trash2,
+} from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 import { Transaction } from '@/lib/types';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { RegisterTransactionModal } from '@/components/modals/register-transaction-modal';
 import { ReceiptModal } from '@/components/modals/receipt-modal';
 import {
@@ -34,7 +49,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import {
   DropdownMenu,
@@ -43,11 +57,12 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from '@/components/ui/dropdown-menu';
 
 export default function FinancePage() {
   const { user } = useUser();
-  const { transactions, isLoading, projects, quotes, teamMembers, deleteTransaction, updateTransaction } = useContext(AppContext);
+  const { transactions, isLoading, teamMembers, deleteTransaction, updateTransaction } =
+    useContext(AppContext);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('all');
   const [isModalOpen, setModalOpen] = useState(false);
@@ -57,39 +72,51 @@ export default function FinancePage() {
 
   const loggedInMember = useMemo(() => {
     if (!user || !teamMembers) return null;
-    return teamMembers.find(member => member.id === user.uid);
+    return teamMembers.find((member) => member.id === user.uid);
   }, [user, teamMembers]);
 
   const isAdmin = loggedInMember?.role === 'Administrativo';
 
   const filteredTransactions = useMemo(() => {
-    return (transactions || []).filter(t => {
-      const matchesSearch = t.description.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                           t.category.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesTab = activeTab === 'all' || 
-                        (activeTab === 'income' && t.type === 'income') || 
-                        (activeTab === 'expense' && t.type === 'expense') ||
-                        (activeTab === 'pending' && t.status === 'pending');
+    return (transactions || []).filter((t) => {
+      const matchesSearch =
+        t.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        t.category.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesTab =
+        activeTab === 'all' ||
+        (activeTab === 'income' && t.type === 'income') ||
+        (activeTab === 'expense' && t.type === 'expense') ||
+        (activeTab === 'pending' && t.status === 'pending');
       const matchesDate = !dateFilter || (t.date && t.date.startsWith(dateFilter));
-      
+
       return matchesSearch && matchesTab && matchesDate;
     });
   }, [transactions, searchTerm, activeTab, dateFilter]);
 
   const summary = useMemo(() => {
-    const periodTransactions = transactions.filter(t => !dateFilter || (t.date && t.date.startsWith(dateFilter)));
-    
-    const income = periodTransactions.filter(t => t.type === 'income' && t.status === 'completed').reduce((acc, t) => acc + t.amount, 0);
-    const expense = periodTransactions.filter(t => t.type === 'expense' && t.status === 'completed').reduce((acc, t) => acc + t.amount, 0);
-    const pendingReceivables = periodTransactions.filter(t => t.type === 'income' && t.status === 'pending').reduce((acc, t) => acc + t.amount, 0);
-    const pendingPayables = periodTransactions.filter(t => t.type === 'expense' && t.status === 'pending').reduce((acc, t) => acc + t.amount, 0);
+    const periodTransactions = (transactions || []).filter(
+      (t) => !dateFilter || (t.date && t.date.startsWith(dateFilter))
+    );
+
+    const income = periodTransactions
+      .filter((t) => t.type === 'income' && t.status === 'completed')
+      .reduce((acc, t) => acc + t.amount, 0);
+    const expense = periodTransactions
+      .filter((t) => t.type === 'expense' && t.status === 'completed')
+      .reduce((acc, t) => acc + t.amount, 0);
+    const pendingReceivables = periodTransactions
+      .filter((t) => t.type === 'income' && t.status === 'pending')
+      .reduce((acc, t) => acc + t.amount, 0);
+    const pendingPayables = periodTransactions
+      .filter((t) => t.type === 'expense' && t.status === 'pending')
+      .reduce((acc, t) => acc + t.amount, 0);
 
     return {
       income,
       expense,
       balance: income - expense,
       pendingReceivables,
-      pendingPayables
+      pendingPayables,
     };
   }, [transactions, dateFilter]);
 
@@ -98,19 +125,23 @@ export default function FinancePage() {
   };
 
   if (isLoading || (user && !loggedInMember)) {
-    return <div className="flex h-full w-full items-center justify-center"><p>Carregando financeiro...</p></div>;
+    return (
+      <div className="flex h-full w-full items-center justify-center">
+        <p>Carregando financeiro...</p>
+      </div>
+    );
   }
 
   if (!isAdmin) {
     return (
       <div className="flex flex-col items-center justify-center h-[60vh] space-y-4">
         <div className="p-6 bg-rose-50 rounded-full">
-           <Wallet className="h-12 w-12 text-rose-500" />
+          <Wallet className="h-12 w-12 text-rose-500" />
         </div>
         <h2 className="text-2xl font-black text-slate-800">Acesso Restrito</h2>
         <p className="text-slate-500 text-center max-w-md">
-          Desculpe, você não tem permissão para visualizar as informações financeiras. 
-          Entre em contato com um administrador se precisar de acesso.
+          Desculpe, você não tem permissão para visualizar as informações financeiras. Entre em
+          contato com um administrador se precisar de acesso.
         </p>
       </div>
     );
@@ -118,19 +149,23 @@ export default function FinancePage() {
 
   return (
     <div className="space-y-8">
+      {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <PageHeader 
-          title="Gestão Financeira" 
+        <PageHeader
+          title="Gestão Financeira"
           description="Controle de entradas, saídas e fluxo de caixa da Torino Ambientes."
         />
         <div className="flex gap-2">
-          <Input 
+          <Input
             type="month"
             className="w-full md:w-40 bg-white border-slate-200"
             value={dateFilter}
             onChange={(e) => setDateFilter(e.target.value)}
           />
-          <Button onClick={() => setModalOpen(true)} className="gap-2 bg-slate-900 hover:bg-slate-800">
+          <Button
+            onClick={() => setModalOpen(true)}
+            className="gap-2 bg-slate-900 hover:bg-slate-800"
+          >
             <PlusCircle className="h-4 w-4" /> Nova Transação
           </Button>
         </div>
@@ -140,7 +175,7 @@ export default function FinancePage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card className="bg-white/50 backdrop-blur-sm border-emerald-100 shadow-sm overflow-hidden relative group transition-all hover:shadow-md">
           <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:scale-110 transition-transform">
-             <ArrowUpCircle className="h-16 w-16 text-emerald-600" />
+            <ArrowUpCircle className="h-16 w-16 text-emerald-600" />
           </div>
           <CardHeader className="pb-2">
             <CardDescription className="flex items-center gap-2 font-medium uppercase tracking-wider text-xs">
@@ -151,13 +186,13 @@ export default function FinancePage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-             <p className="text-xs text-muted-foreground">Confirmadas no mês atual</p>
+            <p className="text-xs text-muted-foreground">Confirmadas no mês atual</p>
           </CardContent>
         </Card>
 
         <Card className="bg-white/50 backdrop-blur-sm border-rose-100 shadow-sm overflow-hidden relative group transition-all hover:shadow-md">
           <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:scale-110 transition-transform">
-             <ArrowDownCircle className="h-16 w-16 text-rose-600" />
+            <ArrowDownCircle className="h-16 w-16 text-rose-600" />
           </div>
           <CardHeader className="pb-2">
             <CardDescription className="flex items-center gap-2 font-medium uppercase tracking-wider text-xs">
@@ -168,30 +203,35 @@ export default function FinancePage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-             <p className="text-xs text-muted-foreground">Confirmadas no mês atual</p>
+            <p className="text-xs text-muted-foreground">Confirmadas no mês atual</p>
           </CardContent>
         </Card>
 
         <Card className="bg-white/50 backdrop-blur-sm border-blue-100 shadow-sm overflow-hidden relative group transition-all hover:shadow-md">
           <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:scale-110 transition-transform">
-             <DollarSign className="h-16 w-16 text-blue-600" />
+            <DollarSign className="h-16 w-16 text-blue-600" />
           </div>
           <CardHeader className="pb-2">
             <CardDescription className="flex items-center gap-2 font-medium uppercase tracking-wider text-xs text-blue-600">
               <Wallet className="h-3 w-3" /> Saldo em Caixa
             </CardDescription>
-            <CardTitle className={cn("text-3xl font-black", summary.balance >= 0 ? "text-blue-700" : "text-rose-700")}>
+            <CardTitle
+              className={cn(
+                'text-3xl font-black',
+                summary.balance >= 0 ? 'text-blue-700' : 'text-rose-700'
+              )}
+            >
               {formatCurrency(summary.balance)}
             </CardTitle>
           </CardHeader>
           <CardContent>
-             <p className="text-xs text-muted-foreground">Saldo disponível atual</p>
+            <p className="text-xs text-muted-foreground">Saldo disponível atual</p>
           </CardContent>
         </Card>
 
         <Card className="bg-white/50 backdrop-blur-sm border-amber-100 shadow-sm overflow-hidden relative group transition-all hover:shadow-md">
           <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:scale-110 transition-transform">
-             <Banknote className="h-16 w-16 text-amber-600" />
+            <Banknote className="h-16 w-16 text-amber-600" />
           </div>
           <CardHeader className="pb-2">
             <CardDescription className="flex items-center gap-2 font-medium uppercase tracking-wider text-xs text-amber-600">
@@ -202,23 +242,25 @@ export default function FinancePage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-             <p className="text-xs text-muted-foreground">A receber/pagar pendentes</p>
+            <p className="text-xs text-muted-foreground">A receber/pagar pendentes</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Main Content */}
+      {/* Transactions Table */}
       <Card className="bg-white/70 backdrop-blur-md shadow-xl border-slate-100 rounded-[2rem] overflow-hidden">
         <CardHeader className="border-b bg-slate-50/50">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div>
               <CardTitle>Histórico de Transações</CardTitle>
-              <CardDescription>Visualize e gerencie todas as movimentações financeiras.</CardDescription>
+              <CardDescription>
+                Visualize e gerencie todas as movimentações financeiras.
+              </CardDescription>
             </div>
             <div className="relative w-full md:w-80">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input 
-                placeholder="Pesquisar descrição ou categoria..." 
+              <Input
+                placeholder="Pesquisar descrição ou categoria..."
                 className="pl-10 bg-white border-slate-200"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -256,15 +298,23 @@ export default function FinancePage() {
                       <div className="flex flex-col gap-0.5">
                         {t.status === 'completed' && t.paymentDate ? (
                           <>
-                            <span className="text-emerald-600 font-bold text-sm" title="Data do Pagamento">
+                            <span
+                              className="text-emerald-600 font-bold text-sm"
+                              title="Data do Pagamento"
+                            >
                               {format(parseISO(t.paymentDate), 'dd MMM yyyy', { locale: ptBR })}
                             </span>
                             {t.dueDate && (
-                              <span className="text-slate-400 text-xs">Venc: {format(parseISO(t.dueDate), 'dd/MM')}</span>
+                              <span className="text-slate-400 text-xs">
+                                Venc: {format(parseISO(t.dueDate), 'dd/MM')}
+                              </span>
                             )}
                           </>
                         ) : t.dueDate ? (
-                          <span className="text-amber-600 font-bold text-sm" title="Data de Vencimento">
+                          <span
+                            className="text-amber-600 font-bold text-sm"
+                            title="Data de Vencimento"
+                          >
                             {format(parseISO(t.dueDate), 'dd MMM yyyy', { locale: ptBR })}
                           </span>
                         ) : (
@@ -286,20 +336,32 @@ export default function FinancePage() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <Badge 
-                        variant={t.status === 'completed' ? 'default' : t.status === 'pending' ? 'secondary' : 'destructive'}
+                      <Badge
+                        variant={
+                          t.status === 'completed'
+                            ? 'default'
+                            : t.status === 'pending'
+                            ? 'secondary'
+                            : 'destructive'
+                        }
                         className={cn(
-                          t.status === 'completed' && "bg-emerald-500 hover:bg-emerald-600",
-                          t.status === 'pending' && "bg-amber-400 hover:bg-amber-500 text-white"
+                          t.status === 'completed' && 'bg-emerald-500 hover:bg-emerald-600',
+                          t.status === 'pending' && 'bg-amber-400 hover:bg-amber-500 text-white'
                         )}
                       >
-                        {t.status === 'completed' ? 'Confirmado' : t.status === 'pending' ? 'Pendente' : 'Cancelado'}
+                        {t.status === 'completed'
+                          ? 'Confirmado'
+                          : t.status === 'pending'
+                          ? 'Pendente'
+                          : 'Cancelado'}
                       </Badge>
                     </TableCell>
-                    <TableCell className={cn(
-                      "text-right font-black text-lg",
-                      t.type === 'income' ? "text-emerald-600" : "text-rose-600"
-                    )}>
+                    <TableCell
+                      className={cn(
+                        'text-right font-black text-lg',
+                        t.type === 'income' ? 'text-emerald-600' : 'text-rose-600'
+                      )}
+                    >
                       {t.type === 'income' ? '+' : '-'} {formatCurrency(t.amount)}
                     </TableCell>
                     <TableCell>
@@ -313,14 +375,16 @@ export default function FinancePage() {
                         <DropdownMenuContent align="end" className="w-[160px] rounded-xl">
                           <DropdownMenuLabel>Ações</DropdownMenuLabel>
                           <DropdownMenuSeparator />
-                          
+
                           {t.status === 'pending' && (
-                            <DropdownMenuItem 
+                            <DropdownMenuItem
                               className="text-emerald-600 font-medium cursor-pointer"
-                              onClick={() => updateTransaction(t.id, { 
-                                status: 'completed', 
-                                paymentDate: new Date().toISOString().split('T')[0] 
-                              })}
+                              onClick={() =>
+                                updateTransaction(t.id, {
+                                  status: 'completed',
+                                  paymentDate: new Date().toISOString().split('T')[0],
+                                })
+                              }
                             >
                               <CheckCircle className="mr-2 h-4 w-4" />
                               Marcar como Pago
@@ -328,7 +392,7 @@ export default function FinancePage() {
                           )}
 
                           {t.status === 'completed' && t.type === 'income' && (
-                            <DropdownMenuItem 
+                            <DropdownMenuItem
                               className="text-blue-600 font-medium cursor-pointer"
                               onClick={() => setReceiptTransaction(t)}
                             >
@@ -338,7 +402,7 @@ export default function FinancePage() {
                           )}
 
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem 
+                          <DropdownMenuItem
                             className="text-rose-600 font-medium cursor-pointer"
                             onClick={() => setTransactionToDelete(t)}
                           >
@@ -361,41 +425,48 @@ export default function FinancePage() {
           </Table>
         </CardContent>
       </Card>
-        <RegisterTransactionModal 
-          isOpen={isModalOpen}
-          onClose={() => setModalOpen(false)}
-        />
 
-        <ReceiptModal
-          isOpen={!!receiptTransaction}
-          onClose={() => setReceiptTransaction(null)}
-          transaction={receiptTransaction}
-        />
+      {/* Modals */}
+      <RegisterTransactionModal isOpen={isModalOpen} onClose={() => setModalOpen(false)} />
 
-        <AlertDialog open={!!transactionToDelete} onOpenChange={(open) => !open && setTransactionToDelete(null)}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Excluir Transação?</AlertDialogTitle>
-              <AlertDialogDescription>
-                Esta ação removerá permanentemente o registro de <strong>{transactionToDelete?.description}</strong> no valor de <strong>{transactionToDelete ? formatCurrency(transactionToDelete.amount) : ''}</strong>.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancelar</AlertDialogCancel>
-              <AlertDialogAction
-                className="bg-rose-600 hover:bg-rose-700 text-white"
-                onClick={() => {
-                  if (transactionToDelete) {
-                    deleteTransaction(transactionToDelete.id);
-                    setTransactionToDelete(null);
-                  }
-                }}
-              >
-                Sim, excluir
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      </div>
-    );
-  }
+      <ReceiptModal
+        isOpen={!!receiptTransaction}
+        onClose={() => setReceiptTransaction(null)}
+        transaction={receiptTransaction}
+      />
+
+      <AlertDialog
+        open={!!transactionToDelete}
+        onOpenChange={(open) => !open && setTransactionToDelete(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir Transação?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação removerá permanentemente o registro de{' '}
+              <strong>{transactionToDelete?.description}</strong> no valor de{' '}
+              <strong>
+                {transactionToDelete ? formatCurrency(transactionToDelete.amount) : ''}
+              </strong>
+              .
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-rose-600 hover:bg-rose-700 text-white"
+              onClick={() => {
+                if (transactionToDelete) {
+                  deleteTransaction(transactionToDelete.id);
+                  setTransactionToDelete(null);
+                }
+              }}
+            >
+              Sim, excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}
