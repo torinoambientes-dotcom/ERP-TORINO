@@ -104,6 +104,15 @@ export default function FinancePage() {
     return { income, expense, balance: income - expense, pendingIn, pendingOut };
   }, [periodTx]);
 
+  const creditSummary = useMemo(() => {
+    const all = storeCredits || [];
+    const active = all.filter(c => c.status === 'active');
+    const totalCredit = active.reduce((a, c) => a + c.amount, 0);
+    const totalUsed = active.reduce((a, c) => a + c.usedAmount, 0);
+    const remaining = totalCredit - totalUsed;
+    return { totalCredit, totalUsed, remaining, activeCount: active.length };
+  }, [storeCredits]);
+
   const getRows = (type: 'income' | 'expense' | 'recurring') => {
     const q = search.toLowerCase();
     return periodTx.filter(t => {
@@ -163,12 +172,13 @@ export default function FinancePage() {
       </div>
 
       {/* Summary */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         {([
           { label: 'Total Entradas', value: summary.income, color: 'emerald', Icon: TrendingUp, sub: `+ ${fmt(summary.pendingIn)} a receber` },
           { label: 'Total Saídas', value: summary.expense, color: 'rose', Icon: TrendingDown, sub: `+ ${fmt(summary.pendingOut)} pendente` },
           { label: 'Saldo do Mês', value: summary.balance, color: summary.balance >= 0 ? 'blue' : 'rose', Icon: DollarSign, sub: 'Entradas − Saídas confirmadas' },
           { label: 'Contas Pendentes', value: summary.pendingOut, color: 'amber', Icon: CalendarClock, sub: 'A pagar este mês' },
+          { label: 'Créditos em Loja', value: creditSummary.remaining, color: 'violet', Icon: CreditCard, sub: `${creditSummary.activeCount} crédito${creditSummary.activeCount !== 1 ? 's' : ''} ativo${creditSummary.activeCount !== 1 ? 's' : ''}` },
         ] as const).map(({ label, value, color, Icon, sub }) => (
           <Card key={label} className="bg-white/60 overflow-hidden relative group hover:shadow-md transition-all">
             <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:scale-110 transition-transform">
