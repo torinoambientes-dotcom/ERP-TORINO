@@ -1102,9 +1102,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const addInvoice = useCallback((invoiceData: Omit<Invoice, 'id'>) => {
       if (!firestore) return;
       const id = generateId('inv');
-      const newInvoice: Invoice = { ...invoiceData, id };
+      const transId = generateId('trans');
+
+      const newTransaction: Transaction = {
+        id: transId,
+        type: 'expense',
+        category: invoiceData.category || 'Nota Fiscal',
+        amount: invoiceData.amount,
+        description: `NF ${invoiceData.number || ''} - ${invoiceData.supplierName}`.trim(),
+        date: invoiceData.date,
+        status: 'pending',
+      };
+      if (invoiceData.relatedProjectId) newTransaction.relatedProjectId = invoiceData.relatedProjectId;
+
+      const newInvoice: Invoice = { ...invoiceData, id, relatedTransactionId: transId };
+
       const invoiceRef = doc(firestore, 'invoices', id);
+      const transRef = doc(firestore, 'transactions', transId);
       setDocumentNonBlocking(invoiceRef, newInvoice, { merge: false });
+      setDocumentNonBlocking(transRef, newTransaction, { merge: false });
     }, [firestore]);
 
     const updateInvoice = useCallback((invoiceId: string, updates: Partial<Invoice>) => {
