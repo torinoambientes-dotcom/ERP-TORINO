@@ -25,9 +25,10 @@ import {
 } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import type { TeamMember, Priority, Appointment, StageStatus } from '@/lib/types';
-import { Scissors, Hammer, Truck, PlusCircle, MapPin, CheckCircle2, Trash2, AlertCircle, Clock, ChevronLeft, ChevronRight, CalendarDays, Zap, CalendarPlus } from 'lucide-react';
+import { Scissors, Hammer, Truck, PlusCircle, MapPin, CheckCircle2, Trash2, AlertCircle, Clock, ChevronLeft, ChevronRight, CalendarDays, Zap, CalendarPlus, Pencil } from 'lucide-react';
 import { NewAppointmentModal } from '@/components/modals/new-appointment-modal';
 import { BulkWeeklyEntryModal } from '@/components/modals/bulk-weekly-entry-modal';
+import { EditWeeklyItemModal, type WeeklyItemToEdit } from '@/components/modals/edit-weekly-item-modal';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -60,7 +61,15 @@ export default function WeeklySchedulePage() {
   const [selectedDayForAdd, setSelectedDayForAdd] = useState<Date | undefined>(undefined);
   const [selectedCategoryForAdd, setSelectedCategoryForAdd] = useState<'montagem' | 'corte' | 'producao'>('montagem');
   
+  const [isEditModalOpen, setEditModalOpen] = useState(false);
+  const [itemToEdit, setItemToEdit] = useState<WeeklyItemToEdit | null>(null);
+
   const [currentViewDate, setCurrentViewDate] = useState(new Date());
+
+  const handleEditItem = (item: WeeklyItem) => {
+    setItemToEdit(item);
+    setEditModalOpen(true);
+  };
 
   useEffect(() => {
     setIsClient(true);
@@ -368,7 +377,7 @@ export default function WeeklySchedulePage() {
                       </div>
                       <div className="space-y-3">
                         {cortes.length > 0 ? cortes.map(item => (
-                          <WeeklyItemCard key={`${item.id}-${dayKey}`} item={item} onToggleComplete={handleToggleComplete} onRemove={handleRemove} onMarkDelayed={handleMarkDelayed} onExtend={handleExtendDeadline} />
+                          <WeeklyItemCard key={`${item.id}-${dayKey}`} item={item} onToggleComplete={handleToggleComplete} onEdit={handleEditItem} onRemove={handleRemove} onMarkDelayed={handleMarkDelayed} onExtend={handleExtendDeadline} />
                         )) : <EmptySection message="Nenhum plano de corte." />}
                       </div>
                     </div>
@@ -385,7 +394,7 @@ export default function WeeklySchedulePage() {
                       </div>
                       <div className="space-y-3">
                         {producao.length > 0 ? producao.map(item => (
-                          <WeeklyItemCard key={`${item.id}-${dayKey}`} item={item} onToggleComplete={handleToggleComplete} onRemove={handleRemove} onMarkDelayed={handleMarkDelayed} onExtend={handleExtendDeadline} />
+                          <WeeklyItemCard key={`${item.id}-${dayKey}`} item={item} onToggleComplete={handleToggleComplete} onEdit={handleEditItem} onRemove={handleRemove} onMarkDelayed={handleMarkDelayed} onExtend={handleExtendDeadline} />
                         )) : <EmptySection message="Nada em produção hoje." />}
                       </div>
                     </div>
@@ -402,7 +411,7 @@ export default function WeeklySchedulePage() {
                       </div>
                       <div className="space-y-3">
                         {montagem.length > 0 ? montagem.map(item => (
-                          <WeeklyItemCard key={`${item.id}-${dayKey}`} item={item} onToggleComplete={handleToggleComplete} onRemove={handleRemove} onMarkDelayed={handleMarkDelayed} onExtend={handleExtendDeadline} />
+                          <WeeklyItemCard key={`${item.id}-${dayKey}`} item={item} onToggleComplete={handleToggleComplete} onEdit={handleEditItem} onRemove={handleRemove} onMarkDelayed={handleMarkDelayed} onExtend={handleExtendDeadline} />
                         )) : <EmptySection message="Nenhuma montagem externa." />}
                       </div>
                     </div>
@@ -426,6 +435,12 @@ export default function WeeklySchedulePage() {
           onClose={() => setBulkModalOpen(false)}
           initialDate={currentViewDate}
         />
+
+        <EditWeeklyItemModal
+          isOpen={isEditModalOpen}
+          onClose={() => setEditModalOpen(false)}
+          item={itemToEdit}
+        />
       </div>
     </TooltipProvider>
   );
@@ -434,12 +449,14 @@ export default function WeeklySchedulePage() {
 function WeeklyItemCard({ 
   item, 
   onToggleComplete, 
+  onEdit,
   onRemove, 
   onMarkDelayed, 
   onExtend 
 }: { 
   item: WeeklyItem, 
   onToggleComplete: (i: WeeklyItem) => void, 
+  onEdit: (i: WeeklyItem) => void,
   onRemove: (i: WeeklyItem) => void, 
   onMarkDelayed: (i: WeeklyItem) => void,
   onExtend: (i: WeeklyItem) => void
@@ -478,10 +495,10 @@ function WeeklyItemCard({
           <div className="mt-2 flex flex-wrap gap-1">
             {item.responsible.length > 0 ? (
               <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Marceneiro: {item.responsible.map(m => m.name.split(' ')[0]).join(', ')}
+                Responsável: {item.responsible.map(m => m.name.split(' ')[0]).join(', ')}
               </span>
             ) : (
-              <span className="text-[10px] italic text-muted-foreground">Sem Marceneiro</span>
+              <span className="text-[10px] italic text-muted-foreground">Sem Responsável</span>
             )}
           </div>
         </div>
@@ -499,6 +516,20 @@ function WeeklyItemCard({
               </Button>
             </TooltipTrigger>
             <TooltipContent>{isDone ? 'Reabrir tarefa' : 'Marcar como concluído'}</TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-7 w-7 text-muted-foreground hover:text-primary"
+                onClick={() => onEdit(item)}
+              >
+                <Pencil className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Editar informações</TooltipContent>
           </Tooltip>
 
           {!isDone && (

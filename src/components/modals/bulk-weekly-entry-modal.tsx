@@ -250,7 +250,7 @@ export function BulkWeeklyEntryModal({ isOpen, onClose, initialDate }: BulkWeekl
                               </PopoverTrigger>
                               <PopoverContent className="w-[300px] p-0" align="end">
                                 <Command>
-                                  <CommandInput placeholder="Buscar marceneiro..." />
+                                  <CommandInput placeholder="Buscar responsável..." />
                                   <CommandList>
                                     <CommandEmpty>Nenhum encontrado.</CommandEmpty>
                                     <CommandGroup>
