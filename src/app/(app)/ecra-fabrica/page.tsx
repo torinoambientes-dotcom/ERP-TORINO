@@ -1,4 +1,3 @@
-
 'use client';
 import { useState, useMemo, useContext, useEffect } from 'react';
 import { PageHeader } from '@/components/layout/page-header';
@@ -7,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { MonitorPlay, Check, ChevronsUpDown, Info, Tv } from 'lucide-react';
+import { MonitorPlay, Check, ChevronsUpDown, Tv, Users, LayoutGrid } from 'lucide-react';
 import Link from 'next/link';
 import { AppContext } from '@/context/app-context';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -16,13 +15,15 @@ import { cn } from '@/lib/utils';
 import type { TeamMember } from '@/lib/types';
 import useLocalStorage from '@/hooks/use-local-storage';
 import { Separator } from '@/components/ui/separator';
+import { getCarpenterPalette } from '@/app/apresentacao/day-schedule-slide';
 
 export default function EcrãFabricaSettingsPage() {
   const { teamMembers } = useContext(AppContext);
   const [rotationTime, setRotationTime] = useLocalStorage('factoryDisplay:rotationTime', 30);
   const [customMessage, setCustomMessage] = useLocalStorage('factoryDisplay:customMessage', '');
   const [selectedMarceneiros, setSelectedMarceneiros] = useLocalStorage<string[]>('factoryDisplay:selectedMarceneiros', []);
-  const [open, setOpen] = useState(false)
+  const [viewMode, setViewMode] = useLocalStorage<'marceneiro' | 'tipo'>('factoryDisplay:viewMode', 'marceneiro');
+  const [open, setOpen] = useState(false);
 
   const marceneiros = useMemo(() => {
     return (teamMembers || []).filter(member => member.role === 'Marceneiro');
@@ -45,6 +46,9 @@ export default function EcrãFabricaSettingsPage() {
     if (customMessage.trim()) {
       params.append('message', customMessage.trim());
     }
+    if (viewMode) {
+      params.append('viewMode', viewMode);
+    }
     return `/apresentacao?${params.toString()}`;
   };
 
@@ -52,7 +56,7 @@ export default function EcrãFabricaSettingsPage() {
     <div className="space-y-8">
       <PageHeader
         title="Ecrã da Fábrica"
-        description="Configure a exibição automática da programação semanal para a TV da produção."
+        description="Configure a exibição automática da programação semanal colorida por marceneiro para a TV da produção."
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -61,21 +65,63 @@ export default function EcrãFabricaSettingsPage() {
                 <CardHeader>
                     <CardTitle>Configurações da Apresentação</CardTitle>
                     <CardDescription>
-                       Personalize a rotação e os dados exibidos no ecrã.
+                       Personalize a rotação, o layout visual e os dados exibidos no ecrã da fábrica.
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
+                  
+                  {/* Modo de Visualização Padrão */}
                   <div className="space-y-2">
-                    <Label>Filtrar Marceneiros (Opcional)</Label>
+                    <Label className="font-bold">Modo de Visualização no Ecrã</Label>
+                    <div className="grid grid-cols-2 gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setViewMode('marceneiro')}
+                        className={cn(
+                          "flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all text-left gap-2",
+                          viewMode === 'marceneiro'
+                            ? "border-primary bg-primary/5 text-primary shadow-sm font-bold"
+                            : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+                        )}
+                      >
+                        <Users className="h-6 w-6" />
+                        <span className="font-black text-sm uppercase">👥 Por Marceneiro</span>
+                        <span className="text-xs text-muted-foreground text-center">
+                          Colunas dedicadas para cada marceneiro com cores exclusivas
+                        </span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setViewMode('tipo')}
+                        className={cn(
+                          "flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all text-left gap-2",
+                          viewMode === 'tipo'
+                            ? "border-primary bg-primary/5 text-primary shadow-sm font-bold"
+                            : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+                        )}
+                      >
+                        <LayoutGrid className="h-6 w-6" />
+                        <span className="font-black text-sm uppercase">🔨 Por Tipo (Produção/Montagem)</span>
+                        <span className="text-xs text-muted-foreground text-center">
+                          Cards divididos por tipo, com destaque de cores por marceneiro
+                        </span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Seleção e Cores dos Marceneiros */}
+                  <div className="space-y-2">
+                    <Label className="font-bold">Filtrar Marceneiros (Opcional)</Label>
                     <Popover open={open} onOpenChange={setOpen}>
                       <PopoverTrigger asChild>
                         <Button
                           variant="outline"
                           role="combobox"
                           aria-expanded={open}
-                          className="w-full justify-between"
+                          className="w-full justify-between h-auto py-2.5"
                         >
-                           <div className="flex gap-1 flex-wrap">
+                           <div className="flex gap-2 flex-wrap items-center">
                             {selectedMarceneiros.length === 0 ? "Nenhum selecionado" : 
                              selectedMarceneiros.length === marceneiros.length ? "Todos os marceneiros" :
                               `${selectedMarceneiros.length} marceneiro(s) selecionado(s)`
@@ -90,28 +136,36 @@ export default function EcrãFabricaSettingsPage() {
                           <CommandList>
                             <CommandEmpty>Nenhum marceneiro encontrado.</CommandEmpty>
                             <CommandGroup>
-                              {marceneiros.map((member) => (
-                                <CommandItem
-                                  key={member.id}
-                                  value={member.name}
-                                  onSelect={() => {
-                                    const isSelected = selectedMarceneiros.includes(member.id);
-                                    if(isSelected) {
-                                      setSelectedMarceneiros(selectedMarceneiros.filter(id => id !== member.id));
-                                    } else {
-                                      setSelectedMarceneiros([...selectedMarceneiros, member.id]);
-                                    }
-                                  }}
-                                >
-                                  <Check
-                                    className={cn(
-                                      "mr-2 h-4 w-4",
-                                      selectedMarceneiros.includes(member.id) ? "opacity-100" : "opacity-0"
-                                    )}
-                                  />
-                                  {member.name}
-                                </CommandItem>
-                              ))}
+                              {marceneiros.map((member, idx) => {
+                                const palette = getCarpenterPalette(member, idx);
+                                const colorHex = member.color || palette.hex;
+                                const isSelected = selectedMarceneiros.includes(member.id);
+                                return (
+                                  <CommandItem
+                                    key={member.id}
+                                    value={member.name}
+                                    onSelect={() => {
+                                      if(isSelected) {
+                                        setSelectedMarceneiros(selectedMarceneiros.filter(id => id !== member.id));
+                                      } else {
+                                        setSelectedMarceneiros([...selectedMarceneiros, member.id]);
+                                      }
+                                    }}
+                                  >
+                                    <Check
+                                      className={cn(
+                                        "mr-2 h-4 w-4",
+                                        isSelected ? "opacity-100" : "opacity-0"
+                                      )}
+                                    />
+                                    <span 
+                                      className="w-3.5 h-3.5 rounded-full mr-2 shrink-0 border border-slate-300"
+                                      style={{ backgroundColor: colorHex }}
+                                    />
+                                    <span className="font-bold">{member.name}</span>
+                                  </CommandItem>
+                                );
+                              })}
                             </CommandGroup>
                           </CommandList>
                         </Command>
@@ -119,8 +173,9 @@ export default function EcrãFabricaSettingsPage() {
                     </Popover>
                     <p className='text-xs text-muted-foreground'>O ecrã exibirá apenas a produção dos membros selecionados acima.</p>
                   </div>
+
                   <div className="space-y-2">
-                    <Label htmlFor="rotation-time">Tempo de Rotação por Dia (segundos)</Label>
+                    <Label htmlFor="rotation-time" className="font-bold">Tempo de Rotação por Dia (segundos)</Label>
                     <Input 
                       id="rotation-time"
                       type="number"
@@ -129,8 +184,9 @@ export default function EcrãFabricaSettingsPage() {
                       placeholder="Ex: 30"
                     />
                   </div>
+
                   <div className="space-y-2">
-                    <Label htmlFor="custom-message">Aviso ou Meta do Dia (Opcional)</Label>
+                    <Label htmlFor="custom-message" className="font-bold">Aviso ou Meta do Dia (Opcional)</Label>
                     <Textarea 
                       id="custom-message"
                       value={customMessage}
