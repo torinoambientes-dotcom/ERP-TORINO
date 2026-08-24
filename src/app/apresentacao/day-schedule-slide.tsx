@@ -233,28 +233,28 @@ export function DayScheduleSlide({
   const isActive = isToday(day);
 
   return (
-    <div className="flex flex-col h-full w-full p-6 gap-6 overflow-hidden select-none bg-slate-100">
+    <div className="flex flex-col h-full w-full p-4 gap-4 overflow-hidden select-none bg-slate-100">
       
       {/* Banner de Informação do Dia */}
-      <div className="flex items-center justify-between bg-white px-6 py-3.5 rounded-2xl border-2 border-slate-200 shadow-sm flex-shrink-0">
-        <div className="flex items-center gap-4">
+      <div className="flex items-center justify-between bg-white px-5 py-2.5 rounded-2xl border-2 border-slate-200 shadow-sm flex-shrink-0">
+        <div className="flex items-center gap-3">
           <div className={cn(
-            "px-5 py-2 rounded-xl font-black text-center min-w-[150px] shadow-sm",
+            "px-4 py-1.5 rounded-xl font-black text-center min-w-[130px] shadow-sm",
             isActive ? "bg-primary text-white" : "bg-slate-900 text-white"
           )}>
-            <span className="text-xs uppercase tracking-widest block leading-none opacity-80">
+            <span className="text-[10px] uppercase tracking-widest block leading-none opacity-80">
               {format(day, 'eeee', { locale: ptBR })}
             </span>
-            <span className="text-2xl tracking-tighter block leading-tight mt-0.5">
+            <span className="text-xl tracking-tighter block leading-tight mt-0.5">
               {format(day, 'dd/MM')}
             </span>
           </div>
 
           <div>
-            <h2 className="text-xl font-black text-slate-800 uppercase tracking-tight">
+            <h2 className="text-lg font-black text-slate-800 uppercase tracking-tight">
               Programação do Dia
             </h2>
-            <p className="text-sm font-bold text-slate-500">
+            <p className="text-xs font-bold text-slate-500">
               {allItems.length} {allItems.length === 1 ? 'tarefa agendada' : 'tarefas agendadas'} • {allItems.filter(i => i.isDone).length} concluídas
             </p>
           </div>
@@ -262,16 +262,16 @@ export function DayScheduleSlide({
 
         {/* Resumo visual rápido */}
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-xl">
-            <CheckCircle2 className="h-5 w-5 text-emerald-600" />
-            <span className="text-sm font-black text-emerald-900">
+          <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-xl">
+            <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+            <span className="text-xs font-black text-emerald-900">
               {allItems.filter(i => i.isDone).length} Concluídas
             </span>
           </div>
 
-          <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 px-3 py-1.5 rounded-xl">
-            <Clock className="h-5 w-5 text-blue-600" />
-            <span className="text-sm font-black text-blue-900">
+          <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 px-3 py-1 rounded-xl">
+            <Clock className="h-4 w-4 text-blue-600" />
+            <span className="text-xs font-black text-blue-900">
               {allItems.filter(i => !i.isDone).length} Pendentes
             </span>
           </div>
@@ -280,16 +280,16 @@ export function DayScheduleSlide({
 
       {/* Conteúdo Principal do Slide */}
       {viewMode === 'marceneiro' ? (
-        /* VISÃO POR MARCENEIRO (CARDS ORGANIZADOS POR COLUNAS) */
-        <div className="flex-1 min-h-0 overflow-y-auto pr-1 custom-scrollbar">
+        /* VISÃO POR MARCENEIRO (COLUNAS DINÂMICAS LADO A LADO SEM CORTAR) */
+        <div className="flex-1 min-h-0 overflow-hidden">
           {carpenterGroups.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 items-start">
+            <div className="h-full flex gap-4 overflow-x-auto overflow-y-hidden pb-1 custom-scrollbar">
               {carpenterGroups.map(({ carpenter, items }) => (
                 <CarpenterColumnCard key={carpenter.id} carpenter={carpenter} items={items} day={day} />
               ))}
             </div>
           ) : (
-            <div className="h-64 flex flex-col items-center justify-center bg-white rounded-2xl border-2 border-dashed border-slate-300 p-8">
+            <div className="h-full flex flex-col items-center justify-center bg-white rounded-2xl border-2 border-dashed border-slate-300 p-8">
               <Hammer className="h-12 w-12 text-slate-300 mb-2" />
               <p className="text-xl font-black uppercase text-slate-400">Nenhum marceneiro com produção agendada para este dia</p>
             </div>
@@ -297,20 +297,20 @@ export function DayScheduleSlide({
         </div>
       ) : (
         /* VISÃO POR TIPO (PRODUÇÃO FÁBRICA VS MONTAGEM EXTERNO) */
-        <div className="flex-1 flex gap-6 min-h-0 overflow-hidden">
+        <div className="flex-1 flex gap-4 min-h-0 overflow-hidden">
           {/* Coluna Produção Fábrica */}
-          <div className="flex-1 flex flex-col gap-4 bg-white p-5 rounded-2xl border-2 border-slate-200 shadow-sm min-w-0">
-            <div className="flex items-center justify-between text-blue-900 bg-blue-50/80 p-3 rounded-xl border border-blue-200 flex-shrink-0">
-              <div className="flex items-center gap-3">
-                <Hammer className="h-6 w-6 text-blue-600" />
-                <h3 className="text-xl font-black uppercase tracking-tight">Produção Fábrica</h3>
+          <div className="flex-1 flex flex-col gap-3 bg-white p-4 rounded-2xl border-2 border-slate-200 shadow-sm min-w-0 h-full overflow-hidden">
+            <div className="flex items-center justify-between text-blue-900 bg-blue-50/80 p-2.5 rounded-xl border border-blue-200 flex-shrink-0">
+              <div className="flex items-center gap-2.5">
+                <Hammer className="h-5 w-5 text-blue-600" />
+                <h3 className="text-lg font-black uppercase tracking-tight">Produção Fábrica</h3>
               </div>
-              <Badge className="bg-blue-600 text-white font-black px-2.5 py-1 text-sm">
+              <Badge className="bg-blue-600 text-white font-black px-2 py-0.5 text-xs">
                 {producao.length} tarefas
               </Badge>
             </div>
 
-            <div className="flex-1 overflow-y-auto pr-1 custom-scrollbar space-y-4">
+            <div className="flex-1 overflow-y-auto pr-1 custom-scrollbar space-y-3 min-h-0">
               {producao.length > 0 ? (
                 producao.map(item => (
                   <ScheduleTaskCard key={`${item.id}-${format(day, 'yyyy-MM-dd')}`} item={item} type={item.category} />
@@ -322,18 +322,18 @@ export function DayScheduleSlide({
           </div>
 
           {/* Coluna Montagem Externa */}
-          <div className="flex-1 flex flex-col gap-4 bg-white p-5 rounded-2xl border-2 border-slate-200 shadow-sm min-w-0">
-            <div className="flex items-center justify-between text-emerald-900 bg-emerald-50/80 p-3 rounded-xl border border-emerald-200 flex-shrink-0">
-              <div className="flex items-center gap-3">
-                <Truck className="h-6 w-6 text-emerald-600" />
-                <h3 className="text-xl font-black uppercase tracking-tight">Montagem Externo</h3>
+          <div className="flex-1 flex flex-col gap-3 bg-white p-4 rounded-2xl border-2 border-slate-200 shadow-sm min-w-0 h-full overflow-hidden">
+            <div className="flex items-center justify-between text-emerald-900 bg-emerald-50/80 p-2.5 rounded-xl border border-emerald-200 flex-shrink-0">
+              <div className="flex items-center gap-2.5">
+                <Truck className="h-5 w-5 text-emerald-600" />
+                <h3 className="text-lg font-black uppercase tracking-tight">Montagem Externo</h3>
               </div>
-              <Badge className="bg-emerald-600 text-white font-black px-2.5 py-1 text-sm">
+              <Badge className="bg-emerald-600 text-white font-black px-2 py-0.5 text-xs">
                 {montagem.length} tarefas
               </Badge>
             </div>
 
-            <div className="flex-1 overflow-y-auto pr-1 custom-scrollbar space-y-4">
+            <div className="flex-1 overflow-y-auto pr-1 custom-scrollbar space-y-3 min-h-0">
               {montagem.length > 0 ? (
                 montagem.map(item => (
                   <ScheduleTaskCard key={`${item.id}-${format(day, 'yyyy-MM-dd')}`} item={item} type="montagem" />
@@ -361,47 +361,47 @@ function CarpenterColumnCard({ carpenter, items, day }: { carpenter: CarpenterDe
   const progressPercent = items.length > 0 ? Math.round((doneCount / items.length) * 100) : 0;
 
   return (
-    <div className="bg-white rounded-2xl border-2 border-slate-200 shadow-sm overflow-hidden flex flex-col">
+    <div className="bg-white rounded-2xl border-2 border-slate-200 shadow-sm overflow-hidden flex flex-col h-full flex-1 min-w-[260px] max-w-[420px]">
       {/* Cabeçalho do Marceneiro */}
       <div 
-        className="p-4 border-b-2 flex items-center justify-between gap-3 text-white"
+        className="p-3 border-b-2 flex items-center justify-between gap-2.5 text-white flex-shrink-0"
         style={{ backgroundColor: carpenter.color }}
       >
-        <div className="flex items-center gap-3 min-w-0">
-          <Avatar className="h-11 w-11 border-2 border-white/80 shadow-xs shrink-0">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <Avatar className="h-9 w-9 border-2 border-white/80 shadow-xs shrink-0">
             {carpenter.avatarUrl && <AvatarImage src={carpenter.avatarUrl} />}
-            <AvatarFallback className="font-black text-slate-900 bg-white text-base">
+            <AvatarFallback className="font-black text-slate-900 bg-white text-sm">
               {getInitials(carpenter.name)}
             </AvatarFallback>
           </Avatar>
 
           <div className="min-w-0">
-            <h3 className="text-xl font-black tracking-tight uppercase truncate leading-tight">
+            <h3 className="text-lg font-black tracking-tight uppercase truncate leading-tight">
               {carpenter.name}
             </h3>
-            <p className="text-xs font-bold opacity-90">
+            <p className="text-[11px] font-bold opacity-90">
               {items.length} {items.length === 1 ? 'tarefa' : 'tarefas'}
             </p>
           </div>
         </div>
 
         {/* Badge Progresso */}
-        <div className="bg-black/20 border border-white/30 px-3 py-1.5 rounded-xl flex flex-col items-center shrink-0">
-          <span className="text-sm font-black leading-none">{progressPercent}%</span>
-          <span className="text-[10px] font-bold opacity-80 leading-none mt-0.5">{doneCount}/{items.length}</span>
+        <div className="bg-black/20 border border-white/30 px-2.5 py-1 rounded-xl flex flex-col items-center shrink-0">
+          <span className="text-xs font-black leading-none">{progressPercent}%</span>
+          <span className="text-[9px] font-bold opacity-80 leading-none mt-0.5">{doneCount}/{items.length}</span>
         </div>
       </div>
 
       {/* Barra de Progresso */}
-      <div className="w-full bg-slate-100 h-2 border-b border-slate-200">
+      <div className="w-full bg-slate-100 h-1.5 border-b border-slate-200 flex-shrink-0">
         <div 
           className="h-full transition-all duration-500"
           style={{ width: `${progressPercent}%`, backgroundColor: carpenter.color }}
         />
       </div>
 
-      {/* Lista de Tarefas do Marceneiro */}
-      <div className="p-4 space-y-4 max-h-[calc(100vh-280px)] overflow-y-auto custom-scrollbar">
+      {/* Lista de Tarefas do Marceneiro (Scroll independente por coluna) */}
+      <div className="p-3 space-y-3 flex-1 min-h-0 overflow-y-auto custom-scrollbar">
         {items.map(item => (
           <ScheduleTaskCard 
             key={`${item.id}-${carpenter.id}-${format(day, 'yyyy-MM-dd')}`} 
@@ -434,22 +434,22 @@ function ScheduleTaskCard({
   return (
     <div 
       className={cn(
-        "p-4 rounded-xl border-2 bg-white shadow-xs flex flex-col gap-3 transition-all",
+        "p-3 rounded-xl border-2 bg-white shadow-xs flex flex-col gap-2 transition-all",
         item.isDone ? "bg-emerald-50/60 border-emerald-300" : "border-slate-200 hover:border-slate-300",
         item.isDelayed && !item.isDone && "bg-red-50/60 border-red-300"
       )}
-      style={{ borderLeftWidth: '10px', borderLeftColor: borderAccent }}
+      style={{ borderLeftWidth: '8px', borderLeftColor: borderAccent }}
     >
       {/* Topo do Card: Nome do Móvel/Projeto + Status */}
-      <div className="flex justify-between items-start gap-3">
+      <div className="flex justify-between items-start gap-2">
         <div className="min-w-0 flex-1">
           <h4 className={cn(
-            "text-2xl font-black text-slate-900 tracking-tight leading-tight uppercase",
+            "text-xl font-black text-slate-900 tracking-tight leading-tight uppercase",
             item.isDone && "text-slate-600"
           )}>
             {item.title}
           </h4>
-          <p className="text-lg font-bold text-slate-700 mt-0.5">
+          <p className="text-base font-bold text-slate-700 mt-0.5">
             {item.description}
           </p>
         </div>
@@ -457,16 +457,16 @@ function ScheduleTaskCard({
         {/* Status Pill em Destaque */}
         <div className="shrink-0">
           {item.isDone ? (
-            <span className="bg-emerald-600 text-white text-xs font-black px-3 py-1.5 rounded-xl flex items-center gap-1.5 shadow-xs uppercase tracking-wider">
-              <CheckCircle2 className="h-4 w-4" /> Concluído
+            <span className="bg-emerald-600 text-white text-[11px] font-black px-2.5 py-1 rounded-lg flex items-center gap-1 shadow-xs uppercase tracking-wider">
+              <CheckCircle2 className="h-3.5 w-3.5" /> Concluído
             </span>
           ) : item.isDelayed && !item.isDone ? (
-            <span className="bg-red-600 text-white text-xs font-black px-3 py-1.5 rounded-xl flex items-center gap-1.5 animate-pulse shadow-xs uppercase tracking-wider">
-              <AlertCircle className="h-4 w-4" /> Em Atraso
+            <span className="bg-red-600 text-white text-[11px] font-black px-2.5 py-1 rounded-lg flex items-center gap-1 animate-pulse shadow-xs uppercase tracking-wider">
+              <AlertCircle className="h-3.5 w-3.5" /> Em Atraso
             </span>
           ) : (
-            <span className="bg-blue-600 text-white text-xs font-black px-3 py-1.5 rounded-xl flex items-center gap-1.5 shadow-xs uppercase tracking-wider">
-              <Clock className="h-4 w-4" /> Em Andamento
+            <span className="bg-blue-600 text-white text-[11px] font-black px-2.5 py-1 rounded-lg flex items-center gap-1 shadow-xs uppercase tracking-wider">
+              <Clock className="h-3.5 w-3.5" /> Em Andamento
             </span>
           )}
         </div>
@@ -474,30 +474,29 @@ function ScheduleTaskCard({
 
       {/* Local de Montagem se Houver */}
       {item.location && (
-        <div className="flex items-center gap-2 bg-slate-100 text-slate-800 px-3 py-1.5 rounded-lg border border-slate-200 text-sm font-bold w-fit">
-          <Truck className="h-4 w-4 text-primary shrink-0" />
+        <div className="flex items-center gap-1.5 bg-slate-100 text-slate-800 px-2.5 py-1 rounded-lg border border-slate-200 text-xs font-bold w-fit">
+          <Truck className="h-3.5 w-3.5 text-primary shrink-0" />
           <span>Local: {item.location}</span>
         </div>
       )}
 
       {/* Rodapé: Marceneiros Responsáveis com Cores */}
-      <div className="pt-3 border-t border-slate-200 flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2 flex-wrap">
-          <User className="h-4 w-4 text-slate-400 shrink-0" />
-          <span className="text-xs font-black uppercase text-slate-500 mr-1">Responsável:</span>
+      <div className="pt-2 border-t border-slate-200 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+          <User className="h-3.5 w-3.5 text-slate-400 shrink-0" />
           
           {item.responsibleDetails.length > 0 ? (
             item.responsibleDetails.map(carpenter => (
               <span 
                 key={carpenter.id}
-                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black text-white shadow-2xs"
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-black text-white shadow-2xs truncate"
                 style={{ backgroundColor: carpenter.color }}
               >
                 <span>{carpenter.name}</span>
               </span>
             ))
           ) : (
-            <span className="text-xs font-black text-slate-600 uppercase bg-slate-100 px-2.5 py-1 rounded-full border border-slate-200">
+            <span className="text-[10px] font-black text-slate-600 uppercase bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200">
               Equipa Torino
             </span>
           )}
@@ -505,7 +504,7 @@ function ScheduleTaskCard({
 
         {/* Tag Categoria */}
         <span className={cn(
-          "text-xs font-black uppercase px-2.5 py-1 rounded-lg border shrink-0 flex items-center gap-1",
+          "text-[10px] font-black uppercase px-2 py-0.5 rounded-md border shrink-0 flex items-center gap-1",
           categoryType === 'corte' && "bg-amber-50 text-amber-800 border-amber-200",
           categoryType === 'producao' && "bg-blue-50 text-blue-800 border-blue-200",
           categoryType === 'montagem' && "bg-emerald-50 text-emerald-800 border-emerald-200"
