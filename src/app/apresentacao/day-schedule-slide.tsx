@@ -190,8 +190,20 @@ export function DayScheduleSlide({
       }
     });
 
-    const prod = items.filter(i => i.category === 'producao' || i.category === 'corte');
+    const prod = items.filter(i => i.category === 'producao');
     const mont = items.filter(i => i.category === 'montagem');
+    const corte = items.filter(i => i.category === 'corte');
+
+    const CATEGORY_ORDER: Record<string, number> = {
+      producao: 1, // 1º Fábrica
+      montagem: 2, // 2º Montagem
+      corte: 3,    // 3º Corte
+    };
+
+    const getCategoryPriority = (cat?: string): number => {
+      if (!cat) return 1;
+      return CATEGORY_ORDER[cat] ?? 1;
+    };
 
     // Agrupamento por Marceneiro
     const groups = new Map<string, { carpenter: CarpenterDetail; items: ScheduleItem[] }>();
@@ -222,10 +234,22 @@ export function DayScheduleSlide({
       }
     });
 
+    // Ordenação estrita das tarefas no marceneiro: 1º Fábrica, 2º Montagem, 3º Corte
+    groups.forEach((group) => {
+      group.items.sort((a, b) => {
+        const orderA = getCategoryPriority(a.category);
+        const orderB = getCategoryPriority(b.category);
+        if (orderA !== orderB) return orderA - orderB;
+        if (a.isDone !== b.isDone) return a.isDone ? 1 : -1;
+        return 0;
+      });
+    });
+
     return {
       allItems: items,
       producao: prod,
       montagem: mont,
+      corte: corte,
       carpenterGroups: Array.from(groups.values())
     };
   }, [day, projects, appointments, memberMap, selectedCarpenterIds]);
@@ -296,9 +320,9 @@ export function DayScheduleSlide({
           )}
         </div>
       ) : (
-        /* VISÃO POR TIPO (PRODUÇÃO FÁBRICA VS MONTAGEM EXTERNO) */
+        /* VISÃO POR TIPO (ORDEM: 1º FÁBRICA, 2º MONTAGEM, 3º CORTE) */
         <div className="flex-1 flex gap-4 min-h-0 overflow-hidden">
-          {/* Coluna Produção Fábrica */}
+          {/* 1. Coluna Produção Fábrica */}
           <div className="flex-1 flex flex-col gap-3 bg-white p-4 rounded-2xl border-2 border-slate-200 shadow-sm min-w-0 h-full overflow-hidden">
             <div className="flex items-center justify-between text-blue-900 bg-blue-50/80 p-2.5 rounded-xl border border-blue-200 flex-shrink-0">
               <div className="flex items-center gap-2.5">
@@ -313,7 +337,7 @@ export function DayScheduleSlide({
             <div className="flex-1 overflow-y-auto pr-1 custom-scrollbar space-y-3 min-h-0">
               {producao.length > 0 ? (
                 producao.map(item => (
-                  <ScheduleTaskCard key={`${item.id}-${format(day, 'yyyy-MM-dd')}`} item={item} type={item.category} />
+                  <ScheduleTaskCard key={`${item.id}-${format(day, 'yyyy-MM-dd')}`} item={item} type="producao" />
                 ))
               ) : (
                 <EmptyState message="Sem produção agendada para hoje" />
@@ -321,7 +345,7 @@ export function DayScheduleSlide({
             </div>
           </div>
 
-          {/* Coluna Montagem Externa */}
+          {/* 2. Coluna Montagem Externa */}
           <div className="flex-1 flex flex-col gap-3 bg-white p-4 rounded-2xl border-2 border-slate-200 shadow-sm min-w-0 h-full overflow-hidden">
             <div className="flex items-center justify-between text-emerald-900 bg-emerald-50/80 p-2.5 rounded-xl border border-emerald-200 flex-shrink-0">
               <div className="flex items-center gap-2.5">
@@ -340,6 +364,29 @@ export function DayScheduleSlide({
                 ))
               ) : (
                 <EmptyState message="Sem montagens externas agendadas" />
+              )}
+            </div>
+          </div>
+
+          {/* 3. Coluna Plano de Corte */}
+          <div className="flex-1 flex flex-col gap-3 bg-white p-4 rounded-2xl border-2 border-slate-200 shadow-sm min-w-0 h-full overflow-hidden">
+            <div className="flex items-center justify-between text-amber-900 bg-amber-50/80 p-2.5 rounded-xl border border-amber-200 flex-shrink-0">
+              <div className="flex items-center gap-2.5">
+                <Scissors className="h-5 w-5 text-amber-600" />
+                <h3 className="text-lg font-black uppercase tracking-tight">Plano de Corte</h3>
+              </div>
+              <Badge className="bg-amber-600 text-white font-black px-2 py-0.5 text-xs">
+                {corte.length} tarefas
+              </Badge>
+            </div>
+
+            <div className="flex-1 overflow-y-auto pr-1 custom-scrollbar space-y-3 min-h-0">
+              {corte.length > 0 ? (
+                corte.map(item => (
+                  <ScheduleTaskCard key={`${item.id}-${format(day, 'yyyy-MM-dd')}`} item={item} type="corte" />
+                ))
+              ) : (
+                <EmptyState message="Sem planos de corte agendados" />
               )}
             </div>
           </div>
