@@ -3,7 +3,7 @@ import { useMemo } from 'react';
 import type { Project, Appointment, TeamMember } from '@/lib/types';
 import { format, isSameDay, parseISO, isToday, startOfDay, endOfDay, isWithinInterval, isBefore } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Hammer, Truck, Clock, CheckCircle2, User, AlertCircle } from 'lucide-react';
+import { Hammer, Truck, Clock, CheckCircle2, User, AlertCircle, Scissors } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -58,7 +58,7 @@ export interface ScheduleItem {
   responsibleDetails: CarpenterDetail[];
   isDone: boolean;
   isDelayed: boolean;
-  category?: 'producao' | 'montagem';
+  category?: 'producao' | 'corte' | 'montagem';
 }
 
 interface DayScheduleSlideProps {
@@ -112,6 +112,30 @@ export function DayScheduleSlide({
     projects.forEach(project => {
       project.environments.forEach(env => {
         env.furniture.forEach(fur => {
+          // 1. Etapa de Corte
+          const cuttingStage = fur.cutting;
+          if (cuttingStage?.scheduledFor && isSameDay(parseISO(cuttingStage.scheduledFor), day)) {
+            const isRelevant = !selectedCarpenterIds || 
+                               (cuttingStage.responsibleIds || []).some(id => selectedCarpenterIds.includes(id));
+
+            if (isRelevant) {
+              const respDetails = (cuttingStage.responsibleIds || [])
+                .map(id => memberMap.get(id))
+                .filter(Boolean) as CarpenterDetail[];
+
+              items.push({
+                id: `cut-${fur.id}`,
+                title: `${fur.name} (Corte)`,
+                description: project.clientName,
+                responsibleDetails: respDetails,
+                isDone: cuttingStage.status === 'done',
+                isDelayed: checkIfDelayed(cuttingStage.status, parseISO(cuttingStage.scheduledFor)),
+                category: 'corte'
+              });
+            }
+          }
+
+          // 2. Etapa de Produção / Pré-Montagem
           const stage = fur.assembly;
           if (stage?.scheduledFor && isSameDay(parseISO(stage.scheduledFor), day)) {
             const isRelevant = !selectedCarpenterIds || 
@@ -166,7 +190,7 @@ export function DayScheduleSlide({
       }
     });
 
-    const prod = items.filter(i => i.category === 'producao');
+    const prod = items.filter(i => i.category === 'producao' || i.category === 'corte');
     const mont = items.filter(i => i.category === 'montagem');
 
     // Agrupamento por Marceneiro
@@ -289,7 +313,7 @@ export function DayScheduleSlide({
             <div className="flex-1 overflow-y-auto pr-1 custom-scrollbar space-y-4">
               {producao.length > 0 ? (
                 producao.map(item => (
-                  <ScheduleTaskCard key={`${item.id}-${format(day, 'yyyy-MM-dd')}`} item={item} type="producao" />
+                  <ScheduleTaskCard key={`${item.id}-${format(day, 'yyyy-MM-dd')}`} item={item} type={item.category} />
                 ))
               ) : (
                 <EmptyState message="Sem produção agendada para hoje" />
@@ -377,12 +401,12 @@ function CarpenterColumnCard({ carpenter, items, day }: { carpenter: CarpenterDe
       </div>
 
       {/* Lista de Tarefas do Marceneiro */}
-      <div className="p-4 space-y-4 max-h-[650px] overflow-y-auto custom-scrollbar">
+      <div className="p-4 space-y-4 max-h-[calc(100vh-280px)] overflow-y-auto custom-scrollbar">
         {items.map(item => (
           <ScheduleTaskCard 
             key={`${item.id}-${carpenter.id}-${format(day, 'yyyy-MM-dd')}`} 
             item={item} 
-            type={item.category || 'producao'}
+            type={item.category}
             accentColor={carpenter.color}
           />
         ))}
@@ -398,12 +422,14 @@ function ScheduleTaskCard({
   accentColor
 }: { 
   item: ScheduleItem; 
-  type: 'producao' | 'montagem';
+  type?: 'producao' | 'corte' | 'montagem';
   accentColor?: string;
 }) {
-  const isProducao = type === 'producao';
+  const categoryType = type || item.category || 'producao';
   const primaryCarpenter = item.responsibleDetails[0];
-  const borderAccent = accentColor || primaryCarpenter?.color || (isProducao ? '#2563EB' : '#059669');
+  const borderAccent = accentColor || primaryCarpenter?.color || (
+    categoryType === 'corte' ? '#D97706' : categoryType === 'producao' ? '#2563EB' : '#059669'
+  );
 
   return (
     <div 
@@ -479,10 +505,12 @@ function ScheduleTaskCard({
 
         {/* Tag Categoria */}
         <span className={cn(
-          "text-xs font-black uppercase px-2.5 py-1 rounded-lg border shrink-0",
-          isProducao ? "bg-blue-50 text-blue-800 border-blue-200" : "bg-emerald-50 text-emerald-800 border-emerald-200"
+          "text-xs font-black uppercase px-2.5 py-1 rounded-lg border shrink-0 flex items-center gap-1",
+          categoryType === 'corte' && "bg-amber-50 text-amber-800 border-amber-200",
+          categoryType === 'producao' && "bg-blue-50 text-blue-800 border-blue-200",
+          categoryType === 'montagem' && "bg-emerald-50 text-emerald-800 border-emerald-200"
         )}>
-          {isProducao ? 'Fábrica' : 'Montagem'}
+          {categoryType === 'corte' ? '✂️ Plano de Corte' : categoryType === 'producao' ? '🔨 Fábrica' : '🚚 Montagem'}
         </span>
       </div>
 

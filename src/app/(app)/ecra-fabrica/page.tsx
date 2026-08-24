@@ -23,6 +23,7 @@ export default function EcrãFabricaSettingsPage() {
   const [customMessage, setCustomMessage] = useLocalStorage('factoryDisplay:customMessage', '');
   const [selectedMarceneiros, setSelectedMarceneiros] = useLocalStorage<string[]>('factoryDisplay:selectedMarceneiros', []);
   const [viewMode, setViewMode] = useLocalStorage<'marceneiro' | 'tipo'>('factoryDisplay:viewMode', 'marceneiro');
+  const [scale, setScale] = useLocalStorage<number>('factoryDisplay:scale', 1);
   const [open, setOpen] = useState(false);
 
   const marceneiros = useMemo(() => {
@@ -48,6 +49,9 @@ export default function EcrãFabricaSettingsPage() {
     }
     if (viewMode) {
       params.append('viewMode', viewMode);
+    }
+    if (scale && scale !== 1) {
+      params.append('scale', String(scale));
     }
     return `/apresentacao?${params.toString()}`;
   };
@@ -108,6 +112,36 @@ export default function EcrãFabricaSettingsPage() {
                         </span>
                       </button>
                     </div>
+                  </div>
+
+                  {/* Resolução e Escala da TV */}
+                  <div className="space-y-2">
+                    <Label className="font-bold">Resolução / Escala da TV</Label>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      {[
+                        { label: '75% (TV HD / 720p)', val: 0.75 },
+                        { label: '85% (Média)', val: 0.85 },
+                        { label: '100% (Full HD 1080p)', val: 1 },
+                        { label: '125% (TV 4K)', val: 1.25 },
+                      ].map((item) => (
+                        <button
+                          key={item.val}
+                          type="button"
+                          onClick={() => setScale(item.val)}
+                          className={cn(
+                            "py-2.5 px-3 rounded-xl border-2 text-xs font-bold transition-all text-center",
+                            scale === item.val
+                              ? "border-primary bg-primary/10 text-primary font-black shadow-xs"
+                              : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"
+                          )}
+                        >
+                          {item.label}
+                        </button>
+                      ))}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Ajuste caso o ecrã esteja cortado ou com elementos muito grandes/pequenos na TV da fábrica.
+                    </p>
                   </div>
 
                   {/* Seleção e Cores dos Marceneiros */}
@@ -226,6 +260,14 @@ export default function EcrãFabricaSettingsPage() {
                         <div>
                             <p className="font-bold">Energia e Rede</p>
                             <p className="text-muted-foreground">Configure o PC para "Nunca Suspender" e use cabo de rede (Ethernet) para evitar desconexões do Wi-Fi.</p>
+                        </div>
+                    </div>
+                    <Separator />
+                    <div className="flex gap-3">
+                        <div className="h-6 w-6 rounded-full bg-primary text-white flex items-center justify-center shrink-0 font-bold">4</div>
+                        <div>
+                            <p className="font-bold">Resolução e Atalhos do Ecrã</p>
+                            <p className="text-muted-foreground">Ajuste a escala a qualquer momento na própria TV usando os botões de zoom no topo do ecrã ou os atalhos de teclado: <code className="bg-muted px-1 rounded">+</code> (Aumentar), <code className="bg-muted px-1 rounded">-</code> (Diminuir), <code className="bg-muted px-1 rounded">0</code> (Resetar) e <code className="bg-muted px-1 rounded">F</code> (Tela Cheia).</p>
                         </div>
                     </div>
                 </CardContent>

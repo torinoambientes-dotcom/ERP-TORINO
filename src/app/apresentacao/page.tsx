@@ -12,7 +12,7 @@ import {
 import Autoplay from 'embla-carousel-autoplay';
 import { startOfWeek, addDays, format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Maximize, Users, LayoutGrid } from 'lucide-react';
+import { Maximize, Users, LayoutGrid, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -30,6 +30,41 @@ function FactoryDisplayContent() {
   }, [searchParams]);
 
   const [viewMode, setViewMode] = useState<'marceneiro' | 'tipo'>(initialViewMode);
+
+  const initialScale = useMemo(() => {
+    const param = searchParams.get('scale');
+    if (param) {
+      const val = parseFloat(param);
+      if (!isNaN(val) && val >= 0.5 && val <= 2) return val;
+    }
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('factoryDisplay:scale');
+      if (saved) {
+        const val = parseFloat(saved);
+        if (!isNaN(val) && val >= 0.5 && val <= 2) return val;
+      }
+    }
+    return 1;
+  }, [searchParams]);
+
+  const [scale, setScale] = useState<number>(initialScale);
+  const [zoomNotice, setZoomNotice] = useState<string | null>(null);
+
+  const updateScale = useCallback((newScale: number) => {
+    const clamped = Math.min(1.8, Math.max(0.6, Number(newScale.toFixed(2))));
+    setScale(clamped);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('factoryDisplay:scale', String(clamped));
+    }
+    setZoomNotice(`Escala da TV: ${Math.round(clamped * 100)}%`);
+  }, []);
+
+  useEffect(() => {
+    if (zoomNotice) {
+      const timer = setTimeout(() => setZoomNotice(null), 2500);
+      return () => clearTimeout(timer);
+    }
+  }, [zoomNotice]);
 
   const rotationTime = useMemo(() => {
     const time = searchParams.get('time');
@@ -84,6 +119,30 @@ function FactoryDisplayContent() {
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, []);
 
+  // Atalhos de teclado para controlo na TV
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (['INPUT', 'TEXTAREA', 'SELECT'].includes((e.target as HTMLElement)?.tagName)) return;
+
+      if (e.key === '+' || e.key === '=') {
+        e.preventDefault();
+        updateScale(scale + 0.05);
+      } else if (e.key === '-' || e.key === '_') {
+        e.preventDefault();
+        updateScale(scale - 0.05);
+      } else if (e.key === '0') {
+        e.preventDefault();
+        updateScale(1.0);
+      } else if (e.key.toLowerCase() === 'f') {
+        e.preventDefault();
+        toggleFullscreen();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [scale, updateScale, toggleFullscreen]);
+
   if (isLoading) {
     return (
       <div className="flex h-screen items-center justify-center bg-slate-900 text-white">
@@ -93,7 +152,12 @@ function FactoryDisplayContent() {
   }
 
   return (
-    <div className="bg-slate-100 text-slate-900 h-screen w-screen flex flex-col relative overflow-hidden select-none">
+    <div 
+      className="bg-slate-100 text-slate-900 h-screen w-screen flex flex-col relative overflow-hidden select-none"
+      style={{
+        zoom: scale !== 1 ? scale : undefined,
+      }}
+    >
         
         {/* Header Unificado da Apresentação */}
         <header className="px-6 py-3 border-b-2 border-slate-200 bg-white flex flex-wrap justify-between items-center z-10 shadow-xs flex-shrink-0 gap-4">
@@ -129,8 +193,54 @@ function FactoryDisplayContent() {
               })}
             </div>
 
-            {/* Seletor de Modo + Tela Cheia */}
+            {/* Controlo de Escala + Seletor de Modo + Tela Cheia */}
             <div className="flex items-center gap-3">
+              {/* Controlo de Escala para TV */}
+              <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => updateScale(scale - 0.05)}
+                  title="Diminuir Zoom (-)"
+                  className="p-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-200/80 transition-all"
+                >
+                  <ZoomOut className="h-4 w-4" />
+                </button>
+
+                <select
+                  value={scale.toString()}
+                  onChange={(e) => updateScale(parseFloat(e.target.value))}
+                  className="bg-transparent text-xs font-black text-slate-700 px-1 py-1 rounded cursor-pointer border-none outline-none text-center"
+                  title="Escala da Tela"
+                >
+                  <option value="0.75">75% (TV HD)</option>
+                  <option value="0.85">85% (TV Média)</option>
+                  <option value="0.9">90%</option>
+                  <option value="1">100% (Padrão)</option>
+                  <option value="1.15">115%</option>
+                  <option value="1.25">125% (TV 4K)</option>
+                </select>
+
+                <button
+                  type="button"
+                  onClick={() => updateScale(scale + 0.05)}
+                  title="Aumentar Zoom (+)"
+                  className="p-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-200/80 transition-all"
+                >
+                  <ZoomIn className="h-4 w-4" />
+                </button>
+
+                {scale !== 1 && (
+                  <button
+                    type="button"
+                    onClick={() => updateScale(1.0)}
+                    title="Resetar Escala (0)"
+                    className="p-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-200/80 transition-all ml-0.5"
+                  >
+                    <RotateCcw className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
+
               {/* Botões de Modo */}
               <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
                 <button
@@ -223,6 +333,13 @@ function FactoryDisplayContent() {
                 ))}
             </div>
         </footer>
+
+        {/* Notificação Flutuante de Zoom */}
+        {zoomNotice && (
+          <div className="fixed bottom-12 right-6 z-50 bg-slate-900/90 text-white text-xs font-black px-4 py-2 rounded-xl shadow-xl backdrop-blur-sm border border-slate-700 animate-in fade-in slide-in-from-bottom-2">
+            {zoomNotice} <span className="opacity-60 ml-2 font-normal">(Atalhos: + / - / 0 / F)</span>
+          </div>
+        )}
     </div>
   );
 }
