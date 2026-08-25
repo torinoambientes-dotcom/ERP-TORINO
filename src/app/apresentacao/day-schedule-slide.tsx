@@ -462,7 +462,7 @@ function CarpenterColumnCard({ carpenter, items, day }: { carpenter: CarpenterDe
   );
 }
 
-// Card de Tarefa Enquadrado para TVs sem estourar
+// Card de Tarefa Enquadrado para TVs sem sobreposição
 function ScheduleTaskCard({ 
   item, 
   type,
@@ -481,45 +481,49 @@ function ScheduleTaskCard({
   return (
     <div 
       className={cn(
-        "p-2.5 rounded-xl border-2 bg-white shadow-xs flex flex-col gap-1.5 transition-all overflow-hidden",
+        "p-2.5 rounded-xl border-2 bg-white shadow-xs flex flex-col gap-1.5 transition-all overflow-hidden relative",
         item.isDone ? "bg-emerald-50/60 border-emerald-300" : "border-slate-200 hover:border-slate-300",
         item.isDelayed && !item.isDone && "bg-red-50/60 border-red-300"
       )}
       style={{ borderLeftWidth: '6px', borderLeftColor: borderAccent }}
     >
-      {/* Topo do Card: Nome do Móvel/Projeto + Status */}
-      <div className="flex justify-between items-start gap-1.5">
+      {/* 1. Nome do Projeto (Cliente) + Status Pill na direita */}
+      <div className="flex justify-between items-center gap-2 border-b border-slate-100 pb-1">
         <div className="min-w-0 flex-1">
-          <h4 className={cn(
-            "text-base font-black text-slate-900 tracking-tight leading-snug uppercase truncate",
-            item.isDone && "text-slate-600"
-          )}>
-            {item.title}
-          </h4>
-          <p className="text-xs font-bold text-slate-700 truncate">
-            {item.description}
+          <p className="text-[11px] font-black text-primary uppercase tracking-tight truncate leading-tight">
+            📁 {item.description || 'Projeto Torino'}
           </p>
         </div>
 
         {/* Status Pill em Destaque */}
         <div className="shrink-0">
           {item.isDone ? (
-            <span className="bg-emerald-600 text-white text-[10px] font-black px-2 py-0.5 rounded-md flex items-center gap-1 shadow-xs uppercase tracking-wider">
+            <span className="bg-emerald-600 text-white text-[9px] font-black px-2 py-0.5 rounded-md flex items-center gap-1 shadow-2xs uppercase tracking-wider">
               <CheckCircle2 className="h-3 w-3" /> OK
             </span>
           ) : item.isDelayed && !item.isDone ? (
-            <span className="bg-red-600 text-white text-[10px] font-black px-2 py-0.5 rounded-md flex items-center gap-1 animate-pulse shadow-xs uppercase tracking-wider">
+            <span className="bg-red-600 text-white text-[9px] font-black px-2 py-0.5 rounded-md flex items-center gap-1 animate-pulse shadow-2xs uppercase tracking-wider">
               <AlertCircle className="h-3 w-3" /> Atraso
             </span>
           ) : (
-            <span className="bg-blue-600 text-white text-[10px] font-black px-2 py-0.5 rounded-md flex items-center gap-1 shadow-xs uppercase tracking-wider">
+            <span className="bg-blue-600 text-white text-[9px] font-black px-2 py-0.5 rounded-md flex items-center gap-1 shadow-2xs uppercase tracking-wider">
               <Clock className="h-3 w-3" /> Andamento
             </span>
           )}
         </div>
       </div>
 
-      {/* Local de Montagem se Houver */}
+      {/* 2. Nome do Móvel/Item (Título Principal) */}
+      <div className="min-w-0 w-full pt-0.5">
+        <h4 className={cn(
+          "text-base font-black text-slate-900 tracking-tight leading-snug uppercase truncate",
+          item.isDone && "text-slate-600"
+        )}>
+          {item.title}
+        </h4>
+      </div>
+
+      {/* 3. Local de Montagem se Houver */}
       {item.location && (
         <div className="flex items-center gap-1 bg-slate-100 text-slate-800 px-2 py-0.5 rounded-md border border-slate-200 text-[10px] font-bold w-fit truncate">
           <Truck className="h-3 w-3 text-primary shrink-0" />
@@ -527,8 +531,8 @@ function ScheduleTaskCard({
         </div>
       )}
 
-      {/* Rodapé: Marceneiros Responsáveis com Cores */}
-      <div className="pt-1.5 border-t border-slate-200 flex items-center justify-between gap-1.5">
+      {/* 4. Rodapé: Marceneiros Responsáveis com Cores + Categoria */}
+      <div className="pt-1.5 border-t border-slate-100 flex items-center justify-between gap-1.5">
         <div className="flex items-center gap-1 flex-wrap min-w-0">
           <User className="h-3 w-3 text-slate-400 shrink-0" />
           
