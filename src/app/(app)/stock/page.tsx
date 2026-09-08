@@ -17,7 +17,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { AppContext } from '@/context/app-context';
 import { PageHeader } from '@/components/layout/page-header';
-import { PlusCircle, Edit, Trash2, ArrowRightLeft, History, AlertTriangle, ListOrdered, ShieldAlert, CheckCircle, PackageCheck, SendToBack, ChevronsUpDown, PackagePlus, XCircle } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, ArrowRightLeft, History, AlertTriangle, ListOrdered, ShieldAlert, CheckCircle, PackageCheck, SendToBack, ChevronsUpDown, PackagePlus, XCircle, Boxes } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -416,7 +416,17 @@ export default function StockPage() {
             title="Controle de Estoque"
             description="Gerencie os materiais da sua marcenaria."
           />
-          <div className="flex gap-2 w-full sm:w-auto">
+          <div className="flex gap-2 w-full sm:w-auto flex-wrap sm:flex-nowrap">
+            <Button
+              asChild
+              variant="outline"
+              className="flex-1 sm:flex-initial border-emerald-500/50 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700 dark:text-emerald-400 dark:hover:bg-emerald-950/50 font-bold"
+            >
+              <Link href="/apresentacao-almoxarifado">
+                <Boxes className="mr-2 h-4 w-4" />
+                Monitor Almoxarifado 📺
+              </Link>
+            </Button>
             <Button
               onClick={() => setCategoryModalOpen(true)}
               variant="outline"

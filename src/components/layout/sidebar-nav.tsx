@@ -47,6 +47,7 @@ const menuItems = [
   { href: '/cutting-order', label: 'Ordem de Corte', icon: Scissors, adminOnly: false },
   { href: '/purchases', label: 'Compras', icon: ShoppingCart, adminOnly: false, restrictedRoles: ['Projetista'] },
   { href: '/stock', label: 'Estoque', icon: Boxes, adminOnly: false, restrictedRoles: ['Projetista'] },
+  { href: '/apresentacao-almoxarifado', label: 'Monitor Almoxarifado', icon: Boxes, adminOnly: false, restrictedRoles: ['Projetista'] },
   { href: '/ecra-fabrica', label: 'Ecrã Fábrica', icon: MonitorPlay, adminOnly: false, restrictedRoles: ['Projetista'] },
   { href: '/reports', label: 'Relatórios', icon: BarChart3, adminOnly: false, restrictedRoles: ['Projetista'] },
   { href: '/team', label: 'Equipe', icon: Users, adminOnly: true },
