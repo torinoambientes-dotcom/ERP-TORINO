@@ -19,6 +19,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
+import { ProfileDoorCreatorModal } from '@/components/modals/profile-door-creator-modal';
 
 interface LowStockInfo extends StockItem {
   demand?: number;
@@ -43,6 +44,7 @@ export default function DashboardPage() {
   const { toast } = useToast();
   
   const [isClient, setIsClient] = useState(false);
+  const [isProfileDoorCreatorOpen, setIsProfileDoorCreatorOpen] = useState(false);
   
   useEffect(() => {
     setIsClient(true);
@@ -393,18 +395,30 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex items-center gap-4">
-        <Avatar className="h-16 w-16">
-          {loggedInMember.avatarUrl && <AvatarImage src={loggedInMember.avatarUrl} alt={loggedInMember.name} />}
-          <AvatarFallback style={{ backgroundColor: loggedInMember.color }} className="text-2xl">
-            {getInitials(loggedInMember.name)}
-          </AvatarFallback>
-        </Avatar>
-        <div>
-            <PageHeader
-                title={`${getGreeting()}, ${loggedInMember.name.split(' ')[0]}!`}
-                description="Bem-vindo(a) ao seu painel. Aqui estão as suas tarefas para hoje e as pendentes."
-            />
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <Avatar className="h-16 w-16">
+            {loggedInMember.avatarUrl && <AvatarImage src={loggedInMember.avatarUrl} alt={loggedInMember.name} />}
+            <AvatarFallback style={{ backgroundColor: loggedInMember.color }} className="text-2xl">
+              {getInitials(loggedInMember.name)}
+            </AvatarFallback>
+          </Avatar>
+          <div>
+              <PageHeader
+                  title={`${getGreeting()}, ${loggedInMember.name.split(' ')[0]}!`}
+                  description="Bem-vindo(a) ao seu painel. Aqui estão as suas tarefas para hoje e as pendentes."
+              />
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            onClick={() => setIsProfileDoorCreatorOpen(true)}
+            variant="outline"
+            className="gap-2 border-primary/40 hover:border-primary hover:bg-primary/5 shadow-xs font-semibold"
+          >
+            <DoorOpen className="h-4 w-4 text-primary" />
+            Criador de Portas de Perfil
+          </Button>
         </div>
       </div>
       
@@ -709,6 +723,19 @@ export default function DashboardPage() {
             </Card>
         </div>
       </div>
+
+      <ProfileDoorCreatorModal
+        isOpen={isProfileDoorCreatorOpen}
+        onClose={() => setIsProfileDoorCreatorOpen(false)}
+        onSave={(door) => {
+          toast({
+            title: "Porta configurada!",
+            description: `Porta de perfil ${door.width}x${door.height}mm configurada com sucesso.`,
+          });
+        }}
+        clientName="Torino Ambientes"
+        environmentName="Showroom / Projeto"
+      />
     </div>
   );
 }

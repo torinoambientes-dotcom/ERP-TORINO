@@ -92,7 +92,8 @@ export interface GlassItem {
 }
 
 export interface DoorSetConfiguration {
-  handlePosition: 'left' | 'right' | 'both' | 'none';
+  handlePosition: 'left' | 'right' | 'both' | 'none' | 'top' | 'bottom';
+  hingeSide?: 'left' | 'right' | 'none';
 }
 
 export interface ProfileDoorItem {
@@ -111,12 +112,18 @@ export interface ProfileDoorItem {
   handlePosition?: 'top' | 'bottom' | 'left' | 'right';
   handleWidth?: number;
   handleOffset?: number;
+  handleOffsetFrom?: 'bottom' | 'top';
   purchased?: boolean;
   addedAt?: string; // ISO date string
   doorSet?: {
     count: number;
     doors: DoorSetConfiguration[];
   };
+  profileModel?: string;
+  profileWidthMM?: number;
+  glassDiscountMM?: number;
+  clientName?: string;
+  environmentName?: string;
 }
 
 export interface Furniture {
@@ -237,6 +244,7 @@ export interface PurchaseRequest {
     notes?: string;
     projectId?: string;
     projectName?: string;
+    profileDoorConfig?: ProfileDoorItem;
 }
 
 export type QuoteStatus = 'draft' | 'sent' | 'approved' | 'rejected';

@@ -3,7 +3,7 @@
 import { useState, useContext, useMemo } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BarChart3, LayoutGrid, PlusCircle, Users, Boxes, LogOut, ShoppingCart, User, X, Calendar, Home, FileText, Recycle, MonitorPlay, CalendarRange, Scissors, Wallet } from 'lucide-react';
+import { BarChart3, LayoutGrid, PlusCircle, Users, Boxes, LogOut, ShoppingCart, User, X, Calendar, Home, FileText, Recycle, MonitorPlay, CalendarRange, Scissors, Wallet, DoorOpen } from 'lucide-react';
 import {
   SidebarHeader,
   SidebarContent,
@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/sidebar';
 import { Logo } from '@/components/logo';
 import { RegisterProjectModal } from '../modals/register-project-modal';
+import { ProfileDoorCreatorModal } from '../modals/profile-door-creator-modal';
 import { Button } from '../ui/button';
 import { useAuth, useUser } from '@/firebase';
 import { signOut } from 'firebase/auth';
@@ -67,6 +68,7 @@ const defaultColors = [
 export function SidebarNav() {
   const pathname = usePathname();
   const [isProjectModalOpen, setProjectModalOpen] = useState(false);
+  const [isProfileDoorCreatorOpen, setIsProfileDoorCreatorOpen] = useState(false);
   const auth = useAuth();
   const router = useRouter();
   const { user } = useUser();
@@ -288,21 +290,32 @@ export function SidebarNav() {
                 </PopoverContent>
               </Popover>
             )}
+            <Button
+             onClick={() => setIsProfileDoorCreatorOpen(true)}
+             variant="outline"
+             className="w-full justify-start [&>span]:flex-1 border-primary/40 hover:border-primary hover:bg-primary/5 text-sidebar-foreground shadow-xs font-semibold group-data-[collapsible=icon]:p-0 group-data-[collapsible=icon]:justify-center"
+             title="Criador de Portas de Perfil"
+           >
+             <DoorOpen className="h-5 w-5 text-primary" />
+             <span className="text-base text-center group-data-[collapsible=icon]:hidden">Criador de Portas</span>
+           </Button>
            <Button
             onClick={() => setProjectModalOpen(true)}
             variant="default"
-            className="w-full justify-start [&>span]:flex-1"
+            className="w-full justify-start [&>span]:flex-1 group-data-[collapsible=icon]:p-0 group-data-[collapsible=icon]:justify-center"
+            title="Novo Projeto"
           >
             <PlusCircle className="h-5 w-5" />
-            <span className="text-base text-center">Novo Projeto</span>
+            <span className="text-base text-center group-data-[collapsible=icon]:hidden">Novo Projeto</span>
           </Button>
            <Button
             onClick={handleLogout}
             variant="outline"
-            className="w-full justify-start [&>span]:flex-1"
+            className="w-full justify-start [&>span]:flex-1 group-data-[collapsible=icon]:p-0 group-data-[collapsible=icon]:justify-center"
+            title="Sair"
           >
             <LogOut className="h-5 w-5" />
-            <span className="text-base text-center">Sair</span>
+            <span className="text-base text-center group-data-[collapsible=icon]:hidden">Sair</span>
           </Button>
          </div>
       </SidebarFooter>
@@ -310,6 +323,19 @@ export function SidebarNav() {
       <RegisterProjectModal
         isOpen={isProjectModalOpen}
         onClose={() => setProjectModalOpen(false)}
+      />
+
+      <ProfileDoorCreatorModal
+        isOpen={isProfileDoorCreatorOpen}
+        onClose={() => setIsProfileDoorCreatorOpen(false)}
+        onSave={(door) => {
+          toast({
+            title: "Porta configurada!",
+            description: `Porta de perfil ${door.width}x${door.height}mm configurada com sucesso.`,
+          });
+        }}
+        clientName="Torino Ambientes"
+        environmentName="Showroom / Projeto"
       />
     </>
   );

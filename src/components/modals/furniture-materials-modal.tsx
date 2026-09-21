@@ -97,16 +97,26 @@ const profileDoorSchema = z.object({
     width: z.coerce.number().min(1, "Largura é obrigatória."),
     height: z.coerce.number().min(1, "Altura é obrigatória."),
     hinges: z.array(z.object({ position: z.number() })).optional(),
+    hingeSide: z.enum(['left', 'right']).optional(),
     isPair: z.boolean().optional(),
     handlePosition: z.enum(['top', 'bottom', 'left', 'right']).optional(),
     handleWidth: z.coerce.number().optional(),
     handleOffset: z.coerce.number().optional(),
+    handleOffsetFrom: z.enum(['bottom', 'top']).optional(),
     addedAt: z.string().optional(),
     purchased: z.boolean().optional(),
     doorSet: z.object({
         count: z.number(),
-        doors: z.array(z.object({ handlePosition: z.enum(['left', 'right', 'both', 'none']) }))
-    }).optional()
+        doors: z.array(z.object({
+            handlePosition: z.enum(['left', 'right', 'both', 'none', 'top', 'bottom']),
+            hingeSide: z.enum(['left', 'right', 'none']).optional(),
+        }))
+    }).optional(),
+    profileModel: z.string().optional(),
+    profileWidthMM: z.coerce.number().optional(),
+    glassDiscountMM: z.coerce.number().optional(),
+    clientName: z.string().optional(),
+    environmentName: z.string().optional(),
 });
 
 const formSchema = z.object({
@@ -632,6 +642,7 @@ export function FurnitureMaterialsModal({
             onClose={handleCloseDoorEditor}
             onSave={handleSaveProfileDoor}
             clientName={clientName}
+            environmentName={furniture.name}
             doorToEdit={doorToEdit}
             viewOnly={doorToEdit?.purchased || isOriginalItem(doorToEdit?.addedAt)}
         />

@@ -46,6 +46,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { ViewProfileDoorModal } from '@/components/modals/view-profile-door-modal';
+import { PurchaseDoorViewerModal } from '@/components/modals/purchase-door-viewer-modal';
 import { Separator } from '@/components/ui/separator';
 import Link from 'next/link';
 
@@ -170,6 +171,9 @@ export default function PurchasesPage() {
   
   const [isDeleteRequestAlertOpen, setDeleteRequestAlertOpen] = useState(false);
   const [requestToDelete, setRequestToDelete] = useState<PurchaseRequest | null>(null);
+
+  const [isPurchaseDoorViewerOpen, setIsPurchaseDoorViewerOpen] = useState(false);
+  const [requestForDoorViewer, setRequestForDoorViewer] = useState<PurchaseRequest | null>(null);
 
   const [requestSearchTerm, setRequestSearchTerm] = useState('');
   const [showRequestHistory, setShowRequestHistory] = useState(false);
@@ -639,6 +643,18 @@ export default function PurchasesPage() {
         }
     }
 
+  const handleOpenPurchaseDoorViewer = (req: PurchaseRequest) => {
+    setRequestForDoorViewer(req);
+    setIsPurchaseDoorViewerOpen(true);
+  };
+
+  const isProfileDoorRequest = (req: PurchaseRequest) =>
+    Boolean(req.profileDoorConfig) ||
+    /porta/i.test(req.description) ||
+    /perfil/i.test(req.description) ||
+    /porta/i.test(req.reason || '') ||
+    /perfil/i.test(req.reason || '');
+
   const RenderPurchaseRequestList = ({ title, requests, colorClass }: { title: string, requests: PurchaseRequest[], colorClass: string }) => {
     if (requests.length === 0) return null;
     
@@ -669,7 +685,20 @@ export default function PurchasesPage() {
                   )}
                 </div>
                 
-                <div className="flex-shrink-0 self-start flex items-center gap-1">
+                <div className="flex-shrink-0 self-start flex items-center gap-2">
+                  {isProfileDoorRequest(req) && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="bg-primary/10 hover:bg-primary/20 text-primary border-primary/30 flex items-center gap-1.5 shadow-sm"
+                      onClick={() => handleOpenPurchaseDoorViewer(req)}
+                      title="Abrir visualização técnica da porta para print ou fornecedor"
+                    >
+                      <Eye className="h-4 w-4" />
+                      <span className="hidden sm:inline font-medium">Visualizador</span>
+                    </Button>
+                  )}
+
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="outline" size="sm" className="bg-background/80 flex gap-2">
@@ -678,6 +707,19 @@ export default function PurchasesPage() {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align='end'>
+                      {isProfileDoorRequest(req) && (
+                        <>
+                          <DropdownMenuItem
+                            onClick={() => handleOpenPurchaseDoorViewer(req)}
+                            className="text-primary font-medium focus:text-primary cursor-pointer"
+                          >
+                            <Eye className="mr-2 h-4 w-4 text-primary" />
+                            Abrir Visualizador
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                        </>
+                      )}
+
                       {req.status !== 'approved' && req.status !== 'purchased' && <DropdownMenuItem onClick={() => updatePurchaseRequestStatus(req.id, 'approved')}>Aprovar</DropdownMenuItem>}
                       {req.status !== 'purchased' && <DropdownMenuItem onClick={() => updatePurchaseRequestStatus(req.id, 'purchased')}>Marcar como Comprado</DropdownMenuItem>}
                       {req.status !== 'rejected' && <DropdownMenuItem onClick={() => updatePurchaseRequestStatus(req.id, 'rejected')}>Rejeitar</DropdownMenuItem>}
@@ -1156,6 +1198,11 @@ export default function PurchasesPage() {
             door={doorToView}
         />
     )}
+    <PurchaseDoorViewerModal
+      isOpen={isPurchaseDoorViewerOpen}
+      onClose={() => setIsPurchaseDoorViewerOpen(false)}
+      request={requestForDoorViewer}
+    />
      {isGlassViewerOpen && (
         <GlassCreatorModal
             isOpen={isGlassViewerOpen}
