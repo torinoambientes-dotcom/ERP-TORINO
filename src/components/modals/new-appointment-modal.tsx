@@ -26,7 +26,7 @@ import { Input } from '@/components/ui/input';
 import { AppContext } from '@/context/app-context';
 import { useToast } from '@/hooks/use-toast';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
-import { CalendarIcon, MapPin, Scissors, Hammer, Truck } from 'lucide-react';
+import { CalendarIcon, MapPin, Scissors, Hammer, Truck, FolderKanban } from 'lucide-react';
 import { Calendar } from '../ui/calendar';
 import { format, set, isBefore, startOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -56,7 +56,7 @@ const appointmentSchema = z.object({
   timeType: z.enum(['all_day', 'morning', 'afternoon', 'specific']),
   startTime: z.string().optional(),
   endTime: z.string().optional(),
-  category: z.enum(['generic', 'montagem', 'corte', 'producao']).default('generic'),
+  category: z.enum(['generic', 'montagem', 'corte', 'producao', 'projetos_corte']).default('generic'),
 }).refine(data => {
     if (data.timeType === 'specific') {
         return !!data.startTime && !!data.endTime;
@@ -79,11 +79,11 @@ interface NewAppointmentModalProps {
   onClose: () => void;
   selectedDate?: Date;
   onDateConsumed?: () => void;
-  defaultCategory?: 'generic' | 'montagem' | 'corte' | 'producao';
+  defaultCategory?: 'generic' | 'montagem' | 'corte' | 'producao' | 'projetos_corte';
 }
 
 export function NewAppointmentModal({ isOpen, onClose, selectedDate, onDateConsumed, defaultCategory = 'generic' }: NewAppointmentModalProps) {
-  const { teamMembers, addAppointment } = useContext(AppContext);
+  const { teamMembers, projects, addAppointment } = useContext(AppContext);
   const { toast } = useToast();
 
   const form = useForm<AppointmentFormValues>({
@@ -174,15 +174,17 @@ export function NewAppointmentModal({ isOpen, onClose, selectedDate, onDateConsu
 
   const getCategoryIcon = (cat: string) => {
     switch (cat) {
-      case 'corte': return <Scissors className="h-4 w-4 mr-2" />;
-      case 'producao': return <Hammer className="h-4 w-4 mr-2" />;
-      case 'montagem': return <Truck className="h-4 w-4 mr-2" />;
+      case 'projetos_corte': return <FolderKanban className="h-4 w-4 mr-2 text-purple-600" />;
+      case 'corte': return <Scissors className="h-4 w-4 mr-2 text-orange-600" />;
+      case 'producao': return <Hammer className="h-4 w-4 mr-2 text-blue-600" />;
+      case 'montagem': return <Truck className="h-4 w-4 mr-2 text-green-600" />;
       default: return null;
     }
   };
 
   const getTitleLabel = () => {
     switch (selectedCategory) {
+      case 'projetos_corte': return 'Projeto / Cliente (Plano de Corte - Escritório)';
       case 'corte': return 'Projeto / Cliente para Corte';
       case 'producao': return 'Projeto / Móvel em Produção';
       case 'montagem': return 'Projeto / Cliente para Montagem';
@@ -198,8 +200,9 @@ export function NewAppointmentModal({ isOpen, onClose, selectedDate, onDateConsu
             {getCategoryIcon(selectedCategory)}
             Novo Agendamento: {
               selectedCategory === 'montagem' ? 'Montagem' : 
-              selectedCategory === 'corte' ? 'Plano de Corte' : 
-              selectedCategory === 'producao' ? 'Produção' : 'Compromisso'
+              selectedCategory === 'corte' ? 'Plano de Corte (Fábrica)' : 
+              selectedCategory === 'producao' ? 'Produção Fábrica' : 
+              selectedCategory === 'projetos_corte' ? 'Projetos Plano de corte (Escritório)' : 'Compromisso'
             }
           </DialogTitle>
           <DialogDescription>
@@ -215,7 +218,18 @@ export function NewAppointmentModal({ isOpen, onClose, selectedDate, onDateConsu
                 <FormItem>
                   <FormLabel>{getTitleLabel()}</FormLabel>
                   <FormControl>
-                    <Input placeholder="Ex: Projeto Residencial X" {...field} />
+                    <div className="relative">
+                      <Input 
+                        list="project-names-appointment-datalist" 
+                        placeholder={selectedCategory === 'projetos_corte' ? "Ex: Projeto Apt 101 - Otimização Promob" : "Ex: Projeto Residencial X"} 
+                        {...field} 
+                      />
+                      <datalist id="project-names-appointment-datalist">
+                        {(projects || []).map(p => (
+                          <option key={p.id} value={p.clientName} />
+                        ))}
+                      </datalist>
+                    </div>
                   </FormControl>
                   <FormMessage />
                 </FormItem>

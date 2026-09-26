@@ -25,7 +25,7 @@ import { Input } from '@/components/ui/input';
 import { AppContext } from '@/context/app-context';
 import { useToast } from '@/hooks/use-toast';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
-import { CalendarIcon, MapPin, Scissors, Hammer, Truck, Pencil } from 'lucide-react';
+import { CalendarIcon, MapPin, Scissors, Hammer, Truck, Pencil, FolderKanban } from 'lucide-react';
 import { Calendar } from '../ui/calendar';
 import { format, parseISO, isBefore, startOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -46,7 +46,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 
 export interface WeeklyItemToEdit {
   id: string;
-  type: 'corte' | 'producao' | 'montagem';
+  type: 'corte' | 'producao' | 'montagem' | 'projetos_corte';
   title: string;
   description?: string;
   location?: string;
@@ -69,7 +69,7 @@ const editSchema = z.object({
   startDate: z.date({ required_error: 'Data inicial é obrigatória.' }),
   endDate: z.date({ required_error: 'Data final é obrigatória.' }),
   memberIds: z.array(z.string()),
-  category: z.enum(['montagem', 'corte', 'producao']),
+  category: z.enum(['montagem', 'corte', 'producao', 'projetos_corte']),
   status: z.enum(['todo', 'in_progress', 'done', 'delayed']),
   priority: z.enum(['low', 'medium', 'high']).optional(),
 }).refine(data => {
@@ -186,6 +186,7 @@ export function EditWeeklyItemModal({ isOpen, onClose, item }: EditWeeklyItemMod
 
   const getCategoryIcon = (cat: string) => {
     switch (cat) {
+      case 'projetos_corte': return <FolderKanban className="h-4 w-4 mr-2 text-purple-600" />;
       case 'corte': return <Scissors className="h-4 w-4 mr-2 text-orange-600" />;
       case 'producao': return <Hammer className="h-4 w-4 mr-2 text-blue-600" />;
       case 'montagem': return <Truck className="h-4 w-4 mr-2 text-green-600" />;
@@ -194,13 +195,14 @@ export function EditWeeklyItemModal({ isOpen, onClose, item }: EditWeeklyItemMod
   };
 
   const selectedMemberIds = form.watch('memberIds') || [];
+  const currentFormCategory = form.watch('category');
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle className="font-headline flex items-center">
-            {getCategoryIcon(item.type)}
+            {getCategoryIcon(currentFormCategory || item.type)}
             Editar Programação
           </DialogTitle>
           <DialogDescription>
@@ -229,7 +231,33 @@ export function EditWeeklyItemModal({ isOpen, onClose, item }: EditWeeklyItemMod
               )}
             />
 
-            {isManual && item.type === 'montagem' && (
+            {isManual && (
+              <FormField
+                control={form.control}
+                name="category"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Processo / Categoria</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="projetos_corte">Projetos Plano de corte (Escritório)</SelectItem>
+                        <SelectItem value="corte">Cortes</SelectItem>
+                        <SelectItem value="producao">Produção Fábrica</SelectItem>
+                        <SelectItem value="montagem">Montagem Externo</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+
+            {isManual && currentFormCategory === 'montagem' && (
               <FormField
                 control={form.control}
                 name="location"

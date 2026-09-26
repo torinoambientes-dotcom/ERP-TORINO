@@ -163,7 +163,7 @@ export interface Appointment {
   start: string; // ISO string
   end: string;   // ISO string
   memberIds: string[];
-  category?: 'generic' | 'montagem' | 'corte' | 'producao';
+  category?: 'generic' | 'montagem' | 'corte' | 'producao' | 'projetos_corte';
   status?: 'todo' | 'done' | 'delayed';
 }
 

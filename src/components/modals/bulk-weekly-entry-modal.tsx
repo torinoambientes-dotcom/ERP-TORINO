@@ -47,7 +47,7 @@ import { ScrollArea } from '../ui/scroll-area';
 
 const singleEntrySchema = z.object({
   title: z.string().min(2, 'Título obrigatório.'),
-  category: z.enum(['montagem', 'corte', 'producao']),
+  category: z.enum(['montagem', 'corte', 'producao', 'projetos_corte']),
   startDate: z.date({ required_error: 'Início obrigatório.' }),
   endDate: z.date({ required_error: 'Fim obrigatório.' }),
   memberIds: z.array(z.string()).min(1, 'Selecione ao menos um.'),
@@ -72,7 +72,7 @@ interface BulkWeeklyEntryModalProps {
 }
 
 export function BulkWeeklyEntryModal({ isOpen, onClose, initialDate }: BulkWeeklyEntryModalProps) {
-  const { teamMembers, addAppointments } = useContext(AppContext);
+  const { teamMembers, projects, addAppointments } = useContext(AppContext);
   const { toast } = useToast();
 
   const form = useForm<BulkFormValues>({
@@ -164,9 +164,10 @@ export function BulkWeeklyEntryModal({ isOpen, onClose, initialDate }: BulkWeekl
                             <Select onValueChange={field.onChange} value={field.value}>
                               <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
                               <SelectContent>
-                                <SelectItem value="corte">Corte</SelectItem>
-                                <SelectItem value="producao">Produção</SelectItem>
-                                <SelectItem value="montagem">Montagem</SelectItem>
+                                <SelectItem value="projetos_corte">Projetos Plano de corte (Escritório)</SelectItem>
+                                <SelectItem value="corte">Cortes</SelectItem>
+                                <SelectItem value="producao">Produção Fábrica</SelectItem>
+                                <SelectItem value="montagem">Montagem Externo</SelectItem>
                               </SelectContent>
                             </Select>
                             <FormMessage />
@@ -180,7 +181,16 @@ export function BulkWeeklyEntryModal({ isOpen, onClose, initialDate }: BulkWeekl
                         render={({ field }) => (
                           <FormItem className="lg:col-span-1">
                             <FormLabel>Projeto / Cliente</FormLabel>
-                            <FormControl><Input placeholder="Ex: Torino Cozinha" {...field} /></FormControl>
+                            <FormControl>
+                              <>
+                                <Input list="bulk-project-suggestions" placeholder="Ex: Torino Cozinha" {...field} />
+                                <datalist id="bulk-project-suggestions">
+                                  {(projects || []).map(p => (
+                                    <option key={p.id} value={p.clientName} />
+                                  ))}
+                                </datalist>
+                              </>
+                            </FormControl>
                             <FormMessage />
                           </FormItem>
                         )}

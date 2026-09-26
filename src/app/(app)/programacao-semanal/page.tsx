@@ -25,7 +25,7 @@ import {
 } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import type { TeamMember, Priority, Appointment, StageStatus } from '@/lib/types';
-import { Scissors, Hammer, Truck, PlusCircle, MapPin, CheckCircle2, Trash2, AlertCircle, Clock, ChevronLeft, ChevronRight, CalendarDays, Zap, CalendarPlus, Pencil } from 'lucide-react';
+import { Scissors, Hammer, Truck, PlusCircle, MapPin, CheckCircle2, Trash2, AlertCircle, Clock, ChevronLeft, ChevronRight, CalendarDays, Zap, CalendarPlus, Pencil, FolderKanban } from 'lucide-react';
 import { NewAppointmentModal } from '@/components/modals/new-appointment-modal';
 import { BulkWeeklyEntryModal } from '@/components/modals/bulk-weekly-entry-modal';
 import { EditWeeklyItemModal, type WeeklyItemToEdit } from '@/components/modals/edit-weekly-item-modal';
@@ -36,7 +36,7 @@ import { useToast } from '@/hooks/use-toast';
 
 interface WeeklyItem {
   id: string;
-  type: 'corte' | 'producao' | 'montagem';
+  type: 'corte' | 'producao' | 'montagem' | 'projetos_corte';
   title: string;
   description?: string;
   location?: string;
@@ -59,7 +59,7 @@ export default function WeeklySchedulePage() {
   const [isAptModalOpen, setAptModalOpen] = useState(false);
   const [isBulkModalOpen, setBulkModalOpen] = useState(false);
   const [selectedDayForAdd, setSelectedDayForAdd] = useState<Date | undefined>(undefined);
-  const [selectedCategoryForAdd, setSelectedCategoryForAdd] = useState<'montagem' | 'corte' | 'producao'>('montagem');
+  const [selectedCategoryForAdd, setSelectedCategoryForAdd] = useState<'montagem' | 'corte' | 'producao' | 'projetos_corte'>('montagem');
   
   const [isEditModalOpen, setEditModalOpen] = useState(false);
   const [itemToEdit, setItemToEdit] = useState<WeeklyItemToEdit | null>(null);
@@ -168,7 +168,7 @@ export default function WeeklySchedulePage() {
           const end = endOfDay(parseISO(apt.end));
           
           if (isWithinInterval(day, { start, end })) {
-            if (apt.category === 'montagem' || apt.category === 'corte' || apt.category === 'producao') {
+            if (apt.category === 'montagem' || apt.category === 'corte' || apt.category === 'producao' || apt.category === 'projetos_corte') {
               data[dayKey].push({
                 id: apt.id,
                 type: apt.category as any,
@@ -191,7 +191,7 @@ export default function WeeklySchedulePage() {
     return data;
   }, [projects, appointments, isLoading, memberMap, daysOfWeek]);
 
-  const handleQuickAdd = (day: Date, category: 'montagem' | 'corte' | 'producao') => {
+  const handleQuickAdd = (day: Date, category: 'montagem' | 'corte' | 'producao' | 'projetos_corte') => {
     setSelectedDayForAdd(day);
     setSelectedCategoryForAdd(category);
     setAptModalOpen(true);
@@ -338,6 +338,7 @@ export default function WeeklySchedulePage() {
             const dayItems = weeklyData[dayKey] || [];
             const activeToday = isToday(day);
 
+            const projetosCorte = dayItems.filter(i => i.type === 'projetos_corte');
             const cortes = dayItems.filter(i => i.type === 'corte');
             const producao = dayItems.filter(i => i.type === 'producao');
             const montagem = dayItems.filter(i => i.type === 'montagem');
@@ -363,7 +364,34 @@ export default function WeeklySchedulePage() {
                 </CardHeader>
                 
                 <CardContent className="p-0">
-                  <div className="grid grid-cols-1 lg:grid-cols-3 divide-y lg:divide-y-0 lg:divide-x border-t">
+                  <div className="grid grid-cols-1 lg:grid-cols-4 divide-y lg:divide-y-0 lg:divide-x border-t">
+                    
+                    {/* PROJETOS PLANO DE CORTE SECTION (Escritório Interno) */}
+                    <div className="p-4 space-y-4 bg-purple-50/10">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-bold flex items-center gap-2 text-purple-700">
+                            <FolderKanban className="h-4 w-4" /> Projetos Plano de corte
+                          </h3>
+                          <Badge variant="outline" className="text-[10px] font-semibold py-0 px-1.5 text-purple-700 border-purple-200 bg-purple-50">
+                            Escritório
+                          </Badge>
+                        </div>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-purple-700 hover:bg-purple-100" onClick={() => handleQuickAdd(day, 'projetos_corte')}>
+                              <PlusCircle className="h-5 w-5" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Novo agendamento de plano de corte</TooltipContent>
+                        </Tooltip>
+                      </div>
+                      <div className="space-y-3">
+                        {projetosCorte.length > 0 ? projetosCorte.map(item => (
+                          <WeeklyItemCard key={`${item.id}-${dayKey}`} item={item} onToggleComplete={handleToggleComplete} onEdit={handleEditItem} onRemove={handleRemove} onMarkDelayed={handleMarkDelayed} onExtend={handleExtendDeadline} />
+                        )) : <EmptySection message="Nenhum plano de corte em projeto." />}
+                      </div>
+                    </div>
                     
                     {/* CORTES SECTION */}
                     <div className="p-4 space-y-4">
@@ -468,7 +496,8 @@ function WeeklyItemCard({
     <div className={cn(
       "group bg-muted/30 p-3 rounded-lg border text-sm transition-all hover:shadow-sm",
       isDone && "bg-green-50/50 border-green-100 opacity-80",
-      isDelayed && "bg-red-50/50 border-red-100"
+      isDelayed && "bg-red-50/50 border-red-100",
+      item.type === 'projetos_corte' && !isDone && !isDelayed && "bg-purple-50/30 border-purple-200/80"
     )}>
       <div className="flex justify-between items-start gap-2">
         <div className="flex-grow min-w-0">

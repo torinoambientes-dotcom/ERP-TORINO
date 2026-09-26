@@ -106,7 +106,7 @@ export function DayScheduleSlide({
   };
 
   // Coleta de itens do dia
-  const { allItems, producao, montagem, carpenterGroups } = useMemo(() => {
+  const { allItems, producao, montagem, corte, carpenterGroups } = useMemo(() => {
     const items: ScheduleItem[] = [];
 
     projects.forEach(project => {
@@ -162,6 +162,9 @@ export function DayScheduleSlide({
     });
 
     appointments.forEach(apt => {
+      // Processo interno do escritório de projetos: NÃO deve aparecer no ecrã da fábrica
+      if (apt.category === 'projetos_corte' || apt.category === 'generic') return;
+
       if (apt.start && apt.end) {
         const start = startOfDay(parseISO(apt.start));
         const end = endOfDay(parseISO(apt.end));
