@@ -27,7 +27,7 @@ import { AppContext } from '@/context/app-context';
 import { useToast } from '@/hooks/use-toast';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { CalendarIcon, PlusCircle, Trash2 } from 'lucide-react';
-import { Calendar } from '../ui/calendar';
+import { DateField } from '../ui/date-field';
 import { format, set, isBefore, startOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn, getInitials } from '@/lib/utils';
@@ -202,19 +202,9 @@ export function BulkWeeklyEntryModal({ isOpen, onClose, initialDate }: BulkWeekl
                         render={({ field }) => (
                           <FormItem className="flex flex-col">
                             <FormLabel>Início</FormLabel>
-                            <Popover>
-                              <PopoverTrigger asChild>
-                                <FormControl>
-                                  <Button variant="outline" className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
-                                    {field.value ? format(field.value, "dd/MM/yy") : "Início"}
-                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                  </Button>
-                                </FormControl>
-                              </PopoverTrigger>
-                              <PopoverContent className="w-auto p-0" align="start">
-                                <Calendar mode="single" selected={field.value} onSelect={field.onChange} locale={ptBR} initialFocus />
-                              </PopoverContent>
-                            </Popover>
+                            <FormControl>
+                              <DateField value={field.value} onChange={field.onChange} onBlur={field.onBlur} name={field.name} />
+                            </FormControl>
                             <FormMessage />
                           </FormItem>
                         )}
@@ -226,19 +216,9 @@ export function BulkWeeklyEntryModal({ isOpen, onClose, initialDate }: BulkWeekl
                         render={({ field }) => (
                           <FormItem className="flex flex-col">
                             <FormLabel>Fim</FormLabel>
-                            <Popover>
-                              <PopoverTrigger asChild>
-                                <FormControl>
-                                  <Button variant="outline" className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
-                                    {field.value ? format(field.value, "dd/MM/yy") : "Término"}
-                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                  </Button>
-                                </FormControl>
-                              </PopoverTrigger>
-                              <PopoverContent className="w-auto p-0" align="start">
-                                <Calendar mode="single" selected={field.value} onSelect={field.onChange} locale={ptBR} initialFocus />
-                              </PopoverContent>
-                            </Popover>
+                            <FormControl>
+                              <DateField value={field.value} onChange={field.onChange} onBlur={field.onBlur} name={field.name} />
+                            </FormControl>
                             <FormMessage />
                           </FormItem>
                         )}
